@@ -1,0 +1,79 @@
+# Reusable: build + verify only. Does not publish (no OIDC).
+# Called by the per-package pypi-*.yml workflows / orchestrator.
+
+on:
+  workflow_call:
+    outputs:
+      version:
+        description: Shared package version
+        value: ${{ jobs.build.outputs.version }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build all wheels
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - id: ver
+        name: Read version
+        run: |
+          ver=$(python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('packages/panels/pyproject.toml').read_text())['project']['version'])")
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+      - name: Tag must match packaged versions
+        if: github.event_name == 'release'
+        run: |
+          tagged="${GITHUB_REF_NAME#v}"
+          for pkg in support schemas forms actions tables infolists notifications widgets query-builder panels; do
+            ver=$(python -c "import tomllib, pathlib; print(tomllib.loads(pathlib.Path('packages/$pkg/pyproject.toml').read_text())['project']['version'])")
+            if [ "$ver" != "$tagged" ]; then
+              echo "::error::$pkg version $ver does not match tag $GITHUB_REF_NAME"
+              exit 1
+            fi
+          done
+      - name: Build
+        run: |
+          pip install build twine
+          mkdir -p dist-all
+          for pkg in support schemas forms actions tables infolists notifications widgets query-builder panels; do
+            rm -rf "packages/$pkg/dist"
+            python -m build "packages/$pkg"
+            twine check --strict "packages/$pkg/dist"/*
+            cp "packages/$pkg/dist"/* dist-all/
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist-all/
+
+  verify:
+    name: Install wheels
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - run: |
+          pip install dist/almasix_orbit_support-*.whl
+          pip install dist/almasix_orbit_schemas-*.whl
+          pip install dist/almasix_orbit_forms-*.whl
+          pip install dist/almasix_orbit_actions-*.whl
+          pip install dist/almasix_orbit_tables-*.whl
+          pip install dist/almasix_orbit_infolists-*.whl
+          pip install dist/almasix_orbit_notifications-*.whl
+          pip install dist/almasix_orbit_widgets-*.whl
+          pip install dist/almasix_orbit_query_builder-*.whl
+          pip install dist/almasix_orbit-*.whl || pip install --no-deps dist/almasix_orbit-*.whl
+          python -c "from almasix.orbit.forms import TextInput; assert TextInput.make('n').get_name()=='n'"

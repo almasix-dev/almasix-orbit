@@ -1,0 +1,41 @@
+name: Publish almasix-orbit-actions
+
+# Trusted Publishing identity for this file:
+#   Owner: almasix-dev | Repo: almasix-orbit | Workflow: publish-almasix-orbit-actions.yml
+# Register pending publishers with Environment `pypi` / `testpypi` (see PUBLISHING.md).
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: pypi or testpypi
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Upload almasix-orbit-actions
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.target == 'testpypi' && 'testpypi' || 'pypi' }}
+      url: ${{ inputs.target == 'testpypi' && 'https://test.pypi.org/project/almasix-orbit-actions/' || 'https://pypi.org/project/almasix-orbit-actions/' }}
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Stage this package only
+        run: |
+          mkdir -p upload
+          cp dist/almasix_orbit_actions-* upload/
+          ls -la upload
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: upload
+          repository-url: ${{ inputs.target == 'testpypi' && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+          skip-existing: true
