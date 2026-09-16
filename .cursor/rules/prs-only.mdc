@@ -1,0 +1,35 @@
+---
+description: Never push to main/master; use PRs for all changes
+alwaysApply: true
+---
+
+# Branch protection — PRs only
+
+This repository (and Almasix org repos generally) uses **branch protection** on `main`.
+
+## Required workflow
+
+1. Create a feature branch from up-to-date `main` (e.g. `fix/…`, `feat/…`, `chore/…`).
+2. Commit on that branch only.
+3. Push the **feature branch** with `-u` if needed.
+4. Open a PR with `gh pr create` and return the PR URL.
+5. Do **not** merge unless the user explicitly asks.
+
+## Forbidden
+
+- `git push origin main` / `git push origin master`
+- Committing directly on `main`
+- Force-push to protected branches
+- Bypassing branch protection (admin merge, `--force`, force-with-lease to main, etc.)
+
+## If already on main with local commits
+
+Move them onto a new branch before pushing:
+
+```bash
+git checkout -b chore/describe-change
+git push -u origin HEAD
+gh pr create …
+```
+
+Never push those commits straight to `main`.
