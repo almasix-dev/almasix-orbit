@@ -1,7 +1,18 @@
 name: Docs
 
+# Builds the Starlight site under docs/. Deploy is Cloudflare Workers Builds
+# connected to this repo (root docs/, build: npm ci && npm run build,
+# deploy: npx wrangler deploy) — same pattern as almasix-docs.
+# No CLOUDFLARE_API_TOKEN in GitHub.
+#
+# Cutover:
+#   1. Workers Builds → project almasix-orbit-docs, root directory docs
+#   2. Custom domain orbit.almasix.com
+#   3. See CLOUDFLARE.md
+
 on:
   push:
+    branches: [main]
     paths:
       - "docs/**"
       - ".github/workflows/docs.yml"
@@ -9,18 +20,33 @@ on:
     paths:
       - "docs/**"
       - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    name: Build site
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install and build
-        working-directory: docs
-        run: |
-          npm install
-          npm run build
-      # Deploy to Cloudflare Workers/Pages later — build verify only for now.
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build

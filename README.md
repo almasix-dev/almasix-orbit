@@ -36,3 +36,8 @@ https://orbit.almasix.com/
 ## Parity
 
 See [docs/parity.md](docs/parity.md) for the Filament 5.x parity matrix.
+
+## Publishing
+
+- PyPI: see [PUBLISHING.md](./PUBLISHING.md)
+- Docs / Cloudflare: see [CLOUDFLARE.md](./CLOUDFLARE.md)

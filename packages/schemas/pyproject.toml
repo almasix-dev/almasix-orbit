@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Almasix Contributors" }]
 dependencies = [
-    "almasix-orbit-support",
+    "almasix-orbit-support>=0.1.0",
 ]
 
 [project.urls]
