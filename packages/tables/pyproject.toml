@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "almasix-orbit-tables"
+version = "0.1.0"
+description = "Orbit data tables"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Almasix Contributors" }]
+dependencies = [
+    "almasix-orbit-actions",
+    "almasix-orbit-support",
+]
+
+[project.urls]
+Homepage = "https://github.com/almasix-dev/almasix-orbit"
+Documentation = "https://orbit.almasix.com/"
+Repository = "https://github.com/almasix-dev/almasix-orbit"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/almasix"]

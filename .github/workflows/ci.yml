@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: |
+          python -m pip install -U pip
+          pip install pytest pytest-cov pytest-asyncio ruff==0.16.6
+          pip install -e packages/support -e packages/schemas -e packages/forms -e packages/actions -e packages/tables -e packages/infolists -e packages/notifications -e packages/widgets -e packages/query-builder -e packages/panels || true
+          # Editable installs may fail without full deps; path bootstrap via conftest/pytest pythonpath.
+          pip install pytest pytest-cov ruff==0.16.6
+      - name: Ruff
+        run: ruff check packages tests --ignore E501
+      - name: Pytest with coverage
+        run: |
+          pytest tests \
+            --cov=almasix.orbit \
+            --cov-report=term-missing \
+            --cov-fail-under=98
+
+  docs:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - name: Build docs (optional)
+        working-directory: docs
+        run: |
+          npm install
+          npm run build

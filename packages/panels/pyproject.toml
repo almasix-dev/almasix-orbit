@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "almasix-orbit"
+version = "0.1.0"
+description = "Orbit panels — Filament's power for Almasix"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Almasix Contributors" }]
+dependencies = [
+    "almasix>=0.6.0",
+    "almasix-conduit>=0.2.0",
+    "almasix-permission>=0.1.0",
+    "almasix-orbit-support",
+    "almasix-orbit-schemas",
+    "almasix-orbit-forms",
+    "almasix-orbit-tables",
+    "almasix-orbit-actions",
+    "almasix-orbit-infolists",
+    "almasix-orbit-notifications",
+    "almasix-orbit-widgets",
+    "almasix-orbit-query-builder",
+]
+
+[project.entry-points."almasix.providers"]
+orbit = "almasix.orbit.provider:OrbitServiceProvider"
+
+[project.urls]
+Homepage = "https://github.com/almasix-dev/almasix-orbit"
+Documentation = "https://orbit.almasix.com/"
+Repository = "https://github.com/almasix-dev/almasix-orbit"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/almasix"]

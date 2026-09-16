@@ -1,0 +1,50 @@
+/* Orbit docs — Outfit + Almasix orange (#F1511B) */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+	--almasix-orange: #f1511b;
+	--almasix-orange-soft: #ff7a4d;
+	--almasix-orange-deep: #c43a0f;
+	--almasix-glow: rgba(241, 81, 27, 0.22);
+
+	--sl-font: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+	--sl-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+	--sl-content-width: 48rem;
+
+	--sl-color-accent-low: #4a1c0e;
+	--sl-color-accent: #ff6a3d;
+	--sl-color-accent-high: #ffc2a8;
+
+	--sl-color-white: #faf7f5;
+	--sl-color-gray-1: #ece4de;
+	--sl-color-gray-2: #cfc3bb;
+	--sl-color-gray-3: #9a8b82;
+	--sl-color-gray-4: #6e6058;
+	--sl-color-gray-5: #3a302b;
+	--sl-color-gray-6: #241c18;
+	--sl-color-black: #140f0d;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #ffe5db;
+	--sl-color-accent: #f1511b;
+	--sl-color-accent-high: #9a2c0a;
+
+	--sl-color-white: #1a1412;
+	--sl-color-gray-1: #2a221e;
+	--sl-color-gray-2: #433832;
+	--sl-color-gray-3: #5c4f48;
+	--sl-color-gray-4: #8f7f76;
+	--sl-color-gray-5: #c9bbb2;
+	--sl-color-gray-6: #f0e9e4;
+	--sl-color-gray-7: #faf7f5;
+	--sl-color-black: #faf7f5;
+}
+
+body {
+	background-image:
+		radial-gradient(1100px 520px at 8% -12%, var(--almasix-glow), transparent 55%),
+		radial-gradient(800px 420px at 100% 0%, rgba(241, 81, 27, 0.08), transparent 50%);
+	background-attachment: fixed;
+}

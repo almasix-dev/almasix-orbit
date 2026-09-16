@@ -1,0 +1,9 @@
+{
+  "name": "almasix-orbit-assets",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "echo \"TODO: compile Tailwind → packages/panels/src/almasix/orbit/resources/css/orbit.css\" && exit 0",
+    "dev": "npm run build"
+  }
+}

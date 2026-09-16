@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "almasix-orbit-support"
+version = "0.1.0"
+description = "Shared Orbit UI utilities, icons, colors, and components"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Almasix Contributors" }]
+dependencies = [
+    "almasix>=0.6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/almasix-dev/almasix-orbit"
+Documentation = "https://orbit.almasix.com/"
+Repository = "https://github.com/almasix-dev/almasix-orbit"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/almasix"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src/almasix", "/README.md"]

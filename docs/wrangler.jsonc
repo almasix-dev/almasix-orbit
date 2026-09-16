@@ -1,0 +1,13 @@
+{
+	// Cloudflare Workers Assets deploy for orbit.almasix.com — configure later.
+	// For now this stub documents the intended Workers setup; CI only builds docs.
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "almasix-orbit-docs",
+	"compatibility_date": "2026-09-16",
+	"preview_urls": true,
+	"assets": {
+		"directory": "./dist",
+		"not_found_handling": "404-page",
+		"html_handling": "auto-trailing-slash"
+	}
+}
