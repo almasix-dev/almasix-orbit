@@ -124,3 +124,27 @@ class Notifier:
         return '<div class="or-notifications" x-data="orbitNotifications">' + "".join(
             n.render() for n in self.flash()
         ) + "</div>"
+
+
+class LiveNotifier(Notifier):
+    """Broadcast / live notification host (Alpine + channel subscriptions)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._channels: set[str] = set()
+
+    def channel(self, name: str) -> Self:
+        self._channels.add(name)
+        return self
+
+    def get_channels(self) -> list[str]:
+        return sorted(self._channels)
+
+    def render_live(self) -> str:
+        channels = ",".join(self.get_channels())
+        attrs = f' data-channels="{e(channels)}"' if channels else ""
+        return (
+            f'<div class="or-live-notifier"{attrs} x-data="orbitLiveNotifications">'
+            f"{self.render_flash()}"
+            f"</div>"
+        )

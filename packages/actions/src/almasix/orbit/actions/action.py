@@ -26,6 +26,8 @@ class Action(Component):
         self._success_notification: str | None = None
         self._button_group: str = "default"
         self._modal = False
+        self._slide_over = False
+        self._modal_width: str | Callable[..., str] | None = None
 
     def action(self, callback: Callable[..., Any]) -> Self:
         self._action = callback
@@ -63,6 +65,24 @@ class Action(Component):
 
     def is_modal(self) -> bool:
         return self._modal or bool(self._form_schema) or self._requires_confirmation
+
+    def slide_over(self, condition: bool = True) -> Self:
+        self._slide_over = condition
+        self._modal = condition or self._modal
+        return self
+
+    def is_slide_over(self) -> bool:
+        return self._slide_over
+
+    def modal_width(self, width: str | Callable[..., str]) -> Self:
+        self._modal_width = width
+        return self
+
+    def get_modal_width(self, **ctx: Any) -> str | None:
+        if self._modal_width is None:
+            return None
+        result = evaluate(self._modal_width, **ctx)
+        return None if result is None else str(result)
 
     def modal_heading(self, text: str | Callable[..., str]) -> Self:
         self._modal_heading = text
@@ -117,6 +137,8 @@ class Action(Component):
             "has_form": bool(self._form_schema),
             "success_notification": self._success_notification,
             "has_url": self._url is not None,
+            "slide_over": self._slide_over,
+            "modal_width": self._modal_width if not callable(self._modal_width) else None,
         })
         return d
 
@@ -139,9 +161,12 @@ class Action(Component):
         description = evaluate(self._modal_description, **ctx) if self._modal_description else ""
         heading_attr = f' data-modal-heading="{e(heading)}"' if heading else ""
         desc_attr = f' data-modal-description="{e(description)}"' if description else ""
+        slide_attr = ' data-slide-over="true"' if self._slide_over else ""
+        width = self.get_modal_width(**ctx)
+        width_attr = f' data-modal-width="{e(width)}"' if width else ""
         return (
             f'<button type="button" class="or-btn or-btn-{color}" data-action="{name}" '
-            f'data-confirm="{confirm}"{heading_attr}{desc_attr} '
+            f'data-confirm="{confirm}"{heading_attr}{desc_attr}{slide_attr}{width_attr} '
             f'wire:click="mountAction(\'{name}\')">'
             f"{ic}<span>{label}</span></button>"
         )
