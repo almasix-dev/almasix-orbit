@@ -19,10 +19,11 @@ panel = (
     .font("Outfit")
     .primary("#f1511b")  # or .primary("info") / .colors(primary="#…", danger="#…")
     .resources([PostResource, UserResource])
-    .pages([DashboardPage])
     .widgets([StatsOverview])
     # .middleware(["auth"])  # appends after default ["web"]
-    .login()
+    .login()                 # or .login(False) / .login(MyLogin)
+    # .signup()              # opt-in registration (+ link on the login page)
+    # .dashboard()           # on by default; .dashboard(False) or .dashboard(MyDashboard)
     .auth_guard("web")
     .dark_mode()
     .sidebar_collapsible()
@@ -47,7 +48,18 @@ app.make(PanelRegistry).register(panel)
 | `.colors(**tokens)` | `primary="#f1511b"` | Merge semantic colors (`primary`, `danger`, `success`, `warning`, `info`, `gray`). Values may be hex or tokens |
 | `.content_max_width(...)` | `"screen-2xl"` | Cap centered page content (`screen-2xl` → `96rem`) |
 
-Toggle-style methods take `condition: bool = True` (e.g. `.login()`, `.login(False)`, `.sidebar_collapsible()`).
+Toggle-style methods take `condition: bool = True` (e.g. `.dark_mode()`, `.sidebar_collapsible()`).
+
+Auth and home pages accept Filament-style `True | False | Page` subclasses:
+
+```python
+from almasix.orbit import Login, Register, Dashboard
+
+class MyLogin(Login):
+    title = "Welcome back"
+
+panel.login(MyLogin).signup().dashboard()
+```
 
 ## Contents
 
@@ -57,7 +69,9 @@ Toggle-style methods take `condition: bool = True` (e.g. `.login()`, `.login(Fal
 | `.pages([...])` | Custom page classes |
 | `.widgets([...])` | Dashboard widgets |
 | `.middleware([...])` | **Appends** after default `["web"]` (deduped). Use `replace=True` to set the stack explicitly |
-| `.login(True)` | Login enabled flag |
+| `.login(...)` | Default `True` → built-in `Login`. Pass `False` or a custom page class |
+| `.signup(...)` | Default `False`. Pass `True`/`()` for `Register`, or a custom page. Adds login↔signup links |
+| `.dashboard(...)` | Default `True` → built-in `Dashboard` as panel home (`/`). Pass `False` to use the first resource instead |
 | `.auth_guard("web")` | Guard name |
 | `.dark_mode()` | Shell light/dark/system toggle |
 | `.sidebar_collapsible()` | Off by default. Pass `True` (or call with no args) to show the collapse control |

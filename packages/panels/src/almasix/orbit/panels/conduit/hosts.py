@@ -12,7 +12,36 @@ from almasix.conduit import Component, Conduit
 from almasix.orbit.support.conduit_attrs import conduit_attr
 
 
-class OrbitPageHost(Component):
+class ConduitHost(Component):
+    """Conduit host with redirect that works on PyPI Conduit (no ``Component.redirect``)."""
+
+    def redirect(self, url: str, *, navigate: bool = False) -> None:
+        """Queue a redirect after the response."""
+        try:
+            return super().redirect(url, navigate=navigate)  # type: ignore[misc]
+        except AttributeError:
+            pass
+        except TypeError:
+            try:
+                return super().redirect(url)  # type: ignore[misc]
+            except AttributeError:
+                pass
+        self._orbit_redirect = {"url": str(url), "navigate": bool(navigate)}
+
+    def take_redirect(self) -> dict[str, Any] | None:
+        """Pop the queued redirect, if any."""
+        try:
+            got = super().take_redirect()  # type: ignore[misc]
+        except AttributeError:
+            got = None
+        if got is not None:
+            return got
+        target = getattr(self, "_orbit_redirect", None)
+        self._orbit_redirect = None
+        return target
+
+
+class OrbitPageHost(ConduitHost):
     """Base host: panel + resource binding via ClassVars set by factories."""
 
     panel_id: ClassVar[str] = "admin"
@@ -205,7 +234,7 @@ class ViewRecordHost(OrbitPageHost):
         return Bound.render(record=data)
 
 
-class FormHost(Component):
+class FormHost(ConduitHost):
     """Standalone form host for custom pages."""
 
     data: dict[str, Any] = {}
@@ -235,7 +264,7 @@ class FormHost(Component):
         )
 
 
-class TableHost(Component):
+class TableHost(ConduitHost):
     """Standalone table host for custom pages."""
 
     records: list[dict[str, Any]] = []
@@ -262,7 +291,7 @@ class TableHost(Component):
         )
 
 
-class LoginHost(Component):
+class LoginHost(ConduitHost):
     """Auth login Conduit host (guest-accessible route)."""
 
     email: str = ""
@@ -271,28 +300,7 @@ class LoginHost(Component):
     error: str = ""
     panel_id: ClassVar[str] = "admin"
     _panel: ClassVar[Any] = None
-    _orbit_redirect: dict[str, Any] | None = None
-
-    def redirect(self, url: str, *, navigate: bool = False) -> None:
-        """Queue a post-response redirect.
-
-        Implemented on the host so login works against Conduit builds that do
-        not yet expose ``Component.redirect`` / ``take_redirect``.
-        """
-        self._orbit_redirect = {"url": str(url), "navigate": bool(navigate)}
-        skip = getattr(self, "skip_render", None)
-        if callable(skip):
-            skip()
-
-    def take_redirect(self) -> dict[str, Any] | None:
-        target = self._orbit_redirect
-        self._orbit_redirect = None
-        if target is not None:
-            return target
-        parent = getattr(super(), "take_redirect", None)
-        if callable(parent):
-            return parent()
-        return None
+    _page_cls: ClassVar[Any] = None
 
     async def authenticate(self) -> None:
         self.error = ""
@@ -331,12 +339,11 @@ class LoginHost(Component):
             pass
 
         panel = type(self)._panel
-        home = "/admin"
+        home = "/"
         if panel is not None:
-            home = str(panel.get_path() or "/admin")
-            if not home.startswith("/"):
+            home = panel.url() if hasattr(panel, "url") else str(panel.get_path() or "/")
+            if not str(home).startswith("/"):
                 home = f"/{home}"
-        # Full navigation so the session cookie from this response is applied.
         self.password = ""
         self.redirect(home)
 
@@ -344,10 +351,13 @@ class LoginHost(Component):
         from almasix.orbit.panels.auth import Login
 
         panel = type(self)._panel
+        page_cls = type(self)._page_cls or Login
         brand = "Orbit"
         brand_logo = None
         brand_logo_dark = None
         brand_logo_only = False
+        show_signup = False
+        signup_url = None
         if panel is not None:
             brand = str(getattr(panel, "_brand", None) or brand)
             getter = getattr(panel, "get_brand_logo_url", None)
@@ -358,7 +368,10 @@ class LoginHost(Component):
                 brand_logo = getattr(panel, "_brand_logo", None)
                 brand_logo_dark = getattr(panel, "_brand_logo_dark", None) or brand_logo
             brand_logo_only = bool(getattr(panel, "_brand_logo_only", False))
-        return Login.render(
+            if callable(getattr(panel, "signup_enabled", None)) and panel.signup_enabled():
+                show_signup = True
+                signup_url = panel.url("register")
+        return page_cls.render(
             email=self.email,
             remember=self.remember,
             brand=brand,
@@ -366,13 +379,144 @@ class LoginHost(Component):
             brand_logo_dark=brand_logo_dark,
             brand_logo_only=brand_logo_only,
             error=self._display_error(),
+            show_signup=show_signup,
+            signup_url=signup_url,
         )
 
     def _display_error(self) -> str | None:
         if self.error:
             return self.error
         bag = getattr(self, "errors", None) or {}
-        for key in ("email", "password", "_method"):
+        for key in ("email", "password", "name", "password_confirmation", "_method"):
+            msgs = bag.get(key)
+            if msgs:
+                return str(msgs[0])
+        return None
+
+
+class RegisterHost(ConduitHost):
+    """Auth registration Conduit host (guest-accessible when signup is enabled)."""
+
+    name: str = ""
+    email: str = ""
+    password: str = ""
+    password_confirmation: str = ""
+    error: str = ""
+    panel_id: ClassVar[str] = "admin"
+    _panel: ClassVar[Any] = None
+    _page_cls: ClassVar[Any] = None
+
+    async def register(self) -> None:
+        self.error = ""
+        name = str(self.name or "").strip()
+        email = str(self.email or "").strip()
+        password = str(self.password or "")
+        confirm = str(self.password_confirmation or "")
+        if not name or not email or not password:
+            self.error = "Name, email, and password are required."
+            return
+        if password != confirm:
+            self.error = "Passwords do not match."
+            return
+
+        try:
+            user_model = self._user_model()
+            from almasix.hashing import Hash
+
+            create = getattr(user_model, "create", None)
+            if create is None:
+                self.error = "User model cannot create accounts."
+                return
+            result = create(
+                {
+                    "name": name,
+                    "email": email,
+                    "password": Hash.make(password),
+                }
+            )
+            if hasattr(result, "__await__"):
+                user = await result
+            else:
+                user = result
+        except Exception as exc:
+            self.error = str(exc) or "Could not create account."
+            return
+
+        try:
+            from almasix.auth import auth
+
+            await auth().login(user)
+        except Exception as exc:
+            self.error = str(exc) or "Account created, but sign-in failed."
+            return
+
+        panel = type(self)._panel
+        home = "/"
+        if panel is not None:
+            home = panel.url() if hasattr(panel, "url") else str(panel.get_path() or "/")
+            if not str(home).startswith("/"):
+                home = f"/{home}"
+        self.password = ""
+        self.password_confirmation = ""
+        self.redirect(home)
+
+    def _user_model(self) -> type[Any]:
+        import importlib
+
+        path = "app.models.user.User"
+        try:
+            from almasix.config import config
+
+            path = str(
+                config("auth.providers.users.model", "app.models.user.User")
+                or "app.models.user.User"
+            )
+        except Exception:
+            pass
+        module_name, _, class_name = path.rpartition(".")
+        module = importlib.import_module(module_name)
+        model = getattr(module, class_name, None)
+        if model is None:
+            raise AttributeError(f"{class_name} not found in {module_name}")
+        return model
+
+    def render(self) -> str:
+        from almasix.orbit.panels.auth import Register
+
+        panel = type(self)._panel
+        page_cls = type(self)._page_cls or Register
+        brand = "Orbit"
+        brand_logo = None
+        brand_logo_dark = None
+        brand_logo_only = False
+        login_url = "/login"
+        if panel is not None:
+            brand = str(getattr(panel, "_brand", None) or brand)
+            getter = getattr(panel, "get_brand_logo_url", None)
+            if callable(getter):
+                brand_logo = getter(dark=False)
+                brand_logo_dark = getter(dark=True)
+            else:
+                brand_logo = getattr(panel, "_brand_logo", None)
+                brand_logo_dark = getattr(panel, "_brand_logo_dark", None) or brand_logo
+            brand_logo_only = bool(getattr(panel, "_brand_logo_only", False))
+            login_url = panel.url("login")
+        return page_cls.render(
+            name=self.name,
+            email=self.email,
+            brand=brand,
+            brand_logo=brand_logo,
+            brand_logo_dark=brand_logo_dark,
+            brand_logo_only=brand_logo_only,
+            error=self._display_error(),
+            login_url=login_url,
+        )
+
+    def _display_error(self) -> str | None:
+        if self.error:
+            return self.error
+        bag = getattr(self, "errors", None) or {}
+        for key in ("email", "password", "name", "password_confirmation", "_method"):
             msgs = bag.get(key)
             if msgs:
                 return str(msgs[0])

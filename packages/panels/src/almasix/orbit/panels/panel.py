@@ -17,6 +17,7 @@ from almasix.orbit.panels.navigation import (
     build_menu_layout,
     normalize_nav_layout,
 )
+from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.theme_colors import (
     DEFAULT_PRIMARY,
     normalize_panel_color,
@@ -29,6 +30,19 @@ from almasix.orbit.support.icons import icon as render_icon
 
 _TOPBAR_ICON = 20
 DEFAULT_BRAND_NAME_FONT_SIZE = "1.05rem"
+
+PageOption = bool | type[Page]
+
+
+def _resolve_page_option(value: PageOption, *, default_cls: type[Page]) -> type[Page] | None:
+    """``False`` → disabled; ``True`` → default class; page class → that class."""
+    if value is False:
+        return None
+    if value is True:
+        return default_cls
+    if isinstance(value, type) and issubclass(value, Page):
+        return value
+    return default_cls
 
 
 class Panel:
@@ -46,7 +60,9 @@ class Panel:
         self._pages: list[type[Any]] = []
         self._widgets: list[type[Any]] = []
         self._middleware: list[Any] = ["web"]
-        self._login: bool = True
+        self._login: PageOption = True
+        self._signup: PageOption = False
+        self._dashboard: PageOption = True
         self._auth_guard: str | None = None
         self._plugin_callbacks: list[Callable[[Panel], Any]] = []
         self._dark_mode = True
@@ -173,9 +189,44 @@ class Panel:
                 self._middleware.append(item)
         return self
 
-    def login(self, condition: bool = True) -> Self:
-        self._login = bool(condition)
+    def login(self, page: PageOption = True) -> Self:
+        """Enable login (default), disable with ``False``, or pass a custom ``Login`` page class."""
+        self._login = page
         return self
+
+    def signup(self, page: PageOption = True) -> Self:
+        """Opt-in user registration. Pass ``False`` to disable, or a custom ``Register`` page."""
+        self._signup = page
+        return self
+
+    def dashboard(self, page: PageOption = True) -> Self:
+        """Panel home page (on by default). Pass ``False`` to disable, or a custom ``Dashboard``."""
+        self._dashboard = page
+        return self
+
+    def login_enabled(self) -> bool:
+        return self._login is not False
+
+    def signup_enabled(self) -> bool:
+        return self._signup is not False
+
+    def dashboard_enabled(self) -> bool:
+        return self._dashboard is not False
+
+    def login_page(self) -> type[Page] | None:
+        from almasix.orbit.panels.auth import Login
+
+        return _resolve_page_option(self._login, default_cls=Login)
+
+    def signup_page(self) -> type[Page] | None:
+        from almasix.orbit.panels.auth import Register
+
+        return _resolve_page_option(self._signup, default_cls=Register)
+
+    def dashboard_page(self) -> type[Page] | None:
+        from almasix.orbit.panels.pages.dashboard import Dashboard
+
+        return _resolve_page_option(self._dashboard, default_cls=Dashboard)
 
     def auth_guard(self, guard: str) -> Self:
         self._auth_guard = guard
@@ -365,6 +416,19 @@ class Panel:
 
     def _collect_navigation_items(self) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
+        dash = self.dashboard_page() if self.dashboard_enabled() else None
+        if dash is not None and dash not in self._pages:
+            items.append(
+                {
+                    "slug": dash.get_slug(),
+                    "label": dash.get_navigation_label(),
+                    "icon": getattr(dash, "navigation_icon", "heroicon-o-home"),
+                    "group": getattr(dash, "navigation_group", None),
+                    "subgroup": getattr(dash, "navigation_subgroup", None),
+                    "url": self.url(),
+                    "sort": getattr(dash, "navigation_sort", -100),
+                }
+            )
         for res in self._resources:
             items.append(
                 {
@@ -382,6 +446,20 @@ class Panel:
                 }
             )
         for page in self._pages:
+            # Home dashboard is mounted at ``/`` — avoid a duplicate ``/dashboard`` nav entry.
+            if dash is not None and page is dash:
+                items.append(
+                    {
+                        "slug": page.get_slug(),
+                        "label": page.get_navigation_label(),
+                        "icon": getattr(page, "navigation_icon", "heroicon-o-home"),
+                        "group": getattr(page, "navigation_group", None),
+                        "subgroup": getattr(page, "navigation_subgroup", None),
+                        "url": self.url(),
+                        "sort": getattr(page, "navigation_sort", -100),
+                    }
+                )
+                continue
             items.append(
                 {
                     "slug": getattr(page, "get_slug", lambda p=page: p.__name__.lower())(),
@@ -403,9 +481,21 @@ class Panel:
         return items
 
     def menu_layout_context(self, active_path: str | None = None) -> Any:
+        meta = dict(self._nav_groups)
+        # Ensure the Dashboard group sorts first when the built-in home page is on.
+        if self.dashboard_enabled():
+            dash = self.dashboard_page()
+            if dash is not None:
+                group_name = getattr(dash, "navigation_group", None) or dash.get_navigation_label()
+                if group_name and group_name not in meta:
+                    meta[str(group_name)] = (
+                        NavigationGroup.make(str(group_name))
+                        .icon(getattr(dash, "navigation_icon", "heroicon-o-home"))
+                        .sort(getattr(dash, "navigation_sort", -100))
+                    )
         return build_menu_layout(
             self._collect_navigation_items(),
-            group_meta=self._nav_groups,
+            group_meta=meta,
             active_path=active_path,
             layout=normalize_nav_layout(self._navigation_layout),
             panel_path=self._path,
@@ -515,7 +605,7 @@ class Panel:
             token = csrf_token()
             if token:
                 csrf_meta = f'  <meta name="csrf-token" content="{e(token)}" />\n'
-        except Exception:  # pragma: no cover - CSRF optional outside full app boot
+        except Exception:
             pass
 
         return (

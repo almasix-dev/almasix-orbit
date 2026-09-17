@@ -39,7 +39,7 @@ def _login_brand_html(
         parts.append(f'<span class="or-login-logo-slot">{logo}</span>')
     if show_name:
         parts.append(f'<span class="or-login-brand-name">{e(brand)}</span>')
-    if not parts:  # pragma: no cover - brand string always yields a name span
+    if not parts:
         return ""
     classes = "or-login-brand"
     if brand_logo and brand_logo_only:
@@ -102,15 +102,25 @@ class Login(Page):
                 f'<div class="or-login-alert" role="alert">{e(str(error))}</div>'
             )
         subtitle = f"Welcome back. Sign in to continue to {e(brand)}."
+        footer = ""
+        if ctx.get("show_signup") and ctx.get("signup_url"):
+            footer = (
+                f'<p class="or-login-footer">'
+                f"Don't have an account? "
+                f'<a class="or-login-footer-link" href="{e(str(ctx["signup_url"]))}">Sign up</a>'
+                f"</p>"
+            )
         return (
             f'<div class="or-page or-page-auth or-page-login">'
             f"{_login_header_html(title=cls.get_title(), subtitle=subtitle, brand=brand, brand_logo=brand_logo, brand_logo_dark=brand_logo_dark, brand_logo_only=brand_logo_only)}"
             f"{error_html}"
             f'<form class="or-form or-login-form"{conduit_attr("submit", "authenticate")}>'
-            f"{form.render(**ctx)}"
+            f"{form.render()}"
             f'<button type="submit" class="or-btn or-btn-primary or-btn-block">'
             f"Sign in</button>"
-            f"</form></div>"
+            f"</form>"
+            f"{footer}"
+            f"</div>"
         )
 
 
@@ -132,15 +142,35 @@ class Register(Page):
     @classmethod
     def render(cls, **ctx: Any) -> str:
         brand = str(ctx.get("brand") or "Orbit")
+        brand_logo = ctx.get("brand_logo")
+        brand_logo_dark = ctx.get("brand_logo_dark")
+        brand_logo_only = bool(ctx.get("brand_logo_only"))
+        error = ctx.get("error")
+        error_html = ""
+        if error:
+            error_html = (
+                f'<div class="or-login-alert" role="alert">{e(str(error))}</div>'
+            )
         subtitle = f"Create an account to use {e(brand)}."
+        footer = ""
+        if ctx.get("login_url"):
+            footer = (
+                f'<p class="or-login-footer">'
+                f"Already registered? "
+                f'<a class="or-login-footer-link" href="{e(str(ctx["login_url"]))}">Sign in</a>'
+                f"</p>"
+            )
         return (
             f'<div class="or-page or-page-auth or-page-register">'
-            f"{_login_header_html(title=cls.get_title(), subtitle=subtitle, brand=brand, brand_logo=ctx.get('brand_logo'), brand_logo_dark=ctx.get('brand_logo_dark'), brand_logo_only=bool(ctx.get('brand_logo_only')))}"
+            f"{_login_header_html(title=cls.get_title(), subtitle=subtitle, brand=brand, brand_logo=brand_logo, brand_logo_dark=brand_logo_dark, brand_logo_only=brand_logo_only)}"
+            f"{error_html}"
             f'<form class="or-form or-login-form"{conduit_attr("submit", "register")}>'
-            f"{cls.get_form().render(**ctx)}"
+            f"{cls.get_form().render()}"
             f'<button type="submit" class="or-btn or-btn-primary or-btn-block">'
             f"Create account</button>"
-            f"</form></div>"
+            f"</form>"
+            f"{footer}"
+            f"</div>"
         )
 
 
