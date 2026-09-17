@@ -6,9 +6,9 @@ from collections.abc import Callable, Sequence
 from typing import Any, Self
 
 from almasix.orbit.panels.navigation import (
-    NavLayout,
     NavigationGroup,
     NavigationItem,
+    NavLayout,
     build_menu_layout,
 )
 from almasix.orbit.support.html import e

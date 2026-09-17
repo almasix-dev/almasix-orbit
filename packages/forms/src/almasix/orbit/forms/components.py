@@ -400,8 +400,8 @@ class KeyValue(Field):
             )
         if not rows:
             rows.append(
-                f'<div class="or-key-value-row">'
-                f'<input class="or-input" placeholder="Key" /><input class="or-input" placeholder="Value" /></div>'
+                '<div class="or-key-value-row">'
+                '<input class="or-input" placeholder="Key" /><input class="or-input" placeholder="Value" /></div>'
             )
         return (
             f'<div class="or-field or-field-KeyValue" data-field="{name}">'

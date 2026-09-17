@@ -9,7 +9,6 @@ from typing import Any, Literal, Self
 from almasix.orbit.support.component import Component
 from almasix.orbit.support.evaluate import evaluate
 
-
 NavLayout = Literal["sidebar", "top", "sidebar_topbar"]
 
 
