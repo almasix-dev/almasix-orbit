@@ -2,6 +2,7 @@
 
 __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
+from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem
 from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.panel import Panel, PanelRegistry
 from almasix.orbit.panels.relation_manager import RelationManager
@@ -16,4 +17,6 @@ __all__ = [
     "Resource",
     "Page",
     "RelationManager",
+    "NavigationItem",
+    "NavigationGroup",
 ]

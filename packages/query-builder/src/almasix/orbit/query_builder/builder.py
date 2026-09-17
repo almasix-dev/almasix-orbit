@@ -158,3 +158,41 @@ class QueryBuilder(Component):
             "constraints": [c.to_dict() for c in self._constraints],
             "rules": self._rules,
         }
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        from almasix.orbit.support.html import e
+
+        if not self.is_visible(**ctx):
+            return ""
+        rows: list[str] = []
+        for constraint in self._constraints:
+            name = e(constraint.get_name() or "")
+            label = e(constraint.get_label(**ctx))
+            ops = "".join(
+                f'<option value="{e(op.value)}">{e(op.value.replace("_", " "))}</option>'
+                for op in constraint._operators
+            )
+            value_input = (
+                f'<input class="or-input" name="{name}_value" placeholder="Value" '
+                f'wire:model="query.{name}.value" />'
+            )
+            if hasattr(constraint, "_options") and constraint._options:  # type: ignore[attr-defined]
+                opts = "".join(
+                    f'<option value="{e(k)}">{e(v)}</option>'
+                    for k, v in constraint._options.items()  # type: ignore[attr-defined]
+                )
+                value_input = (
+                    f'<select class="or-select" name="{name}_value" '
+                    f'wire:model="query.{name}.value">{opts}</select>'
+                )
+            rows.append(
+                f'<div class="or-qb-row" data-constraint="{name}">'
+                f'<span class="or-qb-label">{label}</span>'
+                f'<select class="or-select or-qb-operator" name="{name}_operator" '
+                f'wire:model="query.{name}.operator">{ops}</select>'
+                f"{value_input}</div>"
+            )
+        return (
+            f'<div class="or-field or-query-builder" data-field="{e(self.get_name() or "query")}">'
+            f'<div class="or-qb-rows">{"".join(rows)}</div></div>'
+        )

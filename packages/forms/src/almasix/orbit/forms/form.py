@@ -1,4 +1,3 @@
-
 """Form builder wrapping Schema."""
 
 from __future__ import annotations
@@ -8,16 +7,28 @@ from typing import Any, Self
 
 from almasix.orbit.schemas.schema import Schema
 from almasix.orbit.support.component import Component
+from almasix.orbit.support.evaluate import evaluate
 
 
 class Form(Schema):
     """Filament-style Form configuration object."""
 
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._readonly = False
+
     def schema(self, components: Sequence[Component]) -> Self:  # type: ignore[override]
         return self.components(components)
 
-    def validate(self, data: dict[str, Any] | None = None) -> dict[str, list[str]]:
-        """Return field → error messages using simple rule strings."""
+    def readonly(self, condition: bool = True) -> Self:
+        self._readonly = condition
+        return self
+
+    def is_readonly(self) -> bool:
+        return self._readonly
+
+    def validate(self, data: dict[str, Any] | None = None, **ctx: Any) -> dict[str, list[str]]:
+        """Return field → error messages using rule strings and/or callables."""
         state = data if data is not None else self.get_state()
         errors: dict[str, list[str]] = {}
         for c in self.get_components():
@@ -27,7 +38,19 @@ class Form(Schema):
                 continue
             path = c.get_state_path() or ""
             value = state.get(path)
-            for rule in c.get_rules():
+            field_ctx = {**ctx, "state": state, "value": value, "field": c}
+            for rule in c.get_rules(**field_ctx):
+                if callable(rule):
+                    result = evaluate(rule, value, **field_ctx)
+                    if callable(result):
+                        continue
+                    if result is True or result is None:
+                        continue
+                    if result is False:
+                        errors.setdefault(path, []).append(f"The {path} field is invalid.")
+                    else:
+                        errors.setdefault(path, []).append(str(result))
+                    continue
                 if not isinstance(rule, str):
                     continue
                 msg = _check_rule(rule, value, path)

@@ -77,10 +77,12 @@ registry.all()          # list[Panel]
 
 ```python
 items = panel.navigation_items()
-# [{label, icon, group, url, sort}, ...]
+# [{label, icon, group, subgroup, url, sort}, ...]
 ```
 
-Items come from each resource and page’s navigation class vars, sorted by `navigation_sort`.
+Items come from each resource and page’s navigation class vars, plus custom `NavigationItem`s, sorted by `navigation_sort`. Layouts: `sidebar`, `top`, `sidebar_topbar`. Full guide: [Navigation](/panels/navigation/).
+
+Actions on the shell (modal vs URL, `mountAction`): [Panel actions](/panels/actions/).
 
 ## The shell
 

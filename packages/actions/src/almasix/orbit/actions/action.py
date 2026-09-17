@@ -1,4 +1,3 @@
-
 """Action objects — button + optional modal form + callback."""
 
 from __future__ import annotations
@@ -7,6 +6,7 @@ from collections.abc import Callable, Sequence
 from typing import Any, Self
 
 from almasix.orbit.support.component import Component
+from almasix.orbit.support.evaluate import evaluate
 from almasix.orbit.support.html import e
 from almasix.orbit.support.icons import icon as render_icon
 
@@ -15,16 +15,17 @@ class Action(Component):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._action: Callable[..., Any] | None = None
-        self._color: str = "primary"
-        self._icon: str | None = None
+        self._color: str | Callable[..., str] = "primary"
+        self._icon: str | Callable[..., str] | None = None
         self._requires_confirmation = False
-        self._modal_heading: str | None = None
-        self._modal_description: str | None = None
+        self._modal_heading: str | Callable[..., str] | None = None
+        self._modal_description: str | Callable[..., str] | None = None
         self._form_schema: list[Component] = []
         self._url: str | Callable[..., str] | None = None
         self._authorize: Callable[..., bool] | bool | None = None
         self._success_notification: str | None = None
         self._button_group: str = "default"
+        self._modal = False
 
     def action(self, callback: Callable[..., Any]) -> Self:
         self._action = callback
@@ -33,23 +34,41 @@ class Action(Component):
     def get_action(self) -> Callable[..., Any] | None:
         return self._action
 
-    def color(self, color: str) -> Self:
+    def color(self, color: str | Callable[..., str]) -> Self:
         self._color = color
         return self
 
-    def icon(self, name: str) -> Self:
+    def get_color(self, **ctx: Any) -> str:
+        result = evaluate(self._color, **ctx)
+        return "primary" if result is None else str(result)
+
+    def icon(self, name: str | Callable[..., str]) -> Self:
         self._icon = name
         return self
+
+    def get_icon(self, **ctx: Any) -> str | None:
+        if self._icon is None:
+            return None
+        result = evaluate(self._icon, **ctx)
+        return None if result is None else str(result)
 
     def requires_confirmation(self, condition: bool = True) -> Self:
         self._requires_confirmation = condition
         return self
 
-    def modal_heading(self, text: str) -> Self:
+    def modal(self, condition: bool = True) -> Self:
+        """Prefer modal/quick action over URL navigation when both apply."""
+        self._modal = condition
+        return self
+
+    def is_modal(self) -> bool:
+        return self._modal or bool(self._form_schema) or self._requires_confirmation
+
+    def modal_heading(self, text: str | Callable[..., str]) -> Self:
         self._modal_heading = text
         return self
 
-    def modal_description(self, text: str) -> Self:
+    def modal_description(self, text: str | Callable[..., str]) -> Self:
         self._modal_description = text
         return self
 
@@ -60,6 +79,12 @@ class Action(Component):
     def url(self, url: str | Callable[..., str]) -> Self:
         self._url = url
         return self
+
+    def get_url(self, **ctx: Any) -> str | None:
+        if self._url is None:
+            return None
+        result = evaluate(self._url, **ctx)
+        return None if result is None else str(result)
 
     def authorize(self, callback: Callable[..., bool] | bool) -> Self:
         self._authorize = callback
@@ -73,7 +98,7 @@ class Action(Component):
         auth = self._authorize
         if auth is None:
             return True
-        return bool(auth(**ctx) if callable(auth) else auth)
+        return bool(evaluate(auth, **ctx))
 
     def call(self, *args: Any, **kwargs: Any) -> Any:
         if self._action is None:
@@ -83,13 +108,15 @@ class Action(Component):
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d.update({
-            "color": self._color,
-            "icon": self._icon,
+            "color": self._color if not callable(self._color) else None,
+            "icon": self._icon if not callable(self._icon) else None,
             "requires_confirmation": self._requires_confirmation,
-            "modal_heading": self._modal_heading,
-            "modal_description": self._modal_description,
+            "modal": self._modal,
+            "modal_heading": self._modal_heading if not callable(self._modal_heading) else None,
+            "modal_description": self._modal_description if not callable(self._modal_description) else None,
             "has_form": bool(self._form_schema),
             "success_notification": self._success_notification,
+            "has_url": self._url is not None,
         })
         return d
 
@@ -97,13 +124,25 @@ class Action(Component):
         if not self.is_visible(**ctx) or not self.can(**ctx):
             return ""
         name = e(self.get_name() or "action")
-        label = e(self.get_label() or (self.get_name() or "Action").replace("_", " ").title())
-        ic = render_icon(self._icon) if self._icon else ""
-        color = e(self._color)
+        label = e(self.get_label(**ctx) or (self.get_name() or "Action").replace("_", " ").title())
+        icon_name = self.get_icon(**ctx)
+        ic = render_icon(icon_name) if icon_name else ""
+        color = e(self.get_color(**ctx))
+        href = None if (self._modal or self._requires_confirmation or self._form_schema) else self.get_url(**ctx)
+        if href:
+            return (
+                f'<a class="or-btn or-btn-{color}" data-action="{name}" href="{e(href)}">'
+                f"{ic}<span>{label}</span></a>"
+            )
         confirm = "true" if self._requires_confirmation else "false"
+        heading = evaluate(self._modal_heading, **ctx) if self._modal_heading else ""
+        description = evaluate(self._modal_description, **ctx) if self._modal_description else ""
+        heading_attr = f' data-modal-heading="{e(heading)}"' if heading else ""
+        desc_attr = f' data-modal-description="{e(description)}"' if description else ""
         return (
             f'<button type="button" class="or-btn or-btn-{color}" data-action="{name}" '
-            f'data-confirm="{confirm}" wire:click="mountAction(\'{name}\')">'
+            f'data-confirm="{confirm}"{heading_attr}{desc_attr} '
+            f'wire:click="mountAction(\'{name}\')">'
             f"{ic}<span>{label}</span></button>"
         )
 

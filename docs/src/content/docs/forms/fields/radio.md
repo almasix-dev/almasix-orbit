@@ -1,0 +1,52 @@
+---
+title: Radio
+description: Orbit Radio field — single-select option group.
+---
+
+One choice from a small set — when a Select feels like overkill.
+
+## Standalone
+
+```python
+from almasix.orbit.forms import Form, Radio
+
+form = Form.make("demo").schema([
+        Radio.make("visibility")
+            .options({"public": "Public", "private": "Private"})
+            .default("public")
+])
+```
+
+## In a Resource
+
+```python
+from almasix.orbit import Resource
+from almasix.orbit.forms import Form, Radio
+
+class PostResource(Resource):
+    @classmethod
+    def form(cls, form: Form) -> Form:
+        return form.schema([
+            Radio.make("priority")
+                .options({"low": "Low", "normal": "Normal", "high": "High"})
+                .required(),
+        ])
+```
+
+## Key methods
+
+- `.options(dict | callable)`
+- `.default(...) / .required(...)`
+- `.disabled(...) / .visible(...) / .label(...)`
+
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
+
+## Preview
+
+```html
+<div class="or-field or-field-Radio" data-field="visibility" role="radiogroup" aria-label="Visibility">
+  <span class="or-label">Visibility</span>
+  <label class="or-radio-label"><input type="radio" class="or-radio" name="visibility" value="public" wire:model="visibility" checked /> Public</label>
+  <label class="or-radio-label"><input type="radio" class="or-radio" name="visibility" value="private" wire:model="visibility" /> Private</label>
+</div>
+```

@@ -34,6 +34,14 @@ table = (
 )
 ```
 
+## Guides
+
+| Page | What you’ll find |
+|------|------------------|
+| [Standalone tables](/tables/standalone/) | Tables outside a Resource |
+| [Filters](/tables/filters/) | Select, ternary, groups, `.apply` |
+| [Column reference](/tables/columns/text-column/) | Every column type |
+
 ## Feeding records
 
 | Method | Role |
@@ -62,29 +70,25 @@ TextColumn.make("name")
     .copyable()
 ```
 
-| Column | Behaviour |
-|--------|-----------|
-| `TextColumn` | Default |
-| `BadgeColumn` | Always badge-styled |
-| `BooleanColumn` | Yes / No |
-| `ImageColumn` | Avatar-style `<img>` |
-| `ColorColumn` | Color swatch |
-| `TagsColumn` | List or comma-split → badges |
-| `IconColumn`, `SelectColumn`, `CheckboxColumn`, `TextInputColumn`, `ToggleColumn`, `ViewColumn` | Available building blocks |
-| `ColumnGroup` | `.columns([...])` grouping |
+| Column | Page |
+|--------|------|
+| `TextColumn` | [TextColumn](/tables/columns/text-column/) |
+| `BadgeColumn` | [BadgeColumn](/tables/columns/badge-column/) |
+| `BooleanColumn` | [BooleanColumn](/tables/columns/boolean-column/) |
+| `IconColumn` | [IconColumn](/tables/columns/icon-column/) |
+| `ImageColumn` | [ImageColumn](/tables/columns/image-column/) |
+| `ColorColumn` | [ColorColumn](/tables/columns/color-column/) |
+| `TagsColumn` | [TagsColumn](/tables/columns/tags-column/) |
+| `SelectColumn` | [SelectColumn](/tables/columns/select-column/) |
+| `CheckboxColumn` | [CheckboxColumn](/tables/columns/checkbox-column/) |
+| `TextInputColumn` | [TextInputColumn](/tables/columns/text-input-column/) |
+| `ToggleColumn` | [ToggleColumn](/tables/columns/toggle-column/) |
+| `ViewColumn` | [ViewColumn](/tables/columns/view-column/) |
+| `ColumnGroup` | [ColumnGroup](/tables/columns/column-group/) |
 
 ## Filters
 
-```python
-from almasix.orbit.tables import Filter, SelectFilter, TernaryFilter, FilterGroup
-
-SelectFilter.make("status").options({...})
-TernaryFilter.make("featured")   # yes / no / all
-Filter.make("mine").query(lambda q, value: ...)
-FilterGroup.make().filters([...])
-```
-
-Filters are stored on the table and expose `.apply(query, value)`. Wire them into your query layer — `get_records()` does not auto-apply them yet.
+See [Filters](/tables/filters/) for `SelectFilter`, `TernaryFilter`, `Filter`, and `FilterGroup`.
 
 ## Actions
 
@@ -96,7 +100,7 @@ table.bulk_actions([...])    # selected rows
 table.header_actions([...])  # top of the table
 ```
 
-See [Actions](/actions/) for presets and custom callbacks.
+See [Actions](/actions/) and [Panel actions](/panels/actions/) for presets, modals, and `mountAction`.
 
 ## Render
 

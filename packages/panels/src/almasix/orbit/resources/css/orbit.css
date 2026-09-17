@@ -99,6 +99,161 @@
 .or-topbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--or-line);
+  background: color-mix(in srgb, var(--or-cream) 90%, white);
+  min-height: 3.25rem;
+}
+
+.or-topnav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.or-topnav-link,
+.or-topnav-dropdown > button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--or-ink-soft);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.or-topnav-link.is-active,
+.or-topnav-dropdown.is-active > button,
+.or-topnav-link:hover,
+.or-topnav-dropdown > button:hover {
+  background: color-mix(in srgb, var(--or-primary) 12%, transparent);
+  color: var(--or-primary-deep);
+}
+
+.or-topnav-dropdown {
+  position: relative;
+}
+
+.or-topnav-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  min-width: 10rem;
+  padding: 0.35rem;
+  border-radius: var(--or-radius);
+  border: 1px solid var(--or-line);
+  background: var(--or-cream);
+  box-shadow: var(--or-shadow);
+  z-index: 20;
+}
+
+.or-topnav-dropdown:hover .or-topnav-menu,
+.or-topnav-dropdown:focus-within .or-topnav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.or-topnav-child {
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.4rem;
+  color: var(--or-ink-soft);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.or-topnav-child.is-active,
+.or-topnav-child:hover {
+  background: color-mix(in srgb, var(--or-primary) 10%, transparent);
+  color: var(--or-primary-deep);
+}
+
+.or-nav-group {
+  margin: 0.75rem 0.5rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--or-muted);
+}
+
+.or-sidebar-toggle {
+  align-self: flex-start;
+  margin: 0 0.5rem 0.5rem;
+  border: 1px solid var(--or-line);
+  border-radius: 0.45rem;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+.or-sidebar.is-collapsed {
+  width: 3.5rem;
+  overflow: hidden;
+}
+
+.or-sidebar.is-collapsed .or-brand,
+.or-sidebar.is-collapsed .or-nav-link span,
+.or-sidebar.is-collapsed .or-nav-group {
+  display: none;
+}
+
+.or-app-top {
+  grid-template-columns: 1fr;
+}
+
+.or-action-modal-host[x-cloak] {
+  display: none;
+}
+
+.or-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 15, 13, 0.45);
+  z-index: 40;
+}
+
+.or-modal {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  top: 20%;
+  transform: translateX(-50%);
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: var(--or-cream);
+  border: 1px solid var(--or-line);
+  box-shadow: 0 24px 60px rgba(28, 20, 17, 0.28);
+}
+
+.or-modal-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.or-modal-body {
+  margin: 0 0 1rem;
+  color: var(--or-muted);
+}
+
+.or-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.or-topbar {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
   min-height: 3.5rem;
   padding: 0 1.5rem;
@@ -412,6 +567,147 @@
   color: var(--or-gray);
 }
 
+/* Field extras */
+.or-checkbox-list,
+.or-toggle-buttons,
+.or-key-value-editor,
+.or-repeater,
+.or-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.or-tag {
+  display: inline-flex;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--or-primary) 14%, transparent);
+  color: var(--or-primary-deep);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.or-tags-input {
+  min-width: 8rem;
+  flex: 1;
+}
+
+.or-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--or-line);
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.or-toggle-btn.is-active {
+  border-color: var(--or-primary);
+  background: color-mix(in srgb, var(--or-primary) 12%, transparent);
+  color: var(--or-primary-deep);
+}
+
+.or-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.or-editor-toolbar {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--or-muted);
+}
+
+.or-editor-toolbar span {
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--or-line);
+  border-radius: 0.35rem;
+}
+
+.or-editor-code {
+  font-family: ui-monospace, monospace;
+}
+
+.or-key-value-row,
+.or-modal-table-select {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.or-repeater-item {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: color-mix(in srgb, var(--or-cream) 70%, white);
+}
+
+.or-btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+.or-input-inline,
+.or-select-inline {
+  width: 100%;
+  min-width: 6rem;
+}
+
+.or-th-group {
+  text-align: center;
+  background: color-mix(in srgb, var(--or-primary) 6%, transparent);
+}
+
+.or-query-builder,
+.or-qb-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.or-qb-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) minmax(7rem, 1fr) minmax(8rem, 1.4fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.or-qb-label {
+  font-weight: 600;
+}
+
+.or-repeatable,
+.or-repeatable-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.or-cell-link,
+.or-entry-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.or-cell-link:hover,
+.or-entry-link:hover {
+  color: var(--or-primary);
+  text-decoration: underline;
+}
+
 @media (max-width: 900px) {
   .or-app {
     grid-template-columns: 1fr;
@@ -426,6 +722,10 @@
   .or-grid-cols-3,
   .or-schema-cols-2,
   .or-entry {
+    grid-template-columns: 1fr;
+  }
+
+  .or-qb-row {
     grid-template-columns: 1fr;
   }
 }
