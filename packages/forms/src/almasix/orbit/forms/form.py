@@ -160,6 +160,34 @@ def _check_rule(
         if empty:
             return msg("filled", f"The {attr} field must have a value.")
         return None
+    if rule == "prohibited":
+        if not empty:
+            return msg("prohibited", f"The {attr} field is prohibited.")
+        return None
+    if rule.startswith("required_if:"):
+        other, expected = rule.split(":", 1)[1].split(",", 1)
+        other_val = _get_path(state, other.strip())
+        if str(other_val) == expected.strip() and empty:
+            return msg("required_if", f"The {attr} field is required when {other.strip()} is {expected.strip()}.")
+        return None
+    if rule.startswith("required_unless:"):
+        other, expected = rule.split(":", 1)[1].split(",", 1)
+        other_val = _get_path(state, other.strip())
+        if str(other_val) != expected.strip() and empty:
+            return msg(
+                "required_unless",
+                f"The {attr} field is required unless {other.strip()} is {expected.strip()}.",
+            )
+        return None
+    if rule.startswith("prohibited_if:"):
+        other, expected = rule.split(":", 1)[1].split(",", 1)
+        other_val = _get_path(state, other.strip())
+        if str(other_val) == expected.strip() and not empty:
+            return msg(
+                "prohibited_if",
+                f"The {attr} field is prohibited when {other.strip()} is {expected.strip()}.",
+            )
+        return None
     if rule == "accepted":
         if str(value).lower() not in {"1", "true", "yes", "on"}:
             return msg("accepted", f"The {attr} must be accepted.")

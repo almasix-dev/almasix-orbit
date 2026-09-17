@@ -32,12 +32,14 @@ def iter_fields(components: Sequence[Component]) -> list[Field]:
             continue
         tabs = getattr(component, "_tabs", None)
         if isinstance(tabs, list) and tabs:
-            for _label, comps in tabs:
+            for entry in tabs:
+                comps = entry[1] if isinstance(entry, (list, tuple)) and len(entry) >= 2 else []
                 fields.extend(iter_fields(list(comps)))
             continue
         steps = getattr(component, "_steps", None)
         if isinstance(steps, list) and steps:
-            for _label, comps in steps:
+            for entry in steps:
+                comps = entry[1] if isinstance(entry, (list, tuple)) and len(entry) >= 2 else []
                 fields.extend(iter_fields(list(comps)))
             continue
         children = getattr(component, "get_components", None)

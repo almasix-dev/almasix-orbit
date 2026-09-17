@@ -92,10 +92,14 @@ class Field(Component):
         self._after_state_updated_js: str | None = None
         self._dehydrate_state_using: Callable[..., Any] | None = None
         self._hint_action: str | None = None
+        self._prefix_action: str | None = None
+        self._suffix_action: str | None = None
         self._input_mode: str | None = None
         self._step: float | int | str | None = None
         self._min_value: float | int | None = None
         self._max_value: float | int | None = None
+        self._option_descriptions: dict[str, str] = {}
+        self._options_columns: int | None = None
 
     def rules(self, *rules: str | Callable[..., Any]) -> Self:
         self._rules.extend(rules)
@@ -158,6 +162,37 @@ class Field(Component):
     def hint_action(self, action: str) -> Self:
         self._hint_action = action
         return self
+
+    def prefix_action(self, action: str) -> Self:
+        self._prefix_action = action
+        return self
+
+    def suffix_action(self, action: str) -> Self:
+        self._suffix_action = action
+        return self
+
+    def descriptions(self, mapping: dict[str, str]) -> Self:
+        """Per-option helper text for Radio / CheckboxList / ToggleButtons."""
+        self._option_descriptions = dict(mapping)
+        return self
+
+    def options_columns(self, count: int) -> Self:
+        self._options_columns = count
+        return self
+
+    def required_if(self, field: str, value: Any) -> Self:
+        return self.rules(f"required_if:{field},{value}")
+
+    def required_unless(self, field: str, value: Any) -> Self:
+        return self.rules(f"required_unless:{field},{value}")
+
+    def prohibited(self, condition: bool = True) -> Self:
+        if condition:
+            return self.rules("prohibited")
+        return self
+
+    def prohibited_if(self, field: str, value: Any) -> Self:
+        return self.rules(f"prohibited_if:{field},{value}")
 
     def extra_input_attributes(self, attrs: dict[str, Any]) -> Self:
         self._extra_input_attributes.update(attrs)
@@ -408,22 +443,42 @@ class Field(Component):
     def _affix_wrap(self, control: str, **ctx: Any) -> str:
         prefix = evaluate(self._prefix, **ctx) if self._prefix is not None else None
         suffix = evaluate(self._suffix, **ctx) if self._suffix is not None else None
-        if not prefix and not suffix and not self._prefix_icon and not self._suffix_icon:
+        has_affix = (
+            prefix
+            or suffix
+            or self._prefix_icon
+            or self._suffix_icon
+            or self._prefix_action
+            or self._suffix_action
+        )
+        if not has_affix:
             return control
         pre = ""
-        if self._prefix_icon or prefix:
+        if self._prefix_icon or prefix or self._prefix_action:
             from almasix.orbit.support.icons import icon as render_icon
 
             icon = render_icon(self._prefix_icon) if self._prefix_icon else ""
             text = f'<span class="or-affix-text">{e(prefix)}</span>' if prefix else ""
-            pre = f'<span class="or-input-prefix">{icon}{text}</span>'
+            act = ""
+            if self._prefix_action:
+                act = (
+                    f'<button type="button" class="or-affix-action" '
+                    f'wire:click="mountAction(\'{e(self._prefix_action)}\')">…</button>'
+                )
+            pre = f'<span class="or-input-prefix">{icon}{text}{act}</span>'
         suf = ""
-        if self._suffix_icon or suffix:
+        if self._suffix_icon or suffix or self._suffix_action:
             from almasix.orbit.support.icons import icon as render_icon
 
             icon = render_icon(self._suffix_icon) if self._suffix_icon else ""
             text = f'<span class="or-affix-text">{e(suffix)}</span>' if suffix else ""
-            suf = f'<span class="or-input-suffix">{icon}{text}</span>'
+            act = ""
+            if self._suffix_action:
+                act = (
+                    f'<button type="button" class="or-affix-action" '
+                    f'wire:click="mountAction(\'{e(self._suffix_action)}\')">…</button>'
+                )
+            suf = f'<span class="or-input-suffix">{icon}{text}{act}</span>'
         return f'<div class="or-input-affix">{pre}{control}{suf}</div>'
 
     def _after_state_attr(self) -> str:
@@ -818,22 +873,73 @@ class Placeholder(Field):
         return self
 
     def render(self, state: Any = None, **ctx: Any) -> str:
-        return f'<div class="or-placeholder"><p class="or-placeholder-content">{e(self._content or state or "")}</p></div>'
+        if not self.is_visible(**ctx):
+            return ""
+        return (
+            f'<div class="or-placeholder"><p class="or-placeholder-content">'
+            f'{e(self._content or state or "")}</p></div>'
+        )
 
 
 class DatePicker(Field):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._input_type = "date"
+        self._min_date: str | None = None
+        self._max_date: str | None = None
+        self._display_format: str | None = None
+        self._native = True
+
+    def min_date(self, value: str) -> Self:
+        self._min_date = value
+        return self
+
+    def max_date(self, value: str) -> Self:
+        self._max_date = value
+        return self
+
+    def display_format(self, fmt: str) -> Self:
+        self._display_format = fmt
+        return self
+
+    def native(self, condition: bool = True) -> Self:
+        self._native = condition
+        return self
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
+        name = e(self.get_state_path() or "")
+        placeholder = self.get_placeholder(**ctx)
+        ph = f' placeholder="{e(placeholder)}"' if placeholder else ""
+        disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        readonly = " readonly" if self._readonly else ""
+        val = "" if state is None else e(str(state))
+        attrs = []
+        if self._min_date:
+            attrs.append(f'min="{e(self._min_date)}"')
+        if self._max_date:
+            attrs.append(f'max="{e(self._max_date)}"')
+        if self._display_format:
+            attrs.append(f'data-display-format="{e(self._display_format)}"')
+        if not self._native:
+            attrs.append('data-native="false"')
+        attr_s = (" " + " ".join(attrs)) if attrs else ""
+        control = (
+            f'<input class="or-input" id="or-{name}" name="{name}" type="{e(self._input_type)}" '
+            f'value="{val}"{ph}{disabled}{readonly}{attr_s}{self._common_input_attrs(**ctx)}'
+            f'{self._wire_binding(name)}{self._after_state_attr()} />'
+        )
+        return self.wrap_field(name, control, **ctx)
 
 
-class DateTimePicker(Field):
+class DateTimePicker(DatePicker):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._input_type = "datetime-local"
 
 
-class TimePicker(Field):
+class TimePicker(DatePicker):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._input_type = "time"
@@ -1069,13 +1175,19 @@ class Radio(Select):
         opts = []
         for k, v in self.get_options(**ctx).items():
             checked = " checked" if str(k) == str(state) else ""
+            desc = self._option_descriptions.get(str(k))
+            desc_html = f'<span class="or-option-desc">{e(desc)}</span>' if desc else ""
             opts.append(
                 f'<label class="or-radio-label"><input type="radio" class="or-radio" '
-                f'name="{name}" value="{e(k)}" wire:model="{name}"{checked}{disabled} /> {e(v)}</label>'
+                f'name="{name}" value="{e(k)}" wire:model="{name}"{checked}{disabled} /> '
+                f'<span class="or-option-body"><span class="or-option-label">{e(v)}</span>{desc_html}</span></label>'
             )
+        cols = f' style="--or-options-cols:{self._options_columns}"' if self._options_columns else ""
+        cols_cls = f" or-options-cols-{self._options_columns}" if self._options_columns else ""
         return (
-            f'<div class="or-field or-field-Radio" data-field="{name}" role="radiogroup" '
-            f'aria-label="{label}"><span class="or-label">{label}</span>{"".join(opts)}</div>'
+            f'<div class="or-field or-field-Radio{cols_cls}" data-field="{name}" role="radiogroup" '
+            f'aria-label="{label}"{cols}><span class="or-label">{label}</span>'
+            f'<div class="or-options">{"".join(opts)}</div></div>'
         )
 
 
@@ -1083,6 +1195,11 @@ class CheckboxList(Select):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._multiple = True
+        self._bulk_toggle = False
+
+    def bulk_toggleable(self, condition: bool = True) -> Self:
+        self._bulk_toggle = condition
+        return self
 
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
@@ -1095,34 +1212,76 @@ class CheckboxList(Select):
         opts = []
         for k, v in self.get_options(**ctx).items():
             checked = " checked" if str(k) in selected_s else ""
+            desc = self._option_descriptions.get(str(k))
+            desc_html = f'<span class="or-option-desc">{e(desc)}</span>' if desc else ""
             opts.append(
                 f'<label class="or-checkbox-label"><input type="checkbox" class="or-checkbox" '
-                f'name="{name}" value="{e(k)}" wire:model="{name}"{checked}{disabled} /> {e(v)}</label>'
+                f'name="{name}" value="{e(k)}" wire:model="{name}"{checked}{disabled} /> '
+                f'<span class="or-option-body"><span class="or-option-label">{e(v)}</span>{desc_html}</span></label>'
             )
+        bulk = ""
+        if self._bulk_toggle:
+            bulk = (
+                '<div class="or-checkbox-list-bulk">'
+                '<button type="button" class="or-link-btn" data-select-all>Select all</button>'
+                '<button type="button" class="or-link-btn" data-deselect-all>Deselect all</button>'
+                "</div>"
+            )
+        cols = f' style="--or-options-cols:{self._options_columns}"' if self._options_columns else ""
+        cols_cls = f" or-options-cols-{self._options_columns}" if self._options_columns else ""
         return (
-            f'<div class="or-field or-field-CheckboxList" data-field="{name}">'
-            f'<span class="or-label">{label}</span><div class="or-checkbox-list">{"".join(opts)}</div></div>'
+            f'<div class="or-field or-field-CheckboxList{cols_cls}" data-field="{name}"{cols}>'
+            f'<span class="or-label">{label}</span>{bulk}'
+            f'<div class="or-checkbox-list">{"".join(opts)}</div></div>'
         )
 
 
 class TagsInput(Field):
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._suggestions: list[str] = []
+        self._separator: str = ","
+        self._reorderable = False
+
+    def suggestions(self, items: Sequence[str]) -> Self:
+        self._suggestions = list(items)
+        return self
+
+    def separator(self, value: str) -> Self:
+        self._separator = value
+        return self
+
+    def reorderable(self, condition: bool = True) -> Self:
+        self._reorderable = condition
+        return self
+
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
             return ""
         name = e(self.get_state_path() or "")
         label = e(self.get_label(**ctx))
         tags = state if isinstance(state, (list, tuple)) else (
-            [t.strip() for t in str(state).split(",") if t.strip()] if state else []
+            [t.strip() for t in str(state).split(self._separator) if t.strip()] if state else []
         )
         chips = "".join(f'<span class="or-tag">{e(t)}</span>' for t in tags)
-        val = e(",".join(str(t) for t in tags))
+        val = e(self._separator.join(str(t) for t in tags))
         disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        suggestions = ""
+        if self._suggestions:
+            opts = "".join(f'<option value="{e(s)}"></option>' for s in self._suggestions)
+            suggestions = f'<datalist id="or-{name}-suggestions">{opts}</datalist>'
+            list_attr = f' list="or-{name}-suggestions"'
+        else:
+            list_attr = ""
+        reorder = ' data-reorderable="true"' if self._reorderable else ""
         return (
-            f'<div class="or-field or-field-TagsInput" data-field="{name}" x-data="{{ tags: \'{val}\' }}">'
+            f'<div class="or-field or-field-TagsInput" data-field="{name}" '
+            f'data-separator="{e(self._separator)}"{reorder} x-data="{{ tags: \'{val}\' }}">'
             f'<label class="or-label" for="or-{name}">{label}</label>'
             f'<div class="or-tags">{chips}'
             f'<input class="or-input or-tags-input" id="or-{name}" name="{name}" value="{val}"'
-            f'{disabled} wire:model="{name}" placeholder="Add tag…" /></div></div>'
+            f'{disabled}{list_attr} wire:model="{name}" placeholder="Add tag…" /></div>'
+            f"{suggestions}</div>"
         )
 
 
@@ -1130,6 +1289,40 @@ class ColorPicker(Field):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._input_type = "color"
+
+
+class MoneyInput(TextInput):
+    """Currency amount input with prefix/suffix chrome (Filament ``MoneyInput``-style)."""
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._input_type = "number"
+        self._currency = "USD"
+        self._locale: str | None = None
+        self.step("0.01")
+        self.input_mode("decimal")
+        self.prefix("$")
+
+    def currency(self, code: str) -> Self:
+        self._currency = code
+        symbols = {"USD": "$", "EUR": "€", "GBP": "£", "KES": "KSh"}
+        self.prefix(symbols.get(code.upper(), code.upper() + " "))
+        return self
+
+    def locale(self, value: str) -> Self:
+        self._locale = value
+        return self
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        html = super().render(state, **ctx)
+        extra = f' data-currency="{e(self._currency)}"'
+        if self._locale:
+            extra += f' data-locale="{e(self._locale)}"'
+        return html.replace(
+            'class="or-field or-field-TextInput"',
+            f'class="or-field or-field-MoneyInput"{extra}',
+            1,
+        )
 
 
 class RichEditor(Textarea):
@@ -1411,10 +1604,14 @@ class Repeater(Field):
             )
         simple_cls = " or-repeater-simple" if self._simple_field else ""
         table_cls = " or-repeater-table" if self._table_columns else ""
+        table_head = ""
+        if self._table_columns:
+            ths = "".join(f'<th class="or-repeater-th">{e(c)}</th>' for c in self._table_columns)
+            table_head = f'<div class="or-repeater-table-head"><table><thead><tr>{ths}<th></th></tr></thead></table></div>'
         return (
             f'<div class="or-field or-field-Repeater{simple_cls}{table_cls}" data-field="{name}"{limit_attrs} '
             f'x-data="{{ items: {len(items)} }}">'
-            f'<span class="or-label">{label}</span>'
+            f'<span class="or-label">{label}</span>{table_head}'
             f'<div class="or-repeater">{"".join(blocks)}</div>'
             f"{add_html}</div>"
         )

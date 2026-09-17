@@ -21,3 +21,8 @@ class Rating(Field):
 
 Prefer composing existing fields inside a `ViewField` or schema layout when you only need custom markup.
 
+## Preview
+
+![Orbit forms/color-money (light)](/examples/light/forms/color-money.png)
+
+![Orbit forms/color-money (dark)](/examples/dark/forms/color-money.png)

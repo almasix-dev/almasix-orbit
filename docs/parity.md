@@ -27,18 +27,24 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 
 ## Schemas — Done
 
-`Schema`, `Grid`, `Flex`, `Section`, `Tabs`, `Fieldset`, `Wizard`, `Callout`, `EmptyState`, primes (`Text`, `Icon`, `Image`, `UnorderedList`).
+`Schema`, `Grid`, `Flex`, `Group`, `Split`, `Section` (compact/aside/collapsible/persist), `Tabs` (icons/badges/persist), `Fieldset`, `Wizard` (nav/continue/back/skip), `Callout`, `EmptyState`, primes (`Text`, `Icon`, `Image`, `UnorderedList`).
 
 ## Forms — Partial
 
 | Feature | Status |
 |---------|--------|
 | Nested `validate()` / `dehydrate()` via layout walk | Done |
-| Field chrome (hint / prefix / suffix / helper / autofocus / live blur+debounce) | Done |
-| Validation catalog (unique/exists/confirmed/in/dates/regex/between/mimes/…) | Done |
+| Field chrome (hint / prefix / suffix / prefix+suffix actions / helper / autofocus) | Done |
+| Validation catalog (+ `required_if` / `required_unless` / `prohibited` / `prohibited_if`) | Done |
 | Select: searchable Alpine, enum, AJAX attrs, create/edit option mounts | Partial |
 | FileUpload: disk/visibility/editor/download attrs + preview chrome | Partial |
-| Repeater/Builder: defaultItems, simple, table, per-block schema, mutate hooks | Partial |
+| Repeater/Builder: defaultItems, simple, table head, grid, clone/reorder + **host mutations** | Done |
+| KeyValue / MorphToSelect / ModalTableSelect host mounts | Partial |
+| TagsInput suggestions + separator + reorderable flag | Done |
+| Radio / CheckboxList descriptions, columns, bulk toggle | Done |
+| Date/Time pickers min/max/display_format/`native(False)` | Done |
+| `MoneyInput` currency prefix | Done |
+| Placeholder respects `hidden()` / visibility | Done |
 | TipTap RichEditor toolbar + contenteditable surface | Partial |
 | Live MorphTo AJAX / production FilePond upload adapter | Planned |
 

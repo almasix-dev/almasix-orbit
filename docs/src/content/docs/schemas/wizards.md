@@ -13,3 +13,8 @@ Wizard.make().steps(
 )
 ```
 
+## Preview
+
+![Orbit schemas/wizard (light)](/examples/light/schemas/wizard.png)
+
+![Orbit schemas/wizard (dark)](/examples/dark/schemas/wizard.png)

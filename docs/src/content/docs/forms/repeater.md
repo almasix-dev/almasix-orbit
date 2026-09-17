@@ -54,9 +54,9 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 Import nested fields from `almasix.orbit.forms` as usual.
 
+
 ## Preview
 
-![Orbit form example (light)](/examples/light/forms/overview.png)
+![Orbit forms/repeater (light)](/examples/light/forms/repeater.png)
 
-![Orbit form example (dark)](/examples/dark/forms/overview.png)
-
+![Orbit forms/repeater (dark)](/examples/dark/forms/repeater.png)

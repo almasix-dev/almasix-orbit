@@ -69,8 +69,9 @@ Callout.make().warning().label("Unsaved").description("Leave carefully.")
 
 Forms inherit from `Schema`, so a form *is* a schema with validation bolted on. See [Forms](/forms/overview/).
 
+
 ## Preview
 
-![Callout (light)](/examples/light/schemas/callout.png)
+![Orbit schemas/section (light)](/examples/light/schemas/section.png)
 
-![Callout (dark)](/examples/dark/schemas/callout.png)
+![Orbit schemas/section (dark)](/examples/dark/schemas/section.png)

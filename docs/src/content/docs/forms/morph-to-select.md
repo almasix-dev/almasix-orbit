@@ -45,9 +45,9 @@ class CommentResource(Resource):
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
 
+
 ## Preview
 
-![Orbit form example (light)](/examples/light/forms/overview.png)
+![Orbit forms/morph-to-select (light)](/examples/light/forms/morph-to-select.png)
 
-![Orbit form example (dark)](/examples/dark/forms/overview.png)
-
+![Orbit forms/morph-to-select (dark)](/examples/dark/forms/morph-to-select.png)

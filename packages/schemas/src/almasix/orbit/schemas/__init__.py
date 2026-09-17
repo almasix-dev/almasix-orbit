@@ -4,7 +4,9 @@ from almasix.orbit.schemas.layouts import (
     Fieldset,
     Flex,
     Grid,
+    Group,
     Section,
+    Split,
     Tabs,
     Wizard,
 )
@@ -15,6 +17,8 @@ __all__ = [
     "Schema",
     "Grid",
     "Flex",
+    "Group",
+    "Split",
     "Section",
     "Tabs",
     "Fieldset",

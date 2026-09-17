@@ -45,9 +45,9 @@ class PostResource(Resource):
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
 
+
 ## Preview
 
-![Orbit form example (light)](/examples/light/forms/text-input.png)
+![Orbit forms/text-input (light)](/examples/light/forms/text-input.png)
 
-![Orbit form example (dark)](/examples/dark/forms/text-input.png)
-
+![Orbit forms/text-input (dark)](/examples/dark/forms/text-input.png)

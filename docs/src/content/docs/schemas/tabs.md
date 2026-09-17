@@ -13,3 +13,8 @@ Tabs.make().tabs(
 )
 ```
 
+## Preview
+
+![Orbit schemas/tabs (light)](/examples/light/schemas/tabs.png)
+
+![Orbit schemas/tabs (dark)](/examples/dark/schemas/tabs.png)

@@ -132,6 +132,58 @@ class Flex(Layout):
         return f'<div class="{classes}">{"".join(children)}</div>'
 
 
+class Group(Layout):
+    """Fuse child components without fieldset chrome (Filament ``Group``)."""
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._columns: int | None = None
+
+    def columns(self, count: int) -> Self:
+        self._columns = count
+        return self
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
+        classes = self._layout_classes("or-schema-group")
+        if self._columns:
+            classes += f" or-grid or-grid-cols-{self._columns}"
+        return f'<div class="{classes}">{self.render_children(state, **ctx)}</div>'
+
+
+class Split(Layout):
+    """Side-by-side schema columns that stack below a breakpoint."""
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._from: str | None = None
+
+    def from_breakpoint(self, value: str) -> Self:
+        self._from = value
+        return self
+
+    def from_(self, value: str) -> Self:
+        return self.from_breakpoint(value)
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
+        classes = self._layout_classes("or-schema-split")
+        if self._from:
+            classes += f" or-schema-split-from-{e(self._from)}"
+        data = state if isinstance(state, dict) else {}
+        children = []
+        for child in self._schema:
+            if not child.is_visible(**ctx):
+                continue
+            children.append(
+                f'<div class="or-schema-split-item">'
+                f"{child.render(child_render_state(child, data), **ctx)}</div>"
+            )
+        return f'<div class="{classes}">{"".join(children)}</div>'
+
+
 class Section(Layout):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
@@ -139,6 +191,10 @@ class Section(Layout):
         self._description: str | None = None
         self._collapsible = False
         self._collapsed = False
+        self._compact = False
+        self._aside = False
+        self._icon: str | None = None
+        self._persist_collapsed = False
 
     def heading(self, text: str) -> Self:
         self._heading = text
@@ -156,14 +212,53 @@ class Section(Layout):
         self._collapsed = condition
         return self
 
+    def compact(self, condition: bool = True) -> Self:
+        self._compact = condition
+        return self
+
+    def aside(self, condition: bool = True) -> Self:
+        self._aside = condition
+        return self
+
+    def icon(self, name: str) -> Self:
+        self._icon = name
+        return self
+
+    def persist_collapsed(self, condition: bool = True) -> Self:
+        self._persist_collapsed = condition
+        return self
+
     def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
         title = e(self._heading or self.get_label())
         desc = f'<p class="or-section-desc">{e(self._description)}</p>' if self._description else ""
+        ic = f'<span class="or-section-icon">{render_icon(self._icon)}</span>' if self._icon else ""
+        classes = "or-section"
+        if self._compact:
+            classes += " or-section-compact"
+        if self._aside:
+            classes += " or-section-aside"
+        persist = (
+            f' data-persist-collapsed="{e(self.get_name() or "section")}"'
+            if self._persist_collapsed
+            else ""
+        )
+        collapse_bind = ""
+        header_click = ""
+        body_bind = ""
+        if self._collapsible:
+            collapse_bind = (
+                f' x-data="{{ collapsed: {str(self._collapsed).lower()} }}"'
+            )
+            header_click = ' @click="collapsed = !collapsed" role="button" tabindex="0"'
+            body_bind = ' x-show="!collapsed"'
         return (
-            f'<section class="or-section" data-collapsible="{str(self._collapsible).lower()}" '
-            f'data-collapsed="{str(self._collapsed).lower()}">'
-            f'<header class="or-section-header"><h3 class="or-section-title">{title}</h3>{desc}</header>'
-            f'<div class="or-section-body">{self.render_children(state, **ctx)}</div>'
+            f'<section class="{classes}" data-collapsible="{str(self._collapsible).lower()}" '
+            f'data-collapsed="{str(self._collapsed).lower()}"{persist}{collapse_bind}>'
+            f'<header class="or-section-header"{header_click}>{ic}'
+            f'<h3 class="or-section-title">{title}</h3>{desc}</header>'
+            f'<div class="or-section-body"{body_bind}>{self.render_children(state, **ctx)}</div>'
             f"</section>"
         )
 
@@ -171,26 +266,78 @@ class Section(Layout):
 class Tabs(Layout):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
-        self._tabs: list[tuple[str, list[Component]]] = []
+        # (label, components, icon, badge)
+        self._tabs: list[tuple[str, list[Component], str | None, Any]] = []
+        self._persist_tab = False
+        self._active_tab: int = 0
 
-    def tabs(self, *tab_defs: tuple[str, Sequence[Component]]) -> Self:
-        self._tabs = [(label, list(comps)) for label, comps in tab_defs]
+    def tabs(self, *tab_defs: tuple[str, Sequence[Component]] | dict[str, Any]) -> Self:
+        parsed: list[tuple[str, list[Component], str | None, Any]] = []
+        for item in tab_defs:
+            if isinstance(item, dict):
+                parsed.append(
+                    (
+                        str(item.get("label") or item.get("id") or "Tab"),
+                        list(item.get("schema") or item.get("components") or []),
+                        item.get("icon"),
+                        item.get("badge"),
+                    )
+                )
+            else:
+                label, comps = item
+                parsed.append((label, list(comps), None, None))
+        self._tabs = parsed
         return self
 
+    def persist_tab(self, condition: bool = True) -> Self:
+        self._persist_tab = condition
+        return self
+
+    def active_tab(self, index: int) -> Self:
+        self._active_tab = max(0, int(index))
+        return self
+
+    def get_child_components(self) -> list[Component]:
+        out: list[Component] = []
+        for _, comps, _, _ in self._tabs:
+            out.extend(comps)
+        out.extend(self._schema)
+        return out
+
     def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
         nav = []
         bodies = []
         data = state if isinstance(state, dict) else {}
-        for i, (label, comps) in enumerate(self._tabs):
-            active = " is-active" if i == 0 else ""
-            nav.append(f'<button type="button" class="or-tab{active}" data-tab="{i}">{e(label)}</button>')
+        active_i = min(self._active_tab, max(len(self._tabs) - 1, 0)) if self._tabs else 0
+        for i, (label, comps, icon, badge) in enumerate(self._tabs):
+            active = " is-active" if i == active_i else ""
+            ic = f'<span class="or-tab-icon">{render_icon(icon)}</span>' if icon else ""
+            badge_html = ""
+            if badge is not None:
+                badge_val = badge(**ctx) if callable(badge) else badge
+                if badge_val is not None:
+                    badge_html = f'<span class="or-tab-badge">{e(badge_val)}</span>'
+            nav.append(
+                f'<button type="button" class="or-tab{active}" data-tab="{i}" '
+                f'@click="tab = {i}" :class="tab === {i} && \'is-active\'">'
+                f"{ic}{e(label)}{badge_html}</button>"
+            )
             inner = "".join(
                 c.render(child_render_state(c, data), **ctx)
                 for c in comps
+                if c.is_visible(**ctx)
             )
-            bodies.append(f'<div class="or-tab-panel{active}" data-panel="{i}">{inner}</div>')
+            bodies.append(
+                f'<div class="or-tab-panel{active}" data-panel="{i}" '
+                f'x-show="tab === {i}" {"" if i == active_i else "x-cloak"}>{inner}</div>'
+            )
+        persist = (
+            f' data-persist-tab="{e(self.get_name() or "tabs")}"' if self._persist_tab else ""
+        )
         return (
-            '<div class="or-tabs" x-data="{ tab: 0 }">'
+            f'<div class="or-tabs" x-data="{{ tab: {active_i} }}"{persist}>'
             f'<div class="or-tabs-nav">{"".join(nav)}</div>'
             f'<div class="or-tabs-body">{"".join(bodies)}</div>'
             "</div>"
@@ -199,6 +346,8 @@ class Tabs(Layout):
 
 class Fieldset(Layout):
     def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
         legend = e(self.get_label())
         return (
             f'<fieldset class="or-fieldset"><legend class="or-fieldset-legend">{legend}</legend>'
@@ -209,25 +358,92 @@ class Fieldset(Layout):
 class Wizard(Layout):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
-        self._steps: list[tuple[str, list[Component]]] = []
+        self._steps: list[tuple[str, list[Component], str | None]] = []
+        self._skippable = False
+        self._start_step: int = 0
 
-    def steps(self, *step_defs: tuple[str, Sequence[Component]]) -> Self:
-        self._steps = [(label, list(comps)) for label, comps in step_defs]
+    def steps(self, *step_defs: tuple[str, Sequence[Component]] | dict[str, Any]) -> Self:
+        parsed: list[tuple[str, list[Component], str | None]] = []
+        for item in step_defs:
+            if isinstance(item, dict):
+                parsed.append(
+                    (
+                        str(item.get("label") or item.get("id") or "Step"),
+                        list(item.get("schema") or item.get("components") or []),
+                        item.get("description"),
+                    )
+                )
+            else:
+                label, comps = item
+                parsed.append((label, list(comps), None))
+        self._steps = parsed
         return self
 
+    def skippable(self, condition: bool = True) -> Self:
+        self._skippable = condition
+        return self
+
+    def start_step(self, index: int) -> Self:
+        self._start_step = max(0, int(index))
+        return self
+
+    def get_child_components(self) -> list[Component]:
+        out: list[Component] = []
+        for _, comps, _ in self._steps:
+            out.extend(comps)
+        out.extend(self._schema)
+        return out
+
     def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
         parts = []
+        nav = []
         data = state if isinstance(state, dict) else {}
-        for i, (label, comps) in enumerate(self._steps):
+        total = len(self._steps)
+        start = min(self._start_step, max(total - 1, 0)) if total else 0
+        for i, (label, comps, description) in enumerate(self._steps):
             inner = "".join(
                 c.render(child_render_state(c, data), **ctx)
                 for c in comps
+                if c.is_visible(**ctx)
+            )
+            desc = (
+                f'<p class="or-wizard-step-desc">{e(description)}</p>' if description else ""
             )
             parts.append(
-                f'<div class="or-wizard-step" data-step="{i}">'
-                f'<h4 class="or-wizard-step-title">{e(label)}</h4>{inner}</div>'
+                f'<div class="or-wizard-step" data-step="{i}" x-show="step === {i}" '
+                f'{"" if i == start else "x-cloak"}>'
+                f'<h4 class="or-wizard-step-title">{e(label)}</h4>{desc}{inner}</div>'
             )
-        return f'<div class="or-wizard" x-data="{{ step: 0 }}">{"".join(parts)}</div>'
+            nav.append(
+                f'<button type="button" class="or-wizard-nav-item" data-step="{i}" '
+                f'@click="step = {i}" :class="step === {i} && \'is-active\'">'
+                f'<span class="or-wizard-nav-index">{i + 1}</span>'
+                f'<span class="or-wizard-nav-label">{e(label)}</span></button>'
+            )
+        skip = ""
+        if self._skippable:
+            skip = (
+                f'<button type="button" class="or-link-btn" @click="step = Math.min(step + 1, {max(total - 1, 0)})">'
+                "Skip</button>"
+            )
+        footer = (
+            f'<div class="or-wizard-footer">'
+            f'<button type="button" class="or-btn or-btn-gray or-btn-sm" '
+            f'@click="step = Math.max(step - 1, 0)" :disabled="step === 0">Back</button>'
+            f"{skip}"
+            f'<button type="button" class="or-btn or-btn-primary or-btn-sm" '
+            f'@click="step = Math.min(step + 1, {max(total - 1, 0)})" '
+            f':disabled="step === {max(total - 1, 0)}">Continue</button>'
+            f"</div>"
+        )
+        return (
+            f'<div class="or-wizard" x-data="{{ step: {start} }}" data-steps="{total}">'
+            f'<div class="or-wizard-nav">{"".join(nav)}</div>'
+            f'<div class="or-wizard-body">{"".join(parts)}</div>'
+            f"{footer}</div>"
+        )
 
 
 class Callout(Layout):

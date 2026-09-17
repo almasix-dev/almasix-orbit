@@ -2363,6 +2363,209 @@ html.dark .or-login-logo-dark {
   padding: 1.1rem;
 }
 
+.or-section-compact .or-section-header {
+  padding: 0.6rem 0.9rem;
+}
+
+.or-section-compact .or-section-body {
+  padding: 0.75rem 0.9rem;
+}
+
+.or-section-aside {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--or-card) 88%, var(--or-shell));
+}
+
+.or-section-icon {
+  display: inline-flex;
+  margin-right: 0.4rem;
+  color: var(--or-muted);
+  vertical-align: middle;
+}
+
+.or-schema-group {
+  display: grid;
+  gap: 1rem;
+}
+
+.or-schema-split {
+  display: grid;
+  gap: 1rem;
+}
+
+.or-schema-split-from-md {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .or-schema-split-from-md {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.or-schema-split-item {
+  min-width: 0;
+}
+
+.or-tabs {
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  overflow: hidden;
+  background: var(--or-card);
+}
+
+.or-tabs-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--or-line);
+  background: color-mix(in srgb, var(--or-card) 92%, var(--or-shell));
+}
+
+.or-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--or-muted);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.or-tab.is-active {
+  border-color: var(--or-line);
+  background: var(--or-card);
+  color: var(--or-ink);
+}
+
+.or-tab-icon {
+  display: inline-flex;
+  color: var(--or-muted);
+}
+
+.or-tab-badge {
+  display: inline-flex;
+  min-width: 1.25rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--or-primary) 14%, transparent);
+  color: var(--or-primary-deep);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.or-tabs-body {
+  padding: 1rem;
+}
+
+.or-wizard {
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  overflow: hidden;
+  background: var(--or-card);
+}
+
+.or-wizard-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--or-line);
+  background: color-mix(in srgb, var(--or-card) 92%, var(--or-shell));
+}
+
+.or-wizard-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: var(--or-radius);
+  background: transparent;
+  color: var(--or-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.or-wizard-nav-item.is-active {
+  border-color: var(--or-line);
+  background: var(--or-card);
+  color: var(--or-ink);
+}
+
+.or-wizard-nav-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--or-primary) 14%, transparent);
+  color: var(--or-primary-deep);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.or-wizard-body {
+  padding: 1rem;
+}
+
+.or-wizard-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--or-line);
+  background: color-mix(in srgb, var(--or-card) 94%, var(--or-shell));
+}
+
+.or-options-cols-2 .or-options,
+.or-options-cols-2 .or-checkbox-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.or-option-desc {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--or-muted);
+}
+
+.or-repeater-table-head {
+  margin-bottom: 0.5rem;
+  overflow-x: auto;
+}
+
+.or-repeater-table-head table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.or-repeater-table-head th {
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  color: var(--or-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--or-line);
+}
+
+.or-field-MoneyInput .or-input-affix {
+  font-weight: 600;
+  color: var(--or-muted);
+}
+
 .or-infolist {
   display: grid;
   gap: 0.85rem;

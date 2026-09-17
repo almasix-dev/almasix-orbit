@@ -17,3 +17,8 @@ Section.make("profile")
 
 See [Schemas overview](/schemas/overview/).
 
+## Preview
+
+![Orbit schemas/section (light)](/examples/light/schemas/section.png)
+
+![Orbit schemas/section (dark)](/examples/dark/schemas/section.png)
