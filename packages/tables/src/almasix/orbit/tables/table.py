@@ -470,9 +470,9 @@ class Table(Component):
         )
         if self._defer_filters:
             footer = (
-                f'<div class="or-filters-panel-footer">'
-                f'<button type="button" class="or-btn or-btn-primary or-btn-sm or-filter-apply"'
-                f' @click="applyDeferred()">Apply filters</button></div>'
+                '<div class="or-filters-panel-footer">'
+                '<button type="button" class="or-btn or-btn-primary or-btn-sm or-filter-apply"'
+                ' @click="applyDeferred()">Apply filters</button></div>'
             )
         else:
             footer = ""
@@ -1124,7 +1124,6 @@ class Table(Component):
         columns_mgr = self._render_columns_chrome(**ctx)
         search = self._render_search_chrome(**ctx)
 
-        bulk_toolbar = ""
         selection_indicator = ""
         if self._bulk_actions:
             from almasix.orbit.actions.presets import ActionGroup, BulkActionGroup

@@ -224,7 +224,7 @@ class Action(Component):
         if isinstance(record, dict) and record.get("id") is not None:
             rid = str(record.get("id"))
         elif record is not None and getattr(record, "id", None) is not None:
-            rid = str(getattr(record, "id"))
+            rid = str(record.id)
         rid_attr = f' data-record-id="{e(rid)}"' if rid else ""
         form_tpl = ""
         if has_form:
