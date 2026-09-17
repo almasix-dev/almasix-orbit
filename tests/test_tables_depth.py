@@ -719,3 +719,200 @@ def test_panels_platform_depth() -> None:
     register_render_hook("panels::body.end", lambda **_: "<!--scoped-->", scopes=["posts"])
     assert render_hook("panels::body.end", scope="posts") == "<!--scoped-->"
     assert render_hook("panels::body.end", scope="other") == ""
+
+
+# --- Table.render wiring (summaries / grouping / layout / filters) -------------
+
+
+def test_table_render_summaries_grouping_layout_filters() -> None:
+    from almasix.orbit.actions import ActionGroup, EditAction
+    from almasix.orbit.query_builder import QueryBuilder, TextConstraint
+    from almasix.orbit.tables import (
+        Group,
+        QueryBuilderFilter,
+        Split,
+        Stack,
+        Sum,
+        Table,
+        TextColumn,
+        TrashedFilter,
+    )
+
+    records = [
+        {"name": "A", "status": "open", "amount": 10, "deleted_at": None},
+        {"name": "B", "status": "open", "amount": 20, "deleted_at": None},
+        {"name": "C", "status": "done", "amount": 30, "deleted_at": "x"},
+    ]
+    table = (
+        Table.make("orders")
+        .columns(
+            [
+                Split.make(
+                    [
+                        Stack.make([TextColumn.make("name").label("Name")]),
+                        TextColumn.make("status").label("Status"),
+                    ]
+                ).label("Info"),
+                TextColumn.make("amount").label("Amt").summarize(Sum.make().label("Total")),
+            ]
+        )
+        .filters([TrashedFilter.make()])
+        .filter_state({"trashed": TrashedFilter.WITH_TRASHED})
+        .persist_filters_in_session(key="orders-filters")
+        .defer_filters()
+        .default_group(Group.make("status").collapsible())
+        .collapsed_groups_by_default()
+        .groups([Group.make("status"), Group.make("name")])
+        .content_grid(3)
+        .header_actions([EditAction.make().label("New")])
+        .actions([ActionGroup.make([EditAction.make()]).label("More")])
+        .records(records)
+        .paginate(1, 10)
+    )
+    html = table.render()
+    assert "or-table-filters" in html
+    assert 'data-filters-session="orders-filters"' in html
+    assert 'data-defer-filters="true"' in html
+    assert "or-group-header" in html
+    assert "or-tfoot" in html and "or-summary" in html
+    assert "or-split" in html and "or-stack" in html
+    assert 'data-content-grid="3"' in html
+    assert "or-action-group" in html or "or-dropdown" in html
+    assert "or-table-groups-chooser" in html
+    assert table.to_dict()["defer_filters"] is True
+
+    qb = QueryBuilder.make().constraints([TextConstraint.make("name").label("Name")])
+    qb_table = (
+        Table.make()
+        .columns([TextColumn.make("name")])
+        .query_builder(qb.rules([{"constraint": "name", "operator": "equals", "value": "A"}]))
+        .records(records)
+    )
+    assert qb_table.get_records() == [records[0]]
+    assert "or-query-builder" in qb_table.render()
+
+    qf = QueryBuilderFilter.make().builder(QueryBuilder.make().constraints([TextConstraint.make("name")]))
+    assert "or-query-builder" in qf.render()
+    applied = qf.apply(
+        records,
+        [{"constraint": "name", "operator": "equals", "value": "B"}],
+    )
+    assert applied == [records[1]]
+
+    only = (
+        Table.make()
+        .columns([TextColumn.make("name"), TextColumn.make("status")])
+        .default_group("status")
+        .groups_only()
+        .records(records[:2])
+    )
+    only_html = only.render()
+    assert "or-group-header" in only_html
+    assert ">A<" not in only_html
+
+    money = TextColumn.make("n").numeric(2).visible_from("md").hidden_from("xl")
+    cell = money.render_cell({"n": 3.1})
+    assert "3.10" in cell and "or-visible-from-md" in cell and "or-hidden-from-xl" in cell
+    assert "• a" in TextColumn.make("t").list_with_line_breaks().render_cell({"t": ["a", "b"]})
+
+
+def test_table_wiring_coverage_branches() -> None:
+    from almasix.orbit.actions import EditAction
+    from almasix.orbit.schemas.primes import Text
+    from almasix.orbit.tables import (
+        ColumnGroup,
+        Group,
+        Panel,
+        QueryBuilderFilter,
+        Split,
+        Sum,
+        Table,
+        TextColumn,
+        TrashedFilter,
+    )
+    from almasix.orbit.tables.filters import FilterGroup
+
+    # persist without key; clear group; content_grid variants
+    t = Table.make("t").persist_filters_in_session().default_group(None)
+    assert t._filters_session_key is None
+    assert t._default_group is None
+    t.content_grid(None)
+    assert t._content_grid is None
+    t.content_grid({"columns": 4, "md": 2})
+    assert t._content_grid["columns"] == 4
+
+    # ColumnGroup + layout non-column child + header label fallback
+    split = Split.make([Text.make("prime"), TextColumn.make("n").label("N")]).label(None)
+    # force empty label on split
+    split._label = None
+    table = (
+        Table.make()
+        .columns(
+            [
+                ColumnGroup.make("grp").columns(
+                    [TextColumn.make("a").label("A"), TextColumn.make("b").label("B")]
+                ),
+                split,
+                TextColumn.make("amount").summarize(Sum.make().label("T")),
+            ]
+        )
+        .actions([EditAction.make()])
+        .bulk_actions([EditAction.make().label("Bulk")])
+        .groups([Group.make("a")])  # no default_group → uses first of groups
+        .records([{"a": 1, "b": 2, "n": 3, "amount": 5, "prime": "x"}])
+        .filters([TrashedFilter.make()])
+        .filter_state({"trashed": "bogus"})  # unknown value → passthrough line 70
+        .paginate(1, 1)
+    )
+    # more records than page for all vs page footer
+    table.records(
+        [
+            {"a": 1, "b": 2, "n": 3, "amount": 5},
+            {"a": 1, "b": 9, "n": 4, "amount": 7},
+        ]
+    )
+    html = table.render()
+    assert "or-th-group" in html
+    assert "or-tfoot" in html
+    assert 'data-summary-scope="page"' in html or 'data-summary-scope="all"' in html
+    assert "or-table-bulk-actions" in html
+    assert "or-group-header" in html
+    assert table.flat_columns()  # includes ColumnGroup children
+
+    # filter selected option rebuild
+    sel = (
+        Table.make()
+        .columns([TextColumn.make("name")])
+        .filters([TrashedFilter.make()])
+        .filter_state({"trashed": TrashedFilter.ONLY_TRASHED})
+        .records([{"name": "x", "deleted_at": "y"}])
+    )
+    assert "selected" in sel.render()
+
+    # QueryBuilderFilter edge paths
+    qf = QueryBuilderFilter.make()
+    assert qf.get_builder() is None
+    assert qf.apply([1], None) == [1]
+    assert qf.render() == ""
+    qf.builder(type("B", (), {"rules": lambda self, r: None})())
+    assert qf.apply([1, 2], "not-list") == [1, 2]  # no apply → return query at end... wait builder has no apply
+    # builder without apply hits return query
+    assert qf.apply([1], [{"constraint": "x"}]) == [1]
+    custom = QueryBuilderFilter.make().query(lambda q, v: [v]).builder(None)
+    assert custom.apply([1], "z") == ["z"]
+
+    fg = FilterGroup.make("g").filters([TrashedFilter.make()])
+    assert fg._filters
+
+    # column formatters
+    assert TextColumn.make("x").date_time().render_cell({"x": "2024-01-02T10:00:00"})
+    assert "5" in TextColumn.make("x").numeric().render_cell({"x": 5})
+    assert "1.5" in TextColumn.make("x").numeric().render_cell({"x": 1.5})
+    assert "bad" in TextColumn.make("x").numeric().render_cell({"x": "bad"})
+    assert TextColumn.make("x")._format_display_value(None) == ""
+    html_cell = TextColumn.make("x").html().render_cell({"x": "<b>hi</b>"})
+    assert "<b>hi</b>" in html_cell
+    md = TextColumn.make("x").markdown().render_cell({"x": "a\nb"})
+    assert "<br" in md
+    panel = Panel.make([TextColumn.make("z").label("Z")])
+    assert "or-panel" in Table.make().columns([panel]).records([{"z": 1}]).render()

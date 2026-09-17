@@ -89,3 +89,34 @@ class FilterGroup(Component):
     def filters(self, filters: list[Filter]) -> Self:
         self._filters = list(filters)
         return self
+
+
+class QueryBuilderFilter(Filter):
+    """Wraps a QueryBuilder (or any object with ``apply`` / ``render``) as a table filter."""
+
+    def __init__(self, name: str | None = "query") -> None:
+        super().__init__(name)
+        self._builder: Any = None
+
+    def builder(self, builder: Any) -> Self:
+        self._builder = builder
+        return self
+
+    def get_builder(self) -> Any:
+        return self._builder
+
+    def apply(self, query: Any, value: Any) -> Any:
+        if self._query is not None:
+            return super().apply(query, value)
+        if self._builder is None:
+            return query
+        if isinstance(value, list) and hasattr(self._builder, "rules"):
+            self._builder.rules(value)
+        if hasattr(self._builder, "apply"):
+            return self._builder.apply(list(query))
+        return query
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        if self._builder is not None and hasattr(self._builder, "render"):
+            return self._builder.render(state, **ctx)
+        return ""

@@ -17,6 +17,7 @@ from almasix.orbit.tables.columns import (
 from almasix.orbit.tables.filters import (
     Filter,
     FilterGroup,
+    QueryBuilderFilter,
     SelectFilter,
     TernaryFilter,
     TrashedFilter,
@@ -46,6 +47,7 @@ __all__ = [
     "SelectFilter",
     "TernaryFilter",
     "TrashedFilter",
+    "QueryBuilderFilter",
     "FilterGroup",
     "Summarizer",
     "Sum",
