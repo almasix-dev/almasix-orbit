@@ -159,7 +159,7 @@ class Summarizer(Component):
                 return str(value)
             places = 2 if self._decimal_places is None else self._decimal_places
             return f"{self._money_currency} {num:.{places}f}"
-        if self._numeric:
+        if self._numeric or isinstance(value, (int, float)):
             try:
                 num = float(value)
             except (TypeError, ValueError):
@@ -177,11 +177,11 @@ class Summarizer(Component):
         value = state
         if value is None and "records" in ctx:
             value = self.summarize(ctx["records"], ctx.get("attribute"))
-        formatted = self.format_value(value)
+        formatted = self._format_for_column(value, ctx.get("column"))
         label = self.get_label(**ctx)
         label_html = ""
         if label and not self._hidden_label:
-            label_html = f'<span class="or-summary-label">{e(label)}</span> '
+            label_html = f'<span class="or-summary-label">{e(label)}</span>'
         elif label and self._hidden_label:
             label_html = f'<span class="or-summary-label or-sr-only">{e(label)}</span>'
         return (
@@ -189,6 +189,39 @@ class Summarizer(Component):
             f'data-summarizer="{e(self.get_name() or type(self).__name__)}">'
             f'{label_html}<span class="or-summary-value">{e(formatted)}</span></div>'
         )
+
+    def _format_for_column(self, value: Any, column: Any | None) -> str:
+        """Match the parent column’s money/numeric display when not overridden."""
+        if (
+            column is not None
+            and self._money_currency is None
+            and type(self).__name__ != "Count"
+            and getattr(column, "_money_currency", None)
+            and value is not None
+            and not isinstance(value, tuple)
+        ):
+            try:
+                num = float(value) / float(getattr(column, "_money_divide_by", 1) or 1)
+                places = 2 if self._decimal_places is None else self._decimal_places
+                return f"{column._money_currency} {num:.{places}f}"
+            except (TypeError, ValueError):
+                pass
+        if (
+            column is not None
+            and self._money_currency is None
+            and type(self).__name__ != "Count"
+            and getattr(column, "_numeric", False)
+            and self._decimal_places is None
+            and getattr(column, "_numeric_decimal_places", None) is not None
+            and value is not None
+            and not isinstance(value, tuple)
+        ):
+            try:
+                num = float(value)
+                return f"{num:.{column._numeric_decimal_places}f}"
+            except (TypeError, ValueError):
+                pass
+        return self.format_value(value)
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -204,12 +237,22 @@ class Summarizer(Component):
 
 
 class Sum(Summarizer):
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self.label("Sum")
+        self._numeric = True
+
     def calculate(self, records: Sequence[Any], attribute: str | None = None) -> float:
         vals = self.numeric_values(records, attribute)
         return float(sum(vals)) if vals else 0.0
 
 
 class Average(Summarizer):
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self.label("Average")
+        self._numeric = True
+
     def calculate(self, records: Sequence[Any], attribute: str | None = None) -> float | None:
         vals = self.numeric_values(records, attribute)
         if not vals:
@@ -220,6 +263,7 @@ class Average(Summarizer):
 class Count(Summarizer):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
+        self.label("Count")
         self._icons = False
 
     def icons(self, condition: bool = True) -> Self:
@@ -247,7 +291,9 @@ class Count(Summarizer):
             )
             label = self.get_label(**ctx)
             label_html = (
-                f'<span class="or-summary-label">{e(label)}</span> ' if label and not self._hidden_label else ""
+                f'<span class="or-summary-label">{e(label)}</span>'
+                if label and not self._hidden_label
+                else ""
             )
             return f'<div class="or-summary or-summary-Count or-summary-icons">{label_html}{chips}</div>'
         return super().render(state, **ctx)

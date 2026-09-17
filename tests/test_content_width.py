@@ -80,7 +80,12 @@ def test_table_bulk_hidden_until_selection() -> None:
     )
     html = table.render()
     assert 'x-data="orbitTableSelection"' in html
-    assert 'x-show="selected.length > 0"' in html
+    assert 'x-show="selectionCount > 0"' in html
     assert "or-row-check" in html
     assert "or-td-select" in html
     assert "data-tooltip=" not in html  # nav-only; sanity
+    assert "data-total=" in html
+    assert "selectAllResults()" in html
+    assert "or-ta-selection-indicator" in html
+    assert "Deselect all" in html
+    assert "Bulk actions" in html

@@ -38,6 +38,11 @@ It becomes a **button** that mounts a modal / confirm flow when any of these are
 - `.modal()` was called
 - `.requires_confirmation()` is on
 - `.form([...])` has fields
+- the action color is **`danger`** (always confirms unless `.without_confirmation()`)
+
+Form fields from `.form([...])` render inside the shell dialog (`or-action-form-tpl` → Alpine `orbitActionModal`). Demo: **Columns → Modal forms** in `examples/orbit-admin`.
+
+Destructive deletes always confirm, including when Conduit is present (the click interceptor opens the dialog before `mountAction` runs).
 
 ```python
 EditAction.make().url("/posts/1/edit")           # navigates

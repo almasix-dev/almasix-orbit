@@ -89,7 +89,10 @@ class ListRecordsHost(OrbitPageHost):
     page: int = 1
     per_page: int = 10
     selected: list[str] = []
+    select_all: bool = False
     table_filters: dict[str, Any] = {}
+    table_group: str = ""
+    toggled_columns: dict[str, bool] = {}
 
     def mount(self, **kwargs: Any) -> None:
         resource = self.get_resource()
@@ -109,11 +112,22 @@ class ListRecordsHost(OrbitPageHost):
         list_page = None
         if isinstance(page, dict):
             list_page = page.get("index")
-        self._list_page = list_page or ListRecords
-        if hasattr(self._list_page, "resource") and getattr(self._list_page, "resource", None) is None:
-            self._list_page.resource = resource  # type: ignore[attr-defined]
+        if list_page is None or isinstance(list_page, str):
+            list_page = getattr(resource, "list_page", None)
+        if list_page is None or list_page is ListRecords or isinstance(list_page, str):
+            class _DefaultList(ListRecords):
+                pass
+
+            list_page = _DefaultList
+        self._list_page = list_page
+        self._list_page.resource = resource  # type: ignore[attr-defined]
         tabs = []
-        if hasattr(self._list_page, "get_tabs"):
+        if callable(getattr(resource, "get_tabs", None)):
+            try:
+                tabs = resource.get_tabs()
+            except Exception:  # pragma: no cover
+                tabs = []
+        elif hasattr(self._list_page, "get_tabs"):
             try:
                 bound_resource = resource
 
@@ -129,6 +143,7 @@ class ListRecordsHost(OrbitPageHost):
     def setTab(self, tab_id: str) -> None:
         self.active_tab = str(tab_id)
         self.page = 1
+        self.select_all = False
 
     def sortBy(self, column: str) -> None:
         col = str(column or "")
@@ -142,6 +157,7 @@ class ListRecordsHost(OrbitPageHost):
             self.table_sort = col
             self.table_sort_direction = "asc"
         self.page = 1
+        self.select_all = False
 
     def gotoPage(self, page: int | str) -> None:
         try:
@@ -155,15 +171,18 @@ class ListRecordsHost(OrbitPageHost):
         except (TypeError, ValueError):
             self.per_page = 10
         self.page = 1
+        self.select_all = False
 
     def clearSearch(self) -> None:
         self.table_search = ""
         self.page = 1
+        self.select_all = False
 
     def setTableSearch(self, value: Any = "") -> None:
         """Set search query and reset to page 1 (Conduit has no nested/live side effects)."""
         self.table_search = "" if value is None else str(value)
         self.page = 1
+        self.select_all = False
 
     def setTableFilter(self, name: str, value: Any = None) -> None:
         """Set one filter value. Conduit cannot bind nested ``table_filters.*`` paths."""
@@ -177,6 +196,7 @@ class ListRecordsHost(OrbitPageHost):
             current[key] = value
         self.table_filters = current
         self.page = 1
+        self.select_all = False
 
     def applyTableFilters(self, filters: Any = None) -> None:
         """Commit deferred filter selections (optional full dict) and reset page."""
@@ -188,10 +208,12 @@ class ListRecordsHost(OrbitPageHost):
                 cleaned[str(key)] = value
             self.table_filters = cleaned
         self.page = 1
+        self.select_all = False
 
     def resetTableFilters(self) -> None:
         self.table_filters = {}
         self.page = 1
+        self.select_all = False
 
     def removeTableFilter(self, name: str) -> None:
         key = str(name or "")
@@ -201,9 +223,176 @@ class ListRecordsHost(OrbitPageHost):
         current.pop(key, None)
         self.table_filters = current
         self.page = 1
+        self.select_all = False
 
-    def mountAction(self, name: str, **kwargs: Any) -> None:
-        self.dispatch("orbit-mount-action", name=name, **kwargs)
+    def setTableGroup(self, name: str = "") -> None:
+        self.table_group = str(name or "")
+        self.page = 1
+        self.select_all = False
+
+    def _column_visibility_state(self) -> dict[str, bool]:
+        table = self.get_resource().get_table()
+        state: dict[str, bool] = {}
+        current = dict(self.toggled_columns or {})
+        for col in table.flat_columns():
+            if not col.is_toggleable():
+                continue
+            name = col.get_name() or ""
+            if not name:
+                continue
+            if name in current:
+                state[name] = bool(current[name])
+            else:
+                state[name] = not col.is_toggled_hidden_by_default()
+        return state
+
+    def toggleColumn(self, name: str, visible: Any = None) -> None:
+        key = str(name or "")
+        if not key:
+            return
+        state = self._column_visibility_state()
+        if visible is None:
+            state[key] = not bool(state.get(key, True))
+        elif isinstance(visible, str):
+            state[key] = visible.strip().lower() in {"1", "true", "yes", "on"}
+        else:
+            state[key] = bool(visible)
+        self.toggled_columns = state
+
+    def resetToggledColumns(self) -> None:
+        self.toggled_columns = {}
+
+    def _filtered_table(self) -> Any:
+        """Build the resource table with the same search/sort/filters as the index."""
+        resource = self.get_resource()
+        table = resource.get_table()
+        records = list(self.records or [])
+        # Apply active tab query the same way ListRecords.render does.
+        list_page = getattr(self, "_list_page", None)
+        resource = self.get_resource()
+        tabs = []
+        if callable(getattr(resource, "get_tabs", None)):
+            try:
+                tabs = resource.get_tabs()
+            except Exception:  # pragma: no cover
+                tabs = []
+        elif list_page is not None and hasattr(list_page, "get_tabs"):
+            try:
+                tabs = list_page.get_tabs()
+            except Exception:  # pragma: no cover
+                tabs = []
+        active = self.active_tab or (tabs[0].id if tabs else "")
+        for tab in tabs:
+            if tab.id == active:
+                records = tab.apply_query(records)
+                break
+        table.records(records)
+        search = str(self.table_search or "").strip()
+        if search:
+            table.search(search)
+        sort = str(self.table_sort or "").strip()
+        if sort:
+            table.sort(sort, str(self.table_sort_direction or "asc"))
+        filters = dict(self.table_filters or {})
+        if filters:
+            table.filter_state(filters)
+        return table
+
+    def get_selected_ids(self) -> list[str]:
+        """IDs for bulk actions — expands to all filtered rows when ``select_all``."""
+        if self.select_all:
+            table = self._filtered_table()
+            ids: list[str] = []
+            for record in table.get_all_filtered_records():
+                rid = table._record_value(record, "id")
+                if rid is None:
+                    rid = id(record)
+                ids.append(str(rid))
+            return ids
+        return [str(x) for x in (self.selected or [])]
+
+    def _record_key(self, record: Any) -> str:
+        if isinstance(record, dict):
+            return str(record.get("id", ""))
+        return str(getattr(record, "id", "") or "")
+
+    def _sync_resource_records(self) -> None:
+        resource = self.get_resource()
+        if isinstance(getattr(resource, "records", None), list):
+            resource.records = list(self.records)
+
+    def update_column_state(self, record_id: str, column: str, value: Any = None) -> None:
+        """Persist an inline editable column value onto the matching record."""
+        rid = str(record_id or "")
+        col = str(column or "")
+        if not rid or not col:
+            return
+        out: list[Any] = []
+        for r in self.records:
+            if self._record_key(r) != rid:
+                out.append(r)
+                continue
+            if isinstance(r, dict):
+                row = dict(r)
+                row[col] = value
+                out.append(row)
+            else:
+                try:
+                    setattr(r, col, value)
+                except Exception:
+                    pass
+                out.append(r)
+        self.records = out
+        self._sync_resource_records()
+
+    def updateColumnState(self, record_id: str, column: str, value: Any = None) -> None:
+        self.update_column_state(record_id, column, value)
+
+    def mountAction(self, name: str, record_id: str | None = None, **kwargs: Any) -> None:
+        action_name = str(name or "")
+        rid = str(record_id or kwargs.get("recordId") or "")
+        data = kwargs.get("data") if isinstance(kwargs.get("data"), dict) else {}
+        if action_name in {"delete", "force_delete"} and rid:
+            self.records = [r for r in self.records if self._record_key(r) != rid]
+            self._sync_resource_records()
+            self.selected = [s for s in (self.selected or []) if s != rid]
+            return
+        if action_name == "delete_bulk":
+            ids = set(self.get_selected_ids())
+            self.records = [r for r in self.records if self._record_key(r) not in ids]
+            self._sync_resource_records()
+            self.selected = []
+            self.select_all = False
+            return
+        if action_name == "create" and data:
+            next_id = 1
+            for r in self.records:
+                try:
+                    next_id = max(next_id, int(self._record_key(r) or 0) + 1)
+                except (TypeError, ValueError):
+                    pass
+            self.records = [*self.records, {"id": next_id, **dict(data)}]
+            self._sync_resource_records()
+            return
+        if action_name == "edit" and rid and data:
+            out: list[Any] = []
+            for r in self.records:
+                if self._record_key(r) != rid:
+                    out.append(r)
+                    continue
+                if isinstance(r, dict):
+                    out.append({**r, **data, "id": r.get("id", rid)})
+                else:
+                    for key, val in data.items():
+                        try:
+                            setattr(r, key, val)
+                        except Exception:
+                            pass
+                    out.append(r)
+            self.records = out
+            self._sync_resource_records()
+            return
+        self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
 
     def render(self) -> str:
         resource = self.get_resource()
@@ -211,7 +400,12 @@ class ListRecordsHost(OrbitPageHost):
         from almasix.orbit.panels.pages.resource_pages import ListRecords
 
         class BoundList(ListRecords):
-            pass
+            @classmethod
+            def get_tabs(cls):
+                getter = getattr(resource, "get_tabs", None)
+                if callable(getter):
+                    return getter()
+                return []
 
         BoundList.resource = resource  # type: ignore[misc]
         return BoundList.render(
@@ -224,6 +418,9 @@ class ListRecordsHost(OrbitPageHost):
             per_page=self.per_page,
             table_filters=dict(self.table_filters or {}),
             selected=list(self.selected or []),
+            select_all=bool(self.select_all),
+            table_group=self.table_group or None,
+            toggled_columns=self._column_visibility_state(),
         )
 
 

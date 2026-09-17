@@ -107,7 +107,7 @@ def test_columns_render_variants() -> None:
     assert col.resolve_state(rec) == "LONG…"
     cell = col.render_cell(rec)
     assert "or-badge" in cell and "or-color-success" in cell
-    assert "Yes" in BooleanColumn.make("ok").render_cell(rec)
+    assert "or-icon-column" in BooleanColumn.make("ok").render_cell(rec)
     assert "or-avatar" in ImageColumn.make("img").render_cell(rec)
     assert ImageColumn.make("img").render_cell({"img": ""}) == '<td class="or-td"></td>'
     assert "or-color-swatch" in ColorColumn.make("color").render_cell(rec)

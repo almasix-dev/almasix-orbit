@@ -1039,13 +1039,18 @@ class Panel:
 def _action_modal_html() -> str:
     return (
         '  <div class="or-action-modal-host" x-data="orbitActionModal" x-cloak>\n'
-        '    <div class="or-modal-backdrop" x-show="open" @click="close()"></div>\n'
-        '    <div class="or-modal" x-show="open" role="dialog" aria-modal="true">\n'
+        '    <div class="or-modal-backdrop" x-show="open" @click="if (closeOnClickAway) close()"></div>\n'
+        '    <div class="or-modal" x-show="open" role="dialog" aria-modal="true"\n'
+        '         :class="{ \'or-modal-slide\': slideOver, [\'or-modal-\' + modalWidth]: true }">\n'
         '      <h2 class="or-modal-title" x-text="heading"></h2>\n'
         '      <p class="or-modal-body" x-text="description" x-show="description"></p>\n'
+        '      <form class="or-modal-form" x-show="hasForm" x-ref="actionForm" @submit.prevent="confirm()">\n'
+        '        <div class="or-modal-form-fields" x-html="formHtml"></div>\n'
+        "      </form>\n"
         '      <div class="or-modal-actions">\n'
         '        <button type="button" class="or-btn or-btn-gray" @click="close()">Cancel</button>\n'
-        '        <button type="button" class="or-btn or-btn-primary" @click="confirm()">Confirm</button>\n'
+        '        <button type="button" class="or-btn or-btn-primary" @click="confirm()"\n'
+        '                x-text="hasForm ? (needsConfirm ? \'Confirm\' : \'Save\') : \'Confirm\'"></button>\n'
         "      </div>\n"
         "    </div>\n"
         "  </div>\n"

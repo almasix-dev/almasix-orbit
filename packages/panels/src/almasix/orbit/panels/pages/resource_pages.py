@@ -24,7 +24,7 @@ class Tab:
         self.id = id
         self._label = label or id.replace("_", " ").title()
         self._icon: str | None = None
-        self._badge: str | int | None = None
+        self._badge: Any = None
         self._badge_color: str | None = None
         self._modify_query: Any = None
 
@@ -36,7 +36,8 @@ class Tab:
         self._icon = name
         return self
 
-    def badge(self, value: str | int) -> Tab:
+    def badge(self, value: Any) -> Tab:
+        """Static value or callable evaluated at render time."""
         self._badge = value
         return self
 
@@ -53,15 +54,27 @@ class Tab:
             return records
         return list(self._modify_query(records))
 
-    def render(self, *, active: bool = False) -> str:
+    def resolve_badge(self, **ctx: Any) -> str | int | None:
+        value = self._badge
+        if callable(value):
+            try:
+                value = value(**ctx)
+            except TypeError:
+                value = value()
+        if value is None:
+            return None
+        return value
+
+    def render(self, *, active: bool = False, **ctx: Any) -> str:
         from almasix.orbit.support.icons import icon as render_icon
 
         active_cls = " is-active" if active else ""
         ic = render_icon(self._icon) if self._icon else ""
         badge = ""
-        if self._badge is not None:
+        badge_value = self.resolve_badge(**ctx)
+        if badge_value is not None:
             color = f" or-color-{e(self._badge_color)}" if self._badge_color else ""
-            badge = f'<span class="or-nav-badge{color}">{e(self._badge)}</span>'
+            badge = f'<span class="or-list-tab-badge{color}">{e(badge_value)}</span>'
         return (
             f'<button type="button" class="or-list-tab{active_cls}" data-tab="{e(self.id)}" '
             f'wire:click="setTab(\'{e(self.id)}\')">{ic}<span>{e(self._label)}</span>{badge}</button>'
@@ -101,9 +114,10 @@ class ListRecords(ResourcePage):
         tab_html = ""
         if tabs:
             tab_html = (
-                '<div class="or-list-tabs">'
-                + "".join(t.render(active=(t.id == active)) for t in tabs)
-                + "</div>"
+                '<div class="or-list-tabs-bar">'
+                '<div class="or-list-tabs" role="tablist">'
+                + "".join(t.render(active=(t.id == active), records=records) for t in tabs)
+                + "</div></div>"
             )
             for t in tabs:
                 if t.id == active and records is not None:

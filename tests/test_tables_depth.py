@@ -875,7 +875,7 @@ def test_table_wiring_coverage_branches() -> None:
     assert "or-th-group" in html
     assert "or-tfoot" in html
     assert 'data-summary-scope="page"' in html or 'data-summary-scope="all"' in html
-    assert "or-table-bulk-actions" in html
+    assert "or-list-bulk" in html or "or-table-bulk-trigger" in html
     assert "or-group-header" in html
     assert table.flat_columns()  # includes ColumnGroup children
 

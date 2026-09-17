@@ -1,4 +1,3 @@
-
 """Table columns."""
 
 from __future__ import annotations
@@ -11,12 +10,45 @@ from almasix.orbit.support.component import Component
 from almasix.orbit.support.html import e
 
 
+def _record_id(record: Any) -> str:
+    if isinstance(record, dict):
+        rid = record.get("id")
+    else:
+        rid = getattr(record, "id", None)
+    if rid is None:
+        rid = id(record)
+    return str(rid)
+
+
+def _simple_markdown(text: str) -> str:
+    """Tiny safe markdown subset: escape, then **bold**, *italic*, newlines."""
+    out = e(text)
+    # Bold then italic (order matters for nested-ish cases)
+    import re
+
+    out = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", out)
+    out = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"<em>\1</em>", out)
+    out = out.replace("\n", "<br />")
+    return out
+
+
+def _copyable_wrap(inner: str, copy_text: str) -> str:
+    return (
+        f'<span class="or-copyable" data-copy="{e(copy_text)}" title="Copy">'
+        f"{inner}"
+        f'<button type="button" class="or-copy-btn" aria-label="Copy" '
+        f'@click.stop="navigator.clipboard.writeText($el.closest(\'[data-copy]\').dataset.copy)">'
+        f'<span class="or-copy-glyph" aria-hidden="true">⎘</span></button></span>'
+    )
+
+
 class Column(Component):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._sortable = False
         self._searchable = False
         self._toggleable = True
+        self._toggled_hidden_by_default = False
         self._format_state: Callable[[Any], Any] | None = None
         self._badge = False
         self._boolean = False
@@ -39,6 +71,7 @@ class Column(Component):
         self._markdown = False
         self._html = False
         self._alignment: str = "start"
+        self._icon: str | Callable[..., str] | None = None
 
     def alignment(self, value: str) -> Self:
         """Cell/header alignment: ``start``, ``center``, or ``end`` (Filament parity)."""
@@ -65,9 +98,22 @@ class Column(Component):
         self._searchable = condition
         return self
 
-    def toggleable(self, condition: bool = True) -> Self:
+    def toggleable(
+        self,
+        condition: bool = True,
+        *,
+        is_toggled_hidden_by_default: bool = False,
+    ) -> Self:
         self._toggleable = condition
+        if condition:
+            self._toggled_hidden_by_default = is_toggled_hidden_by_default
         return self
+
+    def is_toggleable(self) -> bool:
+        return bool(self._toggleable)
+
+    def is_toggled_hidden_by_default(self) -> bool:
+        return bool(self._toggled_hidden_by_default)
 
     def format_state_using(self, callback: Callable[[Any], Any]) -> Self:
         self._format_state = callback
@@ -105,13 +151,22 @@ class Column(Component):
         self._copyable = condition
         return self
 
-    def summarize(self, summarizers: Any | Sequence[Any]) -> Self:
+    def icon(self, name: str | Callable[..., str]) -> Self:
+        self._icon = name
+        return self
+
+    def summarize(self, *summarizers: Any) -> Self:
         from almasix.orbit.tables.summaries import Summarizer
 
-        if isinstance(summarizers, Summarizer):
-            self._summarizers = [summarizers]
-        else:
-            self._summarizers = list(summarizers)
+        items: list[Any] = []
+        for item in summarizers:
+            if isinstance(item, Summarizer):
+                items.append(item)
+            elif isinstance(item, (list, tuple)):
+                items.extend(item)
+            else:
+                items.append(item)
+        self._summarizers = items
         return self
 
     def get_summarizers(self) -> list[Any]:
@@ -224,6 +279,27 @@ class Column(Component):
             value = value[: self._limit] + "…"
         return value
 
+    def _td_classes(self, extra: str = "") -> str:
+        classes = ["or-td"]
+        if self._visible_from:
+            classes.append(f"or-visible-from-{self._visible_from}")
+        if self._hidden_from:
+            classes.append(f"or-hidden-from-{self._hidden_from}")
+        align = self.get_alignment()
+        if align and align != "start":
+            classes.append(f"or-align-{align}")
+        if extra:
+            classes.append(extra.strip())
+        return " ".join(classes)
+
+    def _resolve_color(self, record: Any, value: Any, **ctx: Any) -> str | None:
+        color = self._color
+        if callable(color):
+            from almasix.orbit.support.evaluate import evaluate
+
+            color = evaluate(color, record=record, state=value, **ctx)
+        return str(color) if color else None
+
     def render_cell(self, record: Any, **ctx: Any) -> str:
         value = self.resolve_state(record)
         if self._boolean:
@@ -238,26 +314,35 @@ class Column(Component):
         else:
             text = "" if value is None else str(value)
         css = "or-badge" if self._badge else "or-cell-text"
-        color = self._color
-        if callable(color):
-            from almasix.orbit.support.evaluate import evaluate
-
-            color = evaluate(color, record=record, state=value, **ctx)
+        color = self._resolve_color(record, value, **ctx)
         color_c = f" or-color-{color}" if color else ""
-        resp = ""
-        if self._visible_from:
-            resp += f" or-visible-from-{self._visible_from}"
-        if self._hidden_from:
-            resp += f" or-hidden-from-{self._hidden_from}"
+        weight_c = f" or-font-{e(self._weight)}" if self._weight else ""
+        wrap_c = " or-cell-wrap" if self._wrap else ""
         desc = self.get_description(record=record, state=value, **ctx)
         desc_attr = f' title="{e(desc)}" data-description="{e(desc)}"' if desc else ""
+        desc_html = (
+            f'<span class="or-cell-description">{e(desc)}</span>' if desc else ""
+        )
         if self._html:
             body = str(text)
         elif self._markdown:
-            body = e(text).replace("\n", "<br />")
+            body = _simple_markdown(text)
         else:
             body = e(text).replace("\n", "<br />") if self._list_bullet else e(text)
-        inner = f'<span class="{css}{color_c}"{desc_attr}>{body}</span>'
+        icon_html = ""
+        if self._icon is not None:
+            from almasix.orbit.support.evaluate import evaluate
+            from almasix.orbit.support.icons import icon as render_icon
+
+            icon_name = evaluate(self._icon, record=record, state=value, **ctx)
+            if icon_name:
+                icon_html = f'<span class="or-cell-icon">{render_icon(str(icon_name))}</span>'
+        inner = (
+            f'<span class="{css}{color_c}{weight_c}{wrap_c}"{desc_attr}>'
+            f"{icon_html}{body}{desc_html}</span>"
+        )
+        if self._copyable and text:
+            inner = _copyable_wrap(inner, text)
         href = None
         if self._url is not None:
             from almasix.orbit.support.evaluate import evaluate
@@ -265,9 +350,7 @@ class Column(Component):
             href = evaluate(self._url, record=record, state=value, **ctx)
         if href:
             inner = f'<a class="or-cell-link" href="{e(href)}">{inner}</a>'
-        align = self.get_alignment()
-        align_c = f" or-align-{align}" if align and align != "start" else ""
-        return f'<td class="or-td{resp}{align_c}">{inner}</td>'
+        return f'<td class="{self._td_classes()}">{inner}</td>'
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -275,6 +358,8 @@ class Column(Component):
             {
                 "sortable": self._sortable,
                 "searchable": self._searchable,
+                "toggleable": self._toggleable,
+                "toggled_hidden_by_default": self._toggled_hidden_by_default,
                 "badge": self._badge,
                 "has_summarizers": bool(self._summarizers),
                 "money_currency": self._money_currency,
@@ -295,36 +380,148 @@ class BadgeColumn(Column):
         self._badge = True
 
 
-class BooleanColumn(Column):
+class IconColumn(Column):
+    """Icon from state, or boolean true/false icons (Filament ``IconColumn``)."""
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._true_icon = "heroicon-o-check"
+        self._false_icon = "heroicon-o-x-mark"
+        self._size: str | None = None
+
+    def true_icon(self, name: str) -> Self:
+        self._true_icon = name
+        return self
+
+    def false_icon(self, name: str) -> Self:
+        self._false_icon = name
+        return self
+
+    def size(self, value: str) -> Self:
+        self._size = value
+        return self
+
+    def render_cell(self, record: Any, **ctx: Any) -> str:
+        from almasix.orbit.support.icons import icon as render_icon
+
+        value = self.resolve_state(record)
+        if self._boolean:
+            icon_name = self._true_icon if value else self._false_icon
+        else:
+            icon_name = str(value or "heroicon-o-check")
+        color = self._resolve_color(record, value, **ctx)
+        if self._boolean and color is None:
+            color = "success" if value else "danger"
+        size_c = f" or-icon-size-{e(self._size)}" if self._size else ""
+        color_c = f" or-color-{color}" if color else ""
+        return (
+            f'<td class="{self._td_classes()}">'
+            f'<span class="or-icon-column{size_c}{color_c}">{render_icon(icon_name)}</span>'
+            f"</td>"
+        )
+
+
+class BooleanColumn(IconColumn):
+    """Deprecated Filament alias — boolean icons (not Yes/No text)."""
+
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._boolean = True
 
 
-class IconColumn(Column):
-    def render_cell(self, record: Any, **ctx: Any) -> str:
-        from almasix.orbit.support.icons import icon as render_icon
-
-        value = self.resolve_state(record)
-        name = str(value or "heroicon-o-check")
-        return f'<td class="or-td">{render_icon(name)}</td>'
-
-
 class ImageColumn(Column):
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._circular = False
+        self._size: str | int | None = None
+        self._default_image_url: str | None = None
+        self._stacked = False
+        self._stacked_limit: int | None = None
+
+    def circular(self, condition: bool = True) -> Self:
+        self._circular = condition
+        return self
+
+    def size(self, value: str | int) -> Self:
+        self._size = value
+        return self
+
+    def default_image_url(self, url: str) -> Self:
+        self._default_image_url = url
+        return self
+
+    def stacked(self, condition: bool = True) -> Self:
+        self._stacked = condition
+        return self
+
+    def limit(self, count: int) -> Self:  # type: ignore[override]
+        self._stacked_limit = count
+        return self
+
     def render_cell(self, record: Any, **ctx: Any) -> str:
         value = self.resolve_state(record)
-        if not value:
-            return '<td class="or-td"></td>'
-        return f'<td class="or-td"><img class="or-avatar" src="{e(value)}" alt="" /></td>'
+        urls: list[str] = []
+        if isinstance(value, (list, tuple)):
+            urls = [str(u) for u in value if u]
+        elif value:
+            urls = [str(value)]
+        if not urls and self._default_image_url:
+            urls = [self._default_image_url]
+        if not urls:
+            return f'<td class="{self._td_classes()}"></td>'
+        shape = " or-avatar-circle" if self._circular else " or-avatar-square"
+        size_style = ""
+        size_c = ""
+        if self._size is not None:
+            if isinstance(self._size, int) or str(self._size).isdigit():
+                px = int(self._size)
+                size_style = f' style="width:{px}px;height:{px}px"'
+            else:
+                size_c = f" or-avatar-{e(str(self._size))}"
+        if self._stacked and len(urls) > 1:
+            limit = self._stacked_limit if self._stacked_limit is not None else len(urls)
+            shown = urls[:limit]
+            extra = len(urls) - len(shown)
+            imgs = "".join(
+                f'<img class="or-avatar or-avatar-stacked{shape}{size_c}" src="{e(u)}" alt=""'
+                f"{size_style} />"
+                for u in shown
+            )
+            more = (
+                f'<span class="or-avatar-more">+{extra}</span>' if extra > 0 else ""
+            )
+            return (
+                f'<td class="{self._td_classes()}">'
+                f'<div class="or-avatar-stack">{imgs}{more}</div></td>'
+            )
+        u = urls[0]
+        return (
+            f'<td class="{self._td_classes()}">'
+            f'<img class="or-avatar{shape}{size_c}" src="{e(u)}" alt=""{size_style} /></td>'
+        )
 
 
 class ColorColumn(Column):
     def render_cell(self, record: Any, **ctx: Any) -> str:
         value = self.resolve_state(record) or "#000000"
-        return (
-            f'<td class="or-td"><span class="or-color-swatch" style="background:{e(value)}" '
-            f'title="{e(value)}"></span></td>'
+        text = str(value)
+        swatch = (
+            f'<span class="or-color-swatch" style="background:{e(text)}" '
+            f'title="{e(text)}"></span>'
         )
+        if self._copyable:
+            swatch = _copyable_wrap(swatch, text)
+        return f'<td class="{self._td_classes()}">{swatch}</td>'
+
+
+def _editable_attrs(column: Column, record: Any, kind: str) -> str:
+    rid = _record_id(record)
+    name = e(column.get_name() or "")
+    disabled = " disabled" if column.is_disabled(record=record) else ""
+    return (
+        f' data-orbit-column-edit="{kind}" data-record-id="{e(rid)}" '
+        f'data-column="{name}"{disabled}'
+    )
 
 
 class SelectColumn(Column):
@@ -348,9 +545,11 @@ class SelectColumn(Column):
         for k, v in opts.items():
             sel = " selected" if str(k) == str(value) else ""
             options_html.append(f'<option value="{e(k)}"{sel}>{e(v)}</option>')
+        attrs = _editable_attrs(self, record, "select")
         return (
-            f'<td class="or-td"><select class="or-select or-select-inline" name="{name}" '
-            f'wire:model="table.{name}">{"".join(options_html)}</select></td>'
+            f'<td class="{self._td_classes()}">'
+            f'<select class="or-select or-select-inline" name="{name}"{attrs}>'
+            f'{"".join(options_html)}</select></td>'
         )
 
 
@@ -360,7 +559,7 @@ class TagsColumn(Column):
         if isinstance(value, str):
             value = [v.strip() for v in value.split(",") if v.strip()]
         badges = "".join(f'<span class="or-badge">{e(v)}</span>' for v in value)
-        return f'<td class="or-td">{badges}</td>'
+        return f'<td class="{self._td_classes()}">{badges}</td>'
 
 
 class CheckboxColumn(Column):
@@ -368,9 +567,11 @@ class CheckboxColumn(Column):
         value = self.resolve_state(record)
         name = e(self.get_name() or "")
         checked = " checked" if value else ""
+        attrs = _editable_attrs(self, record, "checkbox")
         return (
-            f'<td class="or-td"><input type="checkbox" class="or-checkbox" name="{name}"'
-            f'{checked} wire:model="table.{name}" /></td>'
+            f'<td class="{self._td_classes()}">'
+            f'<input type="checkbox" class="or-checkbox" name="{name}"'
+            f"{checked}{attrs} /></td>"
         )
 
 
@@ -379,9 +580,11 @@ class TextInputColumn(Column):
         value = self.resolve_state(record)
         name = e(self.get_name() or "")
         val = "" if value is None else e(str(value))
+        attrs = _editable_attrs(self, record, "text")
         return (
-            f'<td class="or-td"><input class="or-input or-input-inline" name="{name}" '
-            f'value="{val}" wire:model.blur="table.{name}" /></td>'
+            f'<td class="{self._td_classes()}">'
+            f'<input class="or-input or-input-inline" name="{name}" '
+            f'value="{val}"{attrs} /></td>'
         )
 
 
@@ -390,9 +593,11 @@ class ToggleColumn(Column):
         value = self.resolve_state(record)
         name = e(self.get_name() or "")
         checked = " checked" if value else ""
+        attrs = _editable_attrs(self, record, "toggle")
         return (
-            f'<td class="or-td"><input type="checkbox" class="or-toggle" name="{name}"'
-            f'{checked} wire:model.live="table.{name}" /></td>'
+            f'<td class="{self._td_classes()}">'
+            f'<input type="checkbox" class="or-toggle" name="{name}"'
+            f"{checked}{attrs} /></td>"
         )
 
 
@@ -413,15 +618,33 @@ class ViewColumn(Column):
             body = evaluate(self._view_html, record=record, state=value, **ctx)
         else:
             body = e("" if value is None else str(value))
-        return f'<td class="or-td"><div class="or-view-column">{body}</div></td>'
+        return f'<td class="{self._td_classes()}"><div class="or-view-column">{body}</div></td>'
 
 
 class ColumnGroup(Component):
+    """Shared header over child columns (Filament ``ColumnGroup``)."""
+
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._columns: list[Column] = []
 
-    def columns(self, cols: list[Column]) -> Self:
+    @classmethod
+    def make(  # type: ignore[override]
+        cls,
+        name: str | Sequence[Column] | None = None,
+        columns: Sequence[Column] | None = None,
+    ) -> Self:
+        """Filament-shaped ``make('Label', [cols])`` or ``make([cols]).label(...)``."""
+        if isinstance(name, (list, tuple)):
+            inst = cls(None)
+            inst.columns(list(name))
+            return inst
+        inst = cls(name if isinstance(name, str) else None)
+        if columns is not None:
+            inst.columns(list(columns))
+        return inst
+
+    def columns(self, cols: Sequence[Column]) -> Self:
         self._columns = list(cols)
         return self
 
