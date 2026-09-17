@@ -89,6 +89,7 @@ class ListRecordsHost(OrbitPageHost):
     page: int = 1
     per_page: int = 10
     selected: list[str] = []
+    table_filters: dict[str, Any] = {}
 
     def mount(self, **kwargs: Any) -> None:
         resource = self.get_resource()
@@ -159,6 +160,23 @@ class ListRecordsHost(OrbitPageHost):
         self.table_search = ""
         self.page = 1
 
+    def applyTableFilters(self) -> None:
+        """Commit deferred filter selections (live filters already apply via state)."""
+        self.page = 1
+
+    def resetTableFilters(self) -> None:
+        self.table_filters = {}
+        self.page = 1
+
+    def removeTableFilter(self, name: str) -> None:
+        key = str(name or "")
+        if not key:
+            return
+        current = dict(self.table_filters or {})
+        current.pop(key, None)
+        self.table_filters = current
+        self.page = 1
+
     def mountAction(self, name: str, **kwargs: Any) -> None:
         self.dispatch("orbit-mount-action", name=name, **kwargs)
 
@@ -179,6 +197,8 @@ class ListRecordsHost(OrbitPageHost):
             table_sort_direction=self.table_sort_direction,
             page=self.page,
             per_page=self.per_page,
+            table_filters=dict(self.table_filters or {}),
+            selected=list(self.selected or []),
         )
 
 

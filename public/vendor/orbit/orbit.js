@@ -90,6 +90,32 @@
 
     window.Alpine.data("orbitTableSelection", () => ({
       selected: [],
+      init() {
+        const initial = this.$el?.getAttribute?.("data-selected");
+        if (initial) {
+          try {
+            const parsed = JSON.parse(initial);
+            if (Array.isArray(parsed)) {
+              this.selected = parsed.map(String);
+            }
+          } catch (_) {
+            /* ignore bad JSON */
+          }
+        }
+      },
+      syncHost() {
+        const root = this.$el?.closest?.("[wire\\:id], [conduit\\:id], [data-conduit-id]");
+        const wire = this.$wire || root?.__conduit || root?.__livewire;
+        if (wire && typeof wire.set === "function") {
+          wire.set("selected", this.selected);
+        } else if (typeof window.Conduit !== "undefined" && window.Conduit.find) {
+          try {
+            window.Conduit.find(this.$el)?.set?.("selected", this.selected);
+          } catch (_) {
+            /* optional Conduit bridge */
+          }
+        }
+      },
       toggle(id, checked) {
         const key = String(id);
         if (checked) {
@@ -99,6 +125,7 @@
         } else {
           this.selected = this.selected.filter((x) => x !== key);
         }
+        this.syncHost();
       },
       toggleAll(checked) {
         const boxes = this.$el.querySelectorAll('input.or-row-check[data-record-id]');
@@ -110,6 +137,7 @@
           }
         });
         this.selected = ids;
+        this.syncHost();
       },
       get pageFullySelected() {
         const boxes = this.$el.querySelectorAll('input.or-row-check[data-record-id]');

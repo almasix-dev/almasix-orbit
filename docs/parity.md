@@ -51,7 +51,12 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | Layout `Split`/`Stack`/`Panel` | Done |
 | TextColumn money/date/description | Done |
 | `TrashedFilter` + filter persist/defer flags | Done |
-| Full filter chrome / contentGrid cards in Table.render | Partial |
+| Index search / sortable headers / pagination chrome | Done |
+| Filter chrome + indicator chips + host `table_filters` | Done |
+| Empty state Create CTA + `record_url` row click | Done |
+| Bulk selection synced to host `selected` | Done |
+| Content-grid cards (title + stacked fields) | Done |
+| Column visibility manager / breakpoint CSS | Partial |
 
 ## Actions — Partial
 

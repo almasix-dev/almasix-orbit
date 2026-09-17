@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Sequence
 from typing import Any, Self
 
@@ -41,6 +42,7 @@ class Table(Component):
         self._per_page = 10
         self._empty_state_heading = "No records"
         self._empty_state_description: str | None = None
+        self._empty_state_actions: list[Action] = []
         self._record_url: Callable[..., str] | str | None = None
         self._striped = True
         self._paginated = True
@@ -276,6 +278,10 @@ class Table(Component):
         self._empty_state_description = text
         return self
 
+    def empty_state_actions(self, actions: Sequence[Action]) -> Self:
+        self._empty_state_actions = list(actions)
+        return self
+
     def striped(self, condition: bool = True) -> Self:
         self._striped = condition
         return self
@@ -325,28 +331,26 @@ class Table(Component):
         if self._defer_filters:
             attrs.append('data-defer-filters="true"')
         attr_s = (" " + " ".join(attrs)) if attrs else ""
+        model_dir = "model" if self._defer_filters else "model.live"
         parts: list[str] = []
         for f in self._filters:
-            name = e(f.get_name() or "")
+            name = f.get_name() or ""
+            name_e = e(name)
             label = e(f.get_label(**ctx) or name)
             opts = f.get_options(**ctx)
-            options_html = "".join(
-                f'<option value="{e(k)}">{e(v)}</option>' for k, v in opts.items()
-            )
-            current = self._filter_state.get(f.get_name() or "")
+            current = self._filter_state.get(name)
             selected = "" if current in (None, "") else str(current)
-            # mark selected
-            if selected:
-                options_html = "".join(
-                    f'<option value="{e(k)}"'
-                    f'{" selected" if str(k) == selected else ""}>{e(v)}</option>'
-                    for k, v in opts.items()
-                )
+            blank = '<option value="">All</option>' if "" not in {str(k) for k in opts} else ""
+            options_html = blank + "".join(
+                f'<option value="{e(k)}"'
+                f'{" selected" if selected and str(k) == selected else ""}>{e(v)}</option>'
+                for k, v in opts.items()
+            )
             parts.append(
-                f'<div class="or-table-filter" data-filter="{name}">'
+                f'<div class="or-table-filter" data-filter="{name_e}">'
                 f'<label class="or-filter-label">{label}</label>'
-                f'<select class="or-select or-filter-select" name="filters.{name}" '
-                f'wire:model="tableFilters.{name}">{options_html}</select></div>'
+                f'<select class="or-select or-filter-select" name="filters.{name_e}"'
+                f'{conduit_attr(model_dir, f"table_filters.{name}")}>{options_html}</select></div>'
             )
         qb_html = ""
         if self._query_builder is not None and hasattr(self._query_builder, "render"):
@@ -354,13 +358,48 @@ class Table(Component):
         apply_btn = ""
         if self._defer_filters:
             apply_btn = (
-                '<button type="button" class="or-btn or-btn-primary or-filter-apply" '
-                'wire:click="applyTableFilters">Apply</button>'
+                f'<button type="button" class="or-btn or-btn-primary or-filter-apply"'
+                f'{_conduit_click("applyTableFilters")}>Apply</button>'
             )
+        indicators = self._render_filter_indicators(**ctx)
         return (
             f'<div class="or-table-filters"{attr_s}>'
             f'<div class="or-table-filters-row">{"".join(parts)}</div>'
-            f"{qb_html}{apply_btn}</div>"
+            f"{qb_html}{apply_btn}{indicators}</div>"
+        )
+
+    def _render_filter_indicators(self, **ctx: Any) -> str:
+        chips: list[str] = []
+        for f in self._filters:
+            if not getattr(f, "_indicate", True):
+                continue
+            name = f.get_name() or ""
+            if not name:
+                continue
+            value = self._filter_state.get(name)
+            if value in (None, "", []):
+                continue
+            opts = f.get_options(**ctx)
+            display = opts.get(value, opts.get(str(value), value))
+            label = f.get_label(**ctx) or name
+            click = _conduit_click("removeTableFilter('" + name + "')")
+            chips.append(
+                f'<button type="button" class="or-filter-chip"'
+                f"{click}"
+                f' aria-label="Remove {e(label)} filter">'
+                f'<span class="or-filter-chip-label">{e(label)}:</span> '
+                f'<span class="or-filter-chip-value">{e(display)}</span>'
+                f'<span class="or-filter-chip-x" aria-hidden="true">×</span></button>'
+            )
+        if not chips:
+            return ""
+        reset = (
+            f'<button type="button" class="or-btn or-btn-ghost or-btn-sm or-filter-reset"'
+            f'{_conduit_click("resetTableFilters")}>Reset filters</button>'
+        )
+        return (
+            f'<div class="or-table-filter-indicators" role="list">'
+            f'{"".join(chips)}{reset}</div>'
         )
 
     def _render_search_chrome(self, **ctx: Any) -> str:
@@ -480,6 +519,18 @@ class Table(Component):
             cells.append(f'<td class="or-td or-td-summary" data-summary-scope="{e(scope)}"></td>')
         return f'<tr class="or-tr or-summary-row" data-summary-scope="{e(scope)}">{"".join(cells)}</tr>'
 
+    def _resolve_record_url(self, record: Any, **ctx: Any) -> str | None:
+        url = self._record_url
+        if url is None:
+            return None
+        if callable(url):
+            try:
+                resolved = url(record, **ctx)
+            except TypeError:
+                resolved = url(record)
+            return str(resolved) if resolved else None
+        return str(url)
+
     def _render_row(
         self,
         record: Any,
@@ -487,33 +538,48 @@ class Table(Component):
         **ctx: Any,
     ) -> str:
         select = ""
+        selected_ids = {str(x) for x in (ctx.get("selected") or [])}
+        rid = str(self._record_value(record, "id") or id(record))
         if ctx.get("has_bulk"):
-            rid = e(str(self._record_value(record, "id") or id(record)))
+            checked = " checked" if rid in selected_ids else ""
             select = (
                 f'<td class="or-td or-td-select">'
-                f'<input type="checkbox" class="or-row-check" data-record-id="{rid}" '
-                f'@change="toggle(\'{rid}\', $event.target.checked)" '
+                f'<input type="checkbox" class="or-row-check" data-record-id="{e(rid)}"{checked} '
+                f'@change="toggle(\'{e(rid)}\', $event.target.checked)" '
                 f'aria-label="Select row" /></td>'
             )
         cells = select + "".join(c.render_cell(record, **ctx) for c in display)
         if self._actions:
             acts = self._render_actions(self._actions, record, **ctx)
             cells += f'<td class="or-td or-td-actions"><div class="or-row-actions">{acts}</div></td>'
-        return f'<tr class="or-tr or-list-row">{cells}</tr>'
+        href = self._resolve_record_url(record, **ctx)
+        row_class = "or-tr or-list-row"
+        row_attrs = ""
+        if href:
+            row_class += " or-tr-clickable"
+            row_attrs = (
+                f' data-record-url="{e(href)}" tabindex="0" '
+                f"onclick=\"if(!event.target.closest('a,button,input,label'))"
+                f" location.href='{e(href)}'\""
+            )
+        return f'<tr class="{row_class}"{row_attrs}>{cells}</tr>'
 
     def _render_record_card(self, record: Any, display: list[Column | LayoutComponent], **ctx: Any) -> str:
         fields: list[str] = []
-        for col in display:
+        title_html = ""
+        for index, col in enumerate(display):
             label = e(self._header_label(col, **ctx))
             if isinstance(col, Column):
                 cell = col.render_cell(record, **ctx)
-                # strip td wrapper if present
                 if cell.startswith("<td"):
                     inner = cell[cell.find(">") + 1 : cell.rfind("</td>")]
                 else:
                     inner = cell
             else:
                 inner = col.render_cell(record, **ctx) if hasattr(col, "render_cell") else ""
+            if index == 0 and not title_html:
+                title_html = f'<h3 class="or-table-record-card-title">{inner}</h3>'
+                continue
             fields.append(
                 f'<div class="or-table-field"><span class="or-table-field-label">{label}</span>'
                 f'<div class="or-table-field-value">{inner}</div></div>'
@@ -524,8 +590,12 @@ class Table(Component):
                 f'<div class="or-table-record-card-actions">'
                 f"{self._render_actions(self._actions, record, **ctx)}</div>"
             )
+        href = self._resolve_record_url(record, **ctx)
+        link_open = f'<a class="or-table-record-card-link" href="{e(href)}">' if href else ""
+        link_close = "</a>" if href else ""
         return (
             f'<article class="or-table-record-card or-card">'
+            f"{link_open}{title_html}{link_close}"
             f'<div class="or-table-record-card-body">{"".join(fields)}</div>{footer}</article>'
         )
 
@@ -646,12 +716,30 @@ class Table(Component):
             for record in page_records:
                 rows.append(self._render_row(record, display, **row_ctx))
 
-        body = "".join(rows) or (
-            f'<tr class="or-tr"><td class="or-td or-empty" colspan="{colspan}">'
-            f'<div class="or-empty-state"><h3>{e(self._empty_state_heading)}</h3>'
-            f'{f"<p>{e(self._empty_state_description)}</p>" if self._empty_state_description else ""}'
-            f"</div></td></tr>"
-        )
+        body = "".join(rows)
+        if not body:
+            empty_actions = self._empty_state_actions or (
+                list(self._header_actions) if not skip_header_actions else []
+            )
+            # When header actions were moved to the page header, still offer Create in empty state.
+            if not empty_actions and self._header_actions:
+                empty_actions = list(self._header_actions)
+            actions_html = ""
+            if empty_actions:
+                actions_html = (
+                    f'<div class="or-empty-state-actions">'
+                    f"{self._render_actions(empty_actions, None, **ctx)}</div>"
+                )
+            desc = (
+                f"<p>{e(self._empty_state_description)}</p>"
+                if self._empty_state_description
+                else ""
+            )
+            body = (
+                f'<tr class="or-tr"><td class="or-td or-empty" colspan="{colspan}">'
+                f'<div class="or-empty-state"><h3>{e(self._empty_state_heading)}</h3>'
+                f"{desc}{actions_html}</div></td></tr>"
+            )
 
         footer_parts: list[str] = []
         page_foot = self._render_summary_cells(
@@ -731,6 +819,9 @@ class Table(Component):
         stacked = self._render_stacked_cards(page_records, display, **ctx)
         stacked_cls = " or-table-has-stacked" if stacked else ""
         selection_attr = ' x-data="orbitTableSelection"' if has_bulk else ""
+        if has_bulk:
+            selected_json = e(json.dumps([str(x) for x in (ctx.get("selected") or [])]))
+            selection_attr += f' data-selected="{selected_json}"'
         pagination = self._render_pagination_chrome(**ctx)
 
         if self._layout == "kanban":

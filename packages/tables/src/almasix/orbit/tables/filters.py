@@ -36,11 +36,60 @@ class Filter(Component):
 
 
 class SelectFilter(Filter):
-    pass
+    """Select filter — defaults to equality on the filter name attribute."""
+
+    def apply(self, query: Any, value: Any) -> Any:
+        if self._query is not None:
+            return super().apply(query, value)
+        if value in (None, "", []):
+            return query
+        key = self.get_name() or ""
+        if not key:
+            return query
+        out: list[Any] = []
+        for record in query:
+            if isinstance(record, dict):
+                current = record.get(key)
+            else:
+                current = getattr(record, key, None)
+            if str(current) == str(value):
+                out.append(record)
+        return out
 
 
 class TernaryFilter(Filter):
-    pass
+    """Boolean tri-state filter (All / Yes / No)."""
+
+    TRUE = "1"
+    FALSE = "0"
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._options = {
+            "": "All",
+            self.TRUE: "Yes",
+            self.FALSE: "No",
+        }
+
+    def apply(self, query: Any, value: Any) -> Any:
+        if self._query is not None:
+            return super().apply(query, value)
+        if value in (None, ""):
+            return query
+        key = self.get_name() or ""
+        if not key:
+            return query
+        want = value in (True, 1, "1", "true", "yes", self.TRUE)
+        out: list[Any] = []
+        for record in query:
+            if isinstance(record, dict):
+                current = record.get(key)
+            else:
+                current = getattr(record, key, None)
+            truthy = bool(current) and current not in (0, "0", "false", "no", False)
+            if truthy is want:
+                out.append(record)
+        return out
 
 
 class TrashedFilter(SelectFilter):

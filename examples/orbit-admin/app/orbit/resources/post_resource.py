@@ -6,7 +6,7 @@ from typing import Any, ClassVar
 
 from almasix.orbit import Resource
 from almasix.orbit.forms import Form, Select, TextInput, Textarea
-from almasix.orbit.tables import Table, TextColumn
+from almasix.orbit.tables import SelectFilter, Table, TextColumn
 
 
 class PostResource(Resource):
@@ -51,9 +51,25 @@ class PostResource(Resource):
 
     @classmethod
     def table(cls, table: Table) -> Table:
-        return table.columns(
-            [
-                TextColumn.make("title").searchable().sortable(),
-                TextColumn.make("status").badge(),
-            ]
-        ).stacked_on_mobile()
+        return (
+            table.columns(
+                [
+                    TextColumn.make("title").searchable().sortable(),
+                    TextColumn.make("status").badge().sortable(),
+                ]
+            )
+            .filters(
+                [
+                    SelectFilter.make("status")
+                    .label("Status")
+                    .options(
+                        {
+                            "draft": "Draft",
+                            "review": "Review",
+                            "published": "Published",
+                        }
+                    ),
+                ]
+            )
+            .stacked_on_mobile()
+        )

@@ -126,6 +126,9 @@ class ListRecords(ResourcePage):
             per_page = max(1, int(ctx.get("per_page") or 10))
         except (TypeError, ValueError):
             per_page = 10
+        filters = ctx.get("table_filters")
+        if isinstance(filters, dict) and filters:
+            table.filter_state(filters)
         table.paginate(page, per_page)
         header_actions = "".join(a.render(**ctx) for a in table._header_actions)
         width = _resource_width_style(resource)
