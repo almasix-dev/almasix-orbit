@@ -86,39 +86,95 @@
       true,
     );
 
+    window.Alpine.data("orbitSearchableSelect", () => ({
+      q: "",
+      filter() {
+        const select = this.$refs.select;
+        if (!(select instanceof HTMLSelectElement)) return;
+        const q = (this.q || "").toLowerCase();
+        Array.from(select.options).forEach((opt) => {
+          if (!opt.value) {
+            opt.hidden = false;
+            return;
+          }
+          const label = (opt.dataset.label || opt.textContent || "").toLowerCase();
+          opt.hidden = Boolean(q) && !label.includes(q);
+        });
+      },
+    }));
+
+    window.Alpine.data("orbitMorphToSelect", () => ({
+      init() {
+        const typeSelect = this.$el.querySelector("[data-morph-type]");
+        if (typeSelect) {
+          typeSelect.addEventListener("change", () => {
+            this.$dispatch("orbit:morph-type-changed", {
+              type: typeSelect.value,
+              field: this.$el.getAttribute("data-field"),
+            });
+          });
+        }
+      },
+    }));
+
     // TipTap host for RichEditor (.or-editor-rich[data-tiptap])
     const bootTipTap = () => {
       const nodes = document.querySelectorAll(".or-editor-rich[data-tiptap]");
       if (!nodes.length) return;
-      const ensure = () => {
-        if (!window.tipTapOrbitReady) {
-          const s = document.createElement("script");
-          s.src = "https://cdn.jsdelivr.net/npm/@tiptap/core@2/dist/index.umd.min.js";
-          s.onload = () => {
-            window.tipTapOrbitReady = true;
-            nodes.forEach(initEditor);
-          };
-          document.head.appendChild(s);
-          return;
-        }
-        nodes.forEach(initEditor);
-      };
+
       const initEditor = (root) => {
         if (root.dataset.tiptapBound === "1") return;
-        const input = root.querySelector("[data-tiptap-input]");
-        const surface = root.querySelector("[data-tiptap-surface]") || root;
+        const input = root.querySelector("[data-tiptap-input]") ||
+          document.getElementById(root.getAttribute("data-input") || "");
+        const surface =
+          root.querySelector("[data-tiptap-surface]") ||
+          (() => {
+            const el = document.createElement("div");
+            el.className = "or-tiptap-surface";
+            el.setAttribute("contenteditable", "true");
+            el.dataset.tiptapSurface = "1";
+            root.appendChild(el);
+            return el;
+          })();
         root.dataset.tiptapBound = "1";
-        root.addEventListener("input", () => {
+
+        const toolbar = root.parentElement?.querySelector(".or-editor-toolbar");
+        if (toolbar) {
+          toolbar.addEventListener("click", (event) => {
+            const btn = event.target instanceof Element ? event.target.closest("[data-tool]") : null;
+            if (!(btn instanceof HTMLElement)) return;
+            event.preventDefault();
+            const tool = btn.getAttribute("data-tool");
+            const cmd = {
+              bold: "bold",
+              italic: "italic",
+              underline: "underline",
+              strike: "strikeThrough",
+              link: "createLink",
+            }[tool || ""];
+            if (cmd === "createLink") {
+              const url = window.prompt("URL");
+              if (url) document.execCommand(cmd, false, url);
+            } else if (cmd) {
+              document.execCommand(cmd, false);
+            }
+            sync();
+          });
+        }
+
+        const sync = () => {
           if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
             input.value = surface.innerHTML;
             input.dispatchEvent(new Event("input", { bubbles: true }));
           }
-        });
+        };
+        surface.addEventListener("input", sync);
         if (input && !surface.innerHTML) {
           surface.innerHTML = input.value || "";
         }
       };
-      ensure();
+
+      nodes.forEach(initEditor);
     };
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", bootTipTap);

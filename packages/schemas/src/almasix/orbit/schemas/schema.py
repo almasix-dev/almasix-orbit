@@ -42,17 +42,35 @@ class Schema(Component):
         return self
 
     def dehydrate(self) -> dict[str, Any]:
+        """Collect dehydrated state for all fields, including those nested in layouts."""
         out: dict[str, Any] = {}
-        for c in self._components:
+        try:
+            from almasix.orbit.forms.walk import iter_fields
+
+            fields = iter_fields(self._components)
+        except ImportError:
+            fields = [c for c in self._components if c.is_dehydrated() and c.get_state_path()]
+
+        for c in fields:
             if not c.is_dehydrated():
                 continue
             path = c.get_state_path()
             if not path:
                 continue
             if path in self._state:
-                out[path] = self._state[path]
+                value = self._state[path]
             elif c.get_default() is not None:
-                out[path] = c.get_default()
+                value = c.get_default()
+            else:
+                continue
+            mutate = getattr(c, "get_dehydrate_state_using", None)
+            if callable(mutate):
+                cb = mutate()
+                if cb is not None:
+                    from almasix.orbit.support.evaluate import evaluate
+
+                    value = evaluate(cb, value, state=self._state, field=c)
+            out[path] = value
         return out
 
     def to_dict(self) -> dict[str, Any]:

@@ -356,6 +356,92 @@
   color: var(--or-muted);
 }
 
+.or-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--or-muted);
+  margin-bottom: 0.35rem;
+}
+
+.or-hint-action {
+  border: 0;
+  background: transparent;
+  color: var(--or-accent);
+  cursor: pointer;
+  font: inherit;
+}
+
+.or-input-affix {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.or-input-affix .or-input {
+  flex: 1;
+  border-radius: 0;
+}
+
+.or-input-prefix,
+.or-input-suffix {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.65rem;
+  background: color-mix(in srgb, var(--or-line) 40%, transparent);
+  border: 1px solid var(--or-line-strong);
+  color: var(--or-muted);
+  font-size: 0.85rem;
+}
+
+.or-input-prefix {
+  border-right: 0;
+  border-radius: var(--or-radius) 0 0 var(--or-radius);
+}
+
+.or-input-suffix {
+  border-left: 0;
+  border-radius: 0 var(--or-radius) var(--or-radius) 0;
+}
+
+.or-input-affix .or-input:first-child {
+  border-radius: var(--or-radius) 0 0 var(--or-radius);
+}
+
+.or-input-affix .or-input:last-child {
+  border-radius: 0 var(--or-radius) var(--or-radius) 0;
+}
+
+.or-field-inline {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.or-input-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.or-tiptap-surface {
+  min-height: 8rem;
+  padding: 0.75rem;
+  border: 1px solid var(--or-line-strong);
+  border-radius: var(--or-radius);
+  background: var(--or-cream);
+}
+
+.or-file-image-editor {
+  min-height: 12rem;
+  border: 1px dashed var(--or-line-strong);
+  border-radius: var(--or-radius);
+  margin-bottom: 0.5rem;
+}
+
 .or-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--or-line);

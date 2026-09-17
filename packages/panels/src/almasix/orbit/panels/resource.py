@@ -11,12 +11,15 @@ from almasix.orbit.actions.action import (
     EditAction,
     ViewAction,
 )
-from almasix.orbit.forms.components import Field
 from almasix.orbit.forms.form import Form
+from almasix.orbit.forms.walk import iter_fields
 from almasix.orbit.infolists.components import TextEntry
 from almasix.orbit.infolists.infolist import Infolist
 from almasix.orbit.support.component import Component
 from almasix.orbit.tables.table import Table
+
+# Back-compat for tests/importers that used the private helper name.
+_iter_fields = iter_fields
 
 
 class Resource:
@@ -143,7 +146,7 @@ class Resource:
         # Fallback: readonly projection of the form schema
         form = cls.get_form().readonly()
         entries: list[Component] = []
-        for field in _iter_fields(form.get_components()):
+        for field in iter_fields(form.get_components()):
             name = field.get_name()
             if not name:
                 continue
@@ -154,40 +157,6 @@ class Resource:
     @classmethod
     def get_relations(cls) -> list[type[Any]]:
         return []
-
-
-def _iter_fields(components: list[Component]) -> list[Field]:
-    fields: list[Field] = []
-    for component in components:
-        if isinstance(component, Field):
-            fields.append(component)
-            continue
-        tabs = getattr(component, "_tabs", None)
-        if isinstance(tabs, list) and tabs:
-            for _label, comps in tabs:
-                fields.extend(_iter_fields(list(comps)))
-            continue
-        steps = getattr(component, "_steps", None)
-        if isinstance(steps, list) and steps:
-            for _label, comps in steps:
-                fields.extend(_iter_fields(list(comps)))
-            continue
-        children = getattr(component, "get_components", None)
-        if callable(children):
-            fields.extend(_iter_fields(children()))
-            continue
-        child_components = getattr(component, "get_child_components", None)
-        if callable(child_components):
-            fields.extend(_iter_fields(child_components()))
-            continue
-        schema = getattr(component, "get_schema", None)
-        if callable(schema):
-            fields.extend(_iter_fields(schema()))
-            continue
-        nested = getattr(component, "_schema", None)
-        if isinstance(nested, list) and nested:
-            fields.extend(_iter_fields(nested))
-    return fields
 
 
 def _snake(name: str) -> str:

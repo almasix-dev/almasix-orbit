@@ -47,36 +47,42 @@ TextInput.make("email")
     .placeholder("you@acme.test")
     .helper_text("We never sell this.")
     .hint("Work email preferred")
+    .prefix("@")
+    .suffix(".test")
     .required()
     .email()
-    .disabled(False)
-    .visible(True)
-    .live()                 # wire: live updates
+    .live(on_blur=True)     # or live(debounce=300)
+    .after_state_updated(lambda **_: None)
     .dehydrated(True)
     .default("you@acme.test")
     .rules("required", "email")
 ```
 
-Handy shortcuts: `.email()`, `.password()`, `.numeric()`, `.integer()`, `.tel()`, `.url()`, `.max_length(n)`, `.min_length(n)`, `.rows(n)`, `.options(...)`, `.multiple()`, `.searchable()`, `.relationship(name, title_attribute)`.
+Handy shortcuts: `.email()`, `.password()`, `.numeric()`, `.integer()`, `.tel()`, `.url()`, `.max_length(n)`, `.min_length(n)`, `.rows(n)`, `.options(...)`, `.enum(MyEnum)`, `.multiple()`, `.searchable()`, `.relationship(name, title_attribute)`, `.unique(...)`, `.exists(...)`, `.regex(...)`, `.between(lo, hi)`.
+
+`Form.validate()` / `Schema.dehydrate()` walk nested layouts (Section / Tabs / Wizard / Repeater schemas).
 
 Visibility / disabled / options / labels can be callables — see [Closures](/forms/closures/).
 
 ## Validation
 
-`form.validate(data)` walks fields and applies **string rules** and **callable** rules. Use `.validation_attribute()` / `.validation_messages({…})` for friendlier copy. Register DB hooks with `Form.unique_using(...)` / `Form.exists_using(...)` (or pass `unique=` / `exists=` into `validate()`).
+`form.validate(data)` walks **all nested fields** and applies **string rules** and **callable** rules. Use `.validation_attribute()` / `.validation_messages({…})` for friendlier copy. Register DB hooks with `Form.unique_using(...)` / `Form.exists_using(...)` (or pass `unique=` / `exists=` into `validate()`).
 
 | Rule | Meaning |
 |------|---------|
-| `required` | Non-empty |
-| `email` | Looks like an email |
-| `numeric` / `integer` | Number-ish |
-| `url` | Looks like a URL |
-| `min:N` / `max:N` | Length bounds |
-| `confirmed` | Matches `{field}_confirmation` |
-| `same:other` | Matches another field |
-| `in:a,b` | Value in list |
-| `date` | ISO date-ish |
-| `after:…` / `before:…` | Date vs field or absolute date |
+| `required` / `filled` / `nullable` | Presence |
+| `accepted` / `boolean` / `array` | Type-ish |
+| `email` / `url` / `ip` / `uuid` / `json` | Formats |
+| `alpha` / `alpha_num` / `alpha_dash` | Character sets |
+| `numeric` / `integer` / `digits:N` | Numbers |
+| `min:N` / `max:N` / `between:A,B` | Bounds (string length, list size, or numeric) |
+| `gt:` / `gte:` / `lt:` / `lte:` | Compare to another field or number |
+| `confirmed` / `same:other` / `different:other` | Cross-field |
+| `in:a,b` / `not_in:…` | Membership |
+| `regex:` / `starts_with:` / `ends_with:` | Pattern |
+| `date` / `after:…` / `before:…` | Dates |
+| `unique:table,column[,ignore]` / `exists:…` | Pluggable DB checks |
+| `mimes:png,jpg` / `distinct` | Files / uniqueness among siblings |
 | `unique:table,column` | Via `unique_using` / ctx callback |
 | `exists:table,column` | Via `exists_using` / ctx callback |
 

@@ -33,12 +33,16 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 
 | Feature | Status |
 |---------|--------|
-| Field catalog + searchable Select / groups / create-option | Partial |
-| FileUpload disk/avatar/preview attrs | Partial |
-| Repeater/Builder blocks / clone / collapse | Partial |
-| TipTap RichEditor (CDN + data-tiptap) | Partial |
-| Validation catalog (`unique`/`exists`/`confirmed`/`in`/dates) | Partial |
-| True image editor / live MorphTo search | Planned |
+| Nested `validate()` / `dehydrate()` via layout walk | Done |
+| Field chrome (hint / prefix / suffix / helper / autofocus / live blur+debounce) | Done |
+| Validation catalog (unique/exists/confirmed/in/dates/regex/between/mimes/…) | Done |
+| Select: searchable Alpine, enum, AJAX attrs, create/edit option mounts | Partial |
+| FileUpload: disk/visibility/editor/download attrs + preview chrome | Partial |
+| Repeater/Builder: defaultItems, simple, table, per-block schema, mutate hooks | Partial |
+| TipTap RichEditor toolbar + contenteditable surface | Partial |
+| Live MorphTo AJAX / production FilePond upload adapter | Planned |
+
+Keywords for smoke tests: resources, pages, relation managers, TextInput, Select, Repeater.
 
 ## Tables — Partial
 
