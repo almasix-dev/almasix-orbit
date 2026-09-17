@@ -176,11 +176,9 @@ class RepeatableEntry(Entry):
         blocks: list[str] = []
         for index, item in enumerate(items):
             parts: list[str] = []
+            child_ctx = {k: v for k, v in ctx.items() if k not in ("record", "index")}
             for entry in self._schema:
-                if isinstance(entry, Entry):
-                    parts.append(entry.render(item, record=item, index=index, **ctx))
-                else:
-                    parts.append(entry.render(item, record=item, index=index, **ctx))
+                parts.append(entry.render(item, record=item, index=index, **child_ctx))
             blocks.append(f'<div class="or-repeatable-item" data-index="{index}">{"".join(parts)}</div>')
         body = "".join(blocks) or '<p class="or-empty">No items</p>'
         return (

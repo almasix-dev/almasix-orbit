@@ -162,27 +162,31 @@ def _iter_fields(components: list[Component]) -> list[Field]:
         if isinstance(component, Field):
             fields.append(component)
             continue
+        tabs = getattr(component, "_tabs", None)
+        if isinstance(tabs, list) and tabs:
+            for _label, comps in tabs:
+                fields.extend(_iter_fields(list(comps)))
+            continue
+        steps = getattr(component, "_steps", None)
+        if isinstance(steps, list) and steps:
+            for _label, comps in steps:
+                fields.extend(_iter_fields(list(comps)))
+            continue
         children = getattr(component, "get_components", None)
         if callable(children):
             fields.extend(_iter_fields(children()))
+            continue
+        child_components = getattr(component, "get_child_components", None)
+        if callable(child_components):
+            fields.extend(_iter_fields(child_components()))
             continue
         schema = getattr(component, "get_schema", None)
         if callable(schema):
             fields.extend(_iter_fields(schema()))
             continue
         nested = getattr(component, "_schema", None)
-        if isinstance(nested, list):
+        if isinstance(nested, list) and nested:
             fields.extend(_iter_fields(nested))
-            continue
-        tabs = getattr(component, "_tabs", None)
-        if isinstance(tabs, list):
-            for _label, comps in tabs:
-                fields.extend(_iter_fields(list(comps)))
-            continue
-        steps = getattr(component, "_steps", None)
-        if isinstance(steps, list):
-            for _label, comps in steps:
-                fields.extend(_iter_fields(list(comps)))
     return fields
 
 
