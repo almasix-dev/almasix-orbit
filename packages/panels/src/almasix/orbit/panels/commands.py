@@ -336,7 +336,7 @@ class MakeOrbitUserCommand(Command):
         if bool(self.option("scaffold")):
             try:
                 self._scaffold_user_model(model_path)
-            except Exception as exc:  # pragma: no cover - filesystem errors
+            except Exception as exc:
                 self.error(f"Could not scaffold user model: {exc}")
                 return self.FAILURE
 
@@ -356,8 +356,13 @@ class MakeOrbitUserCommand(Command):
         try:
             user = self._create_user(user_model, name=name, email=email, password=password)
         except Exception as exc:
-            self.error(f"Could not create user: {exc}")
-            self.comment("If the users table is missing, run: smith migrate")
+            from almasix.orbit.panels.db_errors import is_unique_violation, map_db_error
+
+            self.error(map_db_error(exc))
+            if is_unique_violation(exc):
+                self.comment("Choose a different email, or sign in if you already have an account.")
+            else:
+                self.comment("If the users table is missing, run: smith migrate")
             return self.FAILURE
 
         label = getattr(user, "email", None) or email
@@ -375,7 +380,7 @@ class MakeOrbitUserCommand(Command):
                 config("auth.providers.users.model", "app.models.user.User")
                 or "app.models.user.User"
             )
-        except Exception:  # pragma: no cover - config not booted in unit tests
+        except Exception:
             return "app.models.user.User"
 
     def _load_model(self, path: str) -> type[Any]:
@@ -419,7 +424,7 @@ class User(AuthenticatableMixin, Model):
                 encoding="utf-8",
             )
             self.info(f"wrote {user_path}")
-        else:  # pragma: no cover - re-scaffold when user.py already exists
+        else:
             self.info(f"user model exists → {user_path}")
 
         if not models_init.exists():

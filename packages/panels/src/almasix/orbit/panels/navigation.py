@@ -200,11 +200,15 @@ def build_menu_secondary(
 
 
 def _item_matches_path(active_path: str, url: str | None) -> bool:
-    """True when ``active_path`` is the item URL or a nested path under it."""
-    u = str(url or "").rstrip("/")
-    if not u:
-        return False
-    p = active_path.rstrip("/")
+    """True when ``active_path`` is the item URL or a nested path under it.
+
+    Panel home ``/`` is an exact match only — otherwise every path would match
+    the empty prefix after stripping trailing slashes.
+    """
+    u = str(url or "").rstrip("/") or "/"
+    p = str(active_path or "").rstrip("/") or "/"
+    if u == "/":
+        return p == "/"
     return p == u or p.startswith(u + "/")
 
 
@@ -237,11 +241,11 @@ def build_menu_layout(
     roots: list[MenuRoot] = []
     root_keys: list[str | None] = []
 
-    # Ordered group keys: named groups by meta sort, then ungrouped
+    # Ordered group keys: named groups by meta sort (else min item sort), then ungrouped ("Menu")
     named = [g for g in grouped if g is not None]
     named.sort(
         key=lambda g: (
-            meta[g]._sort if g in meta else 0,
+            meta[g]._sort if g in meta else min(int(m.get("sort") or 0) for m in grouped[g]),
             g or "",
         )
     )

@@ -1,3 +1,4 @@
+from almasix.orbit.panels.pages.dashboard import Dashboard
 from almasix.orbit.panels.pages.resource_pages import (
     CreateRecord,
     EditRecord,
@@ -8,6 +9,7 @@ from almasix.orbit.panels.pages.resource_pages import (
 )
 
 __all__ = [
+    "Dashboard",
     "Tab",
     "ResourcePage",
     "ListRecords",

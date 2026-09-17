@@ -5,8 +5,24 @@ description: Login/Register/Profile pages, tenant switcher, and MFA provider pro
 
 ## Auth pages
 
+Built-in `Login` / `Register` pages can be extended and passed to the panel:
+
 ```python
-from almasix.orbit.panels import Login, Register, PasswordReset, Profile
+from almasix.orbit import Panel, Login, Register, Dashboard
+
+class MyLogin(Login):
+    title = "Welcome back"
+
+panel = (
+    Panel.make("admin")
+    .login(MyLogin)
+    .signup()                 # or .signup(MyRegister)
+    .dashboard()              # default home; .dashboard(False) to disable
+)
+```
+
+```python
+from almasix.orbit.panels.auth import PasswordReset, Profile
 
 Login.render()
 Register.render()

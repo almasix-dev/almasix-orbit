@@ -11,6 +11,7 @@ from almasix.orbit.panels.conduit.hosts import (
     EditRecordHost,
     ListRecordsHost,
     LoginHost,
+    RegisterHost,
     ViewRecordHost,
 )
 from almasix.orbit.panels.panel import Panel, PanelRegistry
@@ -34,11 +35,11 @@ def _current_user(panel: Panel | None = None) -> Any:
         user = Auth.user()  # type: ignore[misc]
         if user is not None:
             return user
-    except Exception:  # pragma: no cover - Auth facade optional
+    except Exception:
         pass
     if panel is not None:
         return getattr(panel, "_panel_user", None) or getattr(panel, "_demo_user", None)
-    return None  # pragma: no cover - callers pass a panel when auth is empty
+    return None
 
 
 def _redirect(url: str) -> Any:
@@ -53,15 +54,36 @@ def _redirect(url: str) -> Any:
 
 
 def _login_path(panel: Panel) -> str:
-    base = panel.get_path().rstrip("/") or ""
-    return f"{base}/login"
+    return panel.url("login")
+
+
+def _register_path(panel: Panel) -> str:
+    return panel.url("register")
 
 
 def _is_guest_path(panel: Panel, path: str | None) -> bool:
     if not path:
         return False
-    login = _login_path(panel)
-    return path.rstrip("/") == login.rstrip("/") or path.endswith("/login")
+    normalized = path.rstrip("/") or "/"
+    login = _login_path(panel).rstrip("/") or "/"
+    if normalized == login or path.endswith("/login"):
+        return True
+    if panel.signup_enabled():
+        register = _register_path(panel).rstrip("/") or "/"
+        if normalized == register or path.endswith("/register"):
+            return True
+    return False
+
+
+def _auth_gate(panel: Panel, path: str | None, user: Any) -> Any | None:
+    """Redirect to login when the panel requires auth and the path is not guest."""
+    if not panel.login_enabled():
+        return None
+    if user is not None:
+        return None
+    if _is_guest_path(panel, path):
+        return None
+    return _redirect(_login_path(panel))
 
 
 def _html_response(body: str) -> Any:
@@ -81,16 +103,16 @@ def _request_path(request: Request | None = None) -> str | None:
         if url is not None and getattr(url, "path", None):
             return str(url.path)
         path = getattr(request, "path", None)
-        if path:  # pragma: no cover - Request usually exposes url.path
+        if path:
             return str(path)
     try:
         from almasix.http import request as current_request
 
         req = current_request()
         url = getattr(req, "url", None)
-        if url is not None and getattr(url, "path", None):  # pragma: no cover - depends on request context
+        if url is not None and getattr(url, "path", None):
             return str(url.path)
-    except Exception:  # pragma: no cover - no bound request
+    except Exception:
         pass
     return None
 
@@ -106,7 +128,7 @@ def _conduit_assets() -> str:
         from almasix.conduit.routing import conduit_assets_script
 
         return conduit_assets_script()
-    except Exception:  # pragma: no cover - optional Conduit assets helper
+    except Exception:
         return ""
 
 
@@ -121,7 +143,7 @@ def _instantiate_host(host_cls: type, extras: dict[str, Any] | None = None) -> A
                 break
         else:
             Conduit.register(name, host_cls)
-    except Exception:  # pragma: no cover - registry shape varies by Conduit version
+    except Exception:
         pass
 
     public = host_cls._public_property_names()
@@ -144,8 +166,9 @@ def make_panel_page_action(
         async def action_with_record(request: Request, record_id: str) -> Any:
             path = _request_path(request)
             user = _current_user(panel) if auth_shell else None
-            if auth_shell and panel._login and user is None and not _is_guest_path(panel, path):
-                return _redirect(_login_path(panel))
+            gated = _auth_gate(panel, path, user) if auth_shell else None
+            if gated is not None:
+                return gated
             extras = {**(params or {}), "record_id": record_id}
             instance = _instantiate_host(host_cls, extras)
             slot = _embed(instance)
@@ -163,8 +186,9 @@ def make_panel_page_action(
     async def action(request: Request) -> Any:
         path = _request_path(request)
         user = _current_user(panel) if auth_shell else None
-        if auth_shell and panel._login and user is None and not _is_guest_path(panel, path):
-            return _redirect(_login_path(panel))
+        gated = _auth_gate(panel, path, user) if auth_shell else None
+        if gated is not None:
+            return gated
         instance = _instantiate_host(host_cls, params)
         slot = _embed(instance)
         body = panel.render_shell(
@@ -190,7 +214,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
     def _add(uri: str, action: Any, *, name: str, mw: list[str] | None = None) -> None:
         full = f"{prefix}{uri}" if uri.startswith("/") else f"{prefix}/{uri}"
-        if full == "":  # pragma: no cover - only empty prefix + empty uri
+        if full == "":
             full = "/"
         router.add(
             ["GET"],
@@ -201,17 +225,41 @@ def mount_panel(router: Any, panel: Panel) -> None:
         )
 
     resources = panel.get_resources()
+    dash_cls = panel.dashboard_page() if panel.dashboard_enabled() else None
 
-    if resources:
+    if dash_cls is not None:
+
+        async def dashboard_home(request: Request) -> Any:
+            page_cls = dash_cls
+            path = _request_path(request)
+            user = _current_user(panel)
+            gated = _auth_gate(panel, path, user)
+            if gated is not None:
+                return gated
+            html_body = page_cls.render(
+                brand=getattr(panel, "_brand", "Orbit"),
+                user=user,
+            )
+            body = panel.render_shell(
+                html_body,
+                user=user,
+                active_path=path,
+                extra_head=_conduit_assets(),
+            )
+            return _html_response(body)
+
+        _add("/", dashboard_home, name=f"orbit.{panel.id}.home")
+    elif resources:
         home_host = ListRecordsHost.bind(panel=panel, resource=resources[0])
         _add("/", make_panel_page_action(panel, home_host), name=f"orbit.{panel.id}.home")
     else:
 
-        async def dashboard(request: Request) -> Any:
+        async def empty_home(request: Request) -> Any:
             path = _request_path(request)
             user = _current_user(panel)
-            if panel._login and user is None and not _is_guest_path(panel, path):
-                return _redirect(_login_path(panel))
+            gated = _auth_gate(panel, path, user)
+            if gated is not None:
+                return gated
             body = panel.render_shell(
                 '<div class="or-page"><h1 class="or-page-title">Dashboard</h1>'
                 '<p class="or-muted">Register resources on this panel.</p></div>',
@@ -221,16 +269,21 @@ def mount_panel(router: Any, panel: Panel) -> None:
             )
             return _html_response(body)
 
-        _add("/", dashboard, name=f"orbit.{panel.id}.home")
+        _add("/", empty_home, name=f"orbit.{panel.id}.home")
 
-    if panel._login:
+    if panel.login_enabled():
+        from almasix.conduit import Conduit
+
+        login_page = panel.login_page()
         login_host = type(
             f"LoginHost_{panel.id}",
             (LoginHost,),
-            {"panel_id": panel.id, "_panel": panel},
+            {
+                "panel_id": panel.id,
+                "_panel": panel,
+                "_page_cls": login_page,
+            },
         )
-        from almasix.conduit import Conduit
-
         Conduit.register(f"orbit.{panel.id}.login", login_host)
         # Always ``web`` (session/CSRF) — never panel ``auth`` middleware, or guests
         # cannot reach the login form.
@@ -254,6 +307,27 @@ def mount_panel(router: Any, panel: Panel) -> None:
             "/logout",
             logout_action,
             name=f"orbit.{panel.id}.logout",
+            mw=["web"],
+        )
+
+    if panel.signup_enabled():
+        from almasix.conduit import Conduit
+
+        signup_page = panel.signup_page()
+        register_host = type(
+            f"RegisterHost_{panel.id}",
+            (RegisterHost,),
+            {
+                "panel_id": panel.id,
+                "_panel": panel,
+                "_page_cls": signup_page,
+            },
+        )
+        Conduit.register(f"orbit.{panel.id}.register", register_host)
+        _add(
+            "/register",
+            make_panel_page_action(panel, register_host, auth_shell=False),
+            name=f"orbit.{panel.id}.register",
             mw=["web"],
         )
 
@@ -286,23 +360,30 @@ def mount_panel(router: Any, panel: Panel) -> None:
         )
 
     for page in panel.get_pages():
+        # Dashboard home already owns ``/`` — skip a duplicate ``/dashboard`` mount.
+        if dash_cls is not None and page is dash_cls:
+            continue
         slug = getattr(page, "get_slug", lambda p=page: p.__name__.lower())()
 
-        async def page_action(request: Request, page_cls: type = page) -> Any:
-            path = _request_path(request)
-            user = _current_user(panel)
-            if panel._login and user is None and not _is_guest_path(panel, path):
-                return _redirect(_login_path(panel))
-            html_body = page_cls.render() if hasattr(page_cls, "render") else ""
-            body = panel.render_shell(
-                html_body,
-                user=user,
-                active_path=path,
-                extra_head=_conduit_assets(),
-            )
-            return _html_response(body)
+        def _make_page_action(page_cls: Any) -> Any:
+            async def page_action(request: Request) -> Any:
+                path = _request_path(request)
+                user = _current_user(panel)
+                gated = _auth_gate(panel, path, user)
+                if gated is not None:
+                    return gated
+                html_body = page_cls.render() if hasattr(page_cls, "render") else ""
+                body = panel.render_shell(
+                    html_body,
+                    user=user,
+                    active_path=path,
+                    extra_head=_conduit_assets(),
+                )
+                return _html_response(body)
 
-        _add(f"/{slug}", page_action, name=f"orbit.{panel.id}.page.{slug}")
+            return page_action
+
+        _add(f"/{slug}", _make_page_action(page), name=f"orbit.{panel.id}.page.{slug}")
 
 
 def mount_orbit_assets(router: Any) -> None:
@@ -329,7 +410,7 @@ def mount_orbit_assets(router: Any) -> None:
 
     try:
         uris = {getattr(r, "uri", None) for r in getattr(router, "routes", [])}
-    except Exception:  # pragma: no cover - exotic router objects
+    except Exception:
         uris = set()
     if "/vendor/orbit/orbit.css" not in uris:
         router.add(["GET"], "/vendor/orbit/orbit.css", orbit_css, name="orbit.assets.css")
@@ -349,7 +430,7 @@ def mount_registered_panels(app: Any) -> None:
             from almasix.routing import get_router
 
             router = get_router()
-        except Exception:  # pragma: no cover - no global router
+        except Exception:
             return
     try:
         mount_orbit_assets(router)
