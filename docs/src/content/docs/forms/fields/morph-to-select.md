@@ -1,9 +1,9 @@
 ---
 title: MorphToSelect
-description: Orbit MorphToSelect — Select subclass for polymorphic targets.
+description: Orbit MorphToSelect — type toggle plus id select for polymorphic targets.
 ---
 
-Select-shaped picker for morph-style relations — type + id vibes.
+Type + id picker for morph-style relations.
 
 ## Standalone
 
@@ -12,7 +12,10 @@ from almasix.orbit.forms import Form, MorphToSelect
 
 form = Form.make("demo").schema([
         MorphToSelect.make("notable")
-            .options({"post:1": "Post #1", "user:2": "User #2"})
+            .types([
+                {"type": "post", "label": "Post", "options": {"1": "Hello"}},
+                {"type": "user", "label": "User", "options": {"2": "Ada"}},
+            ])
             .searchable()
 ])
 ```
@@ -23,23 +26,22 @@ form = Form.make("demo").schema([
 from almasix.orbit import Resource
 from almasix.orbit.forms import Form, MorphToSelect
 
-class PostResource(Resource):
+class CommentResource(Resource):
     @classmethod
     def form(cls, form: Form) -> Form:
         return form.schema([
             MorphToSelect.make("subject")
-                .options(lambda **ctx: ctx.get("morph_options", {}))
-                .searchable()
+                .types(["App\\Models\\Post", "App\\Models\\User"])
                 .required(),
         ])
 ```
 
 ## Key methods
 
-- `Inherits Select (`.options`, `.searchable`, `.multiple`)`
-- `Adds `or-select-morph` class`
-- `.required() / .disabled(...) / .visible(...)`
-- `.relationship(...) when you resolve titles yourself`
+- `.types([...])` — class strings or `{type, label, options}` maps
+- `.type_attribute(...)` / `.id_attribute(...)` — state keys (defaults `type` / `id`)
+- Inherits Select (`.options`, `.searchable`, …)
+- Renders type select + id select with `or-select-morph-*` classes
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
 
@@ -47,9 +49,10 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ```html
 <div class="or-field or-field-MorphToSelect" data-field="notable">
-  <label class="or-label" for="or-notable">Notable</label>
-  <select class="or-select or-select-morph" id="or-notable" name="notable" wire:model="notable">
-    <option value="post:1">Post #1</option>
-  </select>
+  <span class="or-label">Notable</span>
+  <div class="or-morph-to-select">
+    <select class="or-select or-select-morph or-select-morph-type">…</select>
+    <select class="or-select or-select-morph or-select-morph-id">…</select>
+  </div>
 </div>
 ```

@@ -53,11 +53,11 @@ Surface checklist ≠ Filament depth. Prefer Partial over Done when in doubt.
 | Feature | Status |
 |---------|--------|
 | Field type checklist (TextInput, Select, Repeater, …) | Partial |
-| Select searchable / relationship / create-option | Planned |
-| FileUpload disk/avatar/image editor | Planned |
-| Repeater/Builder DnD/clone/blocks | Planned |
-| TipTap RichEditor | Planned |
-| Full validation catalog | Planned |
+| Select searchable / relationship / create-option | Partial |
+| FileUpload disk/avatar/image editor | Partial |
+| Repeater/Builder DnD/clone/blocks | Partial |
+| TipTap RichEditor | Partial |
+| Full validation catalog | Partial |
 
 ## Tables
 

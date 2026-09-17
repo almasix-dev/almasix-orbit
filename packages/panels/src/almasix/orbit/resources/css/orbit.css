@@ -769,14 +769,84 @@
   color: var(--or-muted);
 }
 
-.or-editor-toolbar span {
+.or-editor-toolbar span,
+.or-editor-tool {
   padding: 0.2rem 0.45rem;
   border: 1px solid var(--or-line);
   border-radius: 0.35rem;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+}
+
+.or-editor-rich[data-tiptap] {
+  min-height: 8rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: white;
+  outline: none;
+}
+
+.or-editor-rich[data-tiptap]:focus,
+.or-editor-rich[data-tiptap].ProseMirror-focused {
+  border-color: var(--or-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--or-primary) 18%, transparent);
 }
 
 .or-editor-code {
   font-family: ui-monospace, monospace;
+}
+
+.or-select-search {
+  margin-bottom: 0.35rem;
+}
+
+.or-select-actions,
+.or-builder-picker,
+.or-morph-to-select,
+.or-repeater-item-actions,
+.or-repeater-item-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.or-repeater-item-header {
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.or-repeater-item-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.or-morph-to-select {
+  width: 100%;
+}
+
+.or-morph-to-select .or-select {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.or-file-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.or-file-avatar .or-file-preview {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--or-line);
 }
 
 .or-key-value-row,
@@ -792,6 +862,10 @@
   border: 1px solid var(--or-line);
   border-radius: var(--or-radius);
   background: color-mix(in srgb, var(--or-cream) 70%, white);
+}
+
+.or-builder-picker {
+  margin-top: 0.5rem;
 }
 
 .or-btn-sm {

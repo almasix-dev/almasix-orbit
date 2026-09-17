@@ -1,4 +1,5 @@
 from almasix.orbit.forms.components import (
+    Block,
     Builder,
     Checkbox,
     CheckboxList,
@@ -56,6 +57,7 @@ __all__ = [
     "KeyValue",
     "Repeater",
     "Builder",
+    "Block",
     "Slider",
     "ToggleButtons",
     "CodeEditor",

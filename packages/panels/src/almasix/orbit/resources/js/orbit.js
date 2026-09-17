@@ -19,6 +19,12 @@
       heading: "",
       description: "",
       needsConfirm: false,
+      slideOver: false,
+      modalWidth: "md",
+      stickyHeader: false,
+      stickyFooter: false,
+      closeOnEscape: true,
+      closeOnClickAway: true,
       init() {
         window.addEventListener("orbit:mount-action", (event) => {
           const detail = event.detail || {};
@@ -26,6 +32,12 @@
           this.heading = detail.heading || detail.name || "Confirm";
           this.description = detail.description || "";
           this.needsConfirm = Boolean(detail.confirm);
+          this.slideOver = Boolean(detail.slideOver);
+          this.modalWidth = detail.modalWidth || "md";
+          this.stickyHeader = Boolean(detail.stickyHeader);
+          this.stickyFooter = Boolean(detail.stickyFooter);
+          this.closeOnEscape = detail.closeOnEscape !== false;
+          this.closeOnClickAway = detail.closeOnClickAway !== false;
           this.open = true;
         });
       },
@@ -38,7 +50,6 @@
       },
     }));
 
-    // Bridge wire:click mountAction buttons when Conduit is not hosting yet.
     document.addEventListener(
       "click",
       (event) => {
@@ -62,12 +73,58 @@
               heading: btn.getAttribute("data-modal-heading") || name,
               description: btn.getAttribute("data-modal-description") || "",
               confirm: btn.getAttribute("data-confirm") === "true",
+              slideOver: btn.getAttribute("data-slide-over") === "true",
+              modalWidth: btn.getAttribute("data-modal-width") || "md",
+              stickyHeader: btn.getAttribute("data-sticky-header") === "true",
+              stickyFooter: btn.getAttribute("data-sticky-footer") === "true",
+              closeOnEscape: btn.getAttribute("data-close-on-escape") !== "false",
+              closeOnClickAway: btn.getAttribute("data-close-on-click-away") !== "false",
             },
           }),
         );
       },
       true,
     );
+
+    // TipTap host for RichEditor (.or-editor-rich[data-tiptap])
+    const bootTipTap = () => {
+      const nodes = document.querySelectorAll(".or-editor-rich[data-tiptap]");
+      if (!nodes.length) return;
+      const ensure = () => {
+        if (!window.tipTapOrbitReady) {
+          const s = document.createElement("script");
+          s.src = "https://cdn.jsdelivr.net/npm/@tiptap/core@2/dist/index.umd.min.js";
+          s.onload = () => {
+            window.tipTapOrbitReady = true;
+            nodes.forEach(initEditor);
+          };
+          document.head.appendChild(s);
+          return;
+        }
+        nodes.forEach(initEditor);
+      };
+      const initEditor = (root) => {
+        if (root.dataset.tiptapBound === "1") return;
+        const input = root.querySelector("[data-tiptap-input]");
+        const surface = root.querySelector("[data-tiptap-surface]") || root;
+        root.dataset.tiptapBound = "1";
+        root.addEventListener("input", () => {
+          if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+            input.value = surface.innerHTML;
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+        });
+        if (input && !surface.innerHTML) {
+          surface.innerHTML = input.value || "";
+        }
+      };
+      ensure();
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bootTipTap);
+    } else {
+      bootTipTap();
+    }
   };
 
   if (typeof window !== "undefined" && window.Alpine) {

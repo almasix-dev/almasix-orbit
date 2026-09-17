@@ -1,6 +1,6 @@
 ---
 title: Repeater
-description: Orbit Repeater — nested schema with add/remove item actions.
+description: Orbit Repeater — nested schema with clone, collapse, reorder, and limits.
 ---
 
 A list of nested field schemas — line items, speakers, “add another.”
@@ -8,13 +8,20 @@ A list of nested field schemas — line items, speakers, “add another.”
 ## Standalone
 
 ```python
-from almasix.orbit.forms import Form, Repeater, TextInput, Textarea, Select
+from almasix.orbit.forms import Form, Repeater, TextInput
 
 form = Form.make("demo").schema([
-        Repeater.make("links").schema([
-            TextInput.make("label").required(),
-            TextInput.make("url").url().required(),
-        ])
+        Repeater.make("links")
+            .schema([
+                TextInput.make("label").required(),
+                TextInput.make("url").url().required(),
+            ])
+            .cloneable()
+            .collapsible()
+            .reorderable()
+            .item_label(lambda index, **_: f"Link {index + 1}")
+            .min_items(1)
+            .max_items(5)
 ])
 ```
 
@@ -22,7 +29,7 @@ form = Form.make("demo").schema([
 
 ```python
 from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Repeater, TextInput, Textarea, Select
+from almasix.orbit.forms import Form, Repeater, TextInput
 
 class PostResource(Resource):
     @classmethod
@@ -37,28 +44,28 @@ class PostResource(Resource):
 
 ## Key methods
 
-- `.schema([...]) — nested fields / layouts`
-- `.get_schema() / .label(...)`
-- `.disabled(...) / .visible(...)`
-- `Renders Add / Remove with `addRepeaterItem` / `removeRepeaterItem``
+- `.schema([...])` — nested fields / layouts
+- `.cloneable()` / `.collapsible()` / `.reorderable()` — item action buttons
+- `.item_label(str | callable)` — per-item header
+- `.min_items(n)` / `.max_items(n)` — limits (`data-min-items` / `data-max-items`)
+- Wire actions: `addRepeaterItem`, `removeRepeaterItem`, `cloneRepeaterItem`, `moveRepeaterItem`
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
 
-
 Import nested fields from `almasix.orbit.forms` as usual.
-
 
 ## Preview
 
 ```html
-<div class="or-field or-field-Repeater" data-field="links">
+<div class="or-field or-field-Repeater" data-field="links" data-max-items="5">
   <span class="or-label">Links</span>
   <div class="or-repeater">
     <div class="or-repeater-item" data-index="0">
-      <div class="or-repeater-item-body">
-        <div class="or-field or-field-TextInput" data-field="label">…</div>
+      <div class="or-repeater-item-header">
+        <span class="or-repeater-item-label">Link 1</span>
+        <div class="or-repeater-item-actions">…</div>
       </div>
-      <button type="button" class="or-btn or-btn-danger or-btn-sm" wire:click="removeRepeaterItem('links', 0)">Remove</button>
+      <div class="or-repeater-item-body">…</div>
     </div>
   </div>
   <button type="button" class="or-btn or-btn-gray or-btn-sm" wire:click="addRepeaterItem('links')">Add item</button>

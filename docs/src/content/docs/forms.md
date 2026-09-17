@@ -63,7 +63,7 @@ Visibility / disabled / options / labels can be callables — see [Closures](/fo
 
 ## Validation
 
-`form.validate(data)` walks fields and applies **string rules** only (callables in `.rules()` are ignored by the validator today).
+`form.validate(data)` walks fields and applies **string rules** and **callable** rules. Use `.validation_attribute()` / `.validation_messages({…})` for friendlier copy. Register DB hooks with `Form.unique_using(...)` / `Form.exists_using(...)` (or pass `unique=` / `exists=` into `validate()`).
 
 | Rule | Meaning |
 |------|---------|
@@ -71,10 +71,19 @@ Visibility / disabled / options / labels can be callables — see [Closures](/fo
 | `email` | Looks like an email |
 | `numeric` / `integer` | Number-ish |
 | `url` | Looks like a URL |
-| `min:N` / `max:N` | Length or numeric bounds |
+| `min:N` / `max:N` | Length bounds |
+| `confirmed` | Matches `{field}_confirmation` |
+| `same:other` | Matches another field |
+| `in:a,b` | Value in list |
+| `date` | ISO date-ish |
+| `after:…` / `before:…` | Date vs field or absolute date |
+| `unique:table,column` | Via `unique_using` / ctx callback |
+| `exists:table,column` | Via `exists_using` / ctx callback |
 
 ```python
 TextInput.make("age").integer().rules("required", "min:18")
+TextInput.make("password").rules("confirmed")
+Form.unique_using(lambda value, table=None, column=None, **_: db_is_free(table, column, value))
 ```
 
 ## Field types

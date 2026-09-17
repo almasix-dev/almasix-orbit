@@ -1,19 +1,23 @@
 ---
 title: Builder
-description: Orbit Builder — Repeater subclass for block-oriented nested schemas.
+description: Orbit Builder — block picker with Block.make().label().icon().schema().
 ---
 
-A Repeater with Builder branding — block-style nested content.
+A Repeater with a block picker — compose pages from typed chunks.
 
 ## Standalone
 
 ```python
-from almasix.orbit.forms import Form, Builder, TextInput, Textarea, Select
+from almasix.orbit.forms import Form, Builder, Block, TextInput, Textarea
 
 form = Form.make("demo").schema([
-        Builder.make("blocks").schema([
-            TextInput.make("heading").required(),
-            Textarea.make("body").rows(4),
+        Builder.make("blocks").blocks([
+            Block.make("hero").label("Hero").icon("sparkles").schema([
+                TextInput.make("heading").required(),
+            ]).max_items(1),
+            Block.make("quote").label("Quote").schema([
+                Textarea.make("body").rows(3),
+            ]),
         ])
 ])
 ```
@@ -22,25 +26,29 @@ form = Form.make("demo").schema([
 
 ```python
 from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Builder, TextInput, Textarea, Select
+from almasix.orbit.forms import Form, Builder, Block, TextInput, Select
 
 class PostResource(Resource):
     @classmethod
     def form(cls, form: Form) -> Form:
         return form.schema([
-            Builder.make("sections").schema([
-                TextInput.make("title").required(),
-                Select.make("type").options({"text": "Text", "gallery": "Gallery"}),
+            Builder.make("sections").blocks([
+                Block.make("text").label("Text").schema([
+                    TextInput.make("title").required(),
+                ]),
+                Block.make("gallery").label("Gallery").max_items(3).schema([
+                    Select.make("layout").options({"grid": "Grid", "row": "Row"}),
+                ]),
             ]),
         ])
 ```
 
 ## Key methods
 
-- `.schema([...]) — same as Repeater`
-- `Render class is `or-field-Builder``
-- `.label(...) / .visible(...) / .disabled(...)`
-- `Add / Remove wire actions inherited from Repeater`
+- `.blocks([Block.make(...), …])` — typed schemas; picker replaces plain “Add item”
+- `Block.make(name).label(...).icon(...).schema([...]).max_items(n)`
+- Inherits Repeater: `.cloneable()`, `.collapsible()`, `.reorderable()`, `.min_items` / `.max_items`
+- Wire: `addBuilderBlock(name, block)` when a picker button is clicked
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
 
@@ -49,12 +57,10 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 ```html
 <div class="or-field or-field-Builder" data-field="blocks">
   <span class="or-label">Blocks</span>
-  <div class="or-repeater">
-    <div class="or-repeater-item" data-index="0">
-      <div class="or-repeater-item-body">…</div>
-      <button type="button" class="or-btn or-btn-danger or-btn-sm">Remove</button>
-    </div>
+  <div class="or-repeater">…</div>
+  <div class="or-builder-picker" role="group">
+    <button type="button" data-block="hero" data-max-items="1" wire:click="addBuilderBlock('blocks', 'hero')">Hero</button>
+    <button type="button" data-block="quote" wire:click="addBuilderBlock('blocks', 'quote')">Quote</button>
   </div>
-  <button type="button" class="or-btn or-btn-gray or-btn-sm">Add item</button>
 </div>
 ```
