@@ -6,8 +6,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Self
 
-from almasix.orbit.support.component import Component
 from almasix.orbit.schemas.layouts import child_render_state
+from almasix.orbit.support.component import Component
 
 
 class Schema(Component):

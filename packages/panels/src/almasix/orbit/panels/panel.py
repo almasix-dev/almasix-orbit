@@ -5,6 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any, Self
 
+from almasix.orbit.panels.content_width import (
+    DEFAULT_CONTENT_MAX_WIDTH,
+    resolve_content_max_width,
+)
+from almasix.orbit.panels.hooks import render_hook
 from almasix.orbit.panels.navigation import (
     NavigationGroup,
     NavigationItem,
@@ -12,11 +17,6 @@ from almasix.orbit.panels.navigation import (
     build_menu_layout,
     normalize_nav_layout,
 )
-from almasix.orbit.panels.content_width import (
-    DEFAULT_CONTENT_MAX_WIDTH,
-    resolve_content_max_width,
-)
-from almasix.orbit.panels.hooks import render_hook
 from almasix.orbit.panels.theme_colors import (
     DEFAULT_PRIMARY,
     normalize_panel_color,

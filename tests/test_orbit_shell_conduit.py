@@ -4,21 +4,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from almasix.framework.application import Application
 from almasix.orbit.forms import Field, Form, TextInput
 from almasix.orbit.panels.commands import (
+    ORBIT_COMMANDS,
     MakeOrbitFieldCommand,
     MakeOrbitPanelCommand,
     MakeOrbitResourceCommand,
     MakeOrbitUserCommand,
     OrbitInstallCommand,
-    ORBIT_COMMANDS,
 )
 from almasix.orbit.panels.conduit.hosts import CreateRecordHost, ListRecordsHost
 from almasix.orbit.panels.navigation import normalize_nav_layout
-from almasix.orbit.panels.panel import Panel, PanelRegistry
+from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.resource import Resource
 from almasix.orbit.panels.routing import mount_panel
 from almasix.orbit.panels.users import OrbitUser
@@ -276,7 +274,6 @@ def test_root_panel_path_logout_and_nav_urls() -> None:
 
 
 def test_make_orbit_user_creates_with_options(tmp_path: Path) -> None:
-    from almasix.orbit.panels.commands import MakeOrbitUserCommand
 
     created: dict[str, object] = {}
 
@@ -306,7 +303,6 @@ def test_make_orbit_user_creates_with_options(tmp_path: Path) -> None:
 
 
 def test_make_orbit_user_scaffolds_model(tmp_path: Path) -> None:
-    from almasix.orbit.panels.commands import MakeOrbitUserCommand
 
     app = Application(tmp_path)
     (tmp_path / "app").mkdir()

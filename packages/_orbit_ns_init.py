@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from pkgutil import extend_path
 
-__path__ = extend_path(__path__, __name__)
+# Not named ``__init__.py``, so Ruff does not treat ``__path__`` as implicit.
+__path__ = extend_path(list(globals().get("__path__", [])), __name__)
 
 try:
     from almasix.orbit.panels.navigation import NavigationGroup as NavigationGroup

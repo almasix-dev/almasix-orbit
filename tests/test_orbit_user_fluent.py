@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem
 from almasix.orbit.panels.panel import Panel
-from almasix.orbit.panels.routing import _current_user, make_panel_page_action
+from almasix.orbit.panels.routing import _current_user
 from almasix.orbit.panels.users import OrbitUser, PanelNotification, UserMenuItem
 
 
@@ -60,12 +60,11 @@ def test_no_user_means_none() -> None:
 
 
 def test_login_gate_redirects_without_user() -> None:
-    from almasix.http import Request
-    from almasix.routing.router import Router
-    from almasix.orbit.panels.routing import mount_panel
     from almasix.orbit.panels.resource import Resource
+    from almasix.orbit.panels.routing import mount_panel
     from almasix.orbit.tables import Table
     from almasix.orbit.tables.columns import TextColumn
+    from almasix.routing.router import Router
 
     class PostResource(Resource):
         @classmethod

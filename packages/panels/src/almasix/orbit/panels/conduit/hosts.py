@@ -35,7 +35,7 @@ class OrbitPageHost(Component):
         )
         if resource is not None:
             # So Resource.page_url / get_pages include the panel path prefix.
-            setattr(resource, "_panel_path", panel.get_path())
+            resource._panel_path = panel.get_path()
         reg = f"orbit.{panel.id}.{getattr(resource, '__name__', 'page')}.{cls.__name__}"
         Conduit.register(reg, host)
         return host
