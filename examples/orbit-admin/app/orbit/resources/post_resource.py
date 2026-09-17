@@ -20,6 +20,17 @@ class PostResource(Resource):
         {"id": 1, "title": "Launch Orbit", "status": "published"},
         {"id": 2, "title": "Conduit hosts", "status": "draft"},
         {"id": 3, "title": "Mobile tables", "status": "review"},
+        {"id": 4, "title": "Panel branding", "status": "published"},
+        {"id": 5, "title": "Auth signup flow", "status": "published"},
+        {"id": 6, "title": "Dashboard widgets", "status": "draft"},
+        {"id": 7, "title": "Filter chrome", "status": "review"},
+        {"id": 8, "title": "Bulk actions", "status": "draft"},
+        {"id": 9, "title": "Empty states", "status": "review"},
+        {"id": 10, "title": "Content grid cards", "status": "draft"},
+        {"id": 11, "title": "Sortable columns", "status": "published"},
+        {"id": 12, "title": "Pagination footer", "status": "published"},
+        {"id": 13, "title": "Search toolbar", "status": "review"},
+        {"id": 14, "title": "Relation managers", "status": "draft"},
     ]
 
     @classmethod

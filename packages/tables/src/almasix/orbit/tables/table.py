@@ -7,6 +7,7 @@ from typing import Any, Self
 
 from almasix.orbit.actions.action import Action
 from almasix.orbit.support.component import Component
+from almasix.orbit.support.conduit_attrs import conduit_attr
 from almasix.orbit.support.html import e
 from almasix.orbit.tables.columns import Column, ColumnGroup
 from almasix.orbit.tables.filters import Filter
@@ -14,6 +15,12 @@ from almasix.orbit.tables.grouping import Group
 from almasix.orbit.tables.layout import LayoutComponent
 
 ColumnLike = Column | ColumnGroup | LayoutComponent
+
+
+def _conduit_click(expression: str) -> str:
+    """Emit click handlers without escaping ``'`` inside double-quoted attributes."""
+    safe = str(expression).replace("&", "&amp;").replace('"', "&quot;")
+    return f' conduit:click="{safe}" wire:click="{safe}"'
 
 
 class Table(Component):
@@ -202,6 +209,10 @@ class Table(Component):
     def get_records(self) -> list[Any]:
         records = self._filtered_records()
         if self._paginated:
+            total = len(records)
+            max_page = max(1, (total + self._per_page - 1) // self._per_page) if total else 1
+            if self._page > max_page:
+                self._page = max_page
             start = (self._page - 1) * self._per_page
             return records[start : start + self._per_page]
         return records
@@ -211,6 +222,36 @@ class Table(Component):
 
     def get_total(self) -> int:
         return len(self._filtered_records())
+
+    def pagination_meta(self) -> dict[str, int]:
+        """Page window metadata for chrome (clamps ``_page`` like :meth:`get_records`)."""
+        total = self.get_total()
+        per_page = max(1, self._per_page)
+        if not self._paginated:
+            return {
+                "total": total,
+                "page": 1,
+                "per_page": per_page,
+                "last_page": 1,
+                "from": 1 if total else 0,
+                "to": total,
+            }
+        last_page = max(1, (total + per_page - 1) // per_page) if total else 1
+        page = min(max(1, self._page), last_page)
+        self._page = page
+        start = (page - 1) * per_page
+        end = min(start + per_page, total)
+        return {
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "last_page": last_page,
+            "from": (start + 1) if total else 0,
+            "to": end,
+        }
+
+    def has_searchable_columns(self) -> bool:
+        return any(c.is_searchable() for c in self.flat_columns())
 
     def search(self, term: str) -> Self:
         self._search = term
@@ -320,6 +361,90 @@ class Table(Component):
             f'<div class="or-table-filters"{attr_s}>'
             f'<div class="or-table-filters-row">{"".join(parts)}</div>'
             f"{qb_html}{apply_btn}</div>"
+        )
+
+    def _render_search_chrome(self, **ctx: Any) -> str:
+        if not self.has_searchable_columns():
+            return ""
+        value = e(self._search)
+        clear = ""
+        if self._search:
+            clear = (
+                f'<button type="button" class="or-table-search-clear or-btn or-btn-ghost or-btn-sm"'
+                f'{conduit_attr("click", "clearSearch")} aria-label="Clear search">Clear</button>'
+            )
+        return (
+            f'<div class="or-table-search">'
+            f'<label class="or-sr-only" for="or-table-search-input">Search</label>'
+            f'<input id="or-table-search-input" type="search" class="or-input or-table-search-input" '
+            f'placeholder="Search…" value="{value}" autocomplete="off"'
+            f'{conduit_attr("model.live", "table_search")} />'
+            f"{clear}</div>"
+        )
+
+    def _render_sort_header(self, col: Column, **ctx: Any) -> str:
+        label = e(col.get_label(**ctx))
+        name = col.get_name() or ""
+        if not col.is_sortable() or not name:
+            return f'<th class="or-th">{label}</th>'
+        active = self._sort == name
+        direction = str(self._sort_direction or "asc").lower()
+        classes = "or-th or-th-sortable"
+        aria_sort = "none"
+        indicator = ""
+        if active:
+            classes += f" or-th-sorted or-th-sorted-{direction}"
+            aria_sort = "ascending" if direction != "desc" else "descending"
+            glyph = "↓" if direction == "desc" else "↑"
+            indicator = f'<span class="or-th-sort-indicator" aria-hidden="true">{glyph}</span>'
+        click = _conduit_click(f"sortBy('{name}')")
+        return (
+            f'<th class="{classes}" data-sortable="true" data-sort-column="{e(name)}" '
+            f'aria-sort="{aria_sort}">'
+            f'<button type="button" class="or-th-sort-btn"{click}>'
+            f'<span class="or-th-sort-label">{label}</span>{indicator}</button></th>'
+        )
+
+    def _render_pagination_chrome(self, **ctx: Any) -> str:
+        if not self._paginated:
+            return ""
+        meta = self.pagination_meta()
+        total = meta["total"]
+        if total == 0:
+            return ""
+        page = meta["page"]
+        last = meta["last_page"]
+        per_page = meta["per_page"]
+        from_n = meta["from"]
+        to_n = meta["to"]
+        summary = f"Showing {from_n}–{to_n} of {total}"
+        prev_disabled = ' disabled aria-disabled="true"' if page <= 1 else ""
+        next_disabled = ' disabled aria-disabled="true"' if page >= last else ""
+        prev_click = "" if page <= 1 else _conduit_click(f"gotoPage({page - 1})")
+        next_click = "" if page >= last else _conduit_click(f"gotoPage({page + 1})")
+        sizes = (10, 25, 50, 100)
+        if per_page not in sizes:
+            sizes = tuple(sorted({*sizes, per_page}))
+        options = "".join(
+            f'<option value="{n}"{" selected" if n == per_page else ""}>{n}</option>'
+            for n in sizes
+        )
+        return (
+            f'<div class="or-table-pagination" role="navigation" aria-label="Pagination">'
+            f'<p class="or-table-pagination-summary">{e(summary)}</p>'
+            f'<div class="or-table-pagination-controls">'
+            f'<label class="or-table-per-page">'
+            f'<span class="or-muted">Per page</span>'
+            f'<select class="or-select or-select-sm"'
+            f'{conduit_attr("model.live", "per_page")}>{options}</select>'
+            f"</label>"
+            f'<div class="or-table-pagination-buttons">'
+            f'<button type="button" class="or-btn or-btn-ghost or-btn-sm"'
+            f"{prev_click}{prev_disabled}>Previous</button>"
+            f'<span class="or-table-pagination-page">Page {page} of {last}</span>'
+            f'<button type="button" class="or-btn or-btn-ghost or-btn-sm"'
+            f"{next_click}{next_disabled}>Next</button>"
+            f"</div></div></div>"
         )
 
     def _render_summary_cells(
@@ -478,11 +603,12 @@ class Table(Component):
                     f'<th class="or-th or-th-layout">{e(self._header_label(col, **ctx))}</th>'
                 )
             else:
-                sortable = getattr(col, "is_sortable", lambda: False)()
-                header_cells.append(
-                    f'<th class="or-th" data-sortable="{str(sortable).lower()}">'
-                    f'{e(col.get_label(**ctx))}</th>'
-                )
+                if isinstance(col, Column):
+                    header_cells.append(self._render_sort_header(col, **ctx))
+                else:
+                    header_cells.append(
+                        f'<th class="or-th">{e(self._header_label(col, **ctx))}</th>'
+                    )
         headers = "".join(header_cells)
         if has_actions:
             headers += '<th class="or-th or-th-actions">Actions</th>'
@@ -578,11 +704,12 @@ class Table(Component):
             )
 
         filters = self._render_filter_chrome(**ctx)
+        search = self._render_search_chrome(**ctx)
         toolbar = ""
-        if filters or toolbar_end or groups_chooser:
+        if filters or toolbar_end or groups_chooser or search:
             toolbar = (
                 f'<div class="or-list-toolbar">'
-                f'<div class="or-list-toolbar-start">{filters}{groups_chooser}</div>'
+                f'<div class="or-list-toolbar-start">{search}{filters}{groups_chooser}</div>'
                 f'<div class="or-list-toolbar-end">{toolbar_end}</div>'
                 f"</div>"
             )
@@ -604,11 +731,12 @@ class Table(Component):
         stacked = self._render_stacked_cards(page_records, display, **ctx)
         stacked_cls = " or-table-has-stacked" if stacked else ""
         selection_attr = ' x-data="orbitTableSelection"' if has_bulk else ""
+        pagination = self._render_pagination_chrome(**ctx)
 
         if self._layout == "kanban":
             return (
                 f'<div class="or-table-wrap or-list-card or-table-kanban">'
-                f"{toolbar}{self._render_kanban(page_records, display, **ctx)}</div>"
+                f"{toolbar}{self._render_kanban(page_records, display, **ctx)}{pagination}</div>"
             )
 
         return (
@@ -620,5 +748,5 @@ class Table(Component):
             f'<thead class="or-thead"><tr>{headers}</tr></thead>'
             f'<tbody class="or-tbody">{body}</tbody>'
             f"{tfoot}</table></div>"
-            f"{stacked}</div>"
+            f"{stacked}{pagination}</div>"
         )
