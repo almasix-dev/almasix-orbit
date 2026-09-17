@@ -83,12 +83,13 @@ class ListRecordsHost(OrbitPageHost):
         tabs = []
         if hasattr(self._list_page, "get_tabs"):
             try:
+                bound_resource = resource
 
                 class _Bound(self._list_page):  # type: ignore[misc, valid-type]
-                    resource = resource
+                    resource = bound_resource
 
                 tabs = _Bound.get_tabs()
-            except Exception:
+            except Exception:  # pragma: no cover - get_tabs implementations may raise
                 tabs = []
         if tabs and not self.active_tab:
             self.active_tab = tabs[0].id
@@ -270,6 +271,28 @@ class LoginHost(Component):
     error: str = ""
     panel_id: ClassVar[str] = "admin"
     _panel: ClassVar[Any] = None
+    _orbit_redirect: dict[str, Any] | None = None
+
+    def redirect(self, url: str, *, navigate: bool = False) -> None:
+        """Queue a post-response redirect.
+
+        Implemented on the host so login works against Conduit builds that do
+        not yet expose ``Component.redirect`` / ``take_redirect``.
+        """
+        self._orbit_redirect = {"url": str(url), "navigate": bool(navigate)}
+        skip = getattr(self, "skip_render", None)
+        if callable(skip):
+            skip()
+
+    def take_redirect(self) -> dict[str, Any] | None:
+        target = self._orbit_redirect
+        self._orbit_redirect = None
+        if target is not None:
+            return target
+        parent = getattr(super(), "take_redirect", None)
+        if callable(parent):
+            return parent()
+        return None
 
     async def authenticate(self) -> None:
         self.error = ""

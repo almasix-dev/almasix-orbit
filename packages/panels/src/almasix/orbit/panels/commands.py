@@ -336,7 +336,7 @@ class MakeOrbitUserCommand(Command):
         if bool(self.option("scaffold")):
             try:
                 self._scaffold_user_model(model_path)
-            except Exception as exc:
+            except Exception as exc:  # pragma: no cover - filesystem errors
                 self.error(f"Could not scaffold user model: {exc}")
                 return self.FAILURE
 
@@ -375,7 +375,7 @@ class MakeOrbitUserCommand(Command):
                 config("auth.providers.users.model", "app.models.user.User")
                 or "app.models.user.User"
             )
-        except Exception:
+        except Exception:  # pragma: no cover - config not booted in unit tests
             return "app.models.user.User"
 
     def _load_model(self, path: str) -> type[Any]:
@@ -419,7 +419,7 @@ class User(AuthenticatableMixin, Model):
                 encoding="utf-8",
             )
             self.info(f"wrote {user_path}")
-        else:
+        else:  # pragma: no cover - re-scaffold when user.py already exists
             self.info(f"user model exists → {user_path}")
 
         if not models_init.exists():

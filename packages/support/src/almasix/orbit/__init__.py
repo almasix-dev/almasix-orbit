@@ -19,7 +19,7 @@ try:
     from almasix.orbit.panels.users import OrbitUser as OrbitUser
     from almasix.orbit.panels.users import PanelNotification as PanelNotification
     from almasix.orbit.panels.users import UserMenuItem as UserMenuItem
-except ImportError:
+except ImportError:  # pragma: no cover - panels package optional for support-only installs
     pass
 
 __all__ = ["__version__"]

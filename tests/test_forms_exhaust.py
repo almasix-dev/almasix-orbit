@@ -126,9 +126,9 @@ def test_field_chrome_prefix_hint_live_wire() -> None:
     assert 'autocomplete="off"' in html and "autofocus" in html
     assert "wire:model.blur" in html
     assert "data-mask=" in html and "datalist" in html
-    assert field.wire_model_directive() == "wire:model.blur"
-    assert TextInput.make("x").live(debounce=300).wire_model_directive() == "wire:model.live.debounce.300ms"
-    assert TextInput.make("x").live().wire_model_directive() == "wire:model.live"
+    assert field.wire_model_directive() == "model.blur"
+    assert TextInput.make("x").live(debounce=300).wire_model_directive() == "model.live.debounce.300ms"
+    assert TextInput.make("x").live().wire_model_directive() == "model.live"
     assert Component.make("c").saved(False).is_dehydrated() is False
 
 

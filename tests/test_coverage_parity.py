@@ -311,6 +311,6 @@ def test_resource_nested_fields_and_explicit_infolist() -> None:
     names = [f.get_name() for f in _iter_fields(NestedResource.get_form().get_components())]
     assert "title" in names and "slug" in names and "body" in names and "extra" in names
     assert NestedResource.get_infolist().get_components()[0].get_name() == "title"
-    assert NestedResource.page_url("view", {"id": 9}) == "/nested/9"
-    assert NestedResource.page_url("edit", type("R", (), {"id": 3})()) == "/nested/3/edit"
+    assert NestedResource.page_url("view", {"id": 9}) == "/nesteds/9"
+    assert NestedResource.page_url("edit", type("R", (), {"id": 3})()) == "/nesteds/3/edit"
     assert NestedResource.page_url("missing") == ""

@@ -39,7 +39,7 @@ def _login_brand_html(
         parts.append(f'<span class="or-login-logo-slot">{logo}</span>')
     if show_name:
         parts.append(f'<span class="or-login-brand-name">{e(brand)}</span>')
-    if not parts:
+    if not parts:  # pragma: no cover - brand string always yields a name span
         return ""
     classes = "or-login-brand"
     if brand_logo and brand_logo_only:

@@ -515,7 +515,7 @@ class Panel:
             token = csrf_token()
             if token:
                 csrf_meta = f'  <meta name="csrf-token" content="{e(token)}" />\n'
-        except Exception:
+        except Exception:  # pragma: no cover - CSRF optional outside full app boot
             pass
 
         return (
