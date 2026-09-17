@@ -59,13 +59,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-Select" data-field="status" data-searchable x-data="orbitSearchableSelect">
-  <label class="or-label" for="or-status">Status</label>
-  <input type="search" class="or-input or-select-search" x-model="q" x-on:input="filter()" />
-  <select class="or-select" id="or-status" name="status" x-ref="select" wire:model="status">
-    <option value="draft" data-label="Draft" selected>Draft</option>
-    <option value="published" data-label="Published">Published</option>
-  </select>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

@@ -41,15 +41,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-KeyValue" data-field="meta">
-  <span class="or-label">Metadata</span>
-  <div class="or-key-value-editor">
-    <div class="or-key-value-row" data-index="0">
-      <input class="or-input" name="meta_key_0" value="env" placeholder="Key" />
-      <input class="or-input" name="meta_val_0" value="prod" placeholder="Value" wire:model="meta.env" />
-    </div>
-  </div>
-  <button type="button" class="or-btn or-btn-gray or-btn-sm" wire:click="addKeyValueRow('meta')">Add row</button>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

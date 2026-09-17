@@ -42,11 +42,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-Toggle" data-field="notifications">
-  <label class="or-checkbox-label">
-    <input class="or-toggle" type="checkbox" name="notifications" wire:model="notifications" />
-    Email notifications
-  </label>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

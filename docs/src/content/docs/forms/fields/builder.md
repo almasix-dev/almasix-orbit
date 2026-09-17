@@ -54,13 +54,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-Builder" data-field="blocks">
-  <span class="or-label">Blocks</span>
-  <div class="or-repeater">…</div>
-  <div class="or-builder-picker" role="group">
-    <button type="button" data-block="hero" data-max-items="1" wire:click="addBuilderBlock('blocks', 'hero')">Hero</button>
-    <button type="button" data-block="quote" wire:click="addBuilderBlock('blocks', 'quote')">Quote</button>
-  </div>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

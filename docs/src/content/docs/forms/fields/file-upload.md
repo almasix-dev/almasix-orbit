@@ -50,11 +50,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-FileUpload or-file-avatar" data-field="avatar"
-     data-disk="s3" data-directory="avatars" data-avatar="true" data-image-preview="true">
-  <label class="or-label" for="or-avatar">Avatar</label>
-  <div class="or-file-preview" data-preview-grid></div>
-  <input class="or-file" id="or-avatar" type="file" name="avatar" accept="image/*" wire:model="avatar" />
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

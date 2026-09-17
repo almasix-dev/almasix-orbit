@@ -44,11 +44,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-RichEditor" data-field="body">
-  <label class="or-label" for="or-body">Body</label>
-  <div class="or-editor-toolbar" data-toolbar="bold,italic,link">…</div>
-  <div class="or-editor or-editor-rich" data-tiptap data-toolbar="bold,italic,link" data-input="or-body"></div>
-  <input type="hidden" id="or-body" name="body" value="Hello <strong>Orbit</strong>" wire:model="body" data-tiptap-input />
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

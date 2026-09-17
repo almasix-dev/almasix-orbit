@@ -43,9 +43,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-ViewField" data-field="preview">
-  <span class="or-label">Preview</span>
-  <div class="or-view-field"><strong class="or-badge">Live preview</strong></div>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

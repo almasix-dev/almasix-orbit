@@ -47,12 +47,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-MorphToSelect" data-field="notable">
-  <span class="or-label">Notable</span>
-  <div class="or-morph-to-select">
-    <select class="or-select or-select-morph or-select-morph-type">…</select>
-    <select class="or-select or-select-morph or-select-morph-id">…</select>
-  </div>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

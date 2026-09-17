@@ -102,3 +102,9 @@ Panel.make("docs").path("docs").resources([ArticleResource]).login(False)
 ```
 
 Next: [Resources](/resources/).
+
+## Preview
+
+![Panel shell (light)](/examples/light/shell.png)
+
+![Panel shell (dark)](/examples/dark/shell.png)

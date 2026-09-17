@@ -44,9 +44,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-OneTimeCodeInput" data-field="code">
-  <label class="or-label" for="or-code">Verification code <span class="or-required">*</span></label>
-  <input class="or-input" id="or-code" name="code" type="text" value="" wire:model="code" />
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

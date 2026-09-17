@@ -40,10 +40,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-TimePicker" data-field="opens_at">
-  <label class="or-label" for="or-opens_at">Opens at</label>
-  <input class="or-input" id="or-opens_at" name="opens_at" type="time"
-         value="09:00" wire:model="opens_at" />
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

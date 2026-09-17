@@ -56,18 +56,7 @@ Import nested fields from `almasix.orbit.forms` as usual.
 
 ## Preview
 
-```html
-<div class="or-field or-field-Repeater" data-field="links" data-max-items="5">
-  <span class="or-label">Links</span>
-  <div class="or-repeater">
-    <div class="or-repeater-item" data-index="0">
-      <div class="or-repeater-item-header">
-        <span class="or-repeater-item-label">Link 1</span>
-        <div class="or-repeater-item-actions">…</div>
-      </div>
-      <div class="or-repeater-item-body">…</div>
-    </div>
-  </div>
-  <button type="button" class="or-btn or-btn-gray or-btn-sm" wire:click="addRepeaterItem('links')">Add item</button>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

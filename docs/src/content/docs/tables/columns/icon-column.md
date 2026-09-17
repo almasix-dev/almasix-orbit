@@ -45,6 +45,7 @@ class PostResource(Resource):
 
 ## Preview
 
-```html
-<td class="or-td"><!-- heroicon svg --></td>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+

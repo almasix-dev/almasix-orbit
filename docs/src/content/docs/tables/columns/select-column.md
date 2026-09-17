@@ -48,11 +48,7 @@ class PostResource(Resource):
 
 ## Preview
 
-```html
-<td class="or-td">
-  <select class="or-select or-select-inline" name="status" wire:model="table.status">
-    <option value="draft">Draft</option>
-    <option value="published" selected>Published</option>
-  </select>
-</td>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+

@@ -41,8 +41,7 @@ class PostResource(Resource):
 
 ## Preview
 
-```html
-<td class="or-td">
-  <input type="checkbox" class="or-toggle" name="is_published" checked wire:model.live="table.is_published" />
-</td>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+

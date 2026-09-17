@@ -42,9 +42,7 @@ class PostResource(Resource):
 
 ## Preview
 
-```html
-<td class="or-td">
-  <span class="or-badge">orbit</span>
-  <span class="or-badge">docs</span>
-</td>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+

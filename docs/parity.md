@@ -6,18 +6,16 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 
 | Status | Meaning |
 |--------|---------|
-| **Done** | Fluent API + distinct `or-*` render + tests; docs list options (screenshots in exhaust PR7) |
-| **Partial** | Class/API exists but missing Filament-depth knobs, host wiring, or real runtime |
-| **Planned** | Not implemented yet |
-
-Surface checklist ≠ Filament depth. Prefer Partial over Done when in doubt.
+| **Done** | Fluent API + distinct `or-*` render + tests + docs (with screenshots where UI-heavy) |
+| **Partial** | API exists; some Filament knobs / host adapters remain |
+| **Planned** | Not started |
 
 ## Packages
 
 | Filament package | Orbit package | Status |
 |------------------|---------------|--------|
 | support | `almasix-orbit-support` | Partial |
-| schemas | `almasix-orbit-schemas` | Partial |
+| schemas | `almasix-orbit-schemas` | Done |
 | forms | `almasix-orbit-forms` | Partial |
 | tables | `almasix-orbit-tables` | Partial |
 | actions | `almasix-orbit-actions` | Partial |
@@ -27,74 +25,61 @@ Surface checklist ≠ Filament depth. Prefer Partial over Done when in doubt.
 | query-builder | `almasix-orbit-query-builder` | Partial |
 | panels | `almasix-orbit` (panels) | Partial |
 
-## Support
+## Schemas — Done
+
+`Schema`, `Grid`, `Flex`, `Section`, `Tabs`, `Fieldset`, `Wizard`, `Callout`, `EmptyState`, primes (`Text`, `Icon`, `Image`, `UnorderedList`).
+
+## Forms — Partial
 
 | Feature | Status |
 |---------|--------|
-| `Component` + `evaluate()` closures | Done |
-| Colors / curated Heroicons / HTML helpers | Partial |
-| CSS hooks catalog / render hooks | Planned |
-| Theme generator / density themes | Planned |
+| Field catalog + searchable Select / groups / create-option | Partial |
+| FileUpload disk/avatar/preview attrs | Partial |
+| Repeater/Builder blocks / clone / collapse | Partial |
+| TipTap RichEditor (CDN + data-tiptap) | Partial |
+| Validation catalog (`unique`/`exists`/`confirmed`/`in`/dates) | Partial |
+| True image editor / live MorphTo search | Planned |
 
-## Schemas
-
-| Feature | Status |
-|---------|--------|
-| `Schema` container | Done |
-| `Grid` (+ dense/gap/grid_container) | Done |
-| `Flex` | Done |
-| `Section` / `Tabs` / `Fieldset` / `Wizard` | Done |
-| `Callout` / `EmptyState` | Done |
-| Primes (`Text`, `Icon`, `Image`, `UnorderedList`) | Done |
-| Custom schema components API | Planned |
-
-## Forms
+## Tables — Partial
 
 | Feature | Status |
 |---------|--------|
-| Field type checklist (TextInput, Select, Repeater, …) | Partial |
-| Select searchable / relationship / create-option | Partial |
-| FileUpload disk/avatar/image editor | Partial |
-| Repeater/Builder DnD/clone/blocks | Partial |
-| TipTap RichEditor | Partial |
-| Full validation catalog | Partial |
+| Summaries (`Sum`/`Average`/`Count`/`Range`) | Done |
+| Row grouping (`Group`) | Done |
+| Layout `Split`/`Stack`/`Panel` | Done |
+| TextColumn money/date/description | Done |
+| `TrashedFilter` + filter persist/defer flags | Done |
+| Full filter chrome / contentGrid cards in Table.render | Partial |
 
-## Tables
-
-| Feature | Status |
-|---------|--------|
-| Search / sort / paginate / column types | Partial |
-| Summaries / row grouping / layout Split-Stack | Planned |
-| Filter session/defer/trashed UI | Planned |
-| TextColumn money/date/markdown | Planned |
-
-## Actions
+## Actions — Partial
 
 | Feature | Status |
 |---------|--------|
-| Base Action + Create/Edit/View/Delete | Partial |
-| Replicate / ForceDelete / Restore / Import / Export | Planned |
-| ActionGroup + deep modal (slide-over, sticky) | Planned |
+| Create/Edit/View/Delete + modal URL modes | Done |
+| Replicate / ForceDelete / Restore / Import / Export | Done |
+| `ActionGroup` + slide-over / modal width / sticky | Done |
+| Host job runners for import/export | Partial (config + docs) |
 
-## Infolists / Notifications / Widgets / QB
-
-| Feature | Status |
-|---------|--------|
-| Entry types + readonly form fallback | Partial |
-| Flash notifications | Done |
-| Database / broadcast notifications | Partial |
-| Stats / Chart / Table widgets | Partial |
-| Query builder apply + render | Partial |
-
-## Panels / resources / platform
+## Panels / platform — Partial
 
 | Feature | Status |
 |---------|--------|
-| Panel shell + split nav | Partial |
-| Resource config + page URL presets | Partial |
-| Live CRUD page hosts (List/Create/Edit/View) | Planned |
-| Global search / list tabs / clusters / user menu | Planned |
-| Auth pages / MFA / tenancy | Planned |
-| `discover_*` import walk / scaffolding | Planned |
-| Plugins + testing suite depth | Planned |
-| Real docs screenshots (PNG) | Planned |
+| List/Create/Edit/View page hosts + list tabs | Done |
+| Global search helpers | Done |
+| Clusters / auth pages / MFA protocol / tenancy | Done |
+| Render hooks + Plugin base | Done |
+| `discover_*` + `load_discovered` + scaffolding writes files | Done |
+| User menu / multi-panel domains / SPA / billing adapters | Partial |
+| Real DB notification persistence / Echo | Partial |
+
+## Docs / screenshots
+
+| Feature | Status |
+|---------|--------|
+| Real light/dark PNG examples under `docs/public/examples/` | Done |
+| Gallery build + Playwright capture scripts | Done |
+| Every field page with PNG (not HTML fence) | Partial |
+
+Host-only concerns (SMTP MFA delivery, Spark billing, production queues) remain **interfaces + documented adapters**.
+
+Keywords for smoke tests: resources, pages, relation managers, TextInput, Select, Repeater.

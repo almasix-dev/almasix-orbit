@@ -41,9 +41,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-CodeEditor" data-field="payload">
-  <label class="or-label" for="or-payload">JSON</label>
-  <textarea class="or-textarea or-editor or-editor-code" id="or-payload" name="payload" rows="10" wire:model="payload">{"ok": true}</textarea>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

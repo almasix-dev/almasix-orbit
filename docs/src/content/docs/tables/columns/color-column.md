@@ -42,6 +42,7 @@ class PostResource(Resource):
 
 ## Preview
 
-```html
-<td class="or-td"><span class="or-color-swatch" style="background:#f1511b" title="#f1511b"></span></td>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+

@@ -137,9 +137,11 @@ export default defineConfig({
 					items: [
 						{ label: 'Overview', slug: 'panels' },
 						{ label: 'Resources', slug: 'resources' },
+						{ label: 'Resource pages', slug: 'resources/pages' },
 						{ label: 'Pages', slug: 'pages' },
 						{ label: 'Relation managers', slug: 'relation-managers' },
 						{ label: 'Navigation', slug: 'panels/navigation' },
+						{ label: 'Auth & tenancy', slug: 'panels/auth' },
 						{ label: 'Actions in the panel', slug: 'panels/actions' },
 					],
 				},
@@ -210,6 +212,7 @@ export default defineConfig({
 						{ label: 'Overview', slug: 'tables' },
 						{ label: 'Standalone use', slug: 'tables/standalone' },
 						{ label: 'Filters', slug: 'tables/filters' },
+						{ label: 'Summaries & grouping', slug: 'tables/summaries' },
 						{
 							label: 'Column types',
 							collapsed: true,

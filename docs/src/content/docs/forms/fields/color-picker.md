@@ -41,10 +41,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-ColorPicker" data-field="brand">
-  <label class="or-label" for="or-brand">Brand color</label>
-  <input class="or-input" id="or-brand" name="brand" type="color"
-         value="#f1511b" wire:model="brand" />
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

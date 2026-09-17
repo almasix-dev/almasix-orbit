@@ -46,10 +46,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-RelationshipRepeater" data-field="comments">
-  <span class="or-label">Comments</span>
-  <div class="or-repeater">…</div>
-  <button type="button" class="or-btn or-btn-gray or-btn-sm" wire:click="addRepeaterItem('comments')">Add item</button>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

@@ -42,8 +42,7 @@ class PostResource(Resource):
 
 ## Preview
 
-```html
-<td class="or-td">
-  <input class="or-input or-input-inline" name="title" value="Shipping Orbit docs" wire:model.blur="table.title" />
-</td>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+

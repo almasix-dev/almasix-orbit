@@ -51,7 +51,7 @@ Import child columns you nest — `ColumnGroup` alone doesn’t render cell HTML
 
 ## Preview
 
-```html
-<!-- Grouping is structural; children still render as <td class="or-td">…</td> -->
-<th class="or-th" colspan="2">Identity</th>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+

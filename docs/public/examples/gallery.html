@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<title>Orbit examples gallery</title>
+<style>
+/* Orbit admin — Almasix hub tokens (Outfit + #f1511b) */
+
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --or-font: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --or-primary: #f1511b;
+  --or-primary-soft: #ff7a4d;
+  --or-primary-deep: #c43a0f;
+  --or-ink: #1c1411;
+  --or-ink-soft: #2a211c;
+  --or-paper: #f7f1ec;
+  --or-paper-deep: #ebe2da;
+  --or-cream: #fffaf6;
+  --or-muted: #6a5c54;
+  --or-line: rgba(28, 20, 17, 0.12);
+  --or-line-strong: rgba(28, 20, 17, 0.2);
+  --or-danger: #ef4444;
+  --or-success: #22c55e;
+  --or-warning: #f59e0b;
+  --or-info: #3b82f6;
+  --or-gray: #6b7280;
+  --or-sidebar-w: 15.5rem;
+  --or-radius: 0.65rem;
+  --or-shadow: 0 1px 2px rgba(28, 20, 17, 0.06);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.or-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--or-font);
+  font-size: 0.975rem;
+  line-height: 1.5;
+  color: var(--or-ink);
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(241, 81, 27, 0.12), transparent 55%),
+    linear-gradient(180deg, var(--or-cream) 0%, var(--or-paper) 100%);
+}
+
+.or-app {
+  display: grid;
+  grid-template-columns: var(--or-sidebar-w) 1fr;
+  min-height: 100vh;
+}
+
+.or-sidebar {
+  background: color-mix(in srgb, var(--or-cream) 88%, white);
+  border-right: 1px solid var(--or-line);
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.or-brand {
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  color: var(--or-ink);
+  padding: 0.35rem 0.5rem;
+}
+
+.or-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.or-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--or-radius);
+  color: var(--or-ink-soft);
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.or-nav-link:hover,
+.or-nav-link.is-active {
+  background: color-mix(in srgb, var(--or-primary) 12%, transparent);
+  color: var(--or-primary-deep);
+}
+
+.or-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.or-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--or-line);
+  background: color-mix(in srgb, var(--or-cream) 90%, white);
+  min-height: 3.25rem;
+}
+
+.or-topnav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.or-topnav-link,
+.or-topnav-dropdown > button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--or-ink-soft);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.or-topnav-link.is-active,
+.or-topnav-dropdown.is-active > button,
+.or-topnav-link:hover,
+.or-topnav-dropdown > button:hover {
+  background: color-mix(in srgb, var(--or-primary) 12%, transparent);
+  color: var(--or-primary-deep);
+}
+
+.or-topnav-dropdown {
+  position: relative;
+}
+
+.or-topnav-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  min-width: 10rem;
+  padding: 0.35rem;
+  border-radius: var(--or-radius);
+  border: 1px solid var(--or-line);
+  background: var(--or-cream);
+  box-shadow: var(--or-shadow);
+  z-index: 20;
+}
+
+.or-topnav-dropdown:hover .or-topnav-menu,
+.or-topnav-dropdown:focus-within .or-topnav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.or-topnav-child {
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.4rem;
+  color: var(--or-ink-soft);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.or-topnav-child.is-active,
+.or-topnav-child:hover {
+  background: color-mix(in srgb, var(--or-primary) 10%, transparent);
+  color: var(--or-primary-deep);
+}
+
+.or-nav-group {
+  margin: 0.75rem 0.5rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--or-muted);
+}
+
+.or-sidebar-toggle {
+  align-self: flex-start;
+  margin: 0 0.5rem 0.5rem;
+  border: 1px solid var(--or-line);
+  border-radius: 0.45rem;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+.or-sidebar.is-collapsed {
+  width: 3.5rem;
+  overflow: hidden;
+}
+
+.or-sidebar.is-collapsed .or-brand,
+.or-sidebar.is-collapsed .or-nav-link span,
+.or-sidebar.is-collapsed .or-nav-group {
+  display: none;
+}
+
+.or-app-top {
+  grid-template-columns: 1fr;
+}
+
+.or-action-modal-host[x-cloak] {
+  display: none;
+}
+
+.or-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 15, 13, 0.45);
+  z-index: 40;
+}
+
+.or-modal {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  top: 20%;
+  transform: translateX(-50%);
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: var(--or-cream);
+  border: 1px solid var(--or-line);
+  box-shadow: 0 24px 60px rgba(28, 20, 17, 0.28);
+}
+
+.or-modal-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.or-modal-body {
+  margin: 0 0 1rem;
+  color: var(--or-muted);
+}
+
+.or-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.or-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 3.5rem;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--or-line);
+  background: color-mix(in srgb, var(--or-cream) 80%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.or-content {
+  padding: 1.75rem 1.75rem 3rem;
+  max-width: 72rem;
+}
+
+.or-page-title {
+  margin: 0 0 1.25rem;
+  font-size: 1.75rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+
+.or-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--or-line-strong);
+  background: var(--or-cream);
+  color: var(--or-ink);
+  font: inherit;
+  font-weight: 600;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--or-radius);
+  cursor: pointer;
+  box-shadow: var(--or-shadow);
+}
+
+.or-btn:hover {
+  background: var(--or-paper);
+}
+
+.or-btn-primary {
+  background: var(--or-primary);
+  border-color: var(--or-primary-deep);
+  color: #fff;
+}
+
+.or-btn-primary:hover {
+  background: var(--or-primary-deep);
+}
+
+.or-btn-danger {
+  background: var(--or-danger);
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.or-btn-gray {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.or-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.or-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.or-required {
+  color: var(--or-danger);
+  margin-left: 0.15rem;
+}
+
+.or-input,
+.or-textarea,
+.or-select,
+.or-file {
+  width: 100%;
+  font: inherit;
+  color: var(--or-ink);
+  background: var(--or-cream);
+  border: 1px solid var(--or-line-strong);
+  border-radius: var(--or-radius);
+  padding: 0.55rem 0.75rem;
+}
+
+.or-textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.or-helper {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--or-muted);
+}
+
+.or-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: var(--or-cream);
+}
+
+.or-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.or-th,
+.or-td {
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--or-line);
+  vertical-align: middle;
+}
+
+.or-th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--or-muted);
+  background: var(--or-paper);
+}
+
+.or-table-striped tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--or-paper) 55%, transparent);
+}
+
+.or-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--or-paper-deep);
+  color: var(--or-ink-soft);
+}
+
+.or-empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--or-muted);
+}
+
+.or-section {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: var(--or-cream);
+  overflow: hidden;
+}
+
+.or-section-header {
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--or-line);
+  background: var(--or-paper);
+}
+
+.or-section-title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.or-section-body {
+  padding: 1.1rem;
+}
+
+.or-infolist {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.or-entry {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--or-line);
+}
+
+.or-entry-label {
+  font-weight: 600;
+  color: var(--or-muted);
+}
+
+.or-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.85rem;
+}
+
+.or-stat {
+  padding: 1rem;
+  border-radius: var(--or-radius);
+  border: 1px solid var(--or-line);
+  background: var(--or-cream);
+}
+
+.or-stat-label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--or-muted);
+}
+
+.or-stat-value {
+  margin: 0.25rem 0 0;
+  font-size: 1.6rem;
+  font-weight: 750;
+}
+
+.or-widget {
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: var(--or-cream);
+  margin-bottom: 1rem;
+}
+
+.or-widget-header {
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--or-line);
+}
+
+.or-widget-body {
+  padding: 1.1rem;
+}
+
+.or-notification {
+  border-radius: var(--or-radius);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--or-line);
+  background: var(--or-cream);
+}
+
+.or-notification-success {
+  border-color: color-mix(in srgb, var(--or-success) 45%, var(--or-line));
+  background: color-mix(in srgb, var(--or-success) 10%, var(--or-cream));
+}
+
+.or-notification-danger {
+  border-color: color-mix(in srgb, var(--or-danger) 45%, var(--or-line));
+  background: color-mix(in srgb, var(--or-danger) 10%, var(--or-cream));
+}
+
+.or-notification-warning {
+  border-color: color-mix(in srgb, var(--or-warning) 45%, var(--or-line));
+  background: color-mix(in srgb, var(--or-warning) 12%, var(--or-cream));
+}
+
+.or-notification-info {
+  border-color: color-mix(in srgb, var(--or-info) 45%, var(--or-line));
+  background: color-mix(in srgb, var(--or-info) 10%, var(--or-cream));
+}
+
+.or-icon {
+  flex-shrink: 0;
+}
+
+.or-color-swatch {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--or-line-strong);
+  vertical-align: middle;
+}
+
+.or-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.or-grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.or-grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.or-grid-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.or-dense {
+  gap: 0.5rem;
+}
+
+.or-gap-none {
+  gap: 0;
+}
+
+.or-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.or-flex-grow > .or-flex-item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.or-flex-from-md {
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .or-flex-from-md {
+    flex-direction: row;
+  }
+}
+
+.or-callout {
+  display: flex;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--or-line);
+  background: var(--or-surface-2);
+  margin: 0.75rem 0;
+}
+
+.or-callout-title {
+  font-weight: 650;
+  margin-bottom: 0.2rem;
+}
+
+.or-callout-desc {
+  margin: 0;
+  color: var(--or-muted);
+  font-size: 0.9rem;
+}
+
+.or-callout-footer {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.or-callout-danger {
+  border-color: color-mix(in srgb, var(--or-danger) 35%, var(--or-line));
+  background: color-mix(in srgb, var(--or-danger) 8%, var(--or-surface));
+}
+
+.or-callout-success {
+  border-color: color-mix(in srgb, var(--or-success) 35%, var(--or-line));
+  background: color-mix(in srgb, var(--or-success) 8%, var(--or-surface));
+}
+
+.or-callout-warning {
+  border-color: color-mix(in srgb, var(--or-warning, #f59e0b) 35%, var(--or-line));
+  background: color-mix(in srgb, var(--or-warning, #f59e0b) 8%, var(--or-surface));
+}
+
+.or-schema-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.or-empty-state-heading {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.or-empty-state-desc {
+  color: var(--or-muted);
+  margin: 0 0 1rem;
+}
+
+.or-empty-state-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.or-prime-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.or-prime-image {
+  display: flex;
+}
+
+.or-align-center {
+  justify-content: center;
+  text-align: center;
+}
+
+.or-align-end {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.or-prime-img {
+  border-radius: 0.5rem;
+  max-width: 100%;
+}
+
+.or-prime-list {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.or-size-xs { font-size: 0.75rem; }
+.or-size-sm { font-size: 0.875rem; }
+.or-size-md { font-size: 1rem; }
+.or-size-lg { font-size: 1.125rem; }
+.or-size-xl { font-size: 1.25rem; }
+
+.or-weight-light { font-weight: 300; }
+.or-weight-normal { font-weight: 400; }
+.or-weight-medium { font-weight: 500; }
+.or-weight-semibold { font-weight: 600; }
+.or-weight-bold { font-weight: 700; }
+
+.or-schema-cols-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.or-color-primary {
+  color: var(--or-primary);
+}
+.or-color-danger {
+  color: var(--or-danger);
+}
+.or-color-success {
+  color: var(--or-success);
+}
+.or-color-warning {
+  color: var(--or-warning);
+}
+.or-color-info {
+  color: var(--or-info);
+}
+.or-color-gray {
+  color: var(--or-gray);
+}
+
+/* Field extras */
+.or-checkbox-list,
+.or-toggle-buttons,
+.or-key-value-editor,
+.or-repeater,
+.or-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.or-tag {
+  display: inline-flex;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--or-primary) 14%, transparent);
+  color: var(--or-primary-deep);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.or-tags-input {
+  min-width: 8rem;
+  flex: 1;
+}
+
+.or-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--or-line);
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.or-toggle-btn.is-active {
+  border-color: var(--or-primary);
+  background: color-mix(in srgb, var(--or-primary) 12%, transparent);
+  color: var(--or-primary-deep);
+}
+
+.or-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.or-editor-toolbar {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--or-muted);
+}
+
+.or-editor-toolbar span,
+.or-editor-tool {
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--or-line);
+  border-radius: 0.35rem;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+}
+
+.or-editor-rich[data-tiptap] {
+  min-height: 8rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: white;
+  outline: none;
+}
+
+.or-editor-rich[data-tiptap]:focus,
+.or-editor-rich[data-tiptap].ProseMirror-focused {
+  border-color: var(--or-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--or-primary) 18%, transparent);
+}
+
+.or-editor-code {
+  font-family: ui-monospace, monospace;
+}
+
+.or-select-search {
+  margin-bottom: 0.35rem;
+}
+
+.or-select-actions,
+.or-builder-picker,
+.or-morph-to-select,
+.or-repeater-item-actions,
+.or-repeater-item-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.or-repeater-item-header {
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.or-repeater-item-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.or-morph-to-select {
+  width: 100%;
+}
+
+.or-morph-to-select .or-select {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.or-file-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.or-file-avatar .or-file-preview {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--or-line);
+}
+
+.or-key-value-row,
+.or-modal-table-select {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.or-repeater-item {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: color-mix(in srgb, var(--or-cream) 70%, white);
+}
+
+.or-builder-picker {
+  margin-top: 0.5rem;
+}
+
+.or-btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+.or-input-inline,
+.or-select-inline {
+  width: 100%;
+  min-width: 6rem;
+}
+
+.or-th-group {
+  text-align: center;
+  background: color-mix(in srgb, var(--or-primary) 6%, transparent);
+}
+
+.or-query-builder,
+.or-qb-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.or-qb-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) minmax(7rem, 1fr) minmax(8rem, 1.4fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.or-qb-label {
+  font-weight: 600;
+}
+
+.or-repeatable,
+.or-repeatable-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.or-cell-link,
+.or-entry-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.or-cell-link:hover,
+.or-entry-link:hover {
+  color: var(--or-primary);
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .or-app {
+    grid-template-columns: 1fr;
+  }
+
+  .or-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--or-line);
+  }
+
+  .or-grid-cols-2,
+  .or-grid-cols-3,
+  .or-schema-cols-2,
+  .or-entry {
+    grid-template-columns: 1fr;
+  }
+
+  .or-qb-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+body { font-family: Outfit, ui-sans-serif, system-ui, sans-serif; margin: 0; background: #f6f4f1; color: #1a1a1a; }
+body.dark { background: #121212; color: #f3f3f3; }
+.gallery-section { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+.gallery-card { background: #fff; border: 1px solid #e5e2dc; border-radius: 12px; padding: 1.25rem; }
+body.dark .gallery-card { background: #1c1c1c; border-color: #333; }
+h2 { margin-top: 0; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+<section class="gallery-section" id="form"><h2>form</h2><div class="gallery-card"><div class="or-schema or-schema-cols-1"><div class="or-callout or-callout-info or-color-info" role="status"><div class="or-callout-icon or-color-info"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg></div><div class="or-callout-body"><div class="or-callout-title">Tip</div><p class="or-callout-desc">Fill these fields</p></div></div><div class="or-flex or-flex-grow or-flex-from-md"><div class="or-flex-item"><div class="or-field or-field-TextInput" data-field="name"><label class="or-label" for="or-name">Name <span class="or-required">*</span></label><input class="or-input" id="or-name" name="name" type="text" value="" wire:model="name" /></div></div><div class="or-flex-item"><div class="or-field or-field-Select" data-field="role" data-searchable x-data="orbitSearchableSelect"><label class="or-label" for="or-role">Role</label><input type="search" class="or-input or-select-search" placeholder="Search…" x-model="q" x-on:input="filter()" aria-label="Search Role" /><select class="or-select" id="or-role" name="role" x-ref="select" wire:model="role"><option value="a" data-label="Admin">Admin</option><option value="e" data-label="Editor">Editor</option></select></div></div></div><div class="or-field or-field-FileUpload" data-field="avatar"><label class="or-label" for="or-avatar">Avatar</label><input class="or-file" id="or-avatar" type="file" name="avatar" accept="image/png" wire:model="avatar" /></div><div class="or-field or-field-RichEditor" data-field="body"><label class="or-label" for="or-body">Body</label><div class="or-editor-toolbar" data-toolbar="bold,italic,link"><button type="button" class="or-editor-tool" data-tool="bold" aria-label="bold">Bold</button><button type="button" class="or-editor-tool" data-tool="italic" aria-label="italic">Italic</button><button type="button" class="or-editor-tool" data-tool="link" aria-label="link">Link</button></div><div class="or-editor or-editor-rich" id="or-body-editor" data-tiptap data-toolbar="bold,italic,link" data-input="or-body"></div><input type="hidden" class="or-editor-input" id="or-body" name="body" value="&lt;p&gt;Hello&lt;/p&gt;" wire:model="body" data-tiptap-input /></div><div class="or-field or-field-Repeater" data-field="links" x-data="{ items: 1 }"><span class="or-label">Links</span><div class="or-repeater"><div class="or-repeater-item" data-index="0"><div class="or-repeater-item-header"><span class="or-repeater-item-label">Item 1</span><div class="or-repeater-item-actions"><button type="button" class="or-btn or-btn-danger or-btn-sm" wire:click="removeRepeaterItem('links', 0)">Remove</button></div></div><div class="or-repeater-item-body"><div class="or-field or-field-TextInput" data-field="url"><label class="or-label" for="or-url">Url</label><input class="or-input" id="or-url" name="url" type="text" value="" wire:model="url" /></div></div></div></div><button type="button" class="or-btn or-btn-gray or-btn-sm" wire:click="addRepeaterItem('links')">Add item</button></div><div class="or-field or-field-Builder" data-field="blocks" x-data="{ items: 1 }"><span class="or-label">Blocks</span><div class="or-repeater"><div class="or-repeater-item" data-index="0"><div class="or-repeater-item-header"><span class="or-repeater-item-label">Item 1</span><div class="or-repeater-item-actions"><button type="button" class="or-btn or-btn-danger or-btn-sm" wire:click="removeRepeaterItem('blocks', 0)">Remove</button></div></div><div class="or-repeater-item-body"><div class="or-field or-field-TextInput" data-field="heading"><label class="or-label" for="or-heading">Heading</label><input class="or-input" id="or-heading" name="heading" type="text" value="" wire:model="heading" /></div></div></div></div><div class="or-builder-picker" role="group"><button type="button" class="or-btn or-btn-gray or-btn-sm" data-block="hero" wire:click="addBuilderBlock('blocks', 'hero')">Hero</button></div></div></div></div></section><section class="gallery-section" id="table"><h2>table</h2><div class="gallery-card"><div class="or-table-wrap"><table class="or-table or-table-striped"><thead class="or-thead"><tr><th class="or-th" data-sortable="true">Title</th><th class="or-th" data-sortable="false">Amount</th><th class="or-th or-th-actions">Actions</th></tr></thead><tbody class="or-tbody"><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Ada</span></td><td class="or-td"><span class="or-cell-text">USD 12.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="create" href="/create"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span>Create</span></a><button type="button" class="or-btn or-btn-danger" data-action="delete" data-confirm="true" wire:click="mountAction('delete')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg><span>Delete</span></button></td></tr><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Bob</span></td><td class="or-td"><span class="or-cell-text">USD 8.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="create" href="/create"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span>Create</span></a><button type="button" class="or-btn or-btn-danger" data-action="delete" data-confirm="true" wire:click="mountAction('delete')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg><span>Delete</span></button></td></tr></tbody></table></div></div></section><section class="gallery-section" id="primes"><h2>primes</h2><div class="gallery-card"><span class="or-prime or-prime-text or-size-md or-weight-normal or-badge or-color-success">Published</span></div></section><section class="gallery-section" id="login"><h2>login</h2><div class="gallery-card"><div class="or-page or-page-auth or-page-login"><h1 class="or-page-title">Sign in</h1><form class="or-form" wire:submit="authenticate"><div class="or-schema or-schema-cols-1"><div class="or-field or-field-TextInput" data-field="email"><label class="or-label" for="or-email">Email <span class="or-required">*</span></label><input class="or-input" id="or-email" name="email" type="email" value="" wire:model="email" /></div><div class="or-field or-field-TextInput" data-field="password"><label class="or-label" for="or-password">Password <span class="or-required">*</span></label><input class="or-input" id="or-password" name="password" type="password" value="" wire:model="password" /></div></div><button type="submit" class="or-btn or-btn-primary">Sign in</button></form></div></div></section><section class="gallery-section" id="shell"><h2>shell</h2><div class="gallery-card"><!DOCTYPE html>
+<html lang="en" data-orbit-panel="admin">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orbit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/vendor/orbit/orbit.css" />
+  <style>:root { --or-font: 'Outfit', ui-sans-serif, system-ui, sans-serif; --or-primary: #f1511b; }</style>
+</head>
+<body class="or-body">
+  <div class="or-app or-app-split" x-data="{ sidebarOpen: true }">
+    <aside class="or-sidebar" :class="{ 'is-collapsed': !sidebarOpen }">
+<button type="button" class="or-sidebar-toggle" @click="sidebarOpen = !sidebarOpen" aria-label="Toggle sidebar">☰</button>      <div class="or-brand">Orbit</div>
+      <nav class="or-nav"><a class="or-nav-link is-active" href="/admin/demo"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg><span>Content</span></a></nav>
+    </aside>
+    <div class="or-main">
+      <header class="or-topbar">
+        <nav class="or-topnav"><a class="or-topnav-link" href="/admin/demo">Posts</a></nav>
+        <div class="or-topbar-end"></div>
+      </header>
+      <main class="or-content"><div class="or-table-wrap"><table class="or-table or-table-striped"><thead class="or-thead"><tr><th class="or-th" data-sortable="true">Title</th><th class="or-th" data-sortable="false">Amount</th><th class="or-th or-th-actions">Actions</th></tr></thead><tbody class="or-tbody"><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Ada</span></td><td class="or-td"><span class="or-cell-text">USD 12.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="create" href="/create"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span>Create</span></a><button type="button" class="or-btn or-btn-danger" data-action="delete" data-confirm="true" wire:click="mountAction('delete')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg><span>Delete</span></button></td></tr><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Bob</span></td><td class="or-td"><span class="or-cell-text">USD 8.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="create" href="/create"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span>Create</span></a><button type="button" class="or-btn or-btn-danger" data-action="delete" data-confirm="true" wire:click="mountAction('delete')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg><span>Delete</span></button></td></tr></tbody></table></div><div class="or-empty-state or-schema-empty"><h3 class="or-empty-state-heading">No drafts</h3><p class="or-empty-state-desc">Create one.</p></div></main>
+    </div>
+  </div>
+  <div class="or-action-modal-host" x-data="orbitActionModal" x-cloak>
+    <div class="or-modal-backdrop" x-show="open" @click="close()"></div>
+    <div class="or-modal" x-show="open" role="dialog" aria-modal="true">
+      <h2 class="or-modal-title" x-text="heading"></h2>
+      <p class="or-modal-body" x-text="description" x-show="description"></p>
+      <div class="or-modal-actions">
+        <button type="button" class="or-btn or-btn-gray" @click="close()">Cancel</button>
+        <button type="button" class="or-btn or-btn-primary" @click="confirm()">Confirm</button>
+      </div>
+    </div>
+  </div>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="/vendor/orbit/orbit.js"></script>
+</body>
+</html></div></section>
+</body>
+</html>

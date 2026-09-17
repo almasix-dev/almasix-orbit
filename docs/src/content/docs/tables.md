@@ -110,3 +110,9 @@ data = table.to_dict()
 ```
 
 Markup uses `.or-*` classes so the published Orbit CSS can dress it up.
+
+## Preview
+
+![Table (light)](/examples/light/table.png)
+
+![Table (dark)](/examples/dark/table.png)
