@@ -84,4 +84,4 @@ Conduit components expose `mountAction(name)` — the button’s `wire:click` ta
 
 Authorization: `.authorize(bool | callable)` + `.can(**ctx)` — don’t render what the user can’t run.
 
-More presets and the fluent surface live on the package [Actions](/actions/) page.
+More presets and the fluent surface live on the package [Actions](/actions/overview/) page.

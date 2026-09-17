@@ -32,6 +32,6 @@ Use `Split`, `Stack`, and `Panel` when composing rich cell layouts (card-like ro
 
 ## Preview
 
-![Table (light)](/examples/light/table.png)
+![Table (light)](/examples/light/tables/overview.png)
 
-![Table (dark)](/examples/dark/table.png)
+![Table (dark)](/examples/dark/tables/overview.png)

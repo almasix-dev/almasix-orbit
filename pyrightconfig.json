@@ -1,0 +1,19 @@
+{
+  "include": ["packages", "tests", "examples", "demo"],
+  "exclude": ["**/node_modules", "**/__pycache__", "docs", "**/.venv"],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "warning",
+  "extraPaths": [
+    "packages/panels/src",
+    "packages/support/src",
+    "packages/schemas/src",
+    "packages/forms/src",
+    "packages/tables/src",
+    "packages/actions/src",
+    "packages/infolists/src",
+    "packages/notifications/src",
+    "packages/widgets/src",
+    "packages/query-builder/src"
+  ]
+}

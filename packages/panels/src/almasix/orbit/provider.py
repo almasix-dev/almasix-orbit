@@ -10,7 +10,7 @@ _HERE = Path(__file__).resolve().parent
 
 
 class OrbitServiceProvider(ServiceProvider):
-    """Registers Orbit assets, panel discovery, and smith commands."""
+    """Registers Orbit assets, panel discovery, smith commands, and route mounts."""
 
     def register(self) -> None:
         from almasix.orbit.panels.panel import PanelRegistry
@@ -19,7 +19,7 @@ class OrbitServiceProvider(ServiceProvider):
             self.app.config.set(
                 "orbit",
                 {
-                    "path": "/orbit",
+                    "path": "/admin",
                     "font": "Outfit",
                     "brand": "Orbit",
                 },
@@ -47,12 +47,31 @@ class OrbitServiceProvider(ServiceProvider):
             "orbit-assets",
         )
         try:
-            from almasix.orbit.panels.commands import MakeOrbitResourceCommand
+            from almasix.orbit.panels.commands import ORBIT_COMMANDS
 
-            self.commands([MakeOrbitResourceCommand])
+            self.commands(ORBIT_COMMANDS)
         except Exception:  # pragma: no cover
             pass
         self._register_directives()
+        self._mount_assets()
+        self._mount_panels()
+
+    def _mount_assets(self) -> None:
+        try:
+            from almasix.orbit.panels.routing import mount_orbit_assets
+            from almasix.routing import get_router
+
+            mount_orbit_assets(get_router())
+        except Exception:  # pragma: no cover
+            pass
+
+    def _mount_panels(self) -> None:
+        try:
+            from almasix.orbit.panels.routing import mount_registered_panels
+
+            mount_registered_panels(self.app)
+        except Exception:  # pragma: no cover
+            pass
 
     def _register_directives(self) -> None:
         try:
@@ -61,6 +80,8 @@ class OrbitServiceProvider(ServiceProvider):
             if not self.app.container.bound(Engine):
                 return
             engine = self.app.make(Engine)
+            if engine is None:
+                return
         except Exception:  # pragma: no cover
             return
 
@@ -70,5 +91,8 @@ class OrbitServiceProvider(ServiceProvider):
         def scripts_directive(_expr: str) -> str:
             return "__w(context.get('__orbit_scripts', lambda: '')())"
 
-        engine.directive("orbitStyles", styles_directive)
-        engine.directive("orbitScripts", scripts_directive)
+        try:
+            engine.directive("orbitStyles", styles_directive)
+            engine.directive("orbitScripts", scripts_directive)
+        except Exception:  # pragma: no cover
+            return

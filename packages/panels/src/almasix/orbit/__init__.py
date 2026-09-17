@@ -7,6 +7,7 @@ from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.panel import Panel, PanelRegistry
 from almasix.orbit.panels.relation_manager import RelationManager
 from almasix.orbit.panels.resource import Resource
+from almasix.orbit.panels.users import OrbitUser, PanelNotification, UserMenuItem
 
 __version__ = "0.1.0"
 
@@ -19,4 +20,7 @@ __all__ = [
     "RelationManager",
     "NavigationItem",
     "NavigationGroup",
+    "OrbitUser",
+    "UserMenuItem",
+    "PanelNotification",
 ]

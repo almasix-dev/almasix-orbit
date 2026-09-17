@@ -46,6 +46,9 @@ class Table(Component):
         self._filters_session_key: str | None = None
         self._defer_filters = False
         self._query_builder: Any | None = None
+        self._stacked_on_mobile: bool = True
+        self._layout: str = "table"
+        self._kanban_status: str | None = None
 
     def columns(self, columns: Sequence[ColumnLike]) -> Self:
         self._columns = list(columns)
@@ -134,6 +137,23 @@ class Table(Component):
             self._content_grid = dict(columns)
         else:
             self._content_grid = {"columns": columns, **kwargs}
+        return self
+
+    def stacked_on_mobile(self, condition: bool = True) -> Self:
+        """Below ``md``, render each row as a label/value card (Filament parity)."""
+        self._stacked_on_mobile = condition
+        return self
+
+    def layout(self, mode: str) -> Self:
+        """``table`` (default), ``grid`` (content_grid), or ``kanban``."""
+        self._layout = mode
+        if mode == "grid" and self._content_grid is None:
+            self._content_grid = {"md": 2, "xl": 3}
+        return self
+
+    def kanban_status(self, attribute: str) -> Self:
+        self._kanban_status = attribute
+        self._layout = "kanban"
         return self
 
     def flat_columns(self) -> list[Column]:
@@ -313,6 +333,8 @@ class Table(Component):
     ) -> str:
         cells: list[str] = []
         any_summary = False
+        if ctx.get("has_bulk"):
+            cells.append('<td class="or-td or-td-summary" data-summary-scope="' + e(scope) + '"></td>')
         for col in display:
             if isinstance(col, Column) and col.get_summarizers():
                 any_summary = True
@@ -339,11 +361,72 @@ class Table(Component):
         display: list[Column | LayoutComponent],
         **ctx: Any,
     ) -> str:
-        cells = "".join(c.render_cell(record, **ctx) for c in display)
+        select = ""
+        if ctx.get("has_bulk"):
+            rid = e(str(self._record_value(record, "id") or id(record)))
+            select = (
+                f'<td class="or-td or-td-select">'
+                f'<input type="checkbox" class="or-row-check" data-record-id="{rid}" '
+                f'@change="toggle(\'{rid}\', $event.target.checked)" '
+                f'aria-label="Select row" /></td>'
+            )
+        cells = select + "".join(c.render_cell(record, **ctx) for c in display)
         if self._actions:
             acts = self._render_actions(self._actions, record, **ctx)
-            cells += f'<td class="or-td or-td-actions">{acts}</td>'
-        return f'<tr class="or-tr">{cells}</tr>'
+            cells += f'<td class="or-td or-td-actions"><div class="or-row-actions">{acts}</div></td>'
+        return f'<tr class="or-tr or-list-row">{cells}</tr>'
+
+    def _render_record_card(self, record: Any, display: list[Column | LayoutComponent], **ctx: Any) -> str:
+        fields: list[str] = []
+        for col in display:
+            label = e(self._header_label(col, **ctx))
+            if isinstance(col, Column):
+                cell = col.render_cell(record, **ctx)
+                # strip td wrapper if present
+                if cell.startswith("<td"):
+                    inner = cell[cell.find(">") + 1 : cell.rfind("</td>")]
+                else:
+                    inner = cell
+            else:
+                inner = col.render_cell(record, **ctx) if hasattr(col, "render_cell") else ""
+            fields.append(
+                f'<div class="or-table-field"><span class="or-table-field-label">{label}</span>'
+                f'<div class="or-table-field-value">{inner}</div></div>'
+            )
+        footer = ""
+        if self._actions:
+            footer = (
+                f'<div class="or-table-record-card-actions">'
+                f"{self._render_actions(self._actions, record, **ctx)}</div>"
+            )
+        return (
+            f'<article class="or-table-record-card or-card">'
+            f'<div class="or-table-record-card-body">{"".join(fields)}</div>{footer}</article>'
+        )
+
+    def _render_stacked_cards(
+        self, records: Sequence[Any], display: list[Column | LayoutComponent], **ctx: Any
+    ) -> str:
+        if not self._stacked_on_mobile or self._layout == "kanban" or self._groups_only:
+            return ""
+        cards = "".join(self._render_record_card(r, display, **ctx) for r in records)
+        return f'<div class="or-table-stacked" aria-hidden="false">{cards}</div>'
+
+    def _render_kanban(self, records: Sequence[Any], display: list[Column | LayoutComponent], **ctx: Any) -> str:
+        attr = self._kanban_status or "status"
+        buckets: dict[str, list[Any]] = {}
+        for record in records:
+            key = str(self._record_value(record, attr) or "Unset")
+            buckets.setdefault(key, []).append(record)
+        cols = []
+        for status, items in buckets.items():
+            cards = "".join(self._render_record_card(r, display, **ctx) for r in items)
+            cols.append(
+                f'<div class="or-kanban-column" data-status="{e(status)}">'
+                f'<h3 class="or-kanban-column-title">{e(status)}</h3>'
+                f'<div class="or-kanban-column-body">{cards}</div></div>'
+            )
+        return f'<div class="or-kanban" data-status-attr="{e(attr)}">{"".join(cols)}</div>'
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -358,17 +441,31 @@ class Table(Component):
             "persist_filters": self._persist_filters_in_session,
             "defer_filters": self._defer_filters,
             "content_grid": self._content_grid,
+            "stacked_on_mobile": self._stacked_on_mobile,
+            "layout": self._layout,
+            "kanban_status": self._kanban_status,
         }
 
     def render(self, state: Any = None, **ctx: Any) -> str:
+        skip_header_actions = bool(ctx.pop("skip_header_actions", False))
         page_records = self.get_records()
         all_records = self.get_all_filtered_records()
         display = self.display_columns()
         flat = self.flat_columns()
         has_actions = bool(self._actions)
-        colspan = len(display) + (1 if has_actions else 0)
+        has_bulk = bool(self._bulk_actions)
+        colspan = len(display) + (1 if has_actions else 0) + (1 if has_bulk else 0)
+        row_ctx = {**ctx, "has_bulk": has_bulk}
 
         header_cells: list[str] = []
+        if has_bulk:
+            header_cells.append(
+                '<th class="or-th or-th-select">'
+                '<input type="checkbox" class="or-row-check" '
+                '@change="toggleAll($event.target.checked)" '
+                ':checked="pageFullySelected" '
+                'aria-label="Select all on page" /></th>'
+            )
         for col in self._columns:
             if isinstance(col, ColumnGroup):
                 span = len(col.get_columns())
@@ -408,19 +505,20 @@ class Table(Component):
                 )
                 if not self._groups_only:
                     for record in bucket.records:
-                        rows.append(self._render_row(record, display, **ctx))
+                        rows.append(self._render_row(record, display, **row_ctx))
                 group_summary = self._render_summary_cells(
                     display,
                     bucket.records,
                     scope="group",
                     has_actions=has_actions,
+                    has_bulk=has_bulk,
                     **ctx,
                 )
                 if group_summary:
                     rows.append(group_summary)
         else:
             for record in page_records:
-                rows.append(self._render_row(record, display, **ctx))
+                rows.append(self._render_row(record, display, **row_ctx))
 
         body = "".join(rows) or (
             f'<tr class="or-tr"><td class="or-td or-empty" colspan="{colspan}">'
@@ -431,10 +529,10 @@ class Table(Component):
 
         footer_parts: list[str] = []
         page_foot = self._render_summary_cells(
-            display, page_records, scope="page", has_actions=has_actions, **ctx
+            display, page_records, scope="page", has_actions=has_actions, has_bulk=has_bulk, **ctx
         )
         all_foot = self._render_summary_cells(
-            display, all_records, scope="all", has_actions=has_actions, **ctx
+            display, all_records, scope="all", has_actions=has_actions, has_bulk=has_bulk, **ctx
         )
         if page_foot:
             footer_parts.append(page_foot)
@@ -442,7 +540,6 @@ class Table(Component):
             footer_parts.append(all_foot)
         elif all_foot and not page_foot:
             footer_parts.append(all_foot)
-        # When page == all, still show one summary row
         if all_foot and page_foot and all_records == page_records:
             footer_parts = [all_foot]
         tfoot = (
@@ -452,43 +549,76 @@ class Table(Component):
         striped = " or-table-striped" if self._striped else ""
         grid_attr = ""
         wrap_extra = ""
-        if self._content_grid:
-            cols = self._content_grid.get("columns", 2)
+        if self._content_grid or self._layout == "grid":
+            grid = self._content_grid or {"md": 2, "xl": 3}
+            cols = grid.get("columns") or grid.get("md") or 2
             grid_attr = f' data-content-grid="{e(cols)}"'
+            for bp in ("sm", "md", "lg", "xl", "2xl"):
+                if bp in grid:
+                    grid_attr += f' data-grid-{bp}="{e(grid[bp])}"'
             wrap_extra = " or-table-content-grid"
 
-        header_bar = ""
-        if self._header_actions:
-            header_bar = (
-                f'<div class="or-table-header-actions">'
+        toolbar_end = ""
+        if self._header_actions and not skip_header_actions:
+            toolbar_end += (
+                f'<div class="or-list-toolbar-actions">'
                 f'{self._render_actions(self._header_actions, None, **ctx)}</div>'
-            )
-        bulk_bar = ""
-        if self._bulk_actions:
-            bulk_bar = (
-                f'<div class="or-table-bulk-actions">'
-                f'{self._render_actions(self._bulk_actions, None, **ctx)}</div>'
             )
         groups_chooser = ""
         if self._groups:
             opts = "".join(
-                f'<option value="{e(g.get_name() or "")}">{e(g.get_label(**ctx) or g.get_name())}</option>'
+                f'<option value="{e(g.get_name() or "")}">'
+                f'{e(g.get_label(**ctx) or g.get_name())}</option>'
                 for g in self._groups
             )
             groups_chooser = (
                 f'<div class="or-table-groups-chooser">'
-                f'<select class="or-select" wire:model="tableGroup">{opts}</select></div>'
+                f'<label class="or-filter-label">Group</label>'
+                f'<select class="or-select or-select-sm" wire:model="tableGroup">{opts}</select></div>'
             )
 
-        # silence unused flat when only used for search — keep referenced
+        filters = self._render_filter_chrome(**ctx)
+        toolbar = ""
+        if filters or toolbar_end or groups_chooser:
+            toolbar = (
+                f'<div class="or-list-toolbar">'
+                f'<div class="or-list-toolbar-start">{filters}{groups_chooser}</div>'
+                f'<div class="or-list-toolbar-end">{toolbar_end}</div>'
+                f"</div>"
+            )
+
+        bulk_bar = ""
+        if self._bulk_actions:
+            bulk_bar = (
+                '<div class="or-list-bulk or-table-bulk-actions" '
+                'x-show="selected.length > 0" x-cloak>'
+                '<span class="or-list-bulk-label">'
+                '<span x-text="selected.length"></span> selected</span>'
+                f'<div class="or-list-bulk-actions">'
+                f'{self._render_actions(self._bulk_actions, None, **ctx)}</div>'
+                '<button type="button" class="or-btn or-btn-ghost or-btn-sm" @click="clear()">'
+                "Clear</button></div>"
+            )
+
         _ = flat
+        stacked = self._render_stacked_cards(page_records, display, **ctx)
+        stacked_cls = " or-table-has-stacked" if stacked else ""
+        selection_attr = ' x-data="orbitTableSelection"' if has_bulk else ""
+
+        if self._layout == "kanban":
+            return (
+                f'<div class="or-table-wrap or-list-card or-table-kanban">'
+                f"{toolbar}{self._render_kanban(page_records, display, **ctx)}</div>"
+            )
 
         return (
-            f'<div class="or-table-wrap{wrap_extra}"{grid_attr}>'
-            f"{header_bar}{bulk_bar}{groups_chooser}"
-            f"{self._render_filter_chrome(**ctx)}"
+            f'<div class="or-table-wrap or-list-card{wrap_extra}{stacked_cls}"'
+            f"{grid_attr}{selection_attr}>"
+            f"{toolbar}{bulk_bar}"
+            f'<div class="or-list-table-scroll or-table-desktop">'
             f'<table class="or-table{striped}">'
             f'<thead class="or-thead"><tr>{headers}</tr></thead>'
             f'<tbody class="or-tbody">{body}</tbody>'
             f"{tfoot}</table></div>"
+            f"{stacked}</div>"
         )

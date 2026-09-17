@@ -93,6 +93,9 @@ def test_cluster_auth_tenancy_hooks_search() -> None:
     assert c.get_breadcrumb() == "Settings crumb"
 
     assert "or-page-login" in Login.render()
+    assert "or-login-title" in Login.render(brand="Orbit")
+    assert "or-btn-block" in Login.render()
+    assert "Remember me" in Login.render()
     assert "password" in Register.render()
     assert "or-page-profile" in Profile.render()
     mfa = AppAuthentication(brand_name="Orbit")

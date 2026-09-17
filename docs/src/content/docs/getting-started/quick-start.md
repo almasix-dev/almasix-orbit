@@ -64,9 +64,8 @@ def register_orbit(app) -> None:
         Panel.make("admin")
         .path("orbit")
         .brand_name("Acme Admin")
-        .colors(primary="#f1511b")
+        .primary("#f1511b")
         .resources([PostResource])
-        .middleware(["auth", "permission"])
         .login()
     )
     app.make(PanelRegistry).register(panel)
@@ -103,4 +102,4 @@ def test_post_resource_shape():
 
 You wrote Python. The panel has a sidebar entry, a form, and a table. That’s the whole game.
 
-Dive deeper: [Panels](/panels/), [Resources](/resources/), [Forms](/forms/), [Tables](/tables/).
+Dive deeper: [Panels](/panels/configuration/), [Resources](/resources/overview/), [Forms](/forms/overview/), [Tables](/tables/overview/).

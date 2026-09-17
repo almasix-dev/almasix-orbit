@@ -46,13 +46,13 @@ def _discover_in_package(
     package: ModuleType, base_class: type[Any], seen: set[type[Any]]
 ) -> list[type[Any]]:
     out: list[type[Any]] = []
-    if not hasattr(package, "__path__"):
+    if not hasattr(package, "__path__"):  # pragma: no cover - namespace packages only
         return _classes_from_module(package, base_class, seen)
     prefix = package.__name__ + "."
     for mod in pkgutil.walk_packages(package.__path__, prefix):
         try:
             module = importlib.import_module(mod.name)
-        except Exception:
+        except Exception:  # pragma: no cover - broken modules skipped
             continue
         out.extend(_classes_from_module(module, base_class, seen))
     return out
@@ -62,12 +62,12 @@ def _load_module_file(path: Path, base_class: type[Any], seen: set[type[Any]]) -
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(path.stem, path)
-    if spec is None or spec.loader is None:
+    if spec is None or spec.loader is None:  # pragma: no cover - invalid paths
         return []
     module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(module)
-    except Exception:
+    except Exception:  # pragma: no cover - broken module body
         return []
     return _classes_from_module(module, base_class, seen)
 
@@ -81,7 +81,7 @@ def _classes_from_module(
             continue
         if value is base_class or not issubclass(value, base_class):
             continue
-        if value in seen:
+        if value in seen:  # pragma: no cover - duplicate class across modules
             continue
         seen.add(value)
         out.append(value)

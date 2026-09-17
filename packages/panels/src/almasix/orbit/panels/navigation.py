@@ -9,7 +9,16 @@ from typing import Any, Literal, Self
 from almasix.orbit.support.component import Component
 from almasix.orbit.support.evaluate import evaluate
 
-NavLayout = Literal["sidebar", "top", "sidebar_topbar"]
+NavLayout = Literal["sidebar", "top", "sidebar_topbar", "apps"]
+
+
+def normalize_nav_layout(layout: str) -> Literal["sidebar", "top", "sidebar_topbar"]:
+    """Map public aliases onto internal layout modes (``apps`` → ``sidebar_topbar``)."""
+    if layout == "apps":
+        return "sidebar_topbar"
+    if layout in ("sidebar", "top", "sidebar_topbar"):
+        return layout  # type: ignore[return-value]
+    return "sidebar_topbar"
 
 
 class NavigationItem(Component):
@@ -170,6 +179,9 @@ def build_menu_secondary(
             )
             for m in sorted(members, key=_sort_key)
         ]
+        # Prefer an explicit shared icon; otherwise first member's icon.
+        icons = [m.get("icon") for m in members if m.get("icon")]
+        group_icon = icons[0] if icons and len(set(icons)) == 1 else (icons[0] if icons else None)
         entries.append(
             (
                 min(int(m.get("sort") or 0) for m in members),
@@ -177,6 +189,7 @@ def build_menu_secondary(
                     label=name,
                     href=children[0].href if children else None,
                     active=any(c.active for c in children),
+                    icon=group_icon,
                     children=children,
                 ),
             )
@@ -184,6 +197,15 @@ def build_menu_secondary(
 
     entries.sort(key=lambda pair: (pair[0], pair[1].label))
     return [item for _, item in entries]
+
+
+def _item_matches_path(active_path: str, url: str | None) -> bool:
+    """True when ``active_path`` is the item URL or a nested path under it."""
+    u = str(url or "").rstrip("/")
+    if not u:
+        return False
+    p = active_path.rstrip("/")
+    return p == u or p.startswith(u + "/")
 
 
 def build_menu_layout(
@@ -195,16 +217,21 @@ def build_menu_layout(
     panel_path: str = "/",
 ) -> MenuLayoutContext:
     """Shamar-style: sidebar roots = groups; topbar = active group's items."""
+    layout = normalize_nav_layout(layout)  # type: ignore[assignment]
     meta = group_meta or {}
-    flat = list(items)
+    flat = [dict(i) for i in items]
     grouped = group_items(flat)
 
     # Resolve active item by longest matching URL prefix
     active_item: dict[str, Any] | None = None
     if active_path:
-        candidates = [i for i in flat if active_path.startswith(str(i.get("url") or ""))]
+        candidates = [i for i in flat if _item_matches_path(active_path, i.get("url"))]
         if candidates:
             active_item = max(candidates, key=lambda i: len(str(i.get("url") or "")))
+
+    active_url = str(active_item.get("url")) if active_item else None
+    for item in flat:
+        item["active"] = bool(active_url and item.get("url") == active_url)
 
     active_group = active_item.get("group") if active_item else None
     roots: list[MenuRoot] = []
@@ -257,8 +284,39 @@ def build_menu_layout(
         # Flatten into sidebar only — still preserve group labels in flat list
         secondary = []
     elif layout == "top":
+        # Top chrome: each navigation group is a dropdown; ungrouped items stay links.
         roots = []
-        secondary = build_menu_secondary(flat, active_url=str(active_item.get("url")) if active_item else None)
+        active_url = str(active_item.get("url")) if active_item else None
+        secondary_items: list[MenuSecondaryItem] = []
+        for key in ordered_keys:
+            members = grouped.get(key) or []
+            if not members:
+                continue
+            if key is None:
+                secondary_items.extend(build_menu_secondary(members, active_url=active_url))
+                continue
+            children = [
+                MenuSecondaryChild(
+                    label=str(m.get("label") or ""),
+                    href=str(m.get("url") or "#"),
+                    active=bool(active_url and m.get("url") == active_url),
+                    icon=m.get("icon"),
+                )
+                for m in sorted(members, key=_sort_key)
+            ]
+            group_icon = meta[key]._icon if key in meta else None
+            if not group_icon:
+                group_icon = next((c.icon for c in children if c.icon), None)
+            secondary_items.append(
+                MenuSecondaryItem(
+                    label=str(key),
+                    href=children[0].href if children else None,
+                    active=any(c.active for c in children),
+                    icon=group_icon,
+                    children=children,
+                )
+            )
+        secondary = secondary_items
 
     return MenuLayoutContext(
         menu_roots=roots,

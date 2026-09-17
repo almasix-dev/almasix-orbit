@@ -15,6 +15,28 @@ pip install almasix-orbit
 
 Requires `almasix`, `almasix-conduit`, and `almasix-permission`.
 
+### Local app development (IDE-friendly)
+
+Split packages use `pkgutil.extend_path`, which confuses PyCharm. For a real app
+against this checkout, depend on the **combined** tree (one editable root — same
+layout as a PyPI install):
+
+```bash
+cd examples/orbit-admin
+./scripts/bootstrap.sh   # pip install -e ../../packages/combined
+```
+
+Or in your app’s `pyproject.toml`:
+
+```toml
+dependencies = ["almasix-orbit"]
+
+[tool.uv.sources]
+almasix-orbit = { path = "../almasix-orbit/packages/combined", editable = true }
+```
+
+Open that **app** project in PyCharm and select its `.venv`. No extra source roots.
+
 ## Packages
 
 | Package | Import |

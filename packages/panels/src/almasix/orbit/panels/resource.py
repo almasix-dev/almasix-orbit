@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, ClassVar
 
 from almasix.orbit.actions.action import (
@@ -11,12 +12,15 @@ from almasix.orbit.actions.action import (
     EditAction,
     ViewAction,
 )
-from almasix.orbit.forms.components import Field
 from almasix.orbit.forms.form import Form
+from almasix.orbit.forms.walk import iter_fields
 from almasix.orbit.infolists.components import TextEntry
 from almasix.orbit.infolists.infolist import Infolist
 from almasix.orbit.support.component import Component
 from almasix.orbit.tables.table import Table
+
+# Back-compat for tests/importers that used the private helper name.
+_iter_fields = iter_fields
 
 
 class Resource:
@@ -31,6 +35,7 @@ class Resource:
     navigation_sort: ClassVar[int] = 0
     record_title_attribute: ClassVar[str] = "id"
     permission_prefix: ClassVar[str | None] = None
+    content_max_width: ClassVar[str | None] = None
 
     @classmethod
     def get_slug(cls) -> str:
@@ -39,11 +44,13 @@ class Resource:
         name = cls.__name__
         if name.endswith("Resource"):
             name = name[: -len("Resource")]
-        return _snake(name)
+        return _pluralize(_snake(name))
 
     @classmethod
     def get_navigation_label(cls) -> str:
-        return cls.navigation_label or cls.get_slug().replace("_", " ").title()
+        if cls.navigation_label:
+            return cls.navigation_label
+        return cls.get_slug().replace("_", " ").replace("-", " ").title()
 
     @classmethod
     def get_model(cls) -> type[Any]:
@@ -94,11 +101,13 @@ class Resource:
     @classmethod
     def get_pages(cls) -> dict[str, str]:
         slug = cls.get_slug()
+        prefix = str(getattr(cls, "_panel_path", "") or "").rstrip("/")
+        root = f"{prefix}/{slug}" if prefix else f"/{slug}"
         return {
-            "index": f"/{slug}",
-            "create": f"/{slug}/create",
-            "edit": f"/{slug}/{{id}}/edit",
-            "view": f"/{slug}/{{id}}",
+            "index": root,
+            "create": f"{root}/create",
+            "edit": f"{root}/{{id}}/edit",
+            "view": f"{root}/{{id}}",
         }
 
     @classmethod
@@ -143,7 +152,7 @@ class Resource:
         # Fallback: readonly projection of the form schema
         form = cls.get_form().readonly()
         entries: list[Component] = []
-        for field in _iter_fields(form.get_components()):
+        for field in iter_fields(form.get_components()):
             name = field.get_name()
             if not name:
                 continue
@@ -156,40 +165,6 @@ class Resource:
         return []
 
 
-def _iter_fields(components: list[Component]) -> list[Field]:
-    fields: list[Field] = []
-    for component in components:
-        if isinstance(component, Field):
-            fields.append(component)
-            continue
-        tabs = getattr(component, "_tabs", None)
-        if isinstance(tabs, list) and tabs:
-            for _label, comps in tabs:
-                fields.extend(_iter_fields(list(comps)))
-            continue
-        steps = getattr(component, "_steps", None)
-        if isinstance(steps, list) and steps:
-            for _label, comps in steps:
-                fields.extend(_iter_fields(list(comps)))
-            continue
-        children = getattr(component, "get_components", None)
-        if callable(children):
-            fields.extend(_iter_fields(children()))
-            continue
-        child_components = getattr(component, "get_child_components", None)
-        if callable(child_components):
-            fields.extend(_iter_fields(child_components()))
-            continue
-        schema = getattr(component, "get_schema", None)
-        if callable(schema):
-            fields.extend(_iter_fields(schema()))
-            continue
-        nested = getattr(component, "_schema", None)
-        if isinstance(nested, list) and nested:
-            fields.extend(_iter_fields(nested))
-    return fields
-
-
 def _snake(name: str) -> str:
     out: list[str] = []
     for i, ch in enumerate(name):
@@ -197,6 +172,26 @@ def _snake(name: str) -> str:
             out.append("_")
         out.append(ch.lower())
     return "".join(out)
+
+
+def _pluralize(value: str) -> str:
+    """English plural for URL segments (``author`` → ``authors``).
+
+    Runs through singularize first so already-plural stems like ``settings``
+    do not become ``settingses``.
+    """
+    try:
+        from almasix.orm.inflector import pluralize, singularize
+
+        return pluralize(singularize(value))
+    except Exception:
+        pass
+    lower = value.lower()
+    if re.search(r"(s|x|z|ch|sh)$", lower):
+        return value + "es"
+    if re.search(r"[^aeiou]y$", lower):
+        return value[:-1] + "ies"
+    return value + "s"
 
 
 def _can(user: Any, ability: str, record: Any = None) -> bool:

@@ -288,3 +288,130 @@ a[class*='link-card'],
 .link-card {
 	color: var(--sl-color-white);
 }
+
+/*
+ * Orbit example screenshots ship as light + dark pairs under
+ * /examples/{light|dark}/…. Show only the pair that matches the active
+ * Starlight theme (default :root is dark; light is [data-theme='light']).
+ */
+:root[data-theme='light'] .sl-markdown-content :is(p, figure):has(> img[src*='/examples/dark/']),
+:root:not([data-theme='light']) .sl-markdown-content :is(p, figure):has(> img[src*='/examples/light/']) {
+	display: none;
+}
+
+@media print {
+	:root .sl-markdown-content :is(p, figure):has(> img[src*='/examples/dark/']) {
+		display: none;
+	}
+	:root .sl-markdown-content :is(p, figure):has(> img[src*='/examples/light/']) {
+		display: block;
+	}
+	.or-lightbox {
+		display: none !important;
+	}
+}
+
+/* Click-to-enlarge affordance for Orbit example screenshots */
+.sl-markdown-content img.or-lightbox-trigger {
+	cursor: zoom-in;
+	border-radius: 0.75rem;
+	outline: 1px solid var(--sl-color-hairline-light);
+	transition: box-shadow 0.15s ease, outline-color 0.15s ease;
+}
+
+.sl-markdown-content img.or-lightbox-trigger:hover,
+.sl-markdown-content img.or-lightbox-trigger:focus-visible {
+	outline-color: var(--sl-color-accent);
+	box-shadow: 0 10px 28px var(--almasix-glow);
+}
+
+html.or-lightbox-open {
+	overflow: hidden;
+}
+
+.or-lightbox {
+	padding: 0;
+	border: 0;
+	max-width: none;
+	max-height: none;
+	width: 100vw;
+	height: 100vh;
+	background: transparent;
+	color: var(--sl-color-white);
+	/* Do not set display here — closed <dialog> must stay display:none (UA).
+	   Overriding display makes the closed dialog fall back into document flow. */
+}
+
+.or-lightbox[open] {
+	display: grid;
+	place-items: center;
+}
+
+.or-lightbox::backdrop {
+	background: rgba(10, 8, 7, 0.78);
+	backdrop-filter: blur(6px);
+}
+
+.or-lightbox__chrome {
+	position: fixed;
+	top: 0.75rem;
+	right: 0.75rem;
+	z-index: 2;
+	margin: 0;
+	padding: 0;
+}
+
+.or-lightbox__close {
+	appearance: none;
+	width: 2.5rem;
+	height: 2.5rem;
+	border: 1px solid rgba(255, 255, 255, 0.22);
+	border-radius: 999px;
+	background: rgba(20, 15, 13, 0.72);
+	color: #fff;
+	font-size: 1.5rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.or-lightbox__close:hover,
+.or-lightbox__close:focus-visible {
+	background: var(--almasix-orange);
+	border-color: transparent;
+}
+
+.or-lightbox__figure {
+	margin: 0;
+	display: grid;
+	gap: 0.65rem;
+	justify-items: center;
+	align-content: center;
+	max-width: min(96vw, 1400px);
+	max-height: 96vh;
+}
+
+.or-lightbox__img {
+	display: block;
+	width: auto;
+	height: auto;
+	max-width: min(96vw, 1400px);
+	max-height: calc(100vh - 5.5rem);
+	object-fit: contain;
+	border-radius: 0.75rem;
+	background: #fff;
+	box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+:root:not([data-theme='light']) .or-lightbox__img {
+	background: #1a1715;
+}
+
+.or-lightbox__caption {
+	margin: 0;
+	padding: 0 0.5rem 0.75rem;
+	font-size: 0.9rem;
+	opacity: 0.85;
+	color: rgba(255, 255, 255, 0.78);
+	text-align: center;
+}
+

@@ -23,12 +23,16 @@ class Component:
         self._view: str | None = None
         self._column_span: int | str | None = None
         self._live = False
+        self._live_on_blur = False
+        self._live_debounce: int | None = None
         self._dehydrated = True
         self._state_path: str | None = None
         self._default: Any = None
         self._helper_text: str | Callable[..., str] | None = None
         self._hint: str | Callable[..., str] | None = None
         self._hint_icon: str | Callable[..., str] | None = None
+        self._hidden_label = False
+        self._inline_label = False
 
     @classmethod
     def make(cls, name: str | None = None) -> Self:
@@ -94,12 +98,48 @@ class Component:
         self._column_span = span
         return self
 
-    def live(self, condition: bool = True) -> Self:
+    def live(
+        self,
+        condition: bool = True,
+        *,
+        on_blur: bool = False,
+        debounce: int | None = None,
+    ) -> Self:
         self._live = condition
+        self._live_on_blur = on_blur
+        self._live_debounce = debounce
         return self
+
+    def wire_model_directive(self) -> str:
+        """Return the model binding key (``model``, ``model.live``, …) without prefix."""
+        if self._live_on_blur:
+            return "model.blur"
+        if self._live and self._live_debounce is not None:
+            return f"model.live.debounce.{int(self._live_debounce)}ms"
+        if self._live:
+            return "model.live"
+        return "model"
+
+    def wire_model_attrs(self, name: str) -> str:
+        """Dual ``conduit:model*`` / ``wire:model*`` attributes for ``name``."""
+        from almasix.orbit.support.conduit_attrs import conduit_attr
+
+        return conduit_attr(self.wire_model_directive(), name)
 
     def dehydrated(self, condition: bool = True) -> Self:
         self._dehydrated = condition
+        return self
+
+    def saved(self, condition: bool = True) -> Self:
+        """Filament 5 alias for ``dehydrated``."""
+        return self.dehydrated(condition)
+
+    def hidden_label(self, condition: bool = True) -> Self:
+        self._hidden_label = condition
+        return self
+
+    def inline_label(self, condition: bool = True) -> Self:
+        self._inline_label = condition
         return self
 
     def is_dehydrated(self) -> bool:

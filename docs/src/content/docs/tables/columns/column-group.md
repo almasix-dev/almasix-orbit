@@ -1,5 +1,5 @@
 ---
-title: ColumnGroup
+title: Column group
 description: Orbit ColumnGroup — nest columns under a named group.
 ---
 
@@ -51,7 +51,7 @@ Import child columns you nest — `ColumnGroup` alone doesn’t render cell HTML
 
 ## Preview
 
-![Orbit table example (light)](/examples/light/table.png)
+![Orbit table example (light)](/examples/light/tables/overview.png)
 
-![Orbit table example (dark)](/examples/dark/table.png)
+![Orbit table example (dark)](/examples/dark/tables/overview.png)
 

@@ -90,7 +90,7 @@ def test_panel_registry_and_shell() -> None:
         .resources([PostResource])
         .pages([DashboardPage])
         .widgets([])
-        .middleware(["auth"])
+        .middleware(["auth"], replace=True)
         .login()
         .auth_guard("web")
         .dark_mode(False)
@@ -109,6 +109,25 @@ def test_panel_registry_and_shell() -> None:
     assert any(i["label"] == "Dashboard" for i in nav)
     shell = panel.render_shell("<p>Hi</p>", user=User(is_admin=True))
     assert "or-app" in shell and "Almasix Orbit" in shell and "Hi" in shell
+    assert 'src="/logo.svg"' in shell and "or-brand-name" in shell
+    logo_only = (
+        Panel.make("branded")
+        .brand_name("Acme")
+        .brand_logo("/logo.svg", dark="/logo-dark.svg")
+        .brand_logo_only()
+    )
+    brand = logo_only._brand_html()
+    assert "or-brand-logo-only" in brand
+    assert "or-brand-name" not in brand
+    assert 'alt="Acme"' in brand
+
+    from almasix.orbit.support.urls import resolve_public_url
+
+    assert resolve_public_url("https://cdn.example.com/a.svg") == "https://cdn.example.com/a.svg"
+    assert resolve_public_url("//cdn.example.com/a.svg") == "//cdn.example.com/a.svg"
+    resolved = resolve_public_url("images/logo.svg")
+    assert resolved is not None and resolved.endswith("/images/logo.svg")
+
     d = panel.to_dict()
     assert d["id"] == "admin" and "PostResource" in d["resources"]
 
@@ -119,7 +138,7 @@ def test_panel_registry_and_shell() -> None:
 
 
 def test_resource_permissions_and_crud_config() -> None:
-    assert PostResource.get_slug() == "post"
+    assert PostResource.get_slug() == "posts"
     assert PostResource.get_navigation_label() == "Posts"
     assert PostResource.get_model() is Post
     assert PostResource.get_permission_prefix() == "posts"
@@ -158,8 +177,49 @@ def test_resource_permissions_and_crud_config() -> None:
 
     assert CustomSlug.get_slug() == "things"
 
+    class AuthorResource(Resource):
+        model = type("Author", (), {})
 
-def test_page_relation_manager_live_resource_command() -> None:
+    assert AuthorResource.get_slug() == "authors"
+
+    class SettingsResource(Resource):
+        model = type("Settings", (), {})
+
+    assert SettingsResource.get_slug() == "settings"
+
+
+def test_panel_breadcrumbs() -> None:
+    panel = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .resources([PostResource])
+        .pages([DashboardPage])
+    )
+    home = panel.breadcrumbs("/admin")
+    assert len(home) == 1 and home[0]["label"] == "Orbit" and home[0]["url"] is None
+
+    index = panel.breadcrumbs("/admin/posts")
+    assert [c["label"] for c in index] == ["Orbit", "Posts"]
+    assert index[0]["url"] == "/admin"
+    assert index[1]["url"] is None
+
+    create = panel.breadcrumbs("/admin/posts/create")
+    assert [c["label"] for c in create] == ["Orbit", "Posts", "Create"]
+    assert create[1]["url"] == "/admin/posts"
+    assert create[2]["url"] is None
+
+    edit = panel.breadcrumbs("/admin/posts/1/edit")
+    assert [c["label"] for c in edit] == ["Orbit", "Posts", "Edit"]
+
+    page = panel.breadcrumbs("/admin/dashboard")
+    assert [c["label"] for c in page] == ["Orbit", "Dashboard"]
+
+    shell = panel.render_shell("<p>x</p>", user=User(is_admin=True), active_path="/admin/posts/create")
+    assert 'aria-label="Breadcrumb"' in shell
+    assert "or-breadcrumbs-link" in shell
+    assert "Create" in shell
+
     user = User(permissions={"dashboard.view"})
     assert DashboardPage.get_slug() == "dashboard"
     assert DashboardPage.get_title() == "Dashboard"
@@ -201,7 +261,7 @@ def test_page_relation_manager_live_resource_command() -> None:
     cmd = MakeOrbitResourceCommand()
     assert cmd.handle(name="Post") == 0
     assert cmd.handle("Post") == 0
-    assert cmd.handle() == 1
+    assert cmd.handle() == 2
 
 
 def test_resource_defaults_and_preset_actions() -> None:
@@ -340,12 +400,44 @@ def test_infolist_falls_back_to_readonly_form_fields() -> None:
 def test_default_table_actions_use_page_urls() -> None:
     table = PostResource.get_table()
     html = table.records([{"id": 7, "title": "X"}]).render()
-    assert "/post/7" in html
-    assert "/post/7/edit" in html
+    assert "/posts/7" in html
+    assert "/posts/7/edit" in html
     header = "".join(a.render() for a in table._header_actions)
-    assert "/post/create" in header
+    assert "/posts/create" in header
     assert 'data-action="view"' in html
     assert 'data-action="edit"' in html
+
+
+def test_split_navigation_uses_resource_groups_without_panel_meta() -> None:
+    """Group labels come from resources/pages even when no NavigationGroup is registered."""
+    panel = (
+        Panel.make("admin")
+        .path("orbit")
+        .resources([PostResource])
+        .pages([DashboardPage])
+        .apps_navigation()
+    )
+    assert panel._nav_groups == {}
+    ctx = panel.menu_layout_context(active_path="/orbit/posts")
+    assert any(r.label == "Content" for r in ctx.menu_roots)
+
+
+def test_panel_default_middleware_is_web_and_appends() -> None:
+    panel = Panel.make("admin")
+    assert panel.get_middleware() == ["web"]
+    panel.middleware(["auth"])
+    assert panel.get_middleware() == ["web", "auth"]
+    panel.middleware(["auth"])  # dedupe
+    assert panel.get_middleware() == ["web", "auth"]
+
+
+def test_sidebar_collapsible_defaults_off() -> None:
+    panel = Panel.make("admin")
+    assert panel._sidebar_collapsible is False
+    panel.sidebar_collapsible()
+    assert panel._sidebar_collapsible is True
+    panel.sidebar_collapsible(False)
+    assert panel._sidebar_collapsible is False
 
 
 def test_split_navigation_menu_layout() -> None:
@@ -376,3 +468,41 @@ def test_split_navigation_menu_layout() -> None:
     shell = panel.render_shell("<p>Hi</p>", active_path="/orbit/posts")
     assert "or-topnav" in shell and "or-action-modal-host" in shell
     assert "Content" in shell
+
+
+def test_top_navigation_shows_groups_as_dropdowns() -> None:
+    from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem
+
+    panel = (
+        Panel.make("admin")
+        .path("orbit")
+        .resources([PostResource])
+        .navigation_groups(
+            [
+                NavigationGroup.make("Content").sort(0),
+                NavigationGroup.make("System").sort(10),
+            ]
+        )
+        .navigation_items(
+            [
+                NavigationItem.make("settings")
+                .label("Settings")
+                .url("/orbit/settings")
+                .group("System")
+                .sort(1),
+            ]
+        )
+        .top_navigation()
+    )
+    ctx = panel.menu_layout_context(active_path="/orbit/posts")
+    assert ctx.layout == "top"
+    assert not ctx.menu_roots
+    labels = [i.label for i in ctx.menu_secondary]
+    assert "Content" in labels
+    assert "System" in labels
+    content = next(i for i in ctx.menu_secondary if i.label == "Content")
+    assert content.children
+    assert any(c.label == "Posts" for c in content.children)
+    shell = panel.render_shell("<p>Hi</p>", active_path="/orbit/posts")
+    assert "or-topnav-dropdown" in shell
+    assert ">Content<" in shell or "Content" in shell

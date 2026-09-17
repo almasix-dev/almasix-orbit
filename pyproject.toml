@@ -25,6 +25,7 @@ dev = [
 
 [tool.uv.workspace]
 members = ["packages/*"]
+exclude = ["packages/combined"]
 
 [tool.uv.sources]
 almasix-orbit = { workspace = true }

@@ -4,8 +4,17 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
+from almasix.orbit.panels.content_width import resolve_content_max_width
 from almasix.orbit.panels.page import Page
+from almasix.orbit.support.conduit_attrs import conduit_attr
 from almasix.orbit.support.html import e
+
+
+def _resource_width_style(resource: type[Any]) -> str:
+    raw = getattr(resource, "content_max_width", None)
+    if not raw:
+        return ""
+    return f' style="max-width: {e(resolve_content_max_width(raw).css_value)}"'
 
 
 class Tab:
@@ -103,11 +112,12 @@ class ListRecords(ResourcePage):
         if records is not None:
             table.records(records)
         header_actions = "".join(a.render(**ctx) for a in table._header_actions)
+        width = _resource_width_style(resource)
         return (
-            f'<div class="or-page or-page-list" data-resource="{e(resource.get_slug())}">'
+            f'<div class="or-page or-page-list" data-resource="{e(resource.get_slug())}"{width}>'
             f'<header class="or-page-header"><h1 class="or-page-title">{title}</h1>'
             f'<div class="or-page-actions">{header_actions}</div></header>'
-            f"{tab_html}{table.render(**ctx)}</div>"
+            f"{tab_html}{table.render(skip_header_actions=True, **ctx)}</div>"
         )
 
 
@@ -119,9 +129,10 @@ class CreateRecord(ResourcePage):
         if state:
             form.fill(state)
         return (
-            f'<div class="or-page or-page-create" data-resource="{e(resource.get_slug())}">'
+            f'<div class="or-page or-page-create" data-resource="{e(resource.get_slug())}"'
+            f"{_resource_width_style(resource)}>"
             f'<h1 class="or-page-title">Create {e(resource.get_navigation_label())}</h1>'
-            f'<form class="or-form" wire:submit="create">'
+            f'<form class="or-form"{conduit_attr("submit", "create")}>'
             f"{form.render(form.get_state() if state is None else state, **ctx)}"
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Create</button></div>'
@@ -149,9 +160,9 @@ class EditRecord(ResourcePage):
             record_id = str(record.get("id", "") if isinstance(record, dict) else getattr(record, "id", ""))
         return (
             f'<div class="or-page or-page-edit" data-resource="{e(resource.get_slug())}" '
-            f'data-record="{e(record_id)}">'
+            f'data-record="{e(record_id)}"{_resource_width_style(resource)}>'
             f'<h1 class="or-page-title">Edit {e(resource.get_navigation_label())}</h1>'
-            f'<form class="or-form" wire:submit="save">'
+            f'<form class="or-form"{conduit_attr("submit", "save")}>'
             f"{form.render(data or form.get_state(), **ctx)}"
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Save</button></div>'
@@ -169,7 +180,7 @@ class ViewRecord(ResourcePage):
             record_id = str(record.get("id", "") if isinstance(record, dict) else getattr(record, "id", ""))
         return (
             f'<div class="or-page or-page-view" data-resource="{e(resource.get_slug())}" '
-            f'data-record="{e(record_id)}">'
+            f'data-record="{e(record_id)}"{_resource_width_style(resource)}>'
             f'<h1 class="or-page-title">{e(resource.get_navigation_label())}</h1>'
             f"{infolist.render(record, **ctx)}</div>"
         )

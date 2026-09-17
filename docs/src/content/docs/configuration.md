@@ -24,7 +24,7 @@ Panel.make("admin")
     .path("orbit")
     .brand_name("Acme Admin")
     .font("Outfit")
-    .colors(primary="#f1511b")
+    .primary("#f1511b")
 ```
 
 There is no published `config/orbit.py` file yet. When you need app-wide knobs, set `app.config["orbit"] = {…}` before boot or extend the provider.
@@ -55,11 +55,14 @@ They populate `__orbit_styles` and `__orbit_scripts` in the view context. The pa
 
 ## Middleware & auth
 
+Panels default to the Almasix ``web`` middleware group (session, CSRF, cookies). Extra middleware **appends**:
+
 ```python
-panel.middleware(["auth", "permission"]).login().auth_guard("web")
+panel.middleware(["auth"]).login().auth_guard("web")
+# → ["web", "auth"]
 ```
 
-Defaults assume Almasix auth + permission middleware. Swap the list for your stack. Resource abilities still go through `can_*` helpers — see [Resources](/resources/).
+Use ``.middleware([...], replace=True)`` only when you need to replace the whole stack. Orbit still gates guests via ``.login()`` — prefer not putting Almasix ``auth`` on the panel if you want the Orbit login page to stay reachable. Resource abilities still go through ``can_*`` helpers — see [Resources](/resources/overview/).
 
 ## Scaffolding
 
