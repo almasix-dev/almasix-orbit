@@ -1,21 +1,44 @@
 ---
-title: Orbit
-description: Orbit brings Filament's power to Almasix — server-driven admin UI on Conduit and Alpine.
+title: Home
+description: Server-driven admin UI for Almasix — panels, resources, forms, and tables on Conduit + Alpine.
 template: splash
 hero:
-  tagline: Filament-familiar panels for Almasix.
-  actions:
-    - text: Get started
-      link: /getting-started/
-      icon: right-arrow
-    - text: Parity matrix
-      link: /parity/
-      icon: open-book
-      variant: secondary
+  tagline: Admin panels in Python — declare once, ship the shell.
+  actions: []
 ---
 
-**Orbit brings Filament's power to Almasix.**
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-Build admin panels, resources, forms, tables, actions, infolists, notifications, widgets, and query builders with a Filament 5.x-style fluent API — rendered as semantic `.or-*` CSS on Conduit + Alpine.js.
+**Orbit** is how you build admin panels in [Almasix](https://docs.almasix.com/) without leaving Python.
 
-Install with `pip install almasix-orbit`, then see [Getting started](/getting-started/) and the [parity matrix](/parity/).
+Declare a panel. Point it at resources. Describe forms, tables, and actions with a fluent API. Orbit renders semantic `.or-*` markup on **Conduit** + **Alpine.js** — server is the source of truth, the browser stays snappy.
+
+:::tip[A nod to Filament]
+Orbit stands on the shoulders of [Filament](https://filamentphp.com/) — the panel / resource / form / table vocabulary was a huge inspiration. We’re our own package for the Almasix/Python world, with our own rendering stack and DX. Same *idea*, our *house*.
+:::
+
+## Packages
+
+Ten packages, one install, one import tree.
+
+<CardGrid>
+	<LinkCard title="Panels & resources" href="/panels/" description="Shell, nav, CRUD resources, pages, relation managers." />
+	<LinkCard title="Forms" href="/forms/" description="Fields, validation, sections, and live state." />
+	<LinkCard title="Tables" href="/tables/" description="Columns, search, sort, filters, and action slots." />
+	<LinkCard title="Actions" href="/actions/" description="Buttons, modals, confirmations, CRUD presets." />
+	<LinkCard title="Infolists" href="/infolists/" description="Read-only record views with typed entries." />
+	<LinkCard title="Schemas & layouts" href="/schemas/" description="Grid, section, tabs, fieldset, wizard." />
+	<LinkCard title="Notifications" href="/notifications/" description="Flash, database, and broadcast toasts." />
+	<LinkCard title="Widgets" href="/widgets/" description="Stats, charts, and embedded tables." />
+	<LinkCard title="Query builder" href="/query-builder/" description="Constraint-based filtering for record lists." />
+	<LinkCard title="Support toolkit" href="/support/" description="Component base, colors, icons, HTML helpers." />
+</CardGrid>
+
+## Start here
+
+<CardGrid>
+	<LinkCard title="Installation" href="/getting-started/installation/" description="pip install, provider, and assets." />
+	<LinkCard title="Quick start" href="/getting-started/quick-start/" description="First panel + resource end to end." />
+	<LinkCard title="Features" href="/features/" description="Full checklist of what ships today." />
+	<LinkCard title="Docs versions" href="/prologue/versions/" description="0.x latest, main for unreleased." />
+</CardGrid>

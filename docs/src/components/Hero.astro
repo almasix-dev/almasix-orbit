@@ -1,0 +1,13 @@
+---
+/**
+ * Starlight Hero override — Orbit landing carousel on the splash home page;
+ * default Starlight hero elsewhere (if ever used).
+ */
+import DefaultHero from '@astrojs/starlight/components/Hero.astro';
+import OrbitHero from './OrbitHero.astro';
+
+const id = Astro.locals.starlightRoute.entry.id;
+const isHome = id === 'index' || id === '' || id.endsWith('/index');
+---
+
+{isHome ? <OrbitHero /> : <DefaultHero />}

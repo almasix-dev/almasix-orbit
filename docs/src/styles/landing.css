@@ -1,0 +1,835 @@
+/* Orbit docs landing — hero + term-code slides (ported from almasix-website) */
+
+.orbit-landing-hero {
+	--orange: #f1511b;
+	--orange-soft: #ff7a4d;
+	--blue: #286291;
+	--blue-bright: #4a9bc9;
+	--mono: 'JetBrains Mono', ui-monospace, monospace;
+	--muted: var(--sl-color-gray-2);
+	--hero-wash-a: rgba(241, 81, 27, 0.16);
+	--hero-wash-b: rgba(40, 98, 145, 0.12);
+	--hero-grid: color-mix(in srgb, var(--sl-color-white) 4%, transparent);
+	--header-h: var(--sl-nav-height, 4.25rem);
+
+	position: relative;
+	isolation: isolate;
+	overflow: clip;
+	width: 100vw;
+	max-width: 100vw;
+	margin-inline: calc(50% - 50vw);
+	margin-block: -1.5rem 2rem;
+	padding-inline: max(1.25rem, calc((100vw - 72rem) / 2));
+	padding-block: 2.5rem 3rem;
+	background:
+		radial-gradient(ellipse 70% 55% at 12% 20%, var(--hero-wash-a), transparent 58%),
+		radial-gradient(ellipse 55% 45% at 92% 78%, var(--hero-wash-b), transparent 52%),
+		linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--sl-color-black) 92%, transparent) 0%,
+			var(--sl-color-black) 100%
+		);
+	color: var(--sl-color-white);
+}
+
+.orbit-landing-hero .hero-plane {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background-image:
+		linear-gradient(var(--hero-grid) 1px, transparent 1px),
+		linear-gradient(90deg, var(--hero-grid) 1px, transparent 1px);
+	background-size: 56px 56px;
+	mask-image: linear-gradient(180deg, #000 0%, #000 45%, transparent 100%);
+	pointer-events: none;
+}
+
+html.motion .orbit-landing-hero .hero-plane {
+	animation: orbit-grid-drift 32s linear infinite;
+}
+
+.orbit-landing-hero .hero-stage {
+	position: relative;
+	z-index: 1;
+	display: grid;
+	gap: 2.5rem;
+	align-items: center;
+	max-width: 72rem;
+	margin-inline: auto;
+}
+
+@media (min-width: 960px) {
+	.orbit-landing-hero .hero-stage {
+		grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.28fr);
+		gap: 2.25rem;
+	}
+}
+
+.orbit-landing-hero .hero-copy {
+	max-width: 34rem;
+}
+
+.orbit-landing-hero .hero-brand {
+	display: inline-flex;
+	align-items: flex-end;
+	gap: 0.35rem;
+	margin: 0 0 1.25rem;
+	text-decoration: none;
+	color: inherit;
+}
+
+.orbit-landing-hero .hero-brand img {
+	width: min(100%, 11.5rem);
+	height: auto;
+}
+
+.orbit-landing-hero .hero-brand .brand-mark-dark {
+	display: none;
+}
+
+:root:not([data-theme='light']) .orbit-landing-hero .hero-brand .brand-mark-light {
+	display: none;
+}
+
+:root:not([data-theme='light']) .orbit-landing-hero .hero-brand .brand-mark-dark {
+	display: block;
+}
+
+.orbit-landing-hero .hero-brand-suffix {
+	font-size: 0.85rem;
+	font-weight: 900;
+	letter-spacing: 0.06em;
+	line-height: 0.85;
+	color: var(--blue);
+	padding-bottom: 0.12rem;
+}
+
+:root:not([data-theme='light']) .orbit-landing-hero .hero-brand-suffix {
+	color: var(--blue-bright);
+}
+
+.orbit-landing-hero h1 {
+	margin: 0 0 1rem;
+	font-size: clamp(2.05rem, 4.4vw, 3.1rem);
+	font-weight: 800;
+	letter-spacing: -0.035em;
+	line-height: 1.08;
+	color: var(--sl-color-white);
+	background: none;
+	-webkit-text-fill-color: unset;
+}
+
+.orbit-landing-hero .hero-lede {
+	margin: 0 0 1.65rem;
+	font-size: clamp(1.05rem, 1.7vw, 1.18rem);
+	color: var(--muted);
+	max-width: 32rem;
+	line-height: 1.5;
+}
+
+.orbit-landing-hero .cta-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.85rem;
+}
+
+.orbit-landing-hero .btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.4rem;
+	padding: 0.85rem 1.35rem;
+	border-radius: 999px;
+	font-weight: 650;
+	text-decoration: none;
+	font-size: 0.95rem;
+	transition:
+		transform 0.15s ease,
+		box-shadow 0.15s ease,
+		filter 0.15s ease;
+}
+
+.orbit-landing-hero .btn:hover {
+	transform: translateY(-2px);
+}
+
+.orbit-landing-hero .btn-primary {
+	background: linear-gradient(135deg, var(--orange) 0%, #c43a0f 100%);
+	color: #fff !important;
+	box-shadow:
+		0 12px 28px rgba(241, 81, 27, 0.38),
+		inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.orbit-landing-hero .btn-secondary {
+	background: var(--blue);
+	color: #fff !important;
+	box-shadow: 0 12px 28px color-mix(in srgb, var(--blue) 38%, transparent);
+}
+
+:root:not([data-theme='light']) .orbit-landing-hero .btn-secondary {
+	background: var(--blue-bright);
+}
+
+.orbit-landing-hero .hero-preview {
+	margin: 0;
+	width: min(100%, 42rem);
+	justify-self: stretch;
+}
+
+@media (min-width: 960px) {
+	.orbit-landing-hero .hero-preview {
+		width: 100%;
+		max-width: none;
+	}
+}
+
+html.motion .orbit-landing-hero .hero-brand {
+	animation: orbit-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+html.motion .orbit-landing-hero h1 {
+	animation: orbit-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+}
+
+html.motion .orbit-landing-hero .hero-lede {
+	animation: orbit-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both;
+}
+
+html.motion .orbit-landing-hero .cta-row {
+	animation: orbit-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
+html.motion .orbit-landing-hero .hero-preview {
+	animation: orbit-preview-in 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
+}
+
+/* —— Terminal carousel —— */
+
+.orbit-landing-hero .term {
+	--term-bg: #17120f;
+	--term-fg: #f3ebe4;
+	--slide-ms: 3.4s;
+	position: relative;
+	border-radius: 1rem;
+	background: var(--term-bg);
+	color: var(--term-fg);
+	overflow: hidden;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	box-shadow:
+		0 1px 0 rgba(255, 255, 255, 0.06) inset,
+		0 32px 70px -28px rgba(28, 20, 17, 0.58);
+}
+
+html.motion .orbit-landing-hero .term {
+	animation: orbit-term-glow 6s ease-in-out infinite alternate;
+}
+
+.orbit-landing-hero .term-chrome {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.85rem 1.15rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+	background: rgba(255, 255, 255, 0.03);
+}
+
+.orbit-landing-hero .term-chrome > span:nth-child(-n + 3) {
+	width: 0.62rem;
+	height: 0.62rem;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.18);
+}
+
+.orbit-landing-hero .term-chrome > span:nth-child(1) {
+	background: #e07a5a;
+}
+
+.orbit-landing-hero .term-chrome > span:nth-child(2) {
+	background: #d4a574;
+}
+
+.orbit-landing-hero .term-chrome > span:nth-child(3) {
+	background: #6a9b7a;
+}
+
+.orbit-landing-hero .term-title {
+	margin-left: auto;
+	font-size: 0.78rem;
+	color: rgba(243, 235, 228, 0.45);
+	letter-spacing: 0.02em;
+	font-family: var(--mono);
+}
+
+.orbit-landing-hero .term-hold-hint {
+	display: none;
+	margin-left: 0.75rem;
+	padding: 0.15rem 0.45rem;
+	border-radius: 0.3rem;
+	font-size: 0.68rem;
+	font-weight: 650;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #fffaf6;
+	background: rgba(241, 81, 27, 0.85);
+}
+
+.orbit-landing-hero .term.is-held .term-hold-hint {
+	display: inline-block;
+}
+
+.orbit-landing-hero .term:focus-visible {
+	outline: 2px solid var(--orange);
+	outline-offset: 3px;
+}
+
+.orbit-landing-hero .term-viewport {
+	position: relative;
+	min-height: 21.5rem;
+	padding: 1.35rem 1.45rem 1.55rem;
+	font-family: var(--mono);
+	font-size: clamp(0.88rem, 1.25vw, 1rem);
+	line-height: 1.6;
+}
+
+@media (min-width: 960px) {
+	.orbit-landing-hero .term-viewport {
+		min-height: 24rem;
+		padding: 1.55rem 1.65rem 1.75rem;
+	}
+}
+
+.orbit-landing-hero .term-slide {
+	position: absolute;
+	inset: 1.35rem 1.45rem 1.55rem;
+	margin: 0;
+	opacity: 0;
+	transform: translateY(0.65rem) scale(0.985);
+	pointer-events: none;
+	transition:
+		opacity 0.4s ease,
+		transform 0.4s ease;
+	overflow: auto;
+}
+
+@media (min-width: 960px) {
+	.orbit-landing-hero .term-slide {
+		inset: 1.55rem 1.65rem 1.75rem;
+	}
+}
+
+.orbit-landing-hero .term-slide.is-active {
+	opacity: 1;
+	transform: translateY(0) scale(1);
+	pointer-events: auto;
+}
+
+.orbit-landing-hero .term-slide.is-typing > *:not(.term-code):not(.ui-mock) {
+	opacity: 0;
+	animation: orbit-line-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: calc(var(--i, 0) * 0.18s + 0.08s);
+}
+
+.orbit-landing-hero .term-slide.is-typing > .term-code,
+.orbit-landing-hero .term-slide.is-typing > .ui-mock {
+	opacity: 1;
+	animation: none;
+}
+
+.orbit-landing-hero .term-slide.is-typing > .ui-mock {
+	animation: orbit-line-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: 0.1s;
+}
+
+.orbit-landing-hero .term-slide.is-code-typing .term-code {
+	position: relative;
+}
+
+.orbit-landing-hero .term-slide.is-code-typing .term-code::after {
+	content: '';
+	display: inline-block;
+	width: 0.45rem;
+	height: 1em;
+	margin-left: 0.12rem;
+	vertical-align: text-bottom;
+	background: var(--orange-soft);
+	animation: orbit-blink 1s steps(1) infinite;
+}
+
+.orbit-landing-hero .term-slide.is-code-typing.is-typed .term-code::after {
+	display: none;
+}
+
+.orbit-landing-hero .term-slide > p {
+	margin: 0 0 0.45rem;
+}
+
+.orbit-landing-hero .term-prompt {
+	color: var(--orange-soft);
+	margin-right: 0.45rem;
+}
+
+.orbit-landing-hero .term-dim {
+	color: rgba(243, 235, 228, 0.55);
+}
+
+.orbit-landing-hero .term-ok {
+	color: #8fbf9a;
+}
+
+.orbit-landing-hero .term-hi {
+	color: #7eb6d9;
+	font-weight: 500;
+}
+
+.orbit-landing-hero .term-code {
+	margin: 0.35rem 0 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: rgba(243, 235, 228, 0.9);
+	font-size: inherit;
+	line-height: 1.5;
+	overflow: auto;
+	max-height: 16.5rem;
+}
+
+.orbit-landing-hero .term-code.od {
+	margin-top: 0.45rem;
+	padding: 0.75rem 0.85rem;
+	border-radius: 0.45rem;
+	background: #282c34;
+	color: #abb2bf;
+	font-size: 0.82em;
+	line-height: 1.55;
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.orbit-landing-hero .od-k {
+	color: #c678dd;
+}
+.orbit-landing-hero .od-s {
+	color: #98c379;
+}
+.orbit-landing-hero .od-f {
+	color: #61afef;
+}
+.orbit-landing-hero .od-t {
+	color: #e5c07b;
+}
+.orbit-landing-hero .od-n {
+	color: #d19a66;
+}
+.orbit-landing-hero .od-c {
+	color: #5c6370;
+	font-style: italic;
+}
+.orbit-landing-hero .od-d {
+	color: #e06c75;
+}
+.orbit-landing-hero .od-p {
+	color: #abb2bf;
+}
+
+.orbit-landing-hero .term-cursor {
+	display: inline-block;
+	width: 0.55rem;
+	height: 1.05em;
+	margin-top: 0.35rem;
+	vertical-align: text-bottom;
+	background: var(--orange-soft);
+	animation: orbit-blink 1s steps(1) infinite;
+}
+
+.orbit-landing-hero .term-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.7rem 1.15rem 0.85rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
+	background: rgba(255, 255, 255, 0.02);
+}
+
+.orbit-landing-hero .term-dots {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem;
+	max-width: min(100%, 22rem);
+}
+
+.orbit-landing-hero .term-dots button {
+	width: 0.55rem;
+	height: 0.55rem;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: rgba(243, 235, 228, 0.28);
+	cursor: pointer;
+	transition:
+		transform 0.18s ease,
+		background 0.18s ease,
+		width 0.18s ease;
+}
+
+.orbit-landing-hero .term-dots button.is-active,
+.orbit-landing-hero .term-dots button[aria-selected='true'] {
+	width: 1.25rem;
+	background: var(--orange-soft);
+}
+
+.orbit-landing-hero .term-dots button:hover {
+	background: rgba(243, 235, 228, 0.55);
+}
+
+.orbit-landing-hero .term-dots button:focus-visible {
+	outline: 2px solid var(--orange-soft);
+	outline-offset: 2px;
+}
+
+.orbit-landing-hero .term-pin {
+	padding: 0.3rem 0.65rem;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 0.4rem;
+	background: transparent;
+	color: rgba(243, 235, 228, 0.72);
+	font: inherit;
+	font-size: 0.72rem;
+	font-weight: 650;
+	letter-spacing: 0.03em;
+	cursor: pointer;
+	transition:
+		color 0.18s ease,
+		border-color 0.18s ease,
+		background 0.18s ease;
+}
+
+.orbit-landing-hero .term-pin:hover,
+.orbit-landing-hero .term-pin[aria-pressed='true'] {
+	color: #fffaf6;
+	border-color: rgba(241, 81, 27, 0.55);
+	background: rgba(241, 81, 27, 0.18);
+}
+
+.orbit-landing-hero .term-progress {
+	height: 2px;
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.orbit-landing-hero .term-progress span {
+	display: block;
+	height: 100%;
+	width: 100%;
+	transform-origin: left center;
+	transform: scaleX(0);
+	background: linear-gradient(90deg, var(--orange-soft), var(--blue-bright));
+}
+
+.orbit-landing-hero .term.is-playing .term-progress span {
+	animation: orbit-term-progress var(--slide-ms) linear;
+}
+
+.orbit-landing-hero .term.is-held .term-progress span {
+	animation-play-state: paused;
+}
+
+.orbit-landing-hero .hero-preview-cap {
+	margin: 0.75rem 0 0;
+	font-size: 0.84rem;
+	color: var(--muted);
+	letter-spacing: 0.01em;
+	font-family: var(--sl-font);
+}
+
+/* —— UI mock “screenshots” —— */
+
+.orbit-landing-hero .ui-mock {
+	display: grid;
+	grid-template-columns: 7.5rem 1fr;
+	gap: 0;
+	min-height: 15.5rem;
+	border-radius: 0.55rem;
+	overflow: hidden;
+	background: #1f1916;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	font-family: var(--sl-font);
+	font-size: 0.78rem;
+	line-height: 1.35;
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.orbit-landing-hero .ui-mock-nav {
+	padding: 0.75rem 0.65rem;
+	background: #15110f;
+	border-right: 1px solid rgba(255, 255, 255, 0.06);
+	color: rgba(243, 235, 228, 0.55);
+}
+
+.orbit-landing-hero .ui-mock-brand {
+	display: block;
+	margin-bottom: 0.85rem;
+	font-weight: 800;
+	font-size: 0.72rem;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #fffaf6;
+}
+
+.orbit-landing-hero .ui-mock-nav ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 0.35rem;
+}
+
+.orbit-landing-hero .ui-mock-nav li {
+	padding: 0.35rem 0.45rem;
+	border-radius: 0.35rem;
+	border-left: 2px solid transparent;
+}
+
+.orbit-landing-hero .ui-mock-nav li.is-active {
+	color: var(--orange-soft);
+	background: rgba(241, 81, 27, 0.14);
+	border-left-color: var(--orange);
+	font-weight: 650;
+}
+
+.orbit-landing-hero .ui-mock-main {
+	padding: 0.75rem 0.85rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+	min-width: 0;
+}
+
+.orbit-landing-hero .ui-mock-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+}
+
+.orbit-landing-hero .ui-mock-bar strong {
+	font-size: 0.95rem;
+	font-weight: 750;
+	color: #fffaf6;
+	letter-spacing: -0.02em;
+}
+
+.orbit-landing-hero .ui-mock-btn {
+	padding: 0.28rem 0.65rem;
+	border-radius: 999px;
+	background: linear-gradient(135deg, var(--orange), #c43a0f);
+	color: #fff;
+	font-size: 0.68rem;
+	font-weight: 700;
+	border: 0;
+}
+
+.orbit-landing-hero .ui-mock-table {
+	width: 100%;
+	border-collapse: collapse;
+	color: rgba(243, 235, 228, 0.88);
+}
+
+.orbit-landing-hero .ui-mock-table th {
+	text-align: left;
+	font-size: 0.65rem;
+	font-weight: 650;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: rgba(243, 235, 228, 0.45);
+	padding: 0.35rem 0.4rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.orbit-landing-hero .ui-mock-table td {
+	padding: 0.45rem 0.4rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 8rem;
+}
+
+.orbit-landing-hero .ui-mock-table tr:nth-child(even) td {
+	background: rgba(255, 255, 255, 0.02);
+}
+
+.orbit-landing-hero .ui-mock-badge {
+	display: inline-block;
+	padding: 0.12rem 0.4rem;
+	border-radius: 999px;
+	font-size: 0.62rem;
+	font-weight: 700;
+	background: rgba(143, 191, 154, 0.18);
+	color: #8fbf9a;
+}
+
+.orbit-landing-hero .ui-mock-badge.is-draft {
+	background: rgba(126, 182, 217, 0.16);
+	color: #7eb6d9;
+}
+
+.orbit-landing-hero .ui-mock-actions {
+	display: flex;
+	gap: 0.35rem;
+}
+
+.orbit-landing-hero .ui-mock-actions span {
+	width: 1.15rem;
+	height: 1.15rem;
+	border-radius: 0.3rem;
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.orbit-landing-hero .ui-mock-form {
+	display: grid;
+	gap: 0.55rem;
+}
+
+.orbit-landing-hero .ui-mock-field label {
+	display: block;
+	margin-bottom: 0.2rem;
+	font-size: 0.65rem;
+	font-weight: 650;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: rgba(243, 235, 228, 0.5);
+}
+
+.orbit-landing-hero .ui-mock-field .ui-mock-input {
+	height: 1.65rem;
+	border-radius: 0.35rem;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(0, 0, 0, 0.25);
+	padding: 0 0.55rem;
+	color: rgba(243, 235, 228, 0.9);
+	display: flex;
+	align-items: center;
+	font-size: 0.78rem;
+}
+
+.orbit-landing-hero .ui-mock-field .ui-mock-input.is-tall {
+	height: 3.2rem;
+	align-items: flex-start;
+	padding-top: 0.4rem;
+}
+
+.orbit-landing-hero .ui-mock-form-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.4rem;
+	margin-top: 0.15rem;
+}
+
+.orbit-landing-hero .ui-mock-btn-ghost {
+	padding: 0.28rem 0.65rem;
+	border-radius: 999px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	background: transparent;
+	color: rgba(243, 235, 228, 0.75);
+	font-size: 0.68rem;
+	font-weight: 650;
+}
+
+/* Keyframes */
+@keyframes orbit-rise {
+	from {
+		opacity: 0;
+		transform: translateY(1rem);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes orbit-preview-in {
+	from {
+		opacity: 0;
+		transform: translateY(1.25rem) rotate(-0.6deg) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) rotate(0) scale(1);
+	}
+}
+
+@keyframes orbit-term-glow {
+	from {
+		box-shadow:
+			0 1px 0 rgba(255, 255, 255, 0.06) inset,
+			0 28px 60px -28px rgba(28, 20, 17, 0.55),
+			0 0 0 0 rgba(241, 81, 27, 0);
+	}
+	to {
+		box-shadow:
+			0 1px 0 rgba(255, 255, 255, 0.06) inset,
+			0 32px 70px -24px rgba(28, 20, 17, 0.6),
+			0 0 48px -20px rgba(241, 81, 27, 0.28);
+	}
+}
+
+@keyframes orbit-line-in {
+	from {
+		opacity: 0;
+		transform: translateY(0.4rem);
+		filter: blur(2px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+		filter: blur(0);
+	}
+}
+
+@keyframes orbit-term-progress {
+	from {
+		transform: scaleX(0);
+	}
+	to {
+		transform: scaleX(1);
+	}
+}
+
+@keyframes orbit-blink {
+	50% {
+		opacity: 0;
+	}
+}
+
+@keyframes orbit-grid-drift {
+	from {
+		background-position: 0 0;
+	}
+	to {
+		background-position: 56px 56px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.orbit-landing-hero .term-slide {
+		position: static;
+		opacity: 1;
+		transform: none;
+		pointer-events: auto;
+		inset: auto;
+		margin-bottom: 1.25rem;
+	}
+
+	.orbit-landing-hero .term-viewport {
+		min-height: 0;
+	}
+
+	.orbit-landing-hero .term-slide:not(.is-active) {
+		display: none;
+	}
+
+	.orbit-landing-hero .term-progress {
+		display: none;
+	}
+}
