@@ -111,6 +111,25 @@ class ListRecords(ResourcePage):
         table = resource.get_table()
         if records is not None:
             table.records(records)
+        search = str(ctx.get("table_search") or "").strip()
+        if search:
+            table.search(search)
+        sort = str(ctx.get("table_sort") or "").strip()
+        if sort:
+            direction = str(ctx.get("table_sort_direction") or "asc")
+            table.sort(sort, direction)
+        try:
+            page = max(1, int(ctx.get("page") or 1))
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            per_page = max(1, int(ctx.get("per_page") or 10))
+        except (TypeError, ValueError):
+            per_page = 10
+        filters = ctx.get("table_filters")
+        if isinstance(filters, dict) and filters:
+            table.filter_state(filters)
+        table.paginate(page, per_page)
         header_actions = "".join(a.render(**ctx) for a in table._header_actions)
         width = _resource_width_style(resource)
         return (

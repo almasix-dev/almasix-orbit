@@ -38,6 +38,24 @@ class Column(Component):
         self._list_bullet = False
         self._markdown = False
         self._html = False
+        self._alignment: str = "start"
+
+    def alignment(self, value: str) -> Self:
+        """Cell/header alignment: ``start``, ``center``, or ``end`` (Filament parity)."""
+        self._alignment = value
+        return self
+
+    def align_start(self) -> Self:
+        return self.alignment("start")
+
+    def align_center(self) -> Self:
+        return self.alignment("center")
+
+    def align_end(self) -> Self:
+        return self.alignment("end")
+
+    def get_alignment(self) -> str:
+        return self._alignment or "start"
 
     def sortable(self, condition: bool = True) -> Self:
         self._sortable = condition
@@ -247,7 +265,9 @@ class Column(Component):
             href = evaluate(self._url, record=record, state=value, **ctx)
         if href:
             inner = f'<a class="or-cell-link" href="{e(href)}">{inner}</a>'
-        return f'<td class="or-td{resp}">{inner}</td>'
+        align = self.get_alignment()
+        align_c = f" or-align-{align}" if align and align != "start" else ""
+        return f'<td class="or-td{resp}{align_c}">{inner}</td>'
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -259,6 +279,7 @@ class Column(Component):
                 "has_summarizers": bool(self._summarizers),
                 "money_currency": self._money_currency,
                 "date_format": self._date_format,
+                "alignment": self._alignment,
             }
         )
         return d

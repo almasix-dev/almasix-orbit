@@ -1,4 +1,15 @@
 (() => {
+  window.orbitWire = (el) => {
+    const node = el?.closest?.("[wire\\:id], [conduit\\:id], [data-conduit-id]") || el;
+    return (
+      (typeof window !== "undefined" && window.Livewire && node?.id && window.Livewire.find?.(node.id)) ||
+      node?.__conduit ||
+      node?.__livewire ||
+      node?.__wire ||
+      null
+    );
+  };
+
   const register = () => {
     if (typeof window === "undefined" || !window.Alpine) {
       return;
@@ -88,8 +99,219 @@
       },
     }));
 
+    window.Alpine.data("orbitTableFilters", () => ({
+      filtersOpen: false,
+      defer: false,
+      activeCount: 0,
+      pending: {},
+      init() {
+        const el = this.$el;
+        this.defer = el?.hasAttribute?.("data-defer-filters") || false;
+        const count = el?.getAttribute?.("data-active-count");
+        if (count != null) {
+          this.activeCount = Number(count) || 0;
+        }
+        const pending = el?.getAttribute?.("data-pending");
+        if (pending) {
+          try {
+            const parsed = JSON.parse(pending);
+            if (parsed && typeof parsed === "object") {
+              this.pending = { ...parsed };
+            }
+          } catch (_) {
+            /* ignore */
+          }
+        }
+        this._onCloseOthers = (event) => {
+          if (event?.detail?.except === "filters") {
+            return;
+          }
+          this.filtersOpen = false;
+        };
+        window.addEventListener("orbit:close-dropdowns", this._onCloseOthers);
+      },
+      destroy() {
+        if (this._onCloseOthers) {
+          window.removeEventListener("orbit:close-dropdowns", this._onCloseOthers);
+        }
+      },
+      toggleFilters(event) {
+        event?.stopPropagation?.();
+        this.filtersOpen = !this.filtersOpen;
+        if (this.filtersOpen) {
+          window.dispatchEvent(
+            new CustomEvent("orbit:close-dropdowns", { detail: { except: "filters" } })
+          );
+        }
+      },
+      closeFilters() {
+        this.filtersOpen = false;
+      },
+      applyDeferred() {
+        const wire = window.orbitWire?.(this.$el);
+        const payload = { ...this.pending };
+        Object.keys(payload).forEach((key) => {
+          if (payload[key] === "" || payload[key] == null) {
+            delete payload[key];
+          }
+        });
+        if (wire && typeof wire.applyTableFilters === "function") {
+          wire.applyTableFilters(payload);
+        } else if (wire && typeof wire.$set === "function") {
+          wire.$set("table_filters", payload);
+        }
+        this.filtersOpen = false;
+      },
+    }));
+
+    window.Alpine.data("orbitDropdown", () => ({
+      menuOpen: false,
+      init() {
+        this._onCloseOthers = (event) => {
+          if (event?.detail?.except === "dropdown") {
+            return;
+          }
+          this.menuOpen = false;
+        };
+        window.addEventListener("orbit:close-dropdowns", this._onCloseOthers);
+      },
+      destroy() {
+        if (this._onCloseOthers) {
+          window.removeEventListener("orbit:close-dropdowns", this._onCloseOthers);
+        }
+      },
+      _selectionRoot() {
+        return this.$el?.closest?.(".or-table-wrap, .or-list-card") || null;
+      },
+      syncSelection() {
+        const root = this._selectionRoot();
+        if (!root || typeof window.Alpine === "undefined") {
+          return;
+        }
+        try {
+          const data = window.Alpine.$data(root);
+          if (data && typeof data.syncHost === "function") {
+            data.syncHost();
+          }
+        } catch (_) {
+          /* selection root may not be Alpine-bound yet */
+        }
+      },
+      toggleMenu(event) {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        this.menuOpen = !this.menuOpen;
+        if (this.menuOpen) {
+          window.dispatchEvent(
+            new CustomEvent("orbit:close-dropdowns", { detail: { except: "dropdown" } })
+          );
+          // Do not syncHost here: $set(selected) remorphs the Conduit root and
+          // used to un-hide Filters/bulk via stripped Alpine styles. Selection is
+          // pushed on bulk action click (capture) instead.
+        }
+      },
+      closeMenu() {
+        this.menuOpen = false;
+      },
+    }));
+
     window.Alpine.data("orbitTableSelection", () => ({
       selected: [],
+      init() {
+        // Capture the x-data root once. Alpine's `$el` inside child `@click`
+        // handlers is the child node (e.g. Clear button), not the wrap.
+        this._rootEl = this.$el;
+        const initial = this._rootEl?.getAttribute?.("data-selected");
+        if (initial) {
+          try {
+            const parsed = JSON.parse(initial);
+            if (Array.isArray(parsed)) {
+              this.selected = parsed.map(String);
+            }
+          } catch (_) {
+            /* ignore bad JSON */
+          }
+        }
+        // Alpine @change/@click on thead checkboxes is unreliable (handler never
+        // fires alongside :checked). Bind select-all imperatively instead.
+        this._onSelectAllChange = (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLInputElement)) {
+            return;
+          }
+          if (!target.classList.contains("or-select-all")) {
+            return;
+          }
+          this.toggleAll(target.checked);
+        };
+        this._rootEl.addEventListener("change", this._onSelectAllChange);
+        this._syncHeaderCheck();
+        // Sync to host immediately before a bulk action Conduit call (capture phase).
+        this._onBulkActionClick = (event) => {
+          const target = event.target;
+          if (!(target instanceof Element)) {
+            return;
+          }
+          const bulk = this._rootEl.querySelector(".or-list-bulk-actions");
+          if (!bulk || !bulk.contains(target)) {
+            return;
+          }
+          if (target.closest("[wire\\:click], [conduit\\:click], [data-action]")) {
+            this.syncHost();
+          }
+        };
+        this._rootEl.addEventListener("click", this._onBulkActionClick, true);
+      },
+      destroy() {
+        if (this._onSelectAllChange && this._rootEl) {
+          this._rootEl.removeEventListener("change", this._onSelectAllChange);
+        }
+        if (this._onBulkActionClick && this._rootEl) {
+          this._rootEl.removeEventListener("click", this._onBulkActionClick, true);
+        }
+      },
+      _root() {
+        return this._rootEl || this.$el;
+      },
+      _host() {
+        const root = this._root()?.closest?.("[wire\\:id], [conduit\\:id], [data-conduit-id]");
+        return this.$wire || root?.__conduit || root?.__livewire || null;
+      },
+      syncHost() {
+        const wire = window.orbitWire?.(this._root()) || this._host();
+        if (!wire) {
+          return;
+        }
+        const next = this.selected.map(String);
+        const prev = this._lastSynced;
+        if (
+          Array.isArray(prev) &&
+          prev.length === next.length &&
+          prev.every((value, index) => value === next[index])
+        ) {
+          return;
+        }
+        this._lastSynced = next;
+        if (typeof wire.$set === "function") {
+          wire.$set("selected", next);
+          return;
+        }
+        if (typeof wire.set === "function") {
+          wire.set("selected", next);
+        }
+      },
+      pageIds() {
+        const boxes = this._root().querySelectorAll("input.or-row-check[data-record-id]");
+        return Array.from(boxes).map((box) => String(box.getAttribute("data-record-id")));
+      },
+      _syncHeaderCheck() {
+        const header = this._root().querySelector(
+          "th.or-th-select input.or-row-check, .or-select-all"
+        );
+        if (header) {
+          header.checked = this.pageFullySelected;
+        }
+      },
       toggle(id, checked) {
         const key = String(id);
         if (checked) {
@@ -99,24 +321,41 @@
         } else {
           this.selected = this.selected.filter((x) => x !== key);
         }
+        this._syncHeaderCheck();
+        // Keep selection Alpine-only while picking rows. Syncing on every toggle
+        // remorphs the Conduit host and remounts dropdowns (filters/Actions fight).
+        window.dispatchEvent(new CustomEvent("orbit:close-dropdowns", { detail: {} }));
       },
       toggleAll(checked) {
-        const boxes = this.$el.querySelectorAll('input.or-row-check[data-record-id]');
-        const ids = [];
-        boxes.forEach((box) => {
+        const ids = this.pageIds();
+        if (checked) {
+          const set = new Set(this.selected);
+          ids.forEach((id) => set.add(id));
+          this.selected = Array.from(set);
+        } else {
+          const drop = new Set(ids);
+          this.selected = this.selected.filter((id) => !drop.has(id));
+        }
+        this._root().querySelectorAll("input.or-row-check[data-record-id]").forEach((box) => {
           box.checked = checked;
-          if (checked) {
-            ids.push(String(box.getAttribute("data-record-id")));
-          }
         });
-        this.selected = ids;
+        this._syncHeaderCheck();
+        window.dispatchEvent(new CustomEvent("orbit:close-dropdowns", { detail: {} }));
       },
       get pageFullySelected() {
-        const boxes = this.$el.querySelectorAll('input.or-row-check[data-record-id]');
-        return boxes.length > 0 && this.selected.length === boxes.length;
+        const ids = this.pageIds();
+        return ids.length > 0 && ids.every((id) => this.selected.includes(id));
+      },
+      togglePage() {
+        this.toggleAll(!this.pageFullySelected);
       },
       clear() {
-        this.toggleAll(false);
+        this.selected = [];
+        this._root().querySelectorAll("input.or-row-check[data-record-id]").forEach((box) => {
+          box.checked = false;
+        });
+        this._syncHeaderCheck();
+        window.dispatchEvent(new CustomEvent("orbit:close-dropdowns", { detail: {} }));
       },
     }));
 

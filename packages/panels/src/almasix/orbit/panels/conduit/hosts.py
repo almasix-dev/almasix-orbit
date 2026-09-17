@@ -86,7 +86,10 @@ class ListRecordsHost(OrbitPageHost):
     table_search: str = ""
     table_sort: str = ""
     table_sort_direction: str = "asc"
+    page: int = 1
+    per_page: int = 10
     selected: list[str] = []
+    table_filters: dict[str, Any] = {}
 
     def mount(self, **kwargs: Any) -> None:
         resource = self.get_resource()
@@ -125,15 +128,85 @@ class ListRecordsHost(OrbitPageHost):
 
     def setTab(self, tab_id: str) -> None:
         self.active_tab = str(tab_id)
+        self.page = 1
+
+    def sortBy(self, column: str) -> None:
+        col = str(column or "")
+        if not col:
+            return
+        if self.table_sort == col:
+            self.table_sort_direction = (
+                "desc" if str(self.table_sort_direction).lower() != "desc" else "asc"
+            )
+        else:
+            self.table_sort = col
+            self.table_sort_direction = "asc"
+        self.page = 1
+
+    def gotoPage(self, page: int | str) -> None:
+        try:
+            self.page = max(1, int(page))
+        except (TypeError, ValueError):
+            self.page = 1
+
+    def setPerPage(self, n: int | str) -> None:
+        try:
+            self.per_page = max(1, int(n))
+        except (TypeError, ValueError):
+            self.per_page = 10
+        self.page = 1
+
+    def clearSearch(self) -> None:
+        self.table_search = ""
+        self.page = 1
+
+    def setTableSearch(self, value: Any = "") -> None:
+        """Set search query and reset to page 1 (Conduit has no nested/live side effects)."""
+        self.table_search = "" if value is None else str(value)
+        self.page = 1
+
+    def setTableFilter(self, name: str, value: Any = None) -> None:
+        """Set one filter value. Conduit cannot bind nested ``table_filters.*`` paths."""
+        key = str(name or "")
+        if not key:
+            return
+        current = dict(self.table_filters or {})
+        if value in (None, ""):
+            current.pop(key, None)
+        else:
+            current[key] = value
+        self.table_filters = current
+        self.page = 1
+
+    def applyTableFilters(self, filters: Any = None) -> None:
+        """Commit deferred filter selections (optional full dict) and reset page."""
+        if isinstance(filters, dict):
+            cleaned: dict[str, Any] = {}
+            for key, value in filters.items():
+                if value in (None, ""):
+                    continue
+                cleaned[str(key)] = value
+            self.table_filters = cleaned
+        self.page = 1
+
+    def resetTableFilters(self) -> None:
+        self.table_filters = {}
+        self.page = 1
+
+    def removeTableFilter(self, name: str) -> None:
+        key = str(name or "")
+        if not key:
+            return
+        current = dict(self.table_filters or {})
+        current.pop(key, None)
+        self.table_filters = current
+        self.page = 1
 
     def mountAction(self, name: str, **kwargs: Any) -> None:
         self.dispatch("orbit-mount-action", name=name, **kwargs)
 
     def render(self) -> str:
         resource = self.get_resource()
-
-        class _Bound:
-            pass
 
         from almasix.orbit.panels.pages.resource_pages import ListRecords
 
@@ -147,6 +220,10 @@ class ListRecordsHost(OrbitPageHost):
             table_search=self.table_search,
             table_sort=self.table_sort,
             table_sort_direction=self.table_sort_direction,
+            page=self.page,
+            per_page=self.per_page,
+            table_filters=dict(self.table_filters or {}),
+            selected=list(self.selected or []),
         )
 
 

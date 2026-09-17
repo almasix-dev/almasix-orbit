@@ -16,6 +16,7 @@ class Filter(Component):
         self._query: Callable[..., Any] | None = None
         self._options: dict[Any, Any] | Callable[..., dict[Any, Any]] = {}
         self._indicate: bool = True
+        self._attribute: str | None = None
 
     def query(self, callback: Callable[..., Any]) -> Self:
         self._query = callback
@@ -24,6 +25,14 @@ class Filter(Component):
     def options(self, options: dict[Any, Any] | Callable[..., dict[Any, Any]]) -> Self:
         self._options = options
         return self
+
+    def attribute(self, name: str) -> Self:
+        """Column / attribute used when applying the default filter query (Filament parity)."""
+        self._attribute = name
+        return self
+
+    def get_attribute(self) -> str:
+        return self._attribute or self.get_name() or ""
 
     def get_options(self, **ctx: Any) -> dict[Any, Any]:
         opts = self._options
@@ -36,11 +45,60 @@ class Filter(Component):
 
 
 class SelectFilter(Filter):
-    pass
+    """Select filter — defaults to equality on the filter attribute (or name)."""
+
+    def apply(self, query: Any, value: Any) -> Any:
+        if self._query is not None:
+            return super().apply(query, value)
+        if value in (None, "", []):
+            return query
+        key = self.get_attribute()
+        if not key:
+            return query
+        out: list[Any] = []
+        for record in query:
+            if isinstance(record, dict):
+                current = record.get(key)
+            else:
+                current = getattr(record, key, None)
+            if str(current) == str(value):
+                out.append(record)
+        return out
 
 
 class TernaryFilter(Filter):
-    pass
+    """Boolean tri-state filter (All / Yes / No)."""
+
+    TRUE = "1"
+    FALSE = "0"
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._options = {
+            "": "All",
+            self.TRUE: "Yes",
+            self.FALSE: "No",
+        }
+
+    def apply(self, query: Any, value: Any) -> Any:
+        if self._query is not None:
+            return super().apply(query, value)
+        if value in (None, ""):
+            return query
+        key = self.get_attribute()
+        if not key:
+            return query
+        want = value in (True, 1, "1", "true", "yes", self.TRUE)
+        out: list[Any] = []
+        for record in query:
+            if isinstance(record, dict):
+                current = record.get(key)
+            else:
+                current = getattr(record, key, None)
+            truthy = bool(current) and current not in (0, "0", "false", "no", False)
+            if truthy is want:
+                out.append(record)
+        return out
 
 
 class TrashedFilter(SelectFilter):
