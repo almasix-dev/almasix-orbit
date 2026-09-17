@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "orbit-admin"
+version = "0.1.0"
+description = "Orbit admin demo on Almasix + Conduit"
+requires-python = ">=3.11"
+dependencies = [
+    # Real-app shape: only the Orbit meta package (+ Almasix).
+    "almasix[conduit]>=0.6.0",
+    "almasix-orbit",
+    "almasix-conduit>=0.2.0",
+]
+
+[project.scripts]
+smith = "almasix.smith.cli:app"
+
+# Local path pins (uv). ``almasix-orbit`` → combined tree (one editable root).
+[tool.uv.sources]
+almasix = { path = "../../../almasix", editable = true }
+almasix-conduit = { path = "../../../almasix-conduit", editable = true }
+almasix-orbit = { path = "../../packages/combined", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]

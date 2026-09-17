@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, ClassVar
 
 from almasix.orbit.actions.action import (
@@ -34,6 +35,7 @@ class Resource:
     navigation_sort: ClassVar[int] = 0
     record_title_attribute: ClassVar[str] = "id"
     permission_prefix: ClassVar[str | None] = None
+    content_max_width: ClassVar[str | None] = None
 
     @classmethod
     def get_slug(cls) -> str:
@@ -42,11 +44,13 @@ class Resource:
         name = cls.__name__
         if name.endswith("Resource"):
             name = name[: -len("Resource")]
-        return _snake(name)
+        return _pluralize(_snake(name))
 
     @classmethod
     def get_navigation_label(cls) -> str:
-        return cls.navigation_label or cls.get_slug().replace("_", " ").title()
+        if cls.navigation_label:
+            return cls.navigation_label
+        return cls.get_slug().replace("_", " ").replace("-", " ").title()
 
     @classmethod
     def get_model(cls) -> type[Any]:
@@ -97,11 +101,13 @@ class Resource:
     @classmethod
     def get_pages(cls) -> dict[str, str]:
         slug = cls.get_slug()
+        prefix = str(getattr(cls, "_panel_path", "") or "").rstrip("/")
+        root = f"{prefix}/{slug}" if prefix else f"/{slug}"
         return {
-            "index": f"/{slug}",
-            "create": f"/{slug}/create",
-            "edit": f"/{slug}/{{id}}/edit",
-            "view": f"/{slug}/{{id}}",
+            "index": root,
+            "create": f"{root}/create",
+            "edit": f"{root}/{{id}}/edit",
+            "view": f"{root}/{{id}}",
         }
 
     @classmethod
@@ -166,6 +172,26 @@ def _snake(name: str) -> str:
             out.append("_")
         out.append(ch.lower())
     return "".join(out)
+
+
+def _pluralize(value: str) -> str:
+    """English plural for URL segments (``author`` → ``authors``).
+
+    Runs through singularize first so already-plural stems like ``settings``
+    do not become ``settingses``.
+    """
+    try:
+        from almasix.orm.inflector import pluralize, singularize
+
+        return pluralize(singularize(value))
+    except Exception:
+        pass
+    lower = value.lower()
+    if re.search(r"(s|x|z|ch|sh)$", lower):
+        return value + "es"
+    if re.search(r"[^aeiou]y$", lower):
+        return value[:-1] + "ies"
+    return value + "s"
 
 
 def _can(user: Any, ability: str, record: Any = None) -> bool:

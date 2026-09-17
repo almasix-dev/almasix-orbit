@@ -15,7 +15,21 @@ Orbit lives in its own package — [`almasix-orbit`](https://pypi.org/project/al
 
 ```bash title="terminal"
 pip install almasix-orbit
+smith orbit:install
 ```
+
+`orbit:install` publishes assets, writes `config/orbit.py`, and scaffolds an `OrbitPanelProvider` for your first panel (default path `/admin`).
+
+Scaffold more surfaces with Smith (canonical `make:orbit-*` names; `orbit:*` aliases work the same):
+
+```bash title="terminal"
+smith make:orbit-panel admin --path=admin   # alias: smith orbit:panel …
+smith make:orbit-resource Post --panel=admin  # alias: smith orbit:resource …
+smith make:orbit-field MoneyInput             # alias: smith orbit:field …
+smith serve
+```
+
+Panels mount on a **path prefix** only — existing host routes (for example `/`) are left alone unless you intentionally set `.path("/")`.
 
 That pulls the panels meta-package and its orbit siblings (forms, tables, actions, …). Import paths always start with `almasix.orbit`:
 
@@ -25,7 +39,7 @@ from almasix.orbit.forms import Form, TextInput
 from almasix.orbit.tables import Table, TextColumn
 ```
 
-`OrbitServiceProvider` is discovered automatically through the `almasix.providers` entry-point group. No manual provider registration for the happy path.
+`OrbitServiceProvider` is discovered automatically through the `almasix.providers` entry-point group. Register the generated `OrbitPanelProvider` in `config/app.py` if your app does not auto-discover app providers.
 
 Source: [`almasix-dev/almasix-orbit`](https://github.com/almasix-dev/almasix-orbit).
 
@@ -37,7 +51,7 @@ Want a local copy of the CSS/JS to poke at?
 smith vendor:publish --tag=orbit-assets
 ```
 
-That drops `public/vendor/orbit/orbit.css` and `orbit.js`. The panel shell already links `/vendor/orbit/orbit.css` and `/vendor/orbit/orbit.js` — publish when you’re ready to vendor or tweak.
+That drops `public/vendor/orbit/orbit.css` and `orbit.js`. The panel shell already links `/vendor/orbit/orbit.css` and `/vendor/orbit/orbit.js` — publish when you’re ready to vendor or tweak. `orbit:install` can run this for you.
 
 Prism layouts that host Orbit UI can also use:
 
@@ -54,12 +68,12 @@ On register, the provider seeds in-memory config if nothing is set yet:
 
 ```python
 {
-    "path": "/orbit",
+    "path": "/admin",
     "font": "Outfit",
     "brand": "Orbit",
 }
 ```
 
-Tune brand, path, and colors on the `Panel` instance itself — see [Configuration & assets](/configuration/).
+Tune brand, path, and colors on the `Panel` instance itself — see [Configuration & assets](/configuration/). Interactive pages are Conduit hosts (Livewire analogue); SDUI forms/tables paint into those hosts.
 
 Next up: [Quick start](/getting-started/quick-start/).

@@ -41,6 +41,11 @@
 		});
 		dialog.addEventListener('close', () => {
 			document.documentElement.classList.remove('or-lightbox-open');
+			if (dialogImg) {
+				dialogImg.removeAttribute('src');
+				dialogImg.alt = '';
+			}
+			if (dialogCaption) dialogCaption.textContent = '';
 			if (lastFocus instanceof HTMLElement) lastFocus.focus({ preventScroll: true });
 			lastFocus = null;
 		});

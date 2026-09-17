@@ -111,14 +111,20 @@ class Component:
         return self
 
     def wire_model_directive(self) -> str:
-        """Return the Livewire/Conduit ``wire:model*`` directive name (no ``=``)."""
+        """Return the model binding key (``model``, ``model.live``, …) without prefix."""
         if self._live_on_blur:
-            return "wire:model.blur"
+            return "model.blur"
         if self._live and self._live_debounce is not None:
-            return f"wire:model.live.debounce.{int(self._live_debounce)}ms"
+            return f"model.live.debounce.{int(self._live_debounce)}ms"
         if self._live:
-            return "wire:model.live"
-        return "wire:model"
+            return "model.live"
+        return "model"
+
+    def wire_model_attrs(self, name: str) -> str:
+        """Dual ``conduit:model*`` / ``wire:model*`` attributes for ``name``."""
+        from almasix.orbit.support.conduit_attrs import conduit_attr
+
+        return conduit_attr(self.wire_model_directive(), name)
 
     def dehydrated(self, condition: bool = True) -> Self:
         self._dehydrated = condition

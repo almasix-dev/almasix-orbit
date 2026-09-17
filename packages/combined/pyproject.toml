@@ -1,0 +1,31 @@
+# Local-dev meta package: one editable tree that mirrors a normal
+# ``pip install almasix-orbit`` layout (everything under almasix/orbit).
+# Symlinks point at the real split packages — edit those; this is only for
+# install / IDE resolution. Not published to PyPI.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "almasix-orbit"
+version = "0.1.1"
+description = "Orbit panels — local combined install for apps / IDEs"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Almasix Contributors" }]
+dependencies = [
+    "almasix>=0.6.0",
+    "almasix-conduit>=0.2.0",
+    "almasix-permission>=0.1.0",
+]
+
+[project.entry-points."almasix.providers"]
+orbit = "almasix.orbit.provider:OrbitServiceProvider"
+
+[project.urls]
+Homepage = "https://github.com/almasix-dev/almasix-orbit"
+Documentation = "https://orbit.almasix.com/"
+Repository = "https://github.com/almasix-dev/almasix-orbit"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/almasix"]

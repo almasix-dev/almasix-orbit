@@ -14,7 +14,7 @@ from almasix.orbit.infolists import Infolist, TextEntry
 
 class PostResource(Resource):
     model = Post
-    slug = "posts"                       # optional — derived from class name
+    slug = "posts"                       # optional — defaults to plural snake of the class
     navigation_label = "Posts"
     navigation_group = "Content"
     navigation_sort = 1
@@ -52,7 +52,7 @@ class PostResource(Resource):
 | Var | Default | Role |
 |-----|---------|------|
 | `model` | `None` | Articulate (or other) model class |
-| `slug` | from class name | URL segment; strips a trailing `Resource` |
+| `slug` | plural of class name | URL segment; strips trailing `Resource`, snake_case + plural (`AuthorResource` → `authors`). Set `slug = "..."` to override. |
 | `navigation_*` | sensible defaults | Sidebar label, icon, group, sort |
 | `record_title_attribute` | `"id"` | How records introduce themselves |
 | `permission_prefix` | slug | Ability prefix |

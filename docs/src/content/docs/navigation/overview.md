@@ -36,7 +36,7 @@ panel = (
 
 ## From resources & pages
 
-Class vars become nav dicts automatically:
+Class vars become nav dicts automatically. **You do not need to register `NavigationGroup`s** for those labels to appear — groups are collected from `navigation_group` on resources and pages. Panel `NavigationGroup`s are optional metadata (icon + sort) for matching names.
 
 ```python
 class PostResource(Resource):
@@ -68,11 +68,11 @@ NavigationItem.make("docs")
     .sort(100)
 ```
 
-Pass a list to `.navigation_items([...])` to **replace** the collected set with your custom list. Call with no arguments to read the merged collection.
+Pass a list to `.navigation_items([...])` to **append** custom items to the collected set. Call with no arguments to read the merged collection.
 
 ## Groups
 
-`NavigationGroup` holds metadata for named roots — icon and sort — used when building the [sidebar_topbar](#layouts) split.
+`NavigationGroup` is **optional**. Without it, roots still form from resource/page `navigation_group` strings (icon falls back to the first item). Register a group only when you want a shared icon or sort order for that label:
 
 ```python
 NavigationGroup.make("Content").icon("heroicon-o-document-text").sort(10)

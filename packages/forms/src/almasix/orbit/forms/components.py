@@ -358,7 +358,7 @@ class Field(Component):
         return (" " + " ".join(parts)) if parts else ""
 
     def _wire_binding(self, name: str) -> str:
-        return f' {self.wire_model_directive()}="{name}"'
+        return self.wire_model_attrs(name)
 
     def _common_input_attrs(self, **ctx: Any) -> str:
         parts: list[str] = []
@@ -790,7 +790,7 @@ class Checkbox(Field):
         return (
             f'<div class="or-field or-field-Checkbox" data-field="{name}">'
             f'<label class="or-checkbox-label"><input class="or-checkbox" type="checkbox" '
-            f'name="{name}" wire:model="{name}"{checked}{disabled} /> {label}</label></div>'
+            f'name="{name}"{self._wire_binding(name)}{checked}{disabled} /> {label}</label></div>'
         )
 
 
@@ -804,7 +804,7 @@ class Hidden(Field):
     def render(self, state: Any = None, **ctx: Any) -> str:
         name = e(self.get_state_path() or "")
         val = "" if state is None else e(str(state))
-        return f'<input type="hidden" name="{name}" value="{val}" wire:model="{name}" />'
+        return f'<input type="hidden" name="{name}" value="{val}"{self._wire_binding(name)} />'
 
 
 class Placeholder(Field):

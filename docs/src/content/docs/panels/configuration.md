@@ -12,13 +12,16 @@ panel = (
     Panel.make("admin")
     .path("orbit")
     .brand_name("Acme Admin")
-    .brand_logo("/images/logo.svg")
+    .brand_logo("/images/logo.svg")  # or asset("images/logo.svg") / "https://…"
+    .brand_logo_dark("/images/logo-dark.svg")  # optional; falls back to light
+    # .brand_logo_only()  # logo without the name next to it
+    # .brand_name_font_size("1.25rem")
     .font("Outfit")
-    .colors(primary="#f1511b")
+    .primary("#f1511b")  # or .primary("info") / .colors(primary="#…", danger="#…")
     .resources([PostResource, UserResource])
     .pages([DashboardPage])
     .widgets([StatsOverview])
-    .middleware(["auth", "permission"])
+    # .middleware(["auth"])  # appends after default ["web"]
     .login()
     .auth_guard("web")
     .dark_mode()
@@ -34,10 +37,17 @@ app.make(PanelRegistry).register(panel)
 |--------|---------|-------|
 | `Panel.make(id)` | `"admin"` | Registry key via `panel.id` |
 | `.path(...)` | `/{id}` | Leading `/` is added if missing |
-| `.brand_name(...)` | `"Orbit"` | Shown in the shell |
-| `.brand_logo(...)` | `None` | Stored for your templates |
+| `.brand_name(...)` | `"Orbit"` | Document title; shown next to the logo unless logo-only |
+| `.brand_logo(...)` | `None` | Light logo. Accepts `asset(...)`, absolute URLs, or bare relatives (resolved with `url()`). Optional `dark=` kwarg. |
+| `.brand_logo_dark(...)` | light logo | Dark-mode logo; falls back to the light logo when unset |
+| `.brand_logo_only()` | `False` | Hide the brand name when a logo is set |
+| `.brand_name_font_size(...)` | `"1.05rem"` | Font size for the visible brand name (shell + login). Any CSS length |
 | `.font(...)` | `"Outfit"` | Shell typography |
-| `.colors(**hex)` | `primary="#f1511b"` | Merges into the color map |
+| `.primary(...)` | `"#f1511b"` | Brand primary (hex or semantic token like `"info"`). Soft/deep accents derive automatically |
+| `.colors(**tokens)` | `primary="#f1511b"` | Merge semantic colors (`primary`, `danger`, `success`, `warning`, `info`, `gray`). Values may be hex or tokens |
+| `.content_max_width(...)` | `"screen-2xl"` | Cap centered page content (`screen-2xl` → `96rem`) |
+
+Toggle-style methods take `condition: bool = True` (e.g. `.login()`, `.login(False)`, `.sidebar_collapsible()`).
 
 ## Contents
 
@@ -46,21 +56,39 @@ app.make(PanelRegistry).register(panel)
 | `.resources([...])` | Resource classes (replaces the list) |
 | `.pages([...])` | Custom page classes |
 | `.widgets([...])` | Dashboard widgets |
-| `.middleware([...])` | Defaults to `["auth", "permission"]` |
+| `.middleware([...])` | **Appends** after default `["web"]` (deduped). Use `replace=True` to set the stack explicitly |
 | `.login(True)` | Login enabled flag |
 | `.auth_guard("web")` | Guard name |
-| `.dark_mode()` / `.sidebar_collapsible()` | Shell preferences |
+| `.dark_mode()` | Shell light/dark/system toggle |
+| `.sidebar_collapsible()` | Off by default. Pass `True` (or call with no args) to show the collapse control |
 | `.plugin(callback)` | Stores a callback for later |
 
 ### Discovery paths
 
+Auto-import ``Resource`` / ``Page`` / ``Widget`` subclasses from a directory or package.
+``mount_panel`` calls ``load_discovered()`` for you; call it yourself only when you need the classes before mount.
+
 ```python
-panel.discover_resources("app/orbit/resources")
-panel.discover_pages("app/orbit/pages")
-panel.discover_widgets("app/orbit/widgets")
+from almasix import app_path
+# or: from almasix.support import app_path
+
+panel = (
+    Panel.make("admin")
+    .discover_resources(app_path("orbit", "resources"))
+    .discover_pages(app_path("orbit", "pages"))
+    .discover_widgets(app_path("orbit", "widgets"))
+)
 ```
 
-These append path strings onto the panel for tooling and future auto-import. **Today you still register classes** with `.resources([...])` (and friends). Treat discovery as a reserved hook, not magic yet.
+Paths may be:
+
+| Form | Example |
+|------|---------|
+| Absolute FS dir (preferred with ``app_path``) | ``app_path("orbit", "resources")`` → ``…/app/orbit/resources`` |
+| Dotted package | ``"app.orbit.resources"`` |
+| Relative dir (only if it exists vs process cwd) | ``"app/orbit/resources"`` |
+
+Discovered classes are merged with any you still register via ``.resources([...])``.
 
 ## Registry
 

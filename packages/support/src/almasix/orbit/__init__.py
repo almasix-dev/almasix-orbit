@@ -1,6 +1,25 @@
 """Orbit namespace — support package."""
 
-__path__ = __import__("pkgutil").extend_path(__path__, __name__)
+from __future__ import annotations
+
+from pkgutil import extend_path
+
+__path__ = extend_path(__path__, __name__)
+
+__version__ = "0.1.0"
+
+try:
+    from almasix.orbit.panels.navigation import NavigationGroup as NavigationGroup
+    from almasix.orbit.panels.navigation import NavigationItem as NavigationItem
+    from almasix.orbit.panels.page import Page as Page
+    from almasix.orbit.panels.panel import Panel as Panel
+    from almasix.orbit.panels.panel import PanelRegistry as PanelRegistry
+    from almasix.orbit.panels.relation_manager import RelationManager as RelationManager
+    from almasix.orbit.panels.resource import Resource as Resource
+    from almasix.orbit.panels.users import OrbitUser as OrbitUser
+    from almasix.orbit.panels.users import PanelNotification as PanelNotification
+    from almasix.orbit.panels.users import UserMenuItem as UserMenuItem
+except ImportError:
+    pass
 
 __all__ = ["__version__"]
-__version__ = "0.1.0"

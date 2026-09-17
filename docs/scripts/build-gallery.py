@@ -242,7 +242,7 @@ def build() -> str:
 html, body {{
   margin: 0;
   font-family: var(--or-font);
-  background: #ebe6df;
+  background: #ffffff;
   color: var(--or-ink);
 }}
 body.dark {{
@@ -274,7 +274,7 @@ body.dark {{
   opacity: 0.85;
 }}
 .or-shot {{
-  background: var(--or-cream, #fffaf6);
+  background: #ffffff;
   border: 1px solid var(--or-line, #e5e2dc);
   border-radius: 16px;
   padding: 1.5rem;

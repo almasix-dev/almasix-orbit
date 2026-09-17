@@ -1,0 +1,24 @@
+---
+/**
+ * Theme-aware screenshot pair as normal <img> tags (intrinsic sizing).
+ * Light/dark visibility is handled by docs CSS for /examples/{theme}/ paths.
+ */
+interface Props {
+	section: string;
+	name: string;
+	alt?: string;
+	base?: string;
+}
+
+const { section, name, alt, base = '/examples' } = Astro.props;
+const light = `${base}/light/${section}/${name}.png`;
+const dark = `${base}/dark/${section}/${name}.png`;
+const label = alt ?? `${section}/${name}`;
+---
+
+<p>
+	<img src={light} alt={`${label} (light)`} />
+</p>
+<p>
+	<img src={dark} alt={`${label} (dark)`} />
+</p>

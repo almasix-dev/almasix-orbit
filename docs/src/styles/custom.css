@@ -334,9 +334,17 @@ html.or-lightbox-open {
 	border: 0;
 	max-width: none;
 	max-height: none;
-	width: min(96vw, 1400px);
+	width: 100vw;
+	height: 100vh;
 	background: transparent;
 	color: var(--sl-color-white);
+	/* Do not set display here — closed <dialog> must stay display:none (UA).
+	   Overriding display makes the closed dialog fall back into document flow. */
+}
+
+.or-lightbox[open] {
+	display: grid;
+	place-items: center;
 }
 
 .or-lightbox::backdrop {
@@ -345,12 +353,12 @@ html.or-lightbox-open {
 }
 
 .or-lightbox__chrome {
-	position: sticky;
-	top: 0;
-	display: flex;
-	justify-content: flex-end;
+	position: fixed;
+	top: 0.75rem;
+	right: 0.75rem;
+	z-index: 2;
 	margin: 0;
-	padding: 0.35rem 0.35rem 0.75rem;
+	padding: 0;
 }
 
 .or-lightbox__close {
@@ -377,6 +385,9 @@ html.or-lightbox-open {
 	display: grid;
 	gap: 0.65rem;
 	justify-items: center;
+	align-content: center;
+	max-width: min(96vw, 1400px);
+	max-height: 96vh;
 }
 
 .or-lightbox__img {
@@ -399,8 +410,8 @@ html.or-lightbox-open {
 	margin: 0;
 	padding: 0 0.5rem 0.75rem;
 	font-size: 0.9rem;
+	opacity: 0.85;
 	color: rgba(255, 255, 255, 0.78);
 	text-align: center;
 }
-
 

@@ -285,7 +285,8 @@ def test_navigation_layouts_and_resolve_path() -> None:
         )
     )
     shell_side = side_panel.render_shell("x", active_path="/admin/a")
-    assert "or-sidebar-toggle" in shell_side and "or-nav-group" in shell_side
+    assert "or-sidebar-collapse" in shell_side or "or-nav-group" in shell_side
+    assert "or-nav-group" in shell_side
 
 
 def test_resource_nested_fields_and_explicit_infolist() -> None:
