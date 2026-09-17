@@ -1,137 +1,100 @@
-# Orbit feature matrix (maintainer)
+# Filament 5.x ↔ Orbit parity matrix (maintainer)
 
-Internal checklist for contributors. Public docs live at https://orbit.almasix.com/
-([Features](https://orbit.almasix.com/features/)). Status values: **Done**, Partial, Planned.
+Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 
-FilamentPHP 5.x column names below are *inspiration references* only — Orbit is its own product.
+**Status values**
+
+| Status | Meaning |
+|--------|---------|
+| **Done** | Fluent API + distinct `or-*` render + tests; docs list options (screenshots in exhaust PR7) |
+| **Partial** | Class/API exists but missing Filament-depth knobs, host wiring, or real runtime |
+| **Planned** | Not implemented yet |
+
+Surface checklist ≠ Filament depth. Prefer Partial over Done when in doubt.
 
 ## Packages
 
 | Filament package | Orbit package | Status |
 |------------------|---------------|--------|
-| support | `almasix-orbit-support` | Done |
-| schemas | `almasix-orbit-schemas` | Done |
-| forms | `almasix-orbit-forms` | Done |
-| tables | `almasix-orbit-tables` | Done |
-| actions | `almasix-orbit-actions` | Done |
-| infolists | `almasix-orbit-infolists` | Done |
-| notifications | `almasix-orbit-notifications` | Done |
-| widgets | `almasix-orbit-widgets` | Done |
-| query-builder | `almasix-orbit-query-builder` | Done |
-| panels | `almasix-orbit` (panels) | Done |
+| support | `almasix-orbit-support` | Partial |
+| schemas | `almasix-orbit-schemas` | Partial |
+| forms | `almasix-orbit-forms` | Partial |
+| tables | `almasix-orbit-tables` | Partial |
+| actions | `almasix-orbit-actions` | Partial |
+| infolists | `almasix-orbit-infolists` | Partial |
+| notifications | `almasix-orbit-notifications` | Partial |
+| widgets | `almasix-orbit-widgets` | Partial |
+| query-builder | `almasix-orbit-query-builder` | Partial |
+| panels | `almasix-orbit` (panels) | Partial |
 
 ## Support
 
 | Feature | Status |
 |---------|--------|
-| `Component` fluent base (`make`, label, hidden, visible, disabled, live, dehydrated, default, helper/hint) | Done |
-| Colors (`Color`, `Colors`) | Done |
-| Icons (Heroicons outline SVG) | Done |
-| HTML helpers (`e`, `tag`) | Done |
+| `Component` + `evaluate()` closures | Done |
+| Colors / curated Heroicons / HTML helpers | Partial |
+| CSS hooks catalog / render hooks | Planned |
+| Theme generator / density themes | Planned |
 
 ## Schemas
 
 | Feature | Status |
 |---------|--------|
-| `Schema` container (state, fill, dehydrate, columns, render) | Done |
-| `Grid` | Done |
-| `Section` (heading, description, collapsible) | Done |
-| `Tabs` | Done |
-| `Fieldset` | Done |
-| `Wizard` | Done |
+| `Schema` container | Done |
+| `Grid` (+ dense/gap/grid_container) | Done |
+| `Flex` | Done |
+| `Section` / `Tabs` / `Fieldset` / `Wizard` | Done |
+| `Callout` / `EmptyState` | Done |
+| Primes (`Text`, `Icon`, `Image`, `UnorderedList`) | Done |
+| Custom schema components API | Planned |
 
-## Forms (field types)
+## Forms
 
-| Field | Status |
-|-------|--------|
-| TextInput | Done |
-| Textarea | Done |
-| Select | Done |
-| Checkbox | Done |
-| Toggle | Done |
-| Hidden | Done |
-| Placeholder | Done |
-| DatePicker | Done |
-| DateTimePicker | Done |
-| TimePicker | Done |
-| FileUpload | Done |
-| Radio | Done |
-| CheckboxList | Done |
-| TagsInput | Done |
-| ColorPicker | Done |
-| RichEditor | Done |
-| MarkdownEditor | Done |
-| KeyValue | Done |
-| Repeater | Done |
-| Builder | Done |
-| Slider | Done |
-| ToggleButtons | Done |
-| CodeEditor | Done |
-| MultiSelect | Done |
-| OneTimeCodeInput | Done |
-| ViewField | Done |
-| MorphToSelect | Done |
-| TableSelect | Done |
-| ModalTableSelect | Done |
-| RelationshipRepeater | Done |
-| Form validation (`required`, `email`, `numeric`, `integer`, `url`, `min`/`max`) | Done |
+| Feature | Status |
+|---------|--------|
+| Field type checklist (TextInput, Select, Repeater, …) | Partial |
+| Select searchable / relationship / create-option | Planned |
+| FileUpload disk/avatar/image editor | Planned |
+| Repeater/Builder DnD/clone/blocks | Planned |
+| TipTap RichEditor | Planned |
+| Full validation catalog | Planned |
 
 ## Tables
 
 | Feature | Status |
 |---------|--------|
-| Table (search, sort, paginate, striped, empty state, render) | Done |
-| TextColumn / BadgeColumn / BooleanColumn / IconColumn / ImageColumn / ColorColumn | Done |
-| TagsColumn / SelectColumn / CheckboxColumn / TextInputColumn / ToggleColumn / ViewColumn | Done |
-| ColumnGroup | Done |
-| Filters (`Filter`, `SelectFilter`, `TernaryFilter`, `FilterGroup`) | Done |
-| Row / bulk / header actions | Done |
+| Search / sort / paginate / column types | Partial |
+| Summaries / row grouping / layout Split-Stack | Planned |
+| Filter session/defer/trashed UI | Planned |
+| TextColumn money/date/markdown | Planned |
 
 ## Actions
 
 | Feature | Status |
 |---------|--------|
-| Action (authorize, call, form modal, confirmation, render) | Done |
-| CreateAction / EditAction / ViewAction / DeleteAction / DeleteBulkAction | Done |
+| Base Action + Create/Edit/View/Delete | Partial |
+| Replicate / ForceDelete / Restore / Import / Export | Planned |
+| ActionGroup + deep modal (slide-over, sticky) | Planned |
 
-## Infolists
-
-| Feature | Status |
-|---------|--------|
-| Infolist render | Done |
-| TextEntry / IconEntry / ImageEntry / ColorEntry / CodeEntry / KeyValueEntry / RepeatableEntry | Done |
-
-## Notifications
+## Infolists / Notifications / Widgets / QB
 
 | Feature | Status |
 |---------|--------|
-| Notification (success/danger/warning/info) | Done |
-| Channels: flash / database / broadcast | Done |
-| Notifier bag + flash render | Done |
+| Entry types + readonly form fallback | Partial |
+| Flash notifications | Done |
+| Database / broadcast notifications | Partial |
+| Stats / Chart / Table widgets | Partial |
+| Query builder apply + render | Partial |
 
-## Widgets
-
-| Feature | Status |
-|---------|--------|
-| StatsOverviewWidget + Stat | Done |
-| ChartWidget | Done |
-| TableWidget | Done |
-
-## Query builder
+## Panels / resources / platform
 
 | Feature | Status |
 |---------|--------|
-| Constraints (text/select/boolean/date/number) | Done |
-| Operators + `QueryBuilder.apply` | Done |
-
-## Panels / resources / pages / relation managers
-
-| Feature | Status |
-|---------|--------|
-| Panel (brand, colors, nav, middleware, discover, render_shell) | Done |
-| PanelRegistry | Done |
-| Resource (form/table/infolist, permissions, pages map) | Done |
-| Page | Done |
-| RelationManager | Done |
-| LiveResource test helper | Done |
-| `make:orbit-resource` command stub | Done |
+| Panel shell + split nav | Partial |
+| Resource config + page URL presets | Partial |
+| Live CRUD page hosts (List/Create/Edit/View) | Planned |
+| Global search / list tabs / clusters / user menu | Planned |
+| Auth pages / MFA / tenancy | Planned |
+| `discover_*` import walk / scaffolding | Planned |
+| Plugins + testing suite depth | Planned |
+| Real docs screenshots (PNG) | Planned |

@@ -8,15 +8,31 @@ from typing import Any, Self
 
 from almasix.orbit.support.component import Component
 from almasix.orbit.support.html import e
+from almasix.orbit.support.icons import icon as render_icon
 
 
 class Layout(Component):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._schema: list[Component] = []
+        self._dense = False
+        self._gap: bool | str = True
+        self._defer_loading = False
 
     def schema(self, components: Sequence[Component]) -> Self:
         self._schema = list(components)
+        return self
+
+    def dense(self, condition: bool = True) -> Self:
+        self._dense = condition
+        return self
+
+    def gap(self, value: bool | str = True) -> Self:
+        self._gap = value
+        return self
+
+    def defer_loading(self, condition: bool = True) -> Self:
+        self._defer_loading = condition
         return self
 
     def get_child_components(self) -> list[Component]:
@@ -25,7 +41,18 @@ class Layout(Component):
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d["schema"] = [c.to_dict() for c in self._schema]
+        d["dense"] = self._dense
         return d
+
+    def _layout_classes(self, base: str) -> str:
+        classes = [base]
+        if self._dense:
+            classes.append("or-dense")
+        if self._gap is False:
+            classes.append("or-gap-none")
+        elif isinstance(self._gap, str):
+            classes.append(f"or-gap-{self._gap}")
+        return " ".join(classes)
 
     def render_children(self, state: Any = None, **ctx: Any) -> str:
         data = state if isinstance(state, dict) else {}
@@ -40,13 +67,55 @@ class Grid(Layout):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._columns = 2
+        self._grid_container = False
 
     def columns(self, count: int) -> Self:
         self._columns = count
         return self
 
+    def grid_container(self, condition: bool = True) -> Self:
+        self._grid_container = condition
+        return self
+
     def render(self, state: Any = None, **ctx: Any) -> str:
-        return f'<div class="or-grid or-grid-cols-{self._columns}">{self.render_children(state, **ctx)}</div>'
+        classes = self._layout_classes(f"or-grid or-grid-cols-{self._columns}")
+        if self._grid_container:
+            classes += " or-grid-container"
+        defer = ' data-defer="true"' if self._defer_loading else ""
+        return f'<div class="{classes}"{defer}>{self.render_children(state, **ctx)}</div>'
+
+
+class Flex(Layout):
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._grow = True
+        self._from: str | None = None
+
+    def grow(self, condition: bool = True) -> Self:
+        self._grow = condition
+        return self
+
+    def from_breakpoint(self, value: str) -> Self:
+        """Stack below breakpoint (e.g. ``md``), flex row from that size up."""
+        self._from = value
+        return self
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        classes = self._layout_classes("or-flex")
+        if self._grow:
+            classes += " or-flex-grow"
+        if self._from:
+            classes += f" or-flex-from-{e(self._from)}"
+        children = []
+        for child in self._schema:
+            if not child.is_visible(**ctx):
+                continue
+            data = state if isinstance(state, dict) else {}
+            inner = child.render(data.get(child.get_state_path() or "") if data else None, **ctx)
+            span = child._column_span
+            span_cls = f" or-col-span-{span}" if span else ""
+            children.append(f'<div class="or-flex-item{span_cls}">{inner}</div>')
+        return f'<div class="{classes}">{"".join(children)}</div>'
 
 
 class Section(Layout):
@@ -143,3 +212,124 @@ class Wizard(Layout):
                 f'<h4 class="or-wizard-step-title">{e(label)}</h4>{inner}</div>'
             )
         return f'<div class="or-wizard" x-data="{{ step: 0 }}">{"".join(parts)}</div>'
+
+
+class Callout(Layout):
+    """Status callout with optional footer actions."""
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._description: str | None = None
+        self._status: str = "info"
+        self._color: str | None = None
+        self._icon: str | None = None
+        self._icon_color: str | None = None
+        self._footer_actions: list[Component] = []
+        self._footer_alignment: str = "start"
+
+    def description(self, text: str) -> Self:
+        self._description = text
+        return self
+
+    def status(self, value: str) -> Self:
+        self._status = value
+        return self
+
+    def danger(self) -> Self:
+        return self.status("danger")
+
+    def info(self) -> Self:
+        return self.status("info")
+
+    def success(self) -> Self:
+        return self.status("success")
+
+    def warning(self) -> Self:
+        return self.status("warning")
+
+    def color(self, value: str) -> Self:
+        self._color = value
+        return self
+
+    def icon(self, name: str) -> Self:
+        self._icon = name
+        return self
+
+    def icon_color(self, value: str) -> Self:
+        self._icon_color = value
+        return self
+
+    def footer_actions(self, actions: Sequence[Component]) -> Self:
+        self._footer_actions = list(actions)
+        return self
+
+    def footer_actions_alignment(self, value: str) -> Self:
+        self._footer_alignment = value
+        return self
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
+        color = self._color or self._status
+        title = e(self.get_label(**ctx) or self._status.title())
+        desc = f'<p class="or-callout-desc">{e(self._description)}</p>' if self._description else ""
+        body = self.render_children(state, **ctx)
+        ic_name = self._icon or {
+            "danger": "heroicon-o-x-mark",
+            "success": "heroicon-o-check",
+            "warning": "heroicon-o-bell",
+            "info": "heroicon-o-information-circle",
+        }.get(self._status, "heroicon-o-information-circle")
+        ic = render_icon(ic_name)
+        icon_color = self._icon_color or color
+        footer = ""
+        if self._footer_actions:
+            acts = "".join(a.render(state, **ctx) for a in self._footer_actions)
+            footer = (
+                f'<div class="or-callout-footer or-align-{e(self._footer_alignment)}">{acts}</div>'
+            )
+        return (
+            f'<div class="or-callout or-callout-{e(self._status)} or-color-{e(color)}" role="status">'
+            f'<div class="or-callout-icon or-color-{e(icon_color)}">{ic}</div>'
+            f'<div class="or-callout-body"><div class="or-callout-title">{title}</div>'
+            f"{desc}{body}</div>{footer}</div>"
+        )
+
+
+class EmptyState(Layout):
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._heading: str | None = None
+        self._description: str | None = None
+        self._icon: str | None = None
+        self._actions: list[Component] = []
+
+    def heading(self, text: str) -> Self:
+        self._heading = text
+        return self
+
+    def description(self, text: str) -> Self:
+        self._description = text
+        return self
+
+    def icon(self, name: str) -> Self:
+        self._icon = name
+        return self
+
+    def actions(self, actions: Sequence[Component]) -> Self:
+        self._actions = list(actions)
+        return self
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
+        title = e(self._heading or self.get_label(**ctx) or "Nothing here")
+        desc = f'<p class="or-empty-state-desc">{e(self._description)}</p>' if self._description else ""
+        ic = f'<div class="or-empty-state-icon">{render_icon(self._icon)}</div>' if self._icon else ""
+        acts = "".join(a.render(state, **ctx) for a in self._actions)
+        actions_html = f'<div class="or-empty-state-actions">{acts}</div>' if acts else ""
+        body = self.render_children(state, **ctx)
+        return (
+            f'<div class="or-empty-state or-schema-empty">'
+            f"{ic}<h3 class=\"or-empty-state-heading\">{title}</h3>{desc}{body}{actions_html}</div>"
+        )
