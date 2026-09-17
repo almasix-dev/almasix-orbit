@@ -42,8 +42,6 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | TipTap RichEditor toolbar + contenteditable surface | Partial |
 | Live MorphTo AJAX / production FilePond upload adapter | Planned |
 
-Keywords for smoke tests: resources, pages, relation managers, TextInput, Select, Repeater.
-
 ## Tables — Partial
 
 | Feature | Status |
