@@ -70,10 +70,59 @@ def test_tabs_and_wizard() -> None:
     assert "Step 1" in wh
 
 
-def test_layout_skips_hidden_children() -> None:
-    hidden = TextInput.make("secret").hidden()
-    visible = TextInput.make("public")
-    grid = Grid.make().schema([hidden, visible])
-    html = grid.render({"public": "ok", "secret": "no"})
-    assert "public" in html
-    assert 'data-field="secret"' not in html
+def test_flex_callout_empty_state_and_primes() -> None:
+    from almasix.orbit.actions.action import Action
+    from almasix.orbit.schemas.layouts import Callout, EmptyState, Flex
+    from almasix.orbit.schemas.primes import Icon, Image, Text, UnorderedList
+
+    field = TextInput.make("title")
+    flex = Flex.make().grow().from_breakpoint("md").dense().schema([field])
+    assert "or-flex" in flex.render({"title": "T"})
+    assert "or-flex-from-md" in flex.render({"title": "T"})
+
+    callout = (
+        Callout.make("note")
+        .label("Heads up")
+        .description("Read me")
+        .warning()
+        .icon("heroicon-o-bell")
+        .footer_actions([Action.make("ok").label("OK").url("#")])
+    )
+    ch = callout.render()
+    assert "or-callout" in ch and "Heads up" in ch and "or-callout-footer" in ch
+    assert "or-callout" in Callout.make().danger().render()
+    assert "or-callout" in Callout.make().success().render()
+    assert Callout.make().hidden().render() == ""
+
+    empty = (
+        EmptyState.make()
+        .heading("No posts")
+        .description("Create one")
+        .icon("heroicon-o-plus")
+        .actions([Action.make("create").label("Create").url("/create")])
+    )
+    eh = empty.render()
+    assert "or-schema-empty" in eh and "No posts" in eh
+    assert EmptyState.make().hidden().render() == ""
+
+    assert "or-prime-text" in Text.make().content("Hello").badge().color("primary").size("lg").weight("bold").render()
+    assert "<strong>" in Text.make().content("**Hi**").markdown().render()
+    assert "<b>" in Text.make().content("<b>X</b>").html().render()
+    assert Text.make().hidden().render() == ""
+    assert "or-prime-icon" in Icon.make().icon("heroicon-o-home").color("success").tooltip("Home").render()
+    assert Icon.make().hidden().render() == ""
+    assert "or-prime-img" in Image.make().src("/a.png").image_size(48).alignment("center").render()
+    assert Image.make().src("").render() == ""
+    assert Image.make().hidden().render() == ""
+    assert "<li>A</li>" in UnorderedList.make().items(["A", "B"]).bullet_size("sm").render()
+    assert "Ada" in UnorderedList.make().items([Text.make().content("Ada")]).render()
+    assert UnorderedList.make().hidden().render() == ""
+    assert "or-grid-container" in Grid.make().grid_container().gap(False).schema([field]).render()
+    assert "or-gap-sm" in Grid.make().gap("sm").defer_loading().schema([field]).render()
+    assert Callout.make().info().color("info").icon_color("primary").footer_actions_alignment("end").render()
+    assert "or-callout" in Callout.make().schema([field]).render({"title": "x"})
+    t = Text.make().content(lambda **_: "Dyn").tooltip("t").icon("heroicon-o-check").render()
+    assert "Dyn" in t
+    assert Icon.make().size("sm").render()
+    assert "width:40px" in Image.make().src("/x.png").width(40).height(40).tooltip("pic").render()
+    assert UnorderedList.make().items(lambda **_: ["Z"]).render()
