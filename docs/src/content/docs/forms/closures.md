@@ -1,5 +1,5 @@
 ---
-title: Form closures
+title: Closures
 description: Callable labels, options, defaults, visibility, and disabled state on Orbit fields.
 ---
 
@@ -66,5 +66,5 @@ Select.make("status").options(lambda **_: fetch_statuses())
 ## Related
 
 - [Support closures](/support/closures/) — `evaluate` behaviour
-- [Standalone forms](/forms/standalone/)
-- [Forms overview](/forms/)
+- [Standalone forms](/components/form/)
+- [Forms overview](/forms/overview/)

@@ -1,5 +1,5 @@
 ---
-title: ColumnGroup
+title: Column group
 description: Orbit ColumnGroup — nest columns under a named group.
 ---
 

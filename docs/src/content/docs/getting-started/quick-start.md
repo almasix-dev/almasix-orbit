@@ -103,4 +103,4 @@ def test_post_resource_shape():
 
 You wrote Python. The panel has a sidebar entry, a form, and a table. That’s the whole game.
 
-Dive deeper: [Panels](/panels/), [Resources](/resources/), [Forms](/forms/), [Tables](/tables/).
+Dive deeper: [Panels](/panels/configuration/), [Resources](/resources/overview/), [Forms](/forms/overview/), [Tables](/tables/overview/).

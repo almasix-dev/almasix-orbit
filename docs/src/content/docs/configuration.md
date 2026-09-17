@@ -59,7 +59,7 @@ They populate `__orbit_styles` and `__orbit_scripts` in the view context. The pa
 panel.middleware(["auth", "permission"]).login().auth_guard("web")
 ```
 
-Defaults assume Almasix auth + permission middleware. Swap the list for your stack. Resource abilities still go through `can_*` helpers — see [Resources](/resources/).
+Defaults assume Almasix auth + permission middleware. Swap the list for your stack. Resource abilities still go through `can_*` helpers — see [Resources](/resources/overview/).
 
 ## Scaffolding
 
