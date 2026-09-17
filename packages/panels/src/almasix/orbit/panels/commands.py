@@ -356,8 +356,13 @@ class MakeOrbitUserCommand(Command):
         try:
             user = self._create_user(user_model, name=name, email=email, password=password)
         except Exception as exc:
-            self.error(f"Could not create user: {exc}")
-            self.comment("If the users table is missing, run: smith migrate")
+            from almasix.orbit.panels.db_errors import is_unique_violation, map_db_error
+
+            self.error(map_db_error(exc))
+            if is_unique_violation(exc):
+                self.comment("Choose a different email, or sign in if you already have an account.")
+            else:
+                self.comment("If the users table is missing, run: smith migrate")
             return self.FAILURE
 
         label = getattr(user, "email", None) or email

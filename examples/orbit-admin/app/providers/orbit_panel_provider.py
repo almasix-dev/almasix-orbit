@@ -21,6 +21,7 @@ class OrbitPanelProvider(ServiceProvider):
             .brand_logo("images/almasix-light.svg")
             .brand_logo_dark("images/almasix-dark.svg")
             .login()
+            .signup()
             .navigation_group(
                 NavigationGroup.make("Content")
                 .icon("heroicon-o-document-text")

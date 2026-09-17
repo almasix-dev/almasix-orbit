@@ -423,6 +423,10 @@ class RegisterHost(ConduitHost):
             user_model = self._user_model()
             from almasix.hashing import Hash
 
+            if self._email_taken(user_model, email):
+                self.error = "An account with this email already exists."
+                return
+
             create = getattr(user_model, "create", None)
             if create is None:
                 self.error = "User model cannot create accounts."
@@ -439,7 +443,9 @@ class RegisterHost(ConduitHost):
             else:
                 user = result
         except Exception as exc:
-            self.error = str(exc) or "Could not create account."
+            from almasix.orbit.panels.db_errors import map_db_error
+
+            self.error = map_db_error(exc)
             return
 
         try:
@@ -479,6 +485,37 @@ class RegisterHost(ConduitHost):
         if model is None:
             raise AttributeError(f"{class_name} not found in {module_name}")
         return model
+
+    @staticmethod
+    def _email_taken(user_model: type[Any], email: str) -> bool:
+        """Best-effort existence check before INSERT (IntegrityError remains the race fallback)."""
+        email_l = email.lower()
+        try:
+            where = getattr(user_model, "where", None)
+            if callable(where):
+                row = where("email", email).first()
+                if row is not None:
+                    return True
+            query = getattr(user_model, "query", None)
+            if callable(query):
+                builder = query()
+                where_b = getattr(builder, "where", None)
+                if callable(where_b):
+                    row = where_b("email", email).first()
+                    if row is not None:
+                        return True
+            # In-memory / test models with a class-level records list
+            records = getattr(user_model, "records", None)
+            if isinstance(records, list):
+                return any(
+                    str(getattr(r, "email", None) or (r.get("email") if isinstance(r, dict) else "") or "")
+                    .lower()
+                    == email_l
+                    for r in records
+                )
+        except Exception:
+            return False
+        return False
 
     def render(self) -> str:
         from almasix.orbit.panels.auth import Register

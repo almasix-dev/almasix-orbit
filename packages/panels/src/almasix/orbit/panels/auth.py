@@ -133,7 +133,11 @@ class Register(Page):
         return Form.make("register").schema(
             [
                 TextInput.make("name").required(),
-                TextInput.make("email").email().required(),
+                TextInput.make("email")
+                .email()
+                .required()
+                .unique("users", "email")
+                .validation_messages({"unique": "An account with this email already exists."}),
                 TextInput.make("password").password().required(),
                 TextInput.make("password_confirmation").password().required(),
             ]

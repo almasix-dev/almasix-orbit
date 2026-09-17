@@ -378,3 +378,221 @@ def test_mount_panel_dashboard_without_resources() -> None:
     router = Router()
     mount_panel(router, panel)
     assert any(r.uri == "/empty" or r.uri == "/empty/" for r in router.routes) or len(router.routes) >= 1
+
+
+def test_register_host_full_paths(monkeypatch) -> None:
+    import almasix.auth as auth_mod
+
+    panel = Panel.make("admin").path("admin").brand_logo("/l.svg")
+    host_cls = type("RH", (RegisterHost,), {"panel_id": "admin", "_panel": panel})
+
+    empty = host_cls()
+    asyncio.run(empty.register())
+    assert "required" in empty.error.lower()
+
+    mismatch = host_cls(name="A", email="a@b.c", password="x", password_confirmation="y")
+    asyncio.run(mismatch.register())
+    assert "match" in mismatch.error.lower()
+
+    class NoCreate:
+        pass
+
+    no_create = host_cls(name="A", email="a@b.c", password="x", password_confirmation="x")
+    monkeypatch.setattr(no_create, "_user_model", lambda: NoCreate)
+    monkeypatch.setattr(no_create, "_email_taken", lambda m, e: False)
+    monkeypatch.setattr("almasix.hashing.Hash.make", lambda p: f"h:{p}")
+    asyncio.run(no_create.register())
+    assert "cannot create" in no_create.error.lower()
+
+    class SyncUser:
+        email = "ok@b.c"
+
+        @staticmethod
+        def create(data):
+            return SyncUser()
+
+    class _Auth:
+        async def login(self, user):
+            return True
+
+    monkeypatch.setattr(auth_mod, "auth", lambda: _Auth())
+    ok = host_cls(name="Ada", email="ok@b.c", password="x", password_confirmation="x")
+    monkeypatch.setattr(ok, "_user_model", lambda: SyncUser)
+    monkeypatch.setattr(ok, "_email_taken", lambda m, e: False)
+    monkeypatch.setattr("almasix.hashing.Hash.make", lambda p: f"h:{p}")
+    asyncio.run(ok.register())
+    assert ok.error == ""
+    assert ok.take_redirect()["url"] == "/admin"
+    assert ok.password == ""
+
+    class AsyncUser:
+        @staticmethod
+        async def create(data):
+            return SimpleNamespace(email=data["email"])
+
+    class _AuthBoom:
+        async def login(self, user):
+            raise RuntimeError("login failed")
+
+    monkeypatch.setattr(auth_mod, "auth", lambda: _AuthBoom())
+    async_host = host_cls(name="Ada", email="a@b.c", password="x", password_confirmation="x")
+    monkeypatch.setattr(async_host, "_user_model", lambda: AsyncUser)
+    monkeypatch.setattr(async_host, "_email_taken", lambda m, e: False)
+    asyncio.run(async_host.register())
+    assert "sign-in failed" in async_host.error.lower() or "login failed" in async_host.error.lower()
+
+
+def test_register_email_taken_helpers() -> None:
+    class WhereModel:
+        @classmethod
+        def where(cls, col, val):
+            class Q:
+                def first(self):
+                    return object() if val == "taken@x.com" else None
+
+            return Q()
+
+    assert RegisterHost._email_taken(WhereModel, "taken@x.com") is True
+    assert RegisterHost._email_taken(WhereModel, "free@x.com") is False
+
+    class QueryModel:
+        @classmethod
+        def query(cls):
+            class B:
+                def where(self, col, val):
+                    class Q:
+                        def first(self):
+                            return object() if val == "q@x.com" else None
+
+                    return Q()
+
+            return B()
+
+    assert RegisterHost._email_taken(QueryModel, "q@x.com") is True
+
+    class BoomModel:
+        @classmethod
+        def where(cls, *a, **k):
+            raise RuntimeError("db down")
+
+    assert RegisterHost._email_taken(BoomModel, "x@y.com") is False
+
+    class ObjRecords:
+        records = [SimpleNamespace(email="obj@x.com")]
+
+    assert RegisterHost._email_taken(ObjRecords, "obj@x.com") is True
+    assert RegisterHost._email_taken(ObjRecords, "nope@x.com") is False
+
+
+def test_register_host_display_error_and_render_without_panel() -> None:
+    host_cls = type("RH", (RegisterHost,), {"panel_id": "admin", "_panel": None})
+    h = host_cls(name="A", email="a@b.c")
+    h.error = "boom"
+    assert h._display_error() == "boom"
+
+    class Bag:
+        error = ""
+        errors = {"email": ["bad email"]}
+
+    assert RegisterHost._display_error(Bag()) == "bad email"  # type: ignore[arg-type]
+    assert "Register" in h.render() or "or-login" in h.render() or "account" in h.render().lower()
+
+
+def test_register_user_model_resolution(monkeypatch) -> None:
+    import sys
+    import types
+
+    mod = types.ModuleType("app.models.user")
+
+    class User:
+        pass
+
+    mod.User = User  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "app.models.user", mod)
+    monkeypatch.setitem(sys.modules, "app.models", types.ModuleType("app.models"))
+    monkeypatch.setitem(sys.modules, "app", types.ModuleType("app"))
+
+    host_cls = type("RH", (RegisterHost,), {"panel_id": "admin", "_panel": None})
+    assert host_cls()._user_model() is User
+
+
+def test_signup_guest_path_and_empty_dashboard_home() -> None:
+    panel = Panel.make("admin").path("admin").login().signup()
+    assert _is_guest_path(panel, "/admin/register") is True
+    assert _register_path(panel) == "/admin/register"
+
+    router = Router()
+    mount_panel(router, panel)
+    assert "/admin/register" in {r.uri for r in router.routes}
+
+    empty = Panel.make("bare").path("bare").dashboard(False).login(False)
+    router2 = Router()
+    mount_panel(router2, empty)
+    home = next(r for r in router2.routes if getattr(r, "route_name", None) == "orbit.bare.home" or "home" in str(getattr(r, "route_name", "") or r.get_name()))
+    result = asyncio.run(home.action(SimpleNamespace(url=SimpleNamespace(path="/bare"))))
+    assert result is not None
+
+
+def test_dashboard_widgets_render() -> None:
+    from almasix.orbit.panels.pages.dashboard import Dashboard
+
+    html = Dashboard.render(widgets=["<b>w1</b>", 123, "<i>w2</i>"], brand="X")
+    assert "or-dashboard-widgets" in html and "w1" in html and "w2" in html
+
+
+def test_register_user_model_missing_and_config(monkeypatch) -> None:
+    import sys
+    import types
+
+    mod = types.ModuleType("tmpmod_user")
+
+    class OnlyOther:
+        pass
+
+    mod.OnlyOther = OnlyOther  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "tmpmod_user", mod)
+
+    host_cls = type("RH", (RegisterHost,), {"panel_id": "admin", "_panel": None})
+    h = host_cls()
+
+    def _cfg(key, default=None):
+        if key == "auth.providers.users.model":
+            return "tmpmod_user.Missing"
+        return default
+
+    monkeypatch.setattr("almasix.config.config", _cfg)
+    try:
+        h._user_model()
+        raise AssertionError("expected AttributeError")
+    except AttributeError:
+        pass
+
+    # brand_logo fallback when get_brand_logo_url missing
+    panel = Panel.make("admin").path("admin")
+    panel._brand_logo = "/x.svg"
+    panel._brand_logo_dark = None
+    host2 = type("RH2", (RegisterHost,), {"panel_id": "admin", "_panel": panel})()
+    assert "/x.svg" in host2.render() or "or-" in host2.render()
+
+
+def test_empty_home_auth_gate_redirect() -> None:
+    empty = Panel.make("bare").path("bare").dashboard(False).login()
+    router = Router()
+    mount_panel(router, empty)
+    home = next(
+        r
+        for r in router.routes
+        if (getattr(r, "route_name", None) or r.get_name()) == "orbit.bare.home"
+    )
+    redirected = asyncio.run(home.action(SimpleNamespace(url=SimpleNamespace(path="/bare"))))
+    assert redirected is not None
+
+
+def test_db_errors_integrity_without_unique_word() -> None:
+    from almasix.orbit.panels.db_errors import is_unique_violation
+
+    class IntegrityError(Exception):
+        pass
+
+    assert is_unique_violation(IntegrityError("NOT NULL constraint failed")) is False
+    assert is_unique_violation(IntegrityError("duplicate row")) is True
