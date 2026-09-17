@@ -108,7 +108,11 @@ def test_register_host_maps_unique_integrity_error(monkeypatch) -> None:  # type
         password_confirmation="secret",
     )
     monkeypatch.setattr(host, "_user_model", lambda: BoomModel)
-    monkeypatch.setattr(host, "_email_taken", lambda model, email: False)
+
+    async def _async_false(model, email):  # noqa: ANN001
+        return False
+
+    monkeypatch.setattr(host, "_email_taken", _async_false)
     monkeypatch.setattr("almasix.hashing.Hash.make", lambda p: f"hash:{p}")
     asyncio.run(host.register())
     assert host.error == "An account with this email already exists."

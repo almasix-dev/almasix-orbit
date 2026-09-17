@@ -226,7 +226,11 @@ def test_register_home_url_without_slash(monkeypatch) -> None:
         name="A", email="a@b.c", password="x", password_confirmation="x"
     )
     monkeypatch.setattr(host, "_user_model", lambda: User)
-    monkeypatch.setattr(host, "_email_taken", lambda m, e: False)
+
+    async def _not_taken(m, e):  # noqa: ANN001
+        return False
+
+    monkeypatch.setattr(host, "_email_taken", _not_taken)
     monkeypatch.setattr("almasix.hashing.Hash.make", lambda p: p)
     asyncio.run(host.register())
     assert host.take_redirect()["url"] == "/admin"

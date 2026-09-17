@@ -423,7 +423,7 @@ class RegisterHost(ConduitHost):
             user_model = self._user_model()
             from almasix.hashing import Hash
 
-            if self._email_taken(user_model, email):
+            if await self._email_taken(user_model, email):
                 self.error = "An account with this email already exists."
                 return
 
@@ -487,13 +487,23 @@ class RegisterHost(ConduitHost):
         return model
 
     @staticmethod
-    def _email_taken(user_model: type[Any], email: str) -> bool:
-        """Best-effort existence check before INSERT (IntegrityError remains the race fallback)."""
+    async def _email_taken(user_model: type[Any], email: str) -> bool:
+        """Best-effort existence check before INSERT (IntegrityError remains the race fallback).
+
+        Almasix ORM ``QueryBuilder.first()`` is async — awaiting is required. Treating the
+        bare coroutine as a row made every signup look like a duplicate email.
+        """
         email_l = email.lower()
+
+        async def _resolve(row: Any) -> Any:
+            if hasattr(row, "__await__"):
+                return await row
+            return row
+
         try:
             where = getattr(user_model, "where", None)
             if callable(where):
-                row = where("email", email).first()
+                row = await _resolve(where("email", email).first())
                 if row is not None:
                     return True
             query = getattr(user_model, "query", None)
@@ -501,15 +511,18 @@ class RegisterHost(ConduitHost):
                 builder = query()
                 where_b = getattr(builder, "where", None)
                 if callable(where_b):
-                    row = where_b("email", email).first()
+                    row = await _resolve(where_b("email", email).first())
                     if row is not None:
                         return True
             # In-memory / test models with a class-level records list
             records = getattr(user_model, "records", None)
             if isinstance(records, list):
                 return any(
-                    str(getattr(r, "email", None) or (r.get("email") if isinstance(r, dict) else "") or "")
-                    .lower()
+                    str(
+                        getattr(r, "email", None)
+                        or (r.get("email") if isinstance(r, dict) else "")
+                        or ""
+                    ).lower()
                     == email_l
                     for r in records
                 )

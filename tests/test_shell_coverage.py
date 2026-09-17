@@ -399,7 +399,11 @@ def test_register_host_full_paths(monkeypatch) -> None:
 
     no_create = host_cls(name="A", email="a@b.c", password="x", password_confirmation="x")
     monkeypatch.setattr(no_create, "_user_model", lambda: NoCreate)
-    monkeypatch.setattr(no_create, "_email_taken", lambda m, e: False)
+
+    async def _not_taken(m, e):  # noqa: ANN001
+        return False
+
+    monkeypatch.setattr(no_create, "_email_taken", _not_taken)
     monkeypatch.setattr("almasix.hashing.Hash.make", lambda p: f"h:{p}")
     asyncio.run(no_create.register())
     assert "cannot create" in no_create.error.lower()
@@ -418,7 +422,7 @@ def test_register_host_full_paths(monkeypatch) -> None:
     monkeypatch.setattr(auth_mod, "auth", lambda: _Auth())
     ok = host_cls(name="Ada", email="ok@b.c", password="x", password_confirmation="x")
     monkeypatch.setattr(ok, "_user_model", lambda: SyncUser)
-    monkeypatch.setattr(ok, "_email_taken", lambda m, e: False)
+    monkeypatch.setattr(ok, "_email_taken", _not_taken)
     monkeypatch.setattr("almasix.hashing.Hash.make", lambda p: f"h:{p}")
     asyncio.run(ok.register())
     assert ok.error == ""
@@ -437,7 +441,7 @@ def test_register_host_full_paths(monkeypatch) -> None:
     monkeypatch.setattr(auth_mod, "auth", lambda: _AuthBoom())
     async_host = host_cls(name="Ada", email="a@b.c", password="x", password_confirmation="x")
     monkeypatch.setattr(async_host, "_user_model", lambda: AsyncUser)
-    monkeypatch.setattr(async_host, "_email_taken", lambda m, e: False)
+    monkeypatch.setattr(async_host, "_email_taken", _not_taken)
     asyncio.run(async_host.register())
     assert "sign-in failed" in async_host.error.lower() or "login failed" in async_host.error.lower()
 
@@ -452,8 +456,22 @@ def test_register_email_taken_helpers() -> None:
 
             return Q()
 
-    assert RegisterHost._email_taken(WhereModel, "taken@x.com") is True
-    assert RegisterHost._email_taken(WhereModel, "free@x.com") is False
+    assert asyncio.run(RegisterHost._email_taken(WhereModel, "taken@x.com")) is True
+    assert asyncio.run(RegisterHost._email_taken(WhereModel, "free@x.com")) is False
+
+    class AsyncOrmModel:
+        """Mirrors Almasix ORM: ``first()`` returns a coroutine."""
+
+        @classmethod
+        def where(cls, col, val):
+            class Q:
+                async def first(self):
+                    return object() if val == "taken@x.com" else None
+
+            return Q()
+
+    assert asyncio.run(RegisterHost._email_taken(AsyncOrmModel, "taken@x.com")) is True
+    assert asyncio.run(RegisterHost._email_taken(AsyncOrmModel, "free@x.com")) is False
 
     class QueryModel:
         @classmethod
@@ -468,20 +486,20 @@ def test_register_email_taken_helpers() -> None:
 
             return B()
 
-    assert RegisterHost._email_taken(QueryModel, "q@x.com") is True
+    assert asyncio.run(RegisterHost._email_taken(QueryModel, "q@x.com")) is True
 
     class BoomModel:
         @classmethod
         def where(cls, *a, **k):
             raise RuntimeError("db down")
 
-    assert RegisterHost._email_taken(BoomModel, "x@y.com") is False
+    assert asyncio.run(RegisterHost._email_taken(BoomModel, "x@y.com")) is False
 
     class ObjRecords:
         records = [SimpleNamespace(email="obj@x.com")]
 
-    assert RegisterHost._email_taken(ObjRecords, "obj@x.com") is True
-    assert RegisterHost._email_taken(ObjRecords, "nope@x.com") is False
+    assert asyncio.run(RegisterHost._email_taken(ObjRecords, "obj@x.com")) is True
+    assert asyncio.run(RegisterHost._email_taken(ObjRecords, "nope@x.com")) is False
 
 
 def test_register_host_display_error_and_render_without_panel() -> None:
