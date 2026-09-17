@@ -54,7 +54,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-![Orbit form example (light)](/examples/light/form.png)
+![Orbit form example (light)](/examples/light/forms/overview.png)
 
-![Orbit form example (dark)](/examples/dark/form.png)
+![Orbit form example (dark)](/examples/dark/forms/overview.png)
 

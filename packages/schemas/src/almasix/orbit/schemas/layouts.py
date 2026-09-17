@@ -57,10 +57,24 @@ class Layout(Component):
     def render_children(self, state: Any = None, **ctx: Any) -> str:
         data = state if isinstance(state, dict) else {}
         return "".join(
-            c.render(data.get(c.get_state_path() or "") if data else None, **ctx)
+            c.render(child_render_state(c, data), **ctx)
             for c in self._schema
             if c.is_visible(**ctx)
         )
+
+
+def child_render_state(component: Component, data: dict[str, Any] | None) -> Any:
+    """Resolve the state argument for a child during render.
+
+    Nested ``Layout`` containers keep the full state bag so descendant fields can
+    resolve their own paths. Leaf fields receive ``data[path]`` only.
+    """
+    if not isinstance(data, dict):
+        return None
+    if isinstance(component, Layout):
+        return data
+    path = component.get_state_path() or ""
+    return data.get(path) if path else None
 
 
 class Grid(Layout):
@@ -107,11 +121,11 @@ class Flex(Layout):
         if self._from:
             classes += f" or-flex-from-{e(self._from)}"
         children = []
+        data = state if isinstance(state, dict) else {}
         for child in self._schema:
             if not child.is_visible(**ctx):
                 continue
-            data = state if isinstance(state, dict) else {}
-            inner = child.render(data.get(child.get_state_path() or "") if data else None, **ctx)
+            inner = child.render(child_render_state(child, data), **ctx)
             span = child._column_span
             span_cls = f" or-col-span-{span}" if span else ""
             children.append(f'<div class="or-flex-item{span_cls}">{inner}</div>')
@@ -166,11 +180,12 @@ class Tabs(Layout):
     def render(self, state: Any = None, **ctx: Any) -> str:
         nav = []
         bodies = []
+        data = state if isinstance(state, dict) else {}
         for i, (label, comps) in enumerate(self._tabs):
             active = " is-active" if i == 0 else ""
             nav.append(f'<button type="button" class="or-tab{active}" data-tab="{i}">{e(label)}</button>')
             inner = "".join(
-                c.render((state or {}).get(c.get_state_path() or "") if isinstance(state, dict) else None, **ctx)
+                c.render(child_render_state(c, data), **ctx)
                 for c in comps
             )
             bodies.append(f'<div class="or-tab-panel{active}" data-panel="{i}">{inner}</div>')
@@ -202,9 +217,10 @@ class Wizard(Layout):
 
     def render(self, state: Any = None, **ctx: Any) -> str:
         parts = []
+        data = state if isinstance(state, dict) else {}
         for i, (label, comps) in enumerate(self._steps):
             inner = "".join(
-                c.render((state or {}).get(c.get_state_path() or "") if isinstance(state, dict) else None, **ctx)
+                c.render(child_render_state(c, data), **ctx)
                 for c in comps
             )
             parts.append(

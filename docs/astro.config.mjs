@@ -113,7 +113,7 @@ export default defineConfig({
 						'{"@context": "https://schema.org", "@graph": [{"@type": "WebSite", "@id": "https://orbit.almasix.com/#website", "url": "https://orbit.almasix.com/", "name": "Almasix Orbit", "description": "Server-driven admin UI for Almasix \\u2014 panels, resources, forms, and tables on Conduit + Alpine.", "publisher": {"@id": "https://almasix.com/#organization"}, "inLanguage": "en"}, {"@type": "SoftwareApplication", "@id": "https://orbit.almasix.com/#software", "name": "Almasix Orbit", "applicationCategory": "DeveloperApplication", "url": "https://orbit.almasix.com/", "isPartOf": {"@id": "https://almasix.com/#software"}, "publisher": {"@id": "https://almasix.com/#organization"}}]}',
 				},
 			],
-						sidebar: [
+			sidebar: [
 				{ label: 'Home', slug: 'index' },
 				{
 					label: 'Prologue',

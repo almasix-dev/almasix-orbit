@@ -31,6 +31,21 @@
   --or-shadow: 0 1px 2px rgba(28, 20, 17, 0.06);
 }
 
+html[data-theme="dark"],
+body.dark,
+.or-theme-dark {
+  --or-ink: #f3efe9;
+  --or-ink-soft: #e4ddd5;
+  --or-paper: #141210;
+  --or-paper-deep: #0c0b0a;
+  --or-cream: #1a1715;
+  --or-muted: #a89a90;
+  --or-line: rgba(243, 239, 233, 0.12);
+  --or-line-strong: rgba(243, 239, 233, 0.22);
+  --or-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
 *,
 *::before,
 *::after {
@@ -216,8 +231,14 @@
   grid-template-columns: 1fr;
 }
 
-.or-action-modal-host[x-cloak] {
-  display: none;
+/* Hide confirm chrome until Alpine registers the host (avoids flash / failed-init bleed). */
+[x-cloak] {
+  display: none !important;
+}
+
+.or-action-modal-host[x-cloak],
+.or-action-modal-host:not(.or-alpine-ready) {
+  display: none !important;
 }
 
 .or-modal-backdrop {
@@ -360,6 +381,92 @@
   margin: 0;
   font-size: 0.8rem;
   color: var(--or-muted);
+}
+
+.or-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--or-muted);
+  margin-bottom: 0.35rem;
+}
+
+.or-hint-action {
+  border: 0;
+  background: transparent;
+  color: var(--or-accent);
+  cursor: pointer;
+  font: inherit;
+}
+
+.or-input-affix {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.or-input-affix .or-input {
+  flex: 1;
+  border-radius: 0;
+}
+
+.or-input-prefix,
+.or-input-suffix {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.65rem;
+  background: color-mix(in srgb, var(--or-line) 40%, transparent);
+  border: 1px solid var(--or-line-strong);
+  color: var(--or-muted);
+  font-size: 0.85rem;
+}
+
+.or-input-prefix {
+  border-right: 0;
+  border-radius: var(--or-radius) 0 0 var(--or-radius);
+}
+
+.or-input-suffix {
+  border-left: 0;
+  border-radius: 0 var(--or-radius) var(--or-radius) 0;
+}
+
+.or-input-affix .or-input:first-child {
+  border-radius: var(--or-radius) 0 0 var(--or-radius);
+}
+
+.or-input-affix .or-input:last-child {
+  border-radius: 0 var(--or-radius) var(--or-radius) 0;
+}
+
+.or-field-inline {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.or-input-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.or-tiptap-surface {
+  min-height: 8rem;
+  padding: 0.75rem;
+  border: 1px solid var(--or-line-strong);
+  border-radius: var(--or-radius);
+  background: var(--or-cream);
+}
+
+.or-file-image-editor {
+  min-height: 12rem;
+  border: 1px dashed var(--or-line-strong);
+  border-radius: var(--or-radius);
+  margin-bottom: 0.5rem;
 }
 
 .or-table-wrap {
@@ -949,55 +1056,89 @@
   }
 }
 
-body { font-family: Outfit, ui-sans-serif, system-ui, sans-serif; margin: 0; background: #f6f4f1; color: #1a1a1a; }
-body.dark { background: #121212; color: #f3f3f3; }
-.gallery-section { padding: 2rem; max-width: 1100px; margin: 0 auto; }
-.gallery-card { background: #fff; border: 1px solid #e5e2dc; border-radius: 12px; padding: 1.25rem; }
-body.dark .gallery-card { background: #1c1c1c; border-color: #333; }
-h2 { margin-top: 0; }
+/* Gallery chrome — not part of product CSS */
+[x-cloak] { display: none !important; }
+.or-action-modal-host,
+.or-modal-backdrop,
+.or-modal { display: none !important; } /* never capture confirm overlays */
+html, body {
+  margin: 0;
+  font-family: var(--or-font);
+  background: #ebe6df;
+  color: var(--or-ink);
+}
+body.dark {
+  background: #0f0e0d;
+  color: #f3efe9;
+}
+.gallery-header {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 0.5rem;
+}
+.gallery-header h1 { margin: 0 0 0.35rem; font-size: 1.5rem; }
+.gallery-header p { margin: 0; color: var(--or-muted); font-size: 0.95rem; }
+.gallery-header code { font-size: 0.85em; }
+.gallery-section {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 2rem;
+}
+.gallery-label {
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--or-muted);
+  letter-spacing: 0.02em;
+}
+.gallery-label code {
+  font-weight: 500;
+  opacity: 0.85;
+}
+.or-shot {
+  background: var(--or-cream, #fffaf6);
+  border: 1px solid var(--or-line, #e5e2dc);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(28, 20, 17, 0.06);
+  overflow: hidden;
+}
+body.dark .or-shot {
+  background: #1a1715;
+  border-color: #2e2926;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.or-shot-shell {
+  min-height: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--or-line);
+}
+.or-shot .or-app { min-height: 420px; }
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
-<section class="gallery-section" id="form"><h2>form</h2><div class="gallery-card"><div class="or-schema or-schema-cols-1"><div class="or-callout or-callout-info or-color-info" role="status"><div class="or-callout-icon or-color-info"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg></div><div class="or-callout-body"><div class="or-callout-title">Tip</div><p class="or-callout-desc">Fill these fields</p></div></div><div class="or-flex or-flex-grow or-flex-from-md"><div class="or-flex-item"><div class="or-field or-field-TextInput" data-field="name"><label class="or-label" for="or-name">Name <span class="or-required">*</span></label><input class="or-input" id="or-name" name="name" type="text" value="" wire:model="name" /></div></div><div class="or-flex-item"><div class="or-field or-field-Select" data-field="role" data-searchable x-data="orbitSearchableSelect"><label class="or-label" for="or-role">Role</label><input type="search" class="or-input or-select-search" placeholder="Search…" x-model="q" x-on:input="filter()" aria-label="Search Role" /><select class="or-select" id="or-role" name="role" x-ref="select" wire:model="role"><option value="a" data-label="Admin">Admin</option><option value="e" data-label="Editor">Editor</option></select></div></div></div><div class="or-field or-field-FileUpload" data-field="avatar"><label class="or-label" for="or-avatar">Avatar</label><input class="or-file" id="or-avatar" type="file" name="avatar" accept="image/png" wire:model="avatar" /></div><div class="or-field or-field-RichEditor" data-field="body"><label class="or-label" for="or-body">Body</label><div class="or-editor-toolbar" data-toolbar="bold,italic,link"><button type="button" class="or-editor-tool" data-tool="bold" aria-label="bold">Bold</button><button type="button" class="or-editor-tool" data-tool="italic" aria-label="italic">Italic</button><button type="button" class="or-editor-tool" data-tool="link" aria-label="link">Link</button></div><div class="or-editor or-editor-rich" id="or-body-editor" data-tiptap data-toolbar="bold,italic,link" data-input="or-body"></div><input type="hidden" class="or-editor-input" id="or-body" name="body" value="&lt;p&gt;Hello&lt;/p&gt;" wire:model="body" data-tiptap-input /></div><div class="or-field or-field-Repeater" data-field="links" x-data="{ items: 1 }"><span class="or-label">Links</span><div class="or-repeater"><div class="or-repeater-item" data-index="0"><div class="or-repeater-item-header"><span class="or-repeater-item-label">Item 1</span><div class="or-repeater-item-actions"><button type="button" class="or-btn or-btn-danger or-btn-sm" wire:click="removeRepeaterItem('links', 0)">Remove</button></div></div><div class="or-repeater-item-body"><div class="or-field or-field-TextInput" data-field="url"><label class="or-label" for="or-url">Url</label><input class="or-input" id="or-url" name="url" type="text" value="" wire:model="url" /></div></div></div></div><button type="button" class="or-btn or-btn-gray or-btn-sm" wire:click="addRepeaterItem('links')">Add item</button></div><div class="or-field or-field-Builder" data-field="blocks" x-data="{ items: 1 }"><span class="or-label">Blocks</span><div class="or-repeater"><div class="or-repeater-item" data-index="0"><div class="or-repeater-item-header"><span class="or-repeater-item-label">Item 1</span><div class="or-repeater-item-actions"><button type="button" class="or-btn or-btn-danger or-btn-sm" wire:click="removeRepeaterItem('blocks', 0)">Remove</button></div></div><div class="or-repeater-item-body"><div class="or-field or-field-TextInput" data-field="heading"><label class="or-label" for="or-heading">Heading</label><input class="or-input" id="or-heading" name="heading" type="text" value="" wire:model="heading" /></div></div></div></div><div class="or-builder-picker" role="group"><button type="button" class="or-btn or-btn-gray or-btn-sm" data-block="hero" wire:click="addBuilderBlock('blocks', 'hero')">Hero</button></div></div></div></div></section><section class="gallery-section" id="table"><h2>table</h2><div class="gallery-card"><div class="or-table-wrap"><table class="or-table or-table-striped"><thead class="or-thead"><tr><th class="or-th" data-sortable="true">Title</th><th class="or-th" data-sortable="false">Amount</th><th class="or-th or-th-actions">Actions</th></tr></thead><tbody class="or-tbody"><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Ada</span></td><td class="or-td"><span class="or-cell-text">USD 12.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="create" href="/create"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span>Create</span></a><button type="button" class="or-btn or-btn-danger" data-action="delete" data-confirm="true" wire:click="mountAction('delete')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg><span>Delete</span></button></td></tr><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Bob</span></td><td class="or-td"><span class="or-cell-text">USD 8.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="create" href="/create"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span>Create</span></a><button type="button" class="or-btn or-btn-danger" data-action="delete" data-confirm="true" wire:click="mountAction('delete')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg><span>Delete</span></button></td></tr></tbody></table></div></div></section><section class="gallery-section" id="primes"><h2>primes</h2><div class="gallery-card"><span class="or-prime or-prime-text or-size-md or-weight-normal or-badge or-color-success">Published</span></div></section><section class="gallery-section" id="login"><h2>login</h2><div class="gallery-card"><div class="or-page or-page-auth or-page-login"><h1 class="or-page-title">Sign in</h1><form class="or-form" wire:submit="authenticate"><div class="or-schema or-schema-cols-1"><div class="or-field or-field-TextInput" data-field="email"><label class="or-label" for="or-email">Email <span class="or-required">*</span></label><input class="or-input" id="or-email" name="email" type="email" value="" wire:model="email" /></div><div class="or-field or-field-TextInput" data-field="password"><label class="or-label" for="or-password">Password <span class="or-required">*</span></label><input class="or-input" id="or-password" name="password" type="password" value="" wire:model="password" /></div></div><button type="submit" class="or-btn or-btn-primary">Sign in</button></form></div></div></section><section class="gallery-section" id="shell"><h2>shell</h2><div class="gallery-card"><!DOCTYPE html>
-<html lang="en" data-orbit-panel="admin">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Orbit</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/vendor/orbit/orbit.css" />
-  <style>:root { --or-font: 'Outfit', ui-sans-serif, system-ui, sans-serif; --or-primary: #f1511b; }</style>
-</head>
-<body class="or-body">
-  <div class="or-app or-app-split" x-data="{ sidebarOpen: true }">
-    <aside class="or-sidebar" :class="{ 'is-collapsed': !sidebarOpen }">
+<header class="gallery-header">
+  <h1>Orbit screenshot gallery</h1>
+  <p>Shots use ids <code>section/name</code> → <code>examples/{light|dark}/section/name.png</code></p>
+  <p><code>  - forms/overview
+  - forms/text-input
+  - forms/select
+  - tables/overview
+  - schemas/callout
+  - schemas/empty-state
+  - schemas/primes-text
+  - panels/shell
+  - users/login</code></p>
+</header>
+<section class="gallery-section" data-section="forms"><p class="gallery-label">Forms overview <code>forms/overview</code></p><div class="or-shot" data-shot="forms/overview"><div class="or-schema or-schema-cols-1"><div class="or-callout or-callout-info or-color-info" role="status"><div class="or-callout-icon or-color-info"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg></div><div class="or-callout-body"><div class="or-callout-title">Tip</div><p class="or-callout-desc">Fill these fields</p></div></div><section class="or-section" data-collapsible="false" data-collapsed="false"><header class="or-section-header"><h3 class="or-section-title">Basics</h3></header><div class="or-section-body"><div class="or-flex or-flex-grow or-flex-from-md"><div class="or-flex-item"><div class="or-field or-field-TextInput" data-field="name"><label class="or-label" for="or-name">Name <span class="or-required">*</span></label><div class="or-input-affix"><span class="or-input-prefix"><span class="or-affix-text">Dr.</span></span><input class="or-input" id="or-name" name="name" type="text" value="Ada" wire:model="name" /></div></div></div><div class="or-flex-item"><div class="or-field or-field-Select" data-field="role"><label class="or-label" for="or-role">Role</label><select class="or-select" id="or-role" name="role" wire:model="role"><option value="">—</option><option value="a" data-label="Admin" selected>Admin</option><option value="e" data-label="Editor">Editor</option></select></div></div></div><div class="or-field or-field-Textarea" data-field="bio"><label class="or-label" for="or-bio">Bio</label><textarea class="or-textarea" id="or-bio" name="bio" rows="3" wire:model="bio">Editor at Orbit.</textarea></div><div class="or-field or-field-Toggle" data-field="active"><label class="or-toggle-label"><input class="or-toggle" type="checkbox" name="active" wire:model="active" checked /> Active</label></div><div class="or-field or-field-Checkbox" data-field="terms"><label class="or-checkbox-label"><input class="or-checkbox" type="checkbox" name="terms" wire:model="terms" /> Accept terms</label></div></div></section><div class="or-field or-field-FileUpload" data-field="avatar" data-image-preview="true"><label class="or-label" for="or-avatar">Avatar</label><div class="or-file-preview" data-preview-grid aria-live="polite"></div><input class="or-file" id="or-avatar" type="file" name="avatar" accept="image/png,image/jpeg,image/gif,image/webp"  wire:model="avatar" /></div><div class="or-field or-field-RichEditor" data-field="body"><label class="or-label" for="or-body">Body</label><div class="or-editor-toolbar" data-toolbar="bold,italic,link"><button type="button" class="or-editor-tool" data-tool="bold" aria-label="bold">Bold</button><button type="button" class="or-editor-tool" data-tool="italic" aria-label="italic">Italic</button><button type="button" class="or-editor-tool" data-tool="link" aria-label="link">Link</button></div><div class="or-editor or-editor-rich" id="or-body-editor" data-tiptap data-toolbar="bold,italic,link" data-input="or-body"></div><input type="hidden" class="or-editor-input" id="or-body" name="body" value="&lt;p&gt;Hello from Orbit.&lt;/p&gt;" wire:model="body" data-tiptap-input /></div><div class="or-field or-field-Repeater" data-field="links" x-data="{ items: 1 }"><span class="or-label">Links</span><div class="or-repeater"><div class="or-repeater-item" data-index="0"><div class="or-repeater-item-header"><span class="or-repeater-item-label">Item 1</span><div class="or-repeater-item-actions"><button type="button" class="or-btn or-btn-danger or-btn-sm" wire:click="removeRepeaterItem('links', 0)">Remove</button></div></div><div class="or-repeater-item-body"><div class="or-field or-field-TextInput" data-field="url"><label class="or-label" for="or-url">URL</label><input class="or-input" id="or-url" name="url" type="text" value="https://orbit.almasix.com" wire:model="url" /></div></div></div></div><button type="button" class="or-btn or-btn-gray or-btn-sm" wire:click="addRepeaterItem('links')">Add item</button></div><div class="or-field or-field-Builder" data-field="blocks" x-data="{ items: 1 }"><span class="or-label">Blocks</span><div class="or-repeater"><div class="or-repeater-item" data-index="0"><div class="or-repeater-item-header"><span class="or-repeater-item-label">Item 1</span><div class="or-repeater-item-actions"><button type="button" class="or-btn or-btn-danger or-btn-sm" wire:click="removeRepeaterItem('blocks', 0)">Remove</button></div></div><div class="or-repeater-item-body"><div class="or-field or-field-TextInput" data-field="heading"><label class="or-label" for="or-heading">Heading</label><input class="or-input" id="or-heading" name="heading" type="text" value="Welcome" wire:model="heading" /></div></div></div></div><div class="or-builder-picker" role="group"><button type="button" class="or-btn or-btn-gray or-btn-sm" data-block="hero" wire:click="addBuilderBlock('blocks', 'hero')">Hero</button></div></div></div></div></section><section class="gallery-section" data-section="forms"><p class="gallery-label">Text input <code>forms/text-input</code></p><div class="or-shot" data-shot="forms/text-input"><div class="or-field or-field-TextInput" data-field="email"><label class="or-label" for="or-email">Email <span class="or-required">*</span></label><input class="or-input" id="or-email" name="email" type="email" value="ada@orbit.test" placeholder="you@acme.test" wire:model="email" /><p class="or-helper">We never share this.</p></div></div></section><section class="gallery-section" data-section="forms"><p class="gallery-label">Select <code>forms/select</code></p><div class="or-shot" data-shot="forms/select"><div class="or-field or-field-Select" data-field="status" data-searchable x-data="orbitSearchableSelect"><label class="or-label" for="or-status">Status</label><input type="search" class="or-input or-select-search" placeholder="Search…" x-model="q" x-on:input.debounce.200ms="filter()" aria-label="Search" /><select class="or-select" id="or-status" name="status" x-ref="select" wire:model="status"><option value="">—</option><option value="draft" data-label="Draft">Draft</option><option value="published" data-label="Published" selected>Published</option><option value="archived" data-label="Archived">Archived</option></select></div></div></section><section class="gallery-section" data-section="tables"><p class="gallery-label">Tables overview <code>tables/overview</code></p><div class="or-shot" data-shot="tables/overview"><div class="or-table-wrap"><div class="or-table-header-actions"><a class="or-btn or-btn-primary" data-action="create" href="/create"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span>Create</span></a></div><table class="or-table or-table-striped"><thead class="or-thead"><tr><th class="or-th" data-sortable="true">Title</th><th class="or-th" data-sortable="false">Amount</th><th class="or-th or-th-actions">Actions</th></tr></thead><tbody class="or-tbody"><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Ada</span></td><td class="or-td"><span class="or-cell-text">USD 12.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="edit" href="/edit/Ada"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 19.82a4.5 4.5 0 0 1-1.897 1.13l-10.976.274 2.652-2.652L16.862 4.487Zm0 0L19.5 7.125"/></svg><span>Edit</span></a></td></tr><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Bob</span></td><td class="or-td"><span class="or-cell-text">USD 8.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="edit" href="/edit/Bob"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 19.82a4.5 4.5 0 0 1-1.897 1.13l-10.976.274 2.652-2.652L16.862 4.487Zm0 0L19.5 7.125"/></svg><span>Edit</span></a></td></tr></tbody></table></div></div></section><section class="gallery-section" data-section="schemas"><p class="gallery-label">Callout <code>schemas/callout</code></p><div class="or-shot" data-shot="schemas/callout"><div class="or-callout or-callout-info or-color-info" role="status"><div class="or-callout-icon or-color-info"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg></div><div class="or-callout-body"><div class="or-callout-title">Tip</div><p class="or-callout-desc">Fill these fields</p></div></div></div></section><section class="gallery-section" data-section="schemas"><p class="gallery-label">Empty state <code>schemas/empty-state</code></p><div class="or-shot" data-shot="schemas/empty-state"><div class="or-empty-state or-schema-empty"><h3 class="or-empty-state-heading">No drafts</h3><p class="or-empty-state-desc">Create one when you are ready.</p></div></div></section><section class="gallery-section" data-section="schemas"><p class="gallery-label">Text prime <code>schemas/primes-text</code></p><div class="or-shot" data-shot="schemas/primes-text"><span class="or-prime or-prime-text or-size-md or-weight-normal or-badge or-color-success">Published</span></div></section><section class="gallery-section" data-section="panels"><p class="gallery-label">Panel shell <code>panels/shell</code></p><div class="or-shot" data-shot="panels/shell"><div class="or-app or-app-split or-shot-shell" x-data="{ sidebarOpen: true }">    <aside class="or-sidebar" :class="{ 'is-collapsed': !sidebarOpen }">
 <button type="button" class="or-sidebar-toggle" @click="sidebarOpen = !sidebarOpen" aria-label="Toggle sidebar">☰</button>      <div class="or-brand">Orbit</div>
       <nav class="or-nav"><a class="or-nav-link is-active" href="/admin/demo"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg><span>Content</span></a></nav>
     </aside>
-    <div class="or-main">
-      <header class="or-topbar">
+<div class="or-main">      <header class="or-topbar">
         <nav class="or-topnav"><a class="or-topnav-link" href="/admin/demo">Posts</a></nav>
         <div class="or-topbar-end"></div>
       </header>
-      <main class="or-content"><div class="or-table-wrap"><table class="or-table or-table-striped"><thead class="or-thead"><tr><th class="or-th" data-sortable="true">Title</th><th class="or-th" data-sortable="false">Amount</th><th class="or-th or-th-actions">Actions</th></tr></thead><tbody class="or-tbody"><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Ada</span></td><td class="or-td"><span class="or-cell-text">USD 12.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="create" href="/create"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span>Create</span></a><button type="button" class="or-btn or-btn-danger" data-action="delete" data-confirm="true" wire:click="mountAction('delete')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg><span>Delete</span></button></td></tr><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Bob</span></td><td class="or-td"><span class="or-cell-text">USD 8.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="create" href="/create"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span>Create</span></a><button type="button" class="or-btn or-btn-danger" data-action="delete" data-confirm="true" wire:click="mountAction('delete')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg><span>Delete</span></button></td></tr></tbody></table></div><div class="or-empty-state or-schema-empty"><h3 class="or-empty-state-heading">No drafts</h3><p class="or-empty-state-desc">Create one.</p></div></main>
-    </div>
-  </div>
-  <div class="or-action-modal-host" x-data="orbitActionModal" x-cloak>
-    <div class="or-modal-backdrop" x-show="open" @click="close()"></div>
-    <div class="or-modal" x-show="open" role="dialog" aria-modal="true">
-      <h2 class="or-modal-title" x-text="heading"></h2>
-      <p class="or-modal-body" x-text="description" x-show="description"></p>
-      <div class="or-modal-actions">
-        <button type="button" class="or-btn or-btn-gray" @click="close()">Cancel</button>
-        <button type="button" class="or-btn or-btn-primary" @click="confirm()">Confirm</button>
-      </div>
-    </div>
-  </div>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <script src="/vendor/orbit/orbit.js"></script>
-</body>
-</html></div></section>
+<main class="or-content"><div class="or-table-wrap"><div class="or-table-header-actions"><a class="or-btn or-btn-primary" data-action="create" href="/create"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span>Create</span></a></div><table class="or-table or-table-striped"><thead class="or-thead"><tr><th class="or-th" data-sortable="true">Title</th><th class="or-th" data-sortable="false">Amount</th><th class="or-th or-th-actions">Actions</th></tr></thead><tbody class="or-tbody"><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Ada</span></td><td class="or-td"><span class="or-cell-text">USD 12.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="edit" href="/edit/Ada"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 19.82a4.5 4.5 0 0 1-1.897 1.13l-10.976.274 2.652-2.652L16.862 4.487Zm0 0L19.5 7.125"/></svg><span>Edit</span></a></td></tr><tr class="or-tr"><td class="or-td"><span class="or-cell-text">Bob</span></td><td class="or-td"><span class="or-cell-text">USD 8.00</span></td><td class="or-td or-td-actions"><a class="or-btn or-btn-primary" data-action="edit" href="/edit/Bob"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="20" height="20" class="or-icon" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 19.82a4.5 4.5 0 0 1-1.897 1.13l-10.976.274 2.652-2.652L16.862 4.487Zm0 0L19.5 7.125"/></svg><span>Edit</span></a></td></tr></tbody></table></div><div class="or-empty-state or-schema-empty"><h3 class="or-empty-state-heading">No drafts</h3><p class="or-empty-state-desc">Create one when you are ready.</p></div></main></div></div></div></section><section class="gallery-section" data-section="users"><p class="gallery-label">Login <code>users/login</code></p><div class="or-shot" data-shot="users/login"><div class="or-page or-page-auth or-page-login"><h1 class="or-page-title">Sign in</h1><form class="or-form" wire:submit="authenticate"><div class="or-schema or-schema-cols-1"><div class="or-field or-field-TextInput" data-field="email"><label class="or-label" for="or-email">Email <span class="or-required">*</span></label><input class="or-input" id="or-email" name="email" type="email" value="" autocomplete="username" wire:model="email" /></div><div class="or-field or-field-TextInput" data-field="password"><label class="or-label" for="or-password">Password <span class="or-required">*</span></label><input class="or-input" id="or-password" name="password" type="password" value="" autocomplete="current-password" wire:model="password" /></div></div><button type="submit" class="or-btn or-btn-primary">Sign in</button></form></div></div></section>
 </body>
 </html>

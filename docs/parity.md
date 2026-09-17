@@ -78,7 +78,8 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 
 | Feature | Status |
 |---------|--------|
-| Real light/dark PNG examples under `docs/public/examples/` | Done |
+| Real light/dark PNG examples under `docs/public/examples/{theme}/{section}/{name}.png` | Done |
+
 | Gallery build + Playwright capture scripts | Done |
 | Every field page with PNG (not HTML fence) | Partial |
 

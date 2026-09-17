@@ -26,6 +26,7 @@
       closeOnEscape: true,
       closeOnClickAway: true,
       init() {
+        this.$el.classList.add("or-alpine-ready");
         window.addEventListener("orbit:mount-action", (event) => {
           const detail = event.detail || {};
           this.name = detail.name || "";

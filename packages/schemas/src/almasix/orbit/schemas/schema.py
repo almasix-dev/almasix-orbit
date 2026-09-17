@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from typing import Any, Self
 
 from almasix.orbit.support.component import Component
+from almasix.orbit.schemas.layouts import child_render_state
 
 
 class Schema(Component):
@@ -82,7 +83,7 @@ class Schema(Component):
     def render(self, state: Any = None, **ctx: Any) -> str:
         data = state if isinstance(state, dict) else self._state
         parts = [
-            c.render(data.get(c.get_state_path() or "") if isinstance(data, dict) else None, **ctx)
+            c.render(child_render_state(c, data if isinstance(data, dict) else None), **ctx)
             for c in self._components
             if c.is_visible(**ctx)
         ]

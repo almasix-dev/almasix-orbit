@@ -32,6 +32,6 @@ Implement `MfaProvider` or use `AppAuthentication` for TOTP-shaped challenge/man
 
 ## Preview
 
-![Login (light)](/examples/light/login.png)
+![Login (light)](/examples/light/users/login.png)
 
-![Login (dark)](/examples/dark/login.png)
+![Login (dark)](/examples/dark/users/login.png)

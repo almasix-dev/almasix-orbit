@@ -71,6 +71,6 @@ Forms inherit from `Schema`, so a form *is* a schema with validation bolted on. 
 
 ## Preview
 
-![Schema layouts in a form (light)](/examples/light/form.png)
+![Callout (light)](/examples/light/schemas/callout.png)
 
-![Schema layouts in a form (dark)](/examples/dark/form.png)
+![Callout (dark)](/examples/dark/schemas/callout.png)

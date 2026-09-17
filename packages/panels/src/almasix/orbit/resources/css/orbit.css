@@ -25,6 +25,21 @@
   --or-shadow: 0 1px 2px rgba(28, 20, 17, 0.06);
 }
 
+html[data-theme="dark"],
+body.dark,
+.or-theme-dark {
+  --or-ink: #f3efe9;
+  --or-ink-soft: #e4ddd5;
+  --or-paper: #141210;
+  --or-paper-deep: #0c0b0a;
+  --or-cream: #1a1715;
+  --or-muted: #a89a90;
+  --or-line: rgba(243, 239, 233, 0.12);
+  --or-line-strong: rgba(243, 239, 233, 0.22);
+  --or-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
 *,
 *::before,
 *::after {
@@ -210,8 +225,14 @@
   grid-template-columns: 1fr;
 }
 
-.or-action-modal-host[x-cloak] {
-  display: none;
+/* Hide confirm chrome until Alpine registers the host (avoids flash / failed-init bleed). */
+[x-cloak] {
+  display: none !important;
+}
+
+.or-action-modal-host[x-cloak],
+.or-action-modal-host:not(.or-alpine-ready) {
+  display: none !important;
 }
 
 .or-modal-backdrop {

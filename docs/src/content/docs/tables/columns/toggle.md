@@ -41,7 +41,7 @@ class PostResource(Resource):
 
 ## Preview
 
-![Orbit table example (light)](/examples/light/table.png)
+![Orbit table example (light)](/examples/light/tables/overview.png)
 
-![Orbit table example (dark)](/examples/dark/table.png)
+![Orbit table example (dark)](/examples/dark/tables/overview.png)
 

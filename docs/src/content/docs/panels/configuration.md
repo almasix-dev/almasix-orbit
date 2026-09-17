@@ -105,6 +105,6 @@ Next: [Resources](/resources/overview/).
 
 ## Preview
 
-![Panel shell (light)](/examples/light/shell.png)
+![Panel shell (light)](/examples/light/panels/shell.png)
 
-![Panel shell (dark)](/examples/dark/shell.png)
+![Panel shell (dark)](/examples/dark/panels/shell.png)

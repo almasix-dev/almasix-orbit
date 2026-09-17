@@ -19,6 +19,7 @@ from almasix.orbit.forms import (
 )
 from almasix.orbit.forms.walk import iter_fields
 from almasix.orbit.schemas import Section, Tabs
+from almasix.orbit.schemas.layouts import Flex
 from almasix.orbit.support.component import Component
 
 
@@ -27,7 +28,34 @@ class Color(Enum):
     BLUE = "blue"
 
 
-def test_nested_validate_and_dehydrate() -> None:
+def test_nested_section_flex_render_keeps_field_state() -> None:
+    """Layouts must receive the full state bag so nested fields populate."""
+    form = (
+        Form.make()
+        .schema(
+            [
+                Section.make("basics")
+                .heading("Basics")
+                .schema(
+                    [
+                        Flex.make().schema(
+                            [
+                                TextInput.make("name").label("Name"),
+                                Select.make("role").options({"a": "Admin"}).label("Role"),
+                            ]
+                        ),
+                        Textarea.make("bio").label("Bio"),
+                    ]
+                ),
+            ]
+        )
+        .fill({"name": "Ada", "role": "a", "bio": "Hello"})
+    )
+    html = form.render()
+    assert 'value="Ada"' in html
+    assert "Hello" in html
+    assert "selected" in html or 'value="a"' in html
+
     form = (
         Form.make("post")
         .operation("create")

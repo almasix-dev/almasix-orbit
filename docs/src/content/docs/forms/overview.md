@@ -146,3 +146,9 @@ payload = form.dehydrate()   # only dehydrated fields with a state path
 Fields emit `wire:model` attributes so Conduit can sync them when you mount the form inside a live component.
 
 Need the form without a Resource? → [Standalone forms](/components/form/).
+
+## Preview
+
+![Forms overview (light)](/examples/light/forms/overview.png)
+
+![Forms overview (dark)](/examples/dark/forms/overview.png)

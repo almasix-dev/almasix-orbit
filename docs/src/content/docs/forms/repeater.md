@@ -56,7 +56,7 @@ Import nested fields from `almasix.orbit.forms` as usual.
 
 ## Preview
 
-![Orbit form example (light)](/examples/light/form.png)
+![Orbit form example (light)](/examples/light/forms/overview.png)
 
-![Orbit form example (dark)](/examples/dark/form.png)
+![Orbit form example (dark)](/examples/dark/forms/overview.png)
 
