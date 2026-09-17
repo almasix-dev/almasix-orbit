@@ -52,9 +52,11 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | TextColumn money/date/description | Done |
 | `TrashedFilter` + filter persist/defer flags | Done |
 | Index search / sortable headers / pagination chrome | Done |
-| Filter chrome + indicator chips + host `table_filters` | Done |
+| Filter chrome (dropdown) + indicator chips + `setTableFilter` | Done |
 | Empty state Create CTA + `record_url` row click | Done |
-| Bulk selection synced to host `selected` | Done |
+| Bulk selection + `BulkActionGroup` Actions dropdown | Done |
+| Column `alignment` / `align_end` mirrored on headers | Done |
+| Numbered pagination + per-page on one row | Done |
 | Content-grid cards (title + stacked fields) | Done |
 | Column visibility manager / breakpoint CSS | Partial |
 
@@ -64,7 +66,7 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 |---------|--------|
 | Create/Edit/View/Delete + modal URL modes | Done |
 | Replicate / ForceDelete / Restore / Import / Export | Done |
-| `ActionGroup` + slide-over / modal width / sticky | Done |
+| `ActionGroup` / `BulkActionGroup` + slide-over / modal width / sticky | Done |
 | Host job runners for import/export | Partial (config + docs) |
 
 ## Panels / platform — Partial

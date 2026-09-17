@@ -43,7 +43,7 @@ def test_list_host_applies_search_sort_paginate() -> None:
     host = _host(table_search="Post 01", table_sort="title", table_sort_direction="asc", page=1, per_page=10)
     html = host.render()
     assert "or-table-search" in html
-    assert 'conduit:model.live="table_search"' in html or 'wire:model.live="table_search"' in html
+    assert "setTableSearch($event.target.value)" in html
     assert "Post 01" in html
     assert "Post 02" not in html
     assert "or-th-sortable" in html
@@ -68,8 +68,10 @@ def test_list_host_pagination_actions() -> None:
     html = host.render()
     assert "or-table-pagination" in html
     assert "Showing 1–5 of 15" in html
-    assert "Page 1 of 3" in html
     assert "gotoPage(2)" in html
+    assert "gotoPage(3)" in html
+    assert "setPerPage($event.target.value)" in html
+    assert 'aria-current="page">1</button>' in html
 
     host.gotoPage(2)
     html2 = host.render()
@@ -85,6 +87,9 @@ def test_list_host_pagination_actions() -> None:
     host.table_search = "Post 99"
     host.clearSearch()
     assert host.table_search == ""
+    host.setTableSearch("Post 01")
+    assert host.table_search == "Post 01"
+    assert host.page == 1
 
 
 def test_table_sort_header_and_pagination_meta() -> None:

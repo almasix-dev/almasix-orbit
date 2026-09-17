@@ -12,6 +12,7 @@ from almasix.orbit.actions.action import (
     EditAction,
     ViewAction,
 )
+from almasix.orbit.actions.presets import BulkActionGroup
 from almasix.orbit.forms.form import Form
 from almasix.orbit.forms.walk import iter_fields
 from almasix.orbit.infolists.components import TextEntry
@@ -137,7 +138,13 @@ class Resource:
                 ]
             )
         if not table._bulk_actions:
-            table.bulk_actions([DeleteBulkAction.make()])
+            table.bulk_actions(
+                [
+                    BulkActionGroup.make(
+                        [DeleteBulkAction.make().icon("heroicon-o-trash")]
+                    )
+                ]
+            )
         if not table._header_actions:
             table.header_actions(
                 [CreateAction.make().url(lambda **_: cls.page_url("create"))]

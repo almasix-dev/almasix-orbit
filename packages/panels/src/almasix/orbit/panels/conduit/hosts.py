@@ -160,8 +160,33 @@ class ListRecordsHost(OrbitPageHost):
         self.table_search = ""
         self.page = 1
 
-    def applyTableFilters(self) -> None:
-        """Commit deferred filter selections (live filters already apply via state)."""
+    def setTableSearch(self, value: Any = "") -> None:
+        """Set search query and reset to page 1 (Conduit has no nested/live side effects)."""
+        self.table_search = "" if value is None else str(value)
+        self.page = 1
+
+    def setTableFilter(self, name: str, value: Any = None) -> None:
+        """Set one filter value. Conduit cannot bind nested ``table_filters.*`` paths."""
+        key = str(name or "")
+        if not key:
+            return
+        current = dict(self.table_filters or {})
+        if value in (None, ""):
+            current.pop(key, None)
+        else:
+            current[key] = value
+        self.table_filters = current
+        self.page = 1
+
+    def applyTableFilters(self, filters: Any = None) -> None:
+        """Commit deferred filter selections (optional full dict) and reset page."""
+        if isinstance(filters, dict):
+            cleaned: dict[str, Any] = {}
+            for key, value in filters.items():
+                if value in (None, ""):
+                    continue
+                cleaned[str(key)] = value
+            self.table_filters = cleaned
         self.page = 1
 
     def resetTableFilters(self) -> None:

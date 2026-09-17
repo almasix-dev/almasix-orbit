@@ -3,26 +3,29 @@ title: Overview
 description: Select, ternary, custom query filters, and filter groups for Orbit tables.
 ---
 
-Filters are the polite bouncers of your index page — they remember options, expose `.apply()`, and leave the actual query surgery to you.
+Filters follow Filament’s fluent style. Define them on the table; the index host keeps `table_filters` state and applies them when rendering.
 
 ```python
 from almasix.orbit.tables import (
-    Table, TextColumn, Filter, SelectFilter, TernaryFilter, FilterGroup,
+    Table, TextColumn, Filter, SelectFilter, TernaryFilter,
 )
 
 table = (
     Table.make("posts")
     .columns([TextColumn.make("title").searchable()])
     .filters([
-        SelectFilter.make("status").options({
+        SelectFilter.make("status")
+        .label("Status")
+        .options({
             "draft": "Draft",
             "published": "Published",
         }),
+        # Filter name ≠ column: use attribute()
+        SelectFilter.make("author")
+        .attribute("author_id")
+        .options(lambda **ctx: ctx.get("authors", {})),
         TernaryFilter.make("featured").label("Featured"),
-        Filter.make("mine").query(lambda q, value: q.where("author_id", value)),
-        FilterGroup.make("advanced").filters([
-            SelectFilter.make("locale").options({"en": "English", "ar": "Arabic"}),
-        ]),
+        Filter.make("mine").query(lambda q, value: [r for r in q if r.get("mine")]),
     ])
 )
 ```
@@ -31,37 +34,16 @@ table = (
 
 | Class | Role |
 |-------|------|
-| `Filter` | Base — `.options(...)`, `.query(callback)`, `.apply(query, value)` |
-| `SelectFilter` | Dropdown-shaped options |
-| `TernaryFilter` | Yes / no / all energy for booleans |
+| `Filter` | Base — `.options(...)`, `.query(callback)`, `.attribute(...)`, `.apply(query, value)` |
+| `SelectFilter` | Dropdown; default equality on `attribute` or name |
+| `TernaryFilter` | All / Yes / No for booleans |
+| `TrashedFilter` | Soft-delete scopes |
 | `FilterGroup` | Nest filters under a named group via `.filters([...])` |
 
-```python
-SelectFilter.make("status").options(lambda **ctx: ctx.get("statuses", {}))
+`.apply()` is a no-op when the value is `None`, `""`, or `[]` (unless a custom `.query()` handles it).
 
-Filter.make("author").query(lambda q, value: q.where("author_id", value))
+## Index chrome
 
-# apply when your request layer has a value
-query = status_filter.apply(query, request.input("status"))
-```
+List pages render a **Filters** dropdown (Filament default) with indicator chips for active values. Live selects call `setTableFilter(name, value)` on the host (Conduit only supports top-level props, so nested `table_filters.*` model paths are not used). Use `.defer_filters()` to require an Apply button.
 
-`.apply()` is a no-op when the value is `None`, `""`, or `[]`, or when no `.query()` callback was set.
-
-## Important today
-
-`Table.get_records()` does **not** auto-apply filters yet. Store them on the table, read them in your page/component, and push values into your query layer (or [query builder](/query-builder/overview/)).
-
-```html
-<div class="or-filters">
-  <div class="or-field or-field-SelectFilter" data-filter="status">
-    <label class="or-label">Status</label>
-    <select class="or-select" name="filters[status]" wire:model.live="filters.status">
-      <option value="">All</option>
-      <option value="draft">Draft</option>
-      <option value="published">Published</option>
-    </select>
-  </div>
-</div>
-```
-
-Options accept callables — same [evaluate](/support/closures/) rules as forms.
+Search sits on the **right** of the same toolbar row as the Filters trigger.

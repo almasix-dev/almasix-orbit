@@ -46,17 +46,29 @@ def test_select_filter_default_apply_and_indicators() -> None:
     html = host.render()
     assert "Beta" in html and "Gamma" in html
     assert "Alpha" not in html
+    assert "or-filters-trigger" in html
+    assert "or-filters-panel" in html
+    assert "setTableFilter('status'" in html
+    assert "filtersOpen" in html
+    assert "toggleFilters" in html
     assert "or-filter-chip" in html
     assert "Published" in html
     assert "resetTableFilters" in html
     assert "removeTableFilter('status')" in html
+    assert "or-list-toolbar-end" in html and "or-table-search" in html
 
+    host.setTableFilter("status", "draft")
+    assert host.table_filters == {"status": "draft"}
+    assert host.page == 1
+    host.setTableFilter("status", "")
+    assert host.table_filters == {}
     host.removeTableFilter("status")
     assert host.table_filters == {}
     host.table_filters = {"status": "draft"}
     host.resetTableFilters()
     assert host.table_filters == {}
-    host.applyTableFilters()
+    host.applyTableFilters({"status": "published"})
+    assert host.table_filters == {"status": "published"}
     assert host.page == 1
 
 
@@ -123,6 +135,8 @@ def test_deferred_filters_and_empty_create_cta() -> None:
     table.empty_state_actions([Action.make("create").label("Create").url("/create")])
     html = table.render(skip_header_actions=True)
     assert "Apply" in html and "data-defer-filters" in html
+    assert "applyDeferred()" in html
+    assert "or-filters-trigger" in html
     assert "or-filter-chip" in html
     assert "Create" in html and "or-empty-state-actions" in html
 
@@ -135,6 +149,12 @@ def test_deferred_filters_and_empty_create_cta() -> None:
     host.selected = ["1", "2"]
     html2 = host.render()
     assert "data-selected=" in html2
+    assert "orbitDropdown" in html2
+    assert "menuOpen" in html2
+    assert "or-th-actions" in html2
+    assert "wire:ignore" in html2 and "conduit:ignore" in html2
+    assert "or-select-all" in html2
+    assert ":checked=\"pageFullySelected\"" not in html2
 
 
 def test_filter_apply_branches_and_record_url_callable() -> None:
@@ -232,3 +252,30 @@ def test_grid_layout_empty_header_cta_and_card_cell() -> None:
         .render(skip_header_actions=True)
     )
     assert "New" in empty and "or-empty-state-actions" in empty
+
+
+def test_filter_attribute_alignment_and_pagination_window() -> None:
+    from almasix.orbit.tables.table import _pagination_pages
+
+    rows = [{"id": 1, "state": "open"}, {"id": 2, "state": "closed"}]
+    filt = SelectFilter.make("status").attribute("state").options({"open": "Open"})
+    assert filt.get_attribute() == "state"
+    assert [r["id"] for r in filt.apply(rows, "open")] == [1]
+
+    col = TextColumn.make("amount").align_end().label("Amount")
+    assert TextColumn.make("x").align_start().get_alignment() == "start"
+    assert TextColumn.make("y").align_center().get_alignment() == "center"
+    html = (
+        Table.make()
+        .columns([TextColumn.make("title"), col])
+        .records([{"id": 1, "title": "A", "amount": "9"}])
+        .render()
+    )
+    assert "or-align-end" in html
+
+    assert _pagination_pages(1, 1) == [1]
+    assert _pagination_pages(1, 0) == []
+    assert _pagination_pages(1, 5) == [1, 2, 3, 4, 5]
+    assert None in _pagination_pages(5, 20)
+    assert _pagination_pages(5, 20)[0] == 1
+    assert _pagination_pages(5, 20)[-1] == 20

@@ -9,6 +9,7 @@ from almasix.orbit.actions.action import (
 from almasix.orbit.actions.import_export import ExportAction, ImportAction
 from almasix.orbit.actions.presets import (
     ActionGroup,
+    BulkActionGroup,
     ForceDeleteAction,
     ForceDeleteBulkAction,
     ReplicateAction,
@@ -31,4 +32,5 @@ __all__ = [
     "ImportAction",
     "ExportAction",
     "ActionGroup",
+    "BulkActionGroup",
 ]

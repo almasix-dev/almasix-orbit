@@ -24,6 +24,37 @@ def _conduit_click(expression: str) -> str:
     return f' conduit:click="{safe}" wire:click="{safe}"'
 
 
+def _alpine_wire_call(method_call: str, *, event: str = "change") -> str:
+    """Call a Conduit/Livewire host method from Alpine (Conduit has no wire:change calls)."""
+    safe = (
+        str(method_call)
+        .replace("&", "&amp;")
+        .replace('"', "&quot;")
+    )
+    return f' @{event}="orbitWire($el)?.{safe}"'
+
+
+def _pagination_pages(page: int, last: int) -> list[int | None]:
+    """Filament-style page window: first, last, current±2, with ``None`` ellipsis."""
+    if last <= 1:
+        return [1] if last == 1 else []
+    if last <= 7:
+        return list(range(1, last + 1))
+    window = {1, last}
+    for p in range(page - 2, page + 3):
+        if 1 <= p <= last:
+            window.add(p)
+    ordered = sorted(window)
+    out: list[int | None] = []
+    prev: int | None = None
+    for p in ordered:
+        if prev is not None and p > prev + 1:
+            out.append(None)
+        out.append(p)
+        prev = p
+    return out
+
+
 class Table(Component):
     def __init__(self, name: str | None = "table") -> None:
         super().__init__(name)
@@ -330,8 +361,15 @@ class Table(Component):
             attrs.append(f'data-filters-session="{e(key)}"')
         if self._defer_filters:
             attrs.append('data-defer-filters="true"')
+        active_count = sum(
+            1
+            for f in self._filters
+            if (f.get_name() or "")
+            and self._filter_state.get(f.get_name() or "") not in (None, "", [])
+        )
+        attrs.append(f'data-active-count="{active_count}"')
+        attrs.append(f'data-pending="{e(json.dumps(dict(self._filter_state)))}"')
         attr_s = (" " + " ".join(attrs)) if attrs else ""
-        model_dir = "model" if self._defer_filters else "model.live"
         parts: list[str] = []
         for f in self._filters:
             name = f.get_name() or ""
@@ -346,26 +384,49 @@ class Table(Component):
                 f'{" selected" if selected and str(k) == selected else ""}>{e(v)}</option>'
                 for k, v in opts.items()
             )
+            if self._defer_filters:
+                change = ' @change="pending[\'' + name.replace("'", "\\'") + '\'] = $event.target.value"'
+            else:
+                change = _alpine_wire_call(
+                    "setTableFilter('" + name.replace("'", "\\'") + "', $event.target.value)"
+                )
             parts.append(
                 f'<div class="or-table-filter" data-filter="{name_e}">'
                 f'<label class="or-filter-label">{label}</label>'
                 f'<select class="or-select or-filter-select" name="filters.{name_e}"'
-                f'{conduit_attr(model_dir, f"table_filters.{name}")}>{options_html}</select></div>'
+                f' data-filter-name="{name_e}"{change}>{options_html}</select></div>'
             )
         qb_html = ""
         if self._query_builder is not None and hasattr(self._query_builder, "render"):
             qb_html = self._query_builder.render(**ctx)
-        apply_btn = ""
         if self._defer_filters:
-            apply_btn = (
-                f'<button type="button" class="or-btn or-btn-primary or-filter-apply"'
-                f'{_conduit_click("applyTableFilters")}>Apply</button>'
+            footer = (
+                f'<div class="or-filters-panel-footer">'
+                f'<button type="button" class="or-btn or-btn-ghost or-btn-sm"'
+                f'{_conduit_click("resetTableFilters")} @click="closeFilters()">Reset</button>'
+                f'<button type="button" class="or-btn or-btn-primary or-btn-sm or-filter-apply"'
+                f' @click="applyDeferred()">Apply</button></div>'
+            )
+        else:
+            footer = (
+                f'<div class="or-filters-panel-footer">'
+                f'<button type="button" class="or-btn or-btn-ghost or-btn-sm"'
+                f'{_conduit_click("resetTableFilters")} @click="closeFilters()">Reset</button></div>'
             )
         indicators = self._render_filter_indicators(**ctx)
         return (
-            f'<div class="or-table-filters"{attr_s}>'
+            f'<div class="or-table-filters" x-data="orbitTableFilters"{attr_s} '
+            f'@click.outside="closeFilters()">'
+            f'<button type="button" class="or-btn or-btn-gray or-filters-trigger" '
+            f'@click="toggleFilters($event)" aria-haspopup="true" '
+            f':aria-expanded="filtersOpen.toString()">'
+            f'<span class="or-filters-trigger-label">Filters</span>'
+            f'<span class="or-filters-badge" x-show="activeCount > 0" x-text="activeCount"></span>'
+            f"</button>"
+            f'<div class="or-filters-panel" x-show="filtersOpen" x-cloak '
+            f'role="dialog" aria-label="Filters">'
             f'<div class="or-table-filters-row">{"".join(parts)}</div>'
-            f"{qb_html}{apply_btn}{indicators}</div>"
+            f"{qb_html}{footer}</div>{indicators}</div>"
         )
 
     def _render_filter_indicators(self, **ctx: Any) -> str:
@@ -417,18 +478,20 @@ class Table(Component):
             f'<label class="or-sr-only" for="or-table-search-input">Search</label>'
             f'<input id="or-table-search-input" type="search" class="or-input or-table-search-input" '
             f'placeholder="Search…" value="{value}" autocomplete="off"'
-            f'{conduit_attr("model.live", "table_search")} />'
+            f'{_alpine_wire_call("setTableSearch($event.target.value)", event="input.debounce.300ms")} />'
             f"{clear}</div>"
         )
 
     def _render_sort_header(self, col: Column, **ctx: Any) -> str:
-        label = e(col.get_label(**ctx))
+        label = e(col.get_label(**ctx) or self._header_label(col, **ctx))
         name = col.get_name() or ""
+        align = col.get_alignment() if isinstance(col, Column) else "start"
+        align_c = f" or-align-{align}" if align and align != "start" else ""
         if not col.is_sortable() or not name:
-            return f'<th class="or-th">{label}</th>'
+            return f'<th class="or-th{align_c}">{label}</th>'
         active = self._sort == name
         direction = str(self._sort_direction or "asc").lower()
-        classes = "or-th or-th-sortable"
+        classes = f"or-th or-th-sortable{align_c}"
         aria_sort = "none"
         indicator = ""
         if active:
@@ -468,6 +531,21 @@ class Table(Component):
             f'<option value="{n}"{" selected" if n == per_page else ""}>{n}</option>'
             for n in sizes
         )
+        page_btns: list[str] = []
+        for item in _pagination_pages(page, last):
+            if item is None:
+                page_btns.append('<span class="or-table-pagination-ellipsis" aria-hidden="true">…</span>')
+                continue
+            if item == page:
+                page_btns.append(
+                    f'<button type="button" class="or-btn or-btn-sm or-btn-primary" '
+                    f'aria-current="page">{item}</button>'
+                )
+            else:
+                page_btns.append(
+                    f'<button type="button" class="or-btn or-btn-sm or-btn-ghost"'
+                    f'{_conduit_click(f"gotoPage({item})")}>{item}</button>'
+                )
         return (
             f'<div class="or-table-pagination" role="navigation" aria-label="Pagination">'
             f'<p class="or-table-pagination-summary">{e(summary)}</p>'
@@ -475,12 +553,12 @@ class Table(Component):
             f'<label class="or-table-per-page">'
             f'<span class="or-muted">Per page</span>'
             f'<select class="or-select or-select-sm"'
-            f'{conduit_attr("model.live", "per_page")}>{options}</select>'
+            f'{_alpine_wire_call("setPerPage($event.target.value)")}>{options}</select>'
             f"</label>"
             f'<div class="or-table-pagination-buttons">'
             f'<button type="button" class="or-btn or-btn-ghost or-btn-sm"'
             f"{prev_click}{prev_disabled}>Previous</button>"
-            f'<span class="or-table-pagination-page">Page {page} of {last}</span>'
+            f'{"".join(page_btns)}'
             f'<button type="button" class="or-btn or-btn-ghost or-btn-sm"'
             f"{next_click}{next_disabled}>Next</button>"
             f"</div></div></div>"
@@ -545,6 +623,7 @@ class Table(Component):
             select = (
                 f'<td class="or-td or-td-select">'
                 f'<input type="checkbox" class="or-row-check" data-record-id="{e(rid)}"{checked} '
+                f'@click.stop '
                 f'@change="toggle(\'{e(rid)}\', $event.target.checked)" '
                 f'aria-label="Select row" /></td>'
             )
@@ -656,9 +735,7 @@ class Table(Component):
         if has_bulk:
             header_cells.append(
                 '<th class="or-th or-th-select">'
-                '<input type="checkbox" class="or-row-check" '
-                '@change="toggleAll($event.target.checked)" '
-                ':checked="pageFullySelected" '
+                '<input type="checkbox" class="or-row-check or-select-all" '
                 'aria-label="Select all on page" /></th>'
             )
         for col in self._columns:
@@ -681,7 +758,7 @@ class Table(Component):
                     )
         headers = "".join(header_cells)
         if has_actions:
-            headers += '<th class="or-th or-th-actions">Actions</th>'
+            headers += '<th class="or-th or-th-actions or-align-end">Actions</th>'
 
         active_group = self._default_group
         if active_group is None and self._groups:
@@ -797,20 +874,38 @@ class Table(Component):
         if filters or toolbar_end or groups_chooser or search:
             toolbar = (
                 f'<div class="or-list-toolbar">'
-                f'<div class="or-list-toolbar-start">{search}{filters}{groups_chooser}</div>'
-                f'<div class="or-list-toolbar-end">{toolbar_end}</div>'
+                f'<div class="or-list-toolbar-start">{filters}{groups_chooser}{toolbar_end}</div>'
+                f'<div class="or-list-toolbar-end">{search}</div>'
                 f"</div>"
             )
 
         bulk_bar = ""
         if self._bulk_actions:
+            from almasix.orbit.actions.presets import ActionGroup, BulkActionGroup
+
+            grouped: list[Action] = []
+            flat_bulk: list[Action] = []
+            for action in self._bulk_actions:
+                if isinstance(action, ActionGroup):
+                    grouped.append(action)
+                else:
+                    flat_bulk.append(action)
+            if flat_bulk and not grouped:
+                grouped = [BulkActionGroup.make(flat_bulk)]
+                flat_bulk = []
+            elif flat_bulk and grouped:
+                # Ungrouped actions render beside the dropdown(s).
+                pass
+            bulk_html = self._render_actions([*grouped, *flat_bulk], None, **ctx)
             bulk_bar = (
+                # wire/conduit:ignore — selection + open menus are Alpine-only; morph
+                # must not reset their display/x-cloak or the bar sticks open at 0.
                 '<div class="or-list-bulk or-table-bulk-actions" '
+                "wire:ignore conduit:ignore "
                 'x-show="selected.length > 0" x-cloak>'
                 '<span class="or-list-bulk-label">'
                 '<span x-text="selected.length"></span> selected</span>'
-                f'<div class="or-list-bulk-actions">'
-                f'{self._render_actions(self._bulk_actions, None, **ctx)}</div>'
+                f'<div class="or-list-bulk-actions">{bulk_html}</div>'
                 '<button type="button" class="or-btn or-btn-ghost or-btn-sm" @click="clear()">'
                 "Clear</button></div>"
             )

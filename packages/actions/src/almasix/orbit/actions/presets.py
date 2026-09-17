@@ -15,6 +15,7 @@ from typing import Any, Self
 from almasix.orbit.actions.action import Action
 from almasix.orbit.actions.import_export import ExportAction, ImportAction
 from almasix.orbit.support.html import e
+from almasix.orbit.support.icons import icon as render_icon
 
 
 class ReplicateAction(Action):
@@ -125,6 +126,8 @@ class ActionGroup(Action):
             return ""
         name = e(self.get_name() or "actions")
         label = e(self.get_label(**ctx) or "Actions")
+        icon_name = self.get_icon(**ctx)
+        ic = render_icon(icon_name) if icon_name else ""
         if self._button_group_style:
             return (
                 f'<div class="or-action-group or-btn-group" data-action-group="{name}" role="group">'
@@ -132,15 +135,27 @@ class ActionGroup(Action):
             )
         return (
             f'<div class="or-action-group or-dropdown" data-action-group="{name}" '
-            f'data-dropdown="true">'
+            f'data-dropdown="true" x-data="orbitDropdown" @click.outside="closeMenu()">'
             f'<button type="button" class="or-btn or-btn-{e(self.get_color(**ctx))}" '
-            f'aria-haspopup="menu"><span>{label}</span></button>'
-            f'<div class="or-dropdown-menu" role="menu">{children}</div></div>'
+            f'aria-haspopup="menu" @click="toggleMenu($event)" '
+            f':aria-expanded="menuOpen.toString()">'
+            f"{ic}<span>{label}</span></button>"
+            f'<div class="or-dropdown-menu" role="menu" x-show="menuOpen" x-cloak>'
+            f"{children}</div></div>"
         )
+
+
+class BulkActionGroup(ActionGroup):
+    """Filament-named bulk actions dropdown (alias of ``ActionGroup``)."""
+
+    def __init__(self, name: str | None = "bulk_actions") -> None:
+        super().__init__(name)
+        self.label("Actions").icon("heroicon-o-ellipsis-vertical").color("primary")
 
 
 __all__ = [
     "ActionGroup",
+    "BulkActionGroup",
     "ExportAction",
     "ForceDeleteAction",
     "ForceDeleteBulkAction",
