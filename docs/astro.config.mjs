@@ -83,6 +83,10 @@ export default defineConfig({
 					content: readFileSync('./src/scripts/hero-slides.js', 'utf8'),
 				},
 				{
+					tag: 'script',
+					content: readFileSync('./src/scripts/example-lightbox.js', 'utf8'),
+				},
+				{
 					tag: 'meta',
 					attrs: { property: 'og:image', content: 'https://orbit.almasix.com/og.png' },
 				},
