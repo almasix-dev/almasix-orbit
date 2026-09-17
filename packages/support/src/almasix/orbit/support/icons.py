@@ -87,6 +87,10 @@ _ICONS: dict[str, str] = {
         '<path stroke-linecap="round" stroke-linejoin="round" '
         'd="m19.5 8.25-7.5 7.5-7.5-7.5"/>'
     ),
+    "heroicon-o-chevron-up": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="m4.5 15.75 7.5-7.5 7.5 7.5"/>'
+    ),
     "heroicon-o-chevron-left": (
         '<path stroke-linecap="round" stroke-linejoin="round" '
         'd="M15.75 19.5 8.25 12l7.5-7.5"/>'
@@ -133,6 +137,27 @@ _ICONS: dict[str, str] = {
         'd="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 '
         "0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9"
         '-3.75h.008v.008H12V8.25Z"/>'
+    ),
+    "heroicon-o-funnel": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044'
+        "a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 "
+        "1.591v2.927a2.25 2.25 0 0 1-1.244 2.03l-2.25 1.125a.75.75 0 0 "
+        "1-1.072-.71v-4.372a2.25 2.25 0 0 0-.659-1.591L2.659 6.41A2.25 "
+        "2.25 0 0 1 2 4.819V3.774c0-.54.384-1.006.917-1.096A48.32 48.32 "
+        '0 0 1 12 3Z"/>'
+    ),
+    "heroicon-o-view-columns": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 '
+        "1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 "
+        '4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z"/>'
+    ),
+    "heroicon-o-ellipsis-vertical": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 '
+        "0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 "
+        '0 0 1 0 1.5Z"/>'
     ),
 }
 

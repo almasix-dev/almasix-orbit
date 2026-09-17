@@ -28,7 +28,24 @@ from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.resource import Resource
 from almasix.orbit.schemas.layouts import Callout, EmptyState, Flex, Section
 from almasix.orbit.schemas.primes import Text
-from almasix.orbit.tables.columns import TextColumn
+from almasix.orbit.tables.columns import (
+    BooleanColumn,
+    CheckboxColumn,
+    ColorColumn,
+    ColumnGroup,
+    IconColumn,
+    ImageColumn,
+    SelectColumn,
+    TagsColumn,
+    TextColumn,
+    TextInputColumn,
+    ToggleColumn,
+    ViewColumn,
+)
+from almasix.orbit.tables.filters import SelectFilter
+from almasix.orbit.tables.grouping import Group
+from almasix.orbit.tables.layout import Grid, Panel as LayoutPanel, Split, Stack, View
+from almasix.orbit.tables.summaries import Average, Count, Sum
 from almasix.orbit.tables.table import Table
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,6 +60,19 @@ SHOTS: list[tuple[str, str]] = [
     ("forms/text-input", "Text input"),
     ("forms/select", "Select"),
     ("tables/overview", "Tables overview"),
+    ("tables/money", "Money / currency"),
+    ("tables/text-features", "Text column features"),
+    ("tables/icon-boolean", "Icon + boolean"),
+    ("tables/image-color", "Image + color"),
+    ("tables/editable", "Editable columns"),
+    ("tables/tags-view", "Tags + view"),
+    ("tables/column-group", "Column group"),
+    ("tables/layout", "Cell layouts"),
+    ("tables/filters", "Filters chrome"),
+    ("tables/summaries", "Summaries"),
+    ("tables/grouping", "Grouped rows"),
+    ("tables/actions", "Row actions"),
+    ("tables/empty", "Empty state"),
     ("schemas/callout", "Callout"),
     ("schemas/empty-state", "Empty state"),
     ("schemas/primes-text", "Text prime"),
@@ -177,15 +207,323 @@ def build() -> str:
         Table.make()
         .columns(
             [
-                TextColumn.make("title").label("Title").sortable(),
-                TextColumn.make("amount").label("Amount").money("USD"),
+                TextColumn.make("title").label("Title").searchable().sortable(),
+                TextColumn.make("status").label("Status").badge().sortable(),
+                TextColumn.make("amount").label("Amount").money("USD").align_end().sortable(),
             ]
         )
-        .records([{"title": "Ada", "amount": 12}, {"title": "Bob", "amount": 8}])
+        .records(
+            [
+                {"id": 1, "title": "Launch Orbit", "status": "published", "amount": 1200},
+                {"id": 2, "title": "Conduit hosts", "status": "draft", "amount": 340},
+                {"id": 3, "title": "Mobile tables", "status": "review", "amount": 880},
+            ]
+        )
         .striped()
-        # URL actions only — no confirm modal chrome in docs shots.
-        .actions([EditAction.make().url(lambda record, **_: f"/edit/{record['title']}")])
+        .actions([EditAction.make().url(lambda record, **_: f"/edit/{record['id']}")])
         .header_actions([CreateAction.make().url("/create")])
+        .paginate(page=1, per_page=10)
+    )
+
+    table_money = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("sku").label("SKU"),
+                TextColumn.make("price").label("Price").money("USD").align_end(),
+                TextColumn.make("cents")
+                .label("From cents")
+                .money("EUR", divide_by=100)
+                .align_end(),
+            ]
+        )
+        .records(
+            [
+                {"sku": "ORB-1", "price": 49, "cents": 4999},
+                {"sku": "ORB-2", "price": 12.5, "cents": 1299},
+            ]
+        )
+        .striped()
+    )
+
+    table_text = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("name")
+                .weight("bold")
+                .icon("heroicon-o-check")
+                .description(lambda record=None, **_: (record or {}).get("role", "")),
+                TextColumn.make("slug").copyable(),
+                TextColumn.make("blurb").markdown().wrap().limit(48),
+            ]
+        )
+        .records(
+            [
+                {
+                    "name": "Orbit",
+                    "role": "admin kit",
+                    "slug": "orbit-admin",
+                    "blurb": "Ship **tables** without the SPA tax.",
+                },
+                {
+                    "name": "Conduit",
+                    "role": "live morph",
+                    "slug": "conduit",
+                    "blurb": "Server truth, *snappy* browser.",
+                },
+            ]
+        )
+    )
+
+    table_icons = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("name"),
+                IconColumn.make("icon").label("Icon"),
+                BooleanColumn.make("active").label("On"),
+            ]
+        )
+        .records(
+            [
+                {"name": "Ada", "icon": "heroicon-o-check", "active": True},
+                {"name": "Grace", "icon": "heroicon-o-plus", "active": False},
+            ]
+        )
+    )
+
+    table_media = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("name"),
+                ImageColumn.make("avatar").circular().size(36),
+                ImageColumn.make("team").stacked().limit(2).circular().size(28),
+                ColorColumn.make("color").copyable(),
+            ]
+        )
+        .records(
+            [
+                {
+                    "name": "Ada",
+                    "avatar": "https://api.dicebear.com/9.x/shapes/svg?seed=ada",
+                    "team": [
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=a",
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=b",
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=c",
+                    ],
+                    "color": "#f1511b",
+                },
+                {
+                    "name": "Grace",
+                    "avatar": "https://api.dicebear.com/9.x/shapes/svg?seed=grace",
+                    "team": [
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=d",
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=e",
+                    ],
+                    "color": "#286291",
+                },
+            ]
+        )
+    )
+
+    table_editable = (
+        Table.make()
+        .columns(
+            [
+                TextInputColumn.make("title").label("Title"),
+                SelectColumn.make("status").options(
+                    {"draft": "Draft", "review": "Review", "published": "Published"}
+                ),
+                ToggleColumn.make("featured").label("Featured"),
+                CheckboxColumn.make("done").label("Done"),
+            ]
+        )
+        .records(
+            [
+                {
+                    "id": 1,
+                    "title": "Filters polish",
+                    "status": "review",
+                    "featured": True,
+                    "done": False,
+                },
+                {
+                    "id": 2,
+                    "title": "Summaries",
+                    "status": "published",
+                    "featured": False,
+                    "done": True,
+                },
+            ]
+        )
+    )
+
+    table_tags = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title"),
+                TagsColumn.make("tags"),
+                ViewColumn.make("note").content(
+                    lambda state=None, **_: f"<em>{state}</em>"
+                ),
+            ]
+        )
+        .records(
+            [
+                {"title": "Shell", "tags": ["nav", "chrome"], "note": "Sticky topbar"},
+                {"title": "Tables", "tags": "list,ux", "note": "Filament vibes"},
+            ]
+        )
+    )
+
+    table_group_cols = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title"),
+                ColumnGroup.make(
+                    "Meta",
+                    [
+                        TextColumn.make("a").label("A"),
+                        TextColumn.make("b").label("B"),
+                    ],
+                ),
+            ]
+        )
+        .records([{"title": "Row", "a": "1", "b": "2"}, {"title": "Row 2", "a": "3", "b": "4"}])
+    )
+
+    table_layout = (
+        Table.make()
+        .columns(
+            [
+                Split.make(
+                    [
+                        Stack.make(
+                            [
+                                TextColumn.make("title").weight("semibold"),
+                                TextColumn.make("subtitle").color("gray"),
+                            ]
+                        ),
+                        TagsColumn.make("tags"),
+                    ]
+                ).label("Content"),
+                LayoutPanel.make([TextColumn.make("note")]).label("Panel"),
+                Grid.make([TextColumn.make("x"), TextColumn.make("y")]).columns(2).label("Grid"),
+                View.make([TextColumn.make("subtitle")])
+                .content('<div class="or-layout-view-demo">{children}</div>')
+                .label("View"),
+            ]
+        )
+        .records(
+            [
+                {
+                    "title": "Orbit shell",
+                    "subtitle": "Sidebar + topbar",
+                    "tags": ["shell"],
+                    "note": "Collapsible",
+                    "x": "A",
+                    "y": "B",
+                }
+            ]
+        )
+    )
+
+    table_filters = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title").searchable(),
+                TextColumn.make("status").badge(),
+            ]
+        )
+        .filters(
+            [
+                SelectFilter.make("status")
+                .label("Status")
+                .options({"draft": "Draft", "published": "Published"})
+            ]
+        )
+        .filter_state({"status": "published"})
+        .records(
+            [
+                {"title": "Published one", "status": "published"},
+                {"title": "Drafty", "status": "draft"},
+            ]
+        )
+        .header_actions([CreateAction.make().url("/create")])
+    )
+
+    table_summaries = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title"),
+                TextColumn.make("amount")
+                .money("USD")
+                .align_end()
+                .summarize(Sum.make(), Average.make(), Count.make()),
+            ]
+        )
+        .summaries(page=True)
+        .records(
+            [
+                {"title": "A", "amount": 100},
+                {"title": "B", "amount": 250},
+                {"title": "C", "amount": 50},
+            ]
+        )
+    )
+
+    table_grouping = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title"),
+                TextColumn.make("status").badge(),
+            ]
+        )
+        .default_group(Group.make("status").label("Status").collapsible())
+        .records(
+            [
+                {"id": 1, "title": "Launch", "status": "published"},
+                {"id": 2, "title": "Hosts", "status": "draft"},
+                {"id": 3, "title": "Branding", "status": "published"},
+                {"id": 4, "title": "Widgets", "status": "draft"},
+            ]
+        )
+    )
+
+    table_actions = (
+        Table.make()
+        .columns([TextColumn.make("title"), TextColumn.make("status").badge()])
+        .records(
+            [
+                {"id": 1, "title": "Editable row", "status": "draft"},
+                {"id": 2, "title": "Another", "status": "published"},
+            ]
+        )
+        .actions(
+            [
+                EditAction.make().url(lambda record=None, **_: f"/edit/{(record or {}).get('id')}"),
+            ]
+        )
+        .actions_as_dropdown(False)
+        .header_actions([CreateAction.make().url("/create")])
+        .striped()
+    )
+
+    table_empty = (
+        Table.make()
+        .columns([TextColumn.make("title")])
+        .records([])
+        .empty_state_heading("No posts yet")
+        .empty_state_description("Create your first post — the empty state is rooting for you.")
+        .header_actions([CreateAction.make().url("/create")])
+        .empty_state_actions([CreateAction.make().url("/create")])
     )
 
     panel = (
@@ -207,6 +545,19 @@ def build() -> str:
         shot("forms/text-input", "Text input", text_input),
         shot("forms/select", "Select", select),
         shot("tables/overview", "Tables overview", table.render()),
+        shot("tables/money", "Money / currency", table_money.render()),
+        shot("tables/text-features", "Text column features", table_text.render()),
+        shot("tables/icon-boolean", "Icon + boolean", table_icons.render()),
+        shot("tables/image-color", "Image + color", table_media.render()),
+        shot("tables/editable", "Editable columns", table_editable.render()),
+        shot("tables/tags-view", "Tags + view", table_tags.render()),
+        shot("tables/column-group", "Column group", table_group_cols.render()),
+        shot("tables/layout", "Cell layouts", table_layout.render()),
+        shot("tables/filters", "Filters chrome", table_filters.render()),
+        shot("tables/summaries", "Summaries", table_summaries.render()),
+        shot("tables/grouping", "Grouped rows", table_grouping.render()),
+        shot("tables/actions", "Row actions", table_actions.render()),
+        shot("tables/empty", "Empty state", table_empty.render()),
         shot(
             "schemas/callout",
             "Callout",

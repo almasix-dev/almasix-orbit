@@ -23,7 +23,7 @@ from almasix.orbit.tables.filters import (
     TrashedFilter,
 )
 from almasix.orbit.tables.grouping import Group, GroupBucket
-from almasix.orbit.tables.layout import LayoutComponent, Panel, Split, Stack
+from almasix.orbit.tables.layout import Grid, LayoutComponent, Panel, Split, Stack, View
 from almasix.orbit.tables.summaries import Average, Count, Range, Sum, Summarizer
 from almasix.orbit.tables.table import Table
 
@@ -60,4 +60,6 @@ __all__ = [
     "Split",
     "Stack",
     "Panel",
+    "Grid",
+    "View",
 ]

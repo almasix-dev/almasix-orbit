@@ -89,6 +89,11 @@ class Table(Component):
         self._stacked_on_mobile: bool = True
         self._layout: str = "table"
         self._kanban_status: str | None = None
+        self._summaries_page = True
+        self._summaries_all = True
+        self._actions_as_dropdown = True
+        self._toggled_columns: dict[str, bool] | None = None
+        self._active_group_name: str | None = None
 
     def columns(self, columns: Sequence[ColumnLike]) -> Self:
         self._columns = list(columns)
@@ -124,6 +129,11 @@ class Table(Component):
 
     def actions(self, actions: Sequence[Action]) -> Self:
         self._actions = list(actions)
+        return self
+
+    def actions_as_dropdown(self, condition: bool = True) -> Self:
+        """When True (default), wrap flat row actions in a ⋮ dropdown."""
+        self._actions_as_dropdown = condition
         return self
 
     def bulk_actions(self, actions: Sequence[Action]) -> Self:
@@ -196,6 +206,21 @@ class Table(Component):
         self._layout = "kanban"
         return self
 
+    def summaries(self, *, page: bool = True, all: bool = True) -> Self:
+        """Toggle page vs all-table summary footer rows (Filament ``->summaries``)."""
+        self._summaries_page = page
+        self._summaries_all = all
+        return self
+
+    def toggled_columns(self, state: dict[str, bool] | None) -> Self:
+        """Map of column name → visible. ``None`` uses column defaults."""
+        self._toggled_columns = None if state is None else dict(state)
+        return self
+
+    def active_group(self, name: str | None) -> Self:
+        self._active_group_name = name
+        return self
+
     def flat_columns(self) -> list[Column]:
         out: list[Column] = []
         for col in self._columns:
@@ -214,10 +239,26 @@ class Table(Component):
         out: list[Column | LayoutComponent] = []
         for col in self._columns:
             if isinstance(col, ColumnGroup):
-                out.extend(col.get_columns())
-            elif isinstance(col, (Column, LayoutComponent)):
+                for child in col.get_columns():
+                    if self._column_is_visible(child):
+                        out.append(child)
+            elif isinstance(col, Column):
+                if self._column_is_visible(col):
+                    out.append(col)
+            elif isinstance(col, LayoutComponent):
                 out.append(col)
         return out
+
+    def _column_is_visible(self, col: Column) -> bool:
+        name = col.get_name() or ""
+        if self._toggled_columns is not None and name in self._toggled_columns:
+            return bool(self._toggled_columns[name])
+        if col.is_toggleable() and col.is_toggled_hidden_by_default():
+            return False
+        return True
+
+    def _toggleable_columns(self) -> list[Column]:
+        return [c for c in self.flat_columns() if c.is_toggleable() and c.get_name()]
 
     def _filtered_records(self) -> list[Any]:
         records = list(self._records)
@@ -333,8 +374,25 @@ class Table(Component):
         return False
 
     def _render_actions(self, actions: Sequence[Action], record: Any | None, **ctx: Any) -> str:
+        from almasix.orbit.actions.presets import ActionGroup
+
+        resolved: list[Action] = list(actions)
+        if (
+            record is not None
+            and self._actions_as_dropdown
+            and resolved
+            and not any(isinstance(a, ActionGroup) for a in resolved)
+        ):
+            group = (
+                ActionGroup.make(resolved)
+                .icon("heroicon-o-ellipsis-vertical")
+                .label("Actions")
+                .color("gray")
+                .icon_button()
+            )
+            resolved = [group]
         parts: list[str] = []
-        for action in actions:
+        for action in resolved:
             if record is not None:
                 parts.append(action.render(record, record=record, **ctx))
             else:
@@ -355,6 +413,8 @@ class Table(Component):
     def _render_filter_chrome(self, **ctx: Any) -> str:
         if not self._filters and self._query_builder is None:
             return ""
+        from almasix.orbit.support.icons import icon as render_icon
+
         attrs = []
         if self._persist_filters_in_session:
             key = self._filters_session_key or (self.get_name() or "table")
@@ -385,7 +445,11 @@ class Table(Component):
                 for k, v in opts.items()
             )
             if self._defer_filters:
-                change = ' @change="pending[\'' + name.replace("'", "\\'") + '\'] = $event.target.value"'
+                change = (
+                    ' @change="pending[\''
+                    + name.replace("'", "\\'")
+                    + '\'] = $event.target.value"'
+                )
             else:
                 change = _alpine_wire_call(
                     "setTableFilter('" + name.replace("'", "\\'") + "', $event.target.value)"
@@ -399,32 +463,35 @@ class Table(Component):
         qb_html = ""
         if self._query_builder is not None and hasattr(self._query_builder, "render"):
             qb_html = self._query_builder.render(**ctx)
+        # Filament-style panel: Filters + Reset header; Apply filters when deferred.
+        reset_btn = (
+            f'<button type="button" class="or-link-btn or-link-danger or-filters-reset"'
+            f'{_conduit_click("resetTableFilters")} @click="closeFilters()">Reset</button>'
+        )
         if self._defer_filters:
             footer = (
                 f'<div class="or-filters-panel-footer">'
-                f'<button type="button" class="or-btn or-btn-ghost or-btn-sm"'
-                f'{_conduit_click("resetTableFilters")} @click="closeFilters()">Reset</button>'
                 f'<button type="button" class="or-btn or-btn-primary or-btn-sm or-filter-apply"'
-                f' @click="applyDeferred()">Apply</button></div>'
+                f' @click="applyDeferred()">Apply filters</button></div>'
             )
         else:
-            footer = (
-                f'<div class="or-filters-panel-footer">'
-                f'<button type="button" class="or-btn or-btn-ghost or-btn-sm"'
-                f'{_conduit_click("resetTableFilters")} @click="closeFilters()">Reset</button></div>'
-            )
+            footer = ""
+        funnel = render_icon("heroicon-o-funnel", size=20)
         indicators = self._render_filter_indicators(**ctx)
         return (
             f'<div class="or-table-filters" x-data="orbitTableFilters"{attr_s} '
             f'@click.outside="closeFilters()">'
-            f'<button type="button" class="or-btn or-btn-gray or-filters-trigger" '
-            f'@click="toggleFilters($event)" aria-haspopup="true" '
+            f'<button type="button" class="or-icon-btn or-filters-trigger" '
+            f'@click="toggleFilters($event)" aria-haspopup="true" aria-label="Filter" '
             f':aria-expanded="filtersOpen.toString()">'
-            f'<span class="or-filters-trigger-label">Filters</span>'
-            f'<span class="or-filters-badge" x-show="activeCount > 0" x-text="activeCount"></span>'
+            f"{funnel}"
+            f'<span class="or-filters-badge" x-text="activeCount" '
+            f':class="activeCount > 0 ? \'or-filters-badge-active\' : \'\'"></span>'
             f"</button>"
             f'<div class="or-filters-panel" x-show="filtersOpen" x-cloak '
             f'role="dialog" aria-label="Filters">'
+            f'<div class="or-filters-panel-header">'
+            f'<h3 class="or-filters-panel-title">Filters</h3>{reset_btn}</div>'
             f'<div class="or-table-filters-row">{"".join(parts)}</div>'
             f"{qb_html}{footer}</div>{indicators}</div>"
         )
@@ -483,28 +550,78 @@ class Table(Component):
         )
 
     def _render_sort_header(self, col: Column, **ctx: Any) -> str:
+        from almasix.orbit.support.icons import icon as render_icon
+
         label = e(col.get_label(**ctx) or self._header_label(col, **ctx))
         name = col.get_name() or ""
         align = col.get_alignment() if isinstance(col, Column) else "start"
         align_c = f" or-align-{align}" if align and align != "start" else ""
+        bp = ""
+        if col._visible_from:
+            bp += f" or-visible-from-{col._visible_from}"
+        if col._hidden_from:
+            bp += f" or-hidden-from-{col._hidden_from}"
         if not col.is_sortable() or not name:
-            return f'<th class="or-th{align_c}">{label}</th>'
+            return f'<th class="or-th{align_c}{bp}">{label}</th>'
         active = self._sort == name
         direction = str(self._sort_direction or "asc").lower()
-        classes = f"or-th or-th-sortable{align_c}"
+        classes = f"or-th or-th-sortable{align_c}{bp}"
         aria_sort = "none"
-        indicator = ""
+        # Filament: idle + desc → chevron-down; active asc → chevron-up.
+        if active and direction == "asc":
+            caret = render_icon("heroicon-o-chevron-up", size=16, css_class="or-icon or-th-sort-icon")
+        else:
+            caret = render_icon("heroicon-o-chevron-down", size=16, css_class="or-icon or-th-sort-icon")
+        icon_cls = "or-th-sort-icon-wrap"
         if active:
             classes += f" or-th-sorted or-th-sorted-{direction}"
+            icon_cls += " or-th-sort-icon-active"
             aria_sort = "ascending" if direction != "desc" else "descending"
-            glyph = "↓" if direction == "desc" else "↑"
-            indicator = f'<span class="or-th-sort-indicator" aria-hidden="true">{glyph}</span>'
         click = _conduit_click(f"sortBy('{name}')")
         return (
             f'<th class="{classes}" data-sortable="true" data-sort-column="{e(name)}" '
             f'aria-sort="{aria_sort}">'
             f'<button type="button" class="or-th-sort-btn"{click}>'
-            f'<span class="or-th-sort-label">{label}</span>{indicator}</button></th>'
+            f'<span class="or-th-sort-label">{label}</span>'
+            f'<span class="{icon_cls}" aria-hidden="true">{caret}</span></button></th>'
+        )
+
+    def _render_columns_chrome(self, **ctx: Any) -> str:
+        toggleable = self._toggleable_columns()
+        if not toggleable:
+            return ""
+        from almasix.orbit.support.icons import icon as render_icon
+
+        items: list[str] = []
+        for col in toggleable:
+            name = col.get_name() or ""
+            label = e(col.get_label(**ctx) or name)
+            visible = self._column_is_visible(col)
+            checked = " checked" if visible else ""
+            # Use change (once) — wire:click + conduit:click both fired and double-toggled.
+            change = _alpine_wire_call(
+                f"toggleColumn('{name}', $event.target.checked)"
+            )
+            items.append(
+                f'<label class="or-columns-item">'
+                f'<input type="checkbox" class="or-columns-check"{checked}{change} />'
+                f"<span>{label}</span></label>"
+            )
+        reset = (
+            f'<button type="button" class="or-link-btn or-link-danger"'
+            f'{_conduit_click("resetToggledColumns")} @click="closeMenu()">Reset</button>'
+        )
+        view_cols = render_icon("heroicon-o-view-columns", size=20)
+        return (
+            f'<div class="or-table-columns" x-data="orbitDropdown" @click.outside="closeMenu()">'
+            f'<button type="button" class="or-icon-btn or-columns-trigger" '
+            f'@click="toggleMenu($event)" aria-haspopup="true" aria-label="Columns" '
+            f':aria-expanded="menuOpen.toString()">{view_cols}</button>'
+            f'<div class="or-columns-panel or-dropdown-menu or-dropdown-menu-end" '
+            f'role="dialog" aria-label="Toggle columns" x-show="menuOpen" x-cloak>'
+            f'<div class="or-columns-panel-header">'
+            f'<h3 class="or-columns-panel-title">Columns</h3>{reset}</div>'
+            f'<div class="or-columns-list">{"".join(items)}</div></div></div>'
         )
 
     def _render_pagination_chrome(self, **ctx: Any) -> str:
@@ -519,12 +636,12 @@ class Table(Component):
         per_page = meta["per_page"]
         from_n = meta["from"]
         to_n = meta["to"]
-        summary = f"Showing {from_n}–{to_n} of {total}"
+        summary = f"Showing {from_n} to {to_n} of {total:,} results"
         prev_disabled = ' disabled aria-disabled="true"' if page <= 1 else ""
         next_disabled = ' disabled aria-disabled="true"' if page >= last else ""
         prev_click = "" if page <= 1 else _conduit_click(f"gotoPage({page - 1})")
         next_click = "" if page >= last else _conduit_click(f"gotoPage({page + 1})")
-        sizes = (10, 25, 50, 100)
+        sizes = (5, 10, 25, 50)
         if per_page not in sizes:
             sizes = tuple(sorted({*sizes, per_page}))
         options = "".join(
@@ -534,34 +651,37 @@ class Table(Component):
         page_btns: list[str] = []
         for item in _pagination_pages(page, last):
             if item is None:
-                page_btns.append('<span class="or-table-pagination-ellipsis" aria-hidden="true">…</span>')
+                page_btns.append(
+                    '<span class="or-table-pagination-ellipsis" aria-hidden="true">…</span>'
+                )
                 continue
             if item == page:
                 page_btns.append(
-                    f'<button type="button" class="or-btn or-btn-sm or-btn-primary" '
+                    f'<button type="button" class="or-table-pagination-page is-active" '
                     f'aria-current="page">{item}</button>'
                 )
             else:
                 page_btns.append(
-                    f'<button type="button" class="or-btn or-btn-sm or-btn-ghost"'
+                    f'<button type="button" class="or-table-pagination-page"'
                     f'{_conduit_click(f"gotoPage({item})")}>{item}</button>'
                 )
         return (
-            f'<div class="or-table-pagination" role="navigation" aria-label="Pagination">'
-            f'<p class="or-table-pagination-summary">{e(summary)}</p>'
-            f'<div class="or-table-pagination-controls">'
-            f'<label class="or-table-per-page">'
-            f'<span class="or-muted">Per page</span>'
-            f'<select class="or-select or-select-sm"'
+            f'<nav class="or-table-pagination" aria-label="Pagination navigation">'
+            f'<span class="or-table-pagination-summary">{e(summary)}</span>'
+            f'<label class="or-table-per-page or-per-page-split">'
+            f'<span class="or-per-page-label">Per page</span>'
+            f'<select class="or-per-page-select" aria-label="Records per page"'
             f'{_alpine_wire_call("setPerPage($event.target.value)")}>{options}</select>'
             f"</label>"
-            f'<div class="or-table-pagination-buttons">'
-            f'<button type="button" class="or-btn or-btn-ghost or-btn-sm"'
-            f"{prev_click}{prev_disabled}>Previous</button>"
+            f'<div class="or-table-pagination-pages">'
+            f'<button type="button" class="or-table-pagination-nav"'
+            f"{prev_click}{prev_disabled} aria-label=\"Previous\">"
+            f'<span aria-hidden="true">‹</span></button>'
             f'{"".join(page_btns)}'
-            f'<button type="button" class="or-btn or-btn-ghost or-btn-sm"'
-            f"{next_click}{next_disabled}>Next</button>"
-            f"</div></div></div>"
+            f'<button type="button" class="or-table-pagination-nav"'
+            f"{next_click}{next_disabled} aria-label=\"Next\">"
+            f'<span aria-hidden="true">›</span></button>'
+            f"</div></nav>"
         )
 
     def _render_summary_cells(
@@ -571,32 +691,82 @@ class Table(Component):
         *,
         scope: str,
         has_actions: bool,
+        has_bulk: bool = False,
         **ctx: Any,
     ) -> str:
         cells: list[str] = []
         any_summary = False
-        if ctx.get("has_bulk"):
-            cells.append('<td class="or-td or-td-summary" data-summary-scope="' + e(scope) + '"></td>')
-        for col in display:
-            if isinstance(col, Column) and col.get_summarizers():
+        scope_label = ""
+        if scope in {"page", "all"}:
+            scope_label = f'<span class="or-summary-scope">{e(scope.title())}</span>'
+
+        def _align_class(col: Column | None) -> str:
+            if col is None:
+                return ""
+            align = col.get_alignment()
+            # Numeric / money totals sit under figures — default end-aligned.
+            if (align == "start" or not align) and (
+                col._money_currency is not None or col._numeric
+            ):
+                return " or-align-end"
+            if align and align != "start":
+                return f" or-align-{align}"
+            return ""
+
+        def _breakpoint_class(col: Column | None) -> str:
+            if col is None:
+                return ""
+            bp = ""
+            if col._visible_from:
+                bp += f" or-visible-from-{col._visible_from}"
+            if col._hidden_from:
+                bp += f" or-hidden-from-{col._hidden_from}"
+            return bp
+
+        if has_bulk:
+            cells.append(
+                f'<td class="or-td or-td-summary or-td-summary-scope">'
+                f"{scope_label}</td>"
+            )
+            scope_label = ""
+
+        for index, col in enumerate(display):
+            column = col if isinstance(col, Column) else None
+            align_c = _align_class(column)
+            bp_c = _breakpoint_class(column)
+            if column is not None and column.get_summarizers():
                 any_summary = True
                 inner = "".join(
                     s.render(
                         records=records,
-                        attribute=col.get_name(),
+                        attribute=column.get_name(),
+                        column=column,
                         **ctx,
                     )
-                    for s in col.get_summarizers()
+                    for s in column.get_summarizers()
                 )
-                cells.append(f'<td class="or-td or-td-summary" data-summary-scope="{e(scope)}">{inner}</td>')
+                prefix = scope_label
+                scope_label = ""
+                cells.append(
+                    f'<td class="or-td or-td-summary{align_c}{bp_c}">'
+                    f'<div class="or-summary-cell">{prefix}{inner}</div></td>'
+                )
             else:
-                cells.append(f'<td class="or-td or-td-summary" data-summary-scope="{e(scope)}"></td>')
+                # Put scope in the first empty data column when there is no bulk checkbox.
+                prefix = ""
+                if scope_label and index == 0:
+                    prefix = scope_label
+                    scope_label = ""
+                inner = f'<div class="or-summary-cell">{prefix}</div>' if prefix else ""
+                cells.append(f'<td class="or-td or-td-summary{align_c}{bp_c}">{inner}</td>')
         if not any_summary:
             return ""
         if has_actions:
-            cells.append(f'<td class="or-td or-td-summary" data-summary-scope="{e(scope)}"></td>')
-        return f'<tr class="or-tr or-summary-row" data-summary-scope="{e(scope)}">{"".join(cells)}</tr>'
-
+            cells.append('<td class="or-td or-td-summary or-td-summary-actions"></td>')
+        return (
+            f'<tr class="or-tr or-summary-row" data-summary-scope="{e(scope)}">'
+            f'{"".join(cells)}</tr>'
+        )
     def _resolve_record_url(self, record: Any, **ctx: Any) -> str | None:
         url = self._record_url
         if url is None:
@@ -617,9 +787,10 @@ class Table(Component):
     ) -> str:
         select = ""
         selected_ids = {str(x) for x in (ctx.get("selected") or [])}
+        select_all = bool(ctx.get("select_all"))
         rid = str(self._record_value(record, "id") or id(record))
         if ctx.get("has_bulk"):
-            checked = " checked" if rid in selected_ids else ""
+            checked = " checked" if select_all or rid in selected_ids else ""
             select = (
                 f'<td class="or-td or-td-select">'
                 f'<input type="checkbox" class="or-row-check" data-record-id="{e(rid)}"{checked} '
@@ -634,9 +805,13 @@ class Table(Component):
         href = self._resolve_record_url(record, **ctx)
         row_class = "or-tr or-list-row"
         row_attrs = ""
+        group_key = ctx.get("group_key")
+        if group_key is not None:
+            row_class += " or-group-member"
+            row_attrs += f' data-group-key="{e(group_key)}"'
         if href:
             row_class += " or-tr-clickable"
-            row_attrs = (
+            row_attrs += (
                 f' data-record-url="{e(href)}" tabindex="0" '
                 f"onclick=\"if(!event.target.closest('a,button,input,label'))"
                 f" location.href='{e(href)}'\""
@@ -722,6 +897,12 @@ class Table(Component):
 
     def render(self, state: Any = None, **ctx: Any) -> str:
         skip_header_actions = bool(ctx.pop("skip_header_actions", False))
+        toggled = ctx.get("toggled_columns")
+        if isinstance(toggled, dict):
+            self.toggled_columns(toggled)
+        table_group = ctx.get("table_group")
+        if table_group is not None:
+            self.active_group(str(table_group) if table_group else None)
         page_records = self.get_records()
         all_records = self.get_all_filtered_records()
         display = self.display_columns()
@@ -732,36 +913,76 @@ class Table(Component):
         row_ctx = {**ctx, "has_bulk": has_bulk}
 
         header_cells: list[str] = []
+        sub_header_cells: list[str] = []
+        has_column_groups = any(isinstance(c, ColumnGroup) for c in self._columns)
         if has_bulk:
-            header_cells.append(
-                '<th class="or-th or-th-select">'
+            bulk_th = (
+                '<th class="or-th or-th-select"'
+                + (' rowspan="2"' if has_column_groups else "")
+                + ">"
                 '<input type="checkbox" class="or-row-check or-select-all" '
                 'aria-label="Select all on page" /></th>'
             )
+            header_cells.append(bulk_th)
         for col in self._columns:
             if isinstance(col, ColumnGroup):
-                span = len(col.get_columns())
+                visible_children = [c for c in col.get_columns() if self._column_is_visible(c)]
+                if not visible_children:
+                    continue
+                span = len(visible_children)
                 header_cells.append(
                     f'<th class="or-th or-th-group" colspan="{span}">'
-                    f'{e(col.get_label(**ctx))}</th>'
+                    f"{e(col.get_label(**ctx))}</th>"
                 )
+                for child in visible_children:
+                    sub_header_cells.append(self._render_sort_header(child, **ctx))
             elif isinstance(col, LayoutComponent):
+                rowspan = ' rowspan="2"' if has_column_groups else ""
                 header_cells.append(
-                    f'<th class="or-th or-th-layout">{e(self._header_label(col, **ctx))}</th>'
+                    f'<th class="or-th or-th-layout"{rowspan}>'
+                    f"{e(self._header_label(col, **ctx))}</th>"
                 )
             else:
                 if isinstance(col, Column):
-                    header_cells.append(self._render_sort_header(col, **ctx))
+                    if not self._column_is_visible(col):
+                        continue
+                    if has_column_groups:
+                        header_cells.append(
+                            f'<th class="or-th" rowspan="2">{e(self._header_label(col, **ctx))}</th>'
+                        )
+                        # Still need sort control — put full sort header in row 1 spanning 2
+                        header_cells[-1] = self._render_sort_header(col, **ctx).replace(
+                            "<th ", '<th rowspan="2" ', 1
+                        )
+                    else:
+                        header_cells.append(self._render_sort_header(col, **ctx))
                 else:
+                    rowspan = ' rowspan="2"' if has_column_groups else ""
                     header_cells.append(
-                        f'<th class="or-th">{e(self._header_label(col, **ctx))}</th>'
+                        f'<th class="or-th"{rowspan}>{e(self._header_label(col, **ctx))}</th>'
                     )
-        headers = "".join(header_cells)
         if has_actions:
-            headers += '<th class="or-th or-th-actions or-align-end">Actions</th>'
+            rowspan = ' rowspan="2"' if has_column_groups else ""
+            header_cells.append(
+                f'<th class="or-th or-th-actions or-align-end"{rowspan}>'
+                '<span class="or-sr-only">Actions</span></th>'
+            )
+        if has_column_groups and sub_header_cells:
+            headers = (
+                f'<tr class="or-tr or-tr-group-headers">{"".join(header_cells)}</tr>'
+                f'<tr class="or-tr or-tr-column-headers">{"".join(sub_header_cells)}</tr>'
+            )
+        else:
+            headers = f'<tr class="or-tr">{"".join(header_cells)}</tr>'
+        # Legacy single-row path expected bare <th> joined; wrap was done later — adjust below.
 
         active_group = self._default_group
-        if active_group is None and self._groups:
+        if self._active_group_name and self._groups:
+            for g in self._groups:
+                if (g.get_name() or "") == self._active_group_name:
+                    active_group = g
+                    break
+        elif active_group is None and self._groups:
             active_group = self._groups[0]
 
         rows: list[str] = []
@@ -778,16 +999,25 @@ class Table(Component):
                 )
                 if not self._groups_only:
                     for record in bucket.records:
-                        rows.append(self._render_row(record, display, **row_ctx))
+                        rows.append(
+                            self._render_row(
+                                record, display, group_key=bucket.key, **row_ctx
+                            )
+                        )
                 group_summary = self._render_summary_cells(
                     display,
                     bucket.records,
                     scope="group",
                     has_actions=has_actions,
                     has_bulk=has_bulk,
-                    **ctx,
                 )
                 if group_summary:
+                    group_summary = group_summary.replace(
+                        'class="or-tr or-summary-row"',
+                        f'class="or-tr or-summary-row or-group-member" '
+                        f'data-group-key="{e(bucket.key)}"',
+                        1,
+                    )
                     rows.append(group_summary)
         else:
             for record in page_records:
@@ -798,7 +1028,6 @@ class Table(Component):
             empty_actions = self._empty_state_actions or (
                 list(self._header_actions) if not skip_header_actions else []
             )
-            # When header actions were moved to the page header, still offer Create in empty state.
             if not empty_actions and self._header_actions:
                 empty_actions = list(self._header_actions)
             actions_html = ""
@@ -819,11 +1048,27 @@ class Table(Component):
             )
 
         footer_parts: list[str] = []
-        page_foot = self._render_summary_cells(
-            display, page_records, scope="page", has_actions=has_actions, has_bulk=has_bulk, **ctx
+        page_foot = (
+            self._render_summary_cells(
+                display,
+                page_records,
+                scope="page",
+                has_actions=has_actions,
+                has_bulk=has_bulk,
+            )
+            if self._summaries_page
+            else ""
         )
-        all_foot = self._render_summary_cells(
-            display, all_records, scope="all", has_actions=has_actions, has_bulk=has_bulk, **ctx
+        all_foot = (
+            self._render_summary_cells(
+                display,
+                all_records,
+                scope="all",
+                has_actions=has_actions,
+                has_bulk=has_bulk,
+            )
+            if self._summaries_all
+            else ""
         )
         if page_foot:
             footer_parts.append(page_foot)
@@ -857,29 +1102,30 @@ class Table(Component):
             )
         groups_chooser = ""
         if self._groups:
+            active_name = self._active_group_name or (
+                (active_group.get_name() if active_group else None)
+                or (self._groups[0].get_name() if self._groups else "")
+            )
             opts = "".join(
-                f'<option value="{e(g.get_name() or "")}">'
+                f'<option value="{e(g.get_name() or "")}"'
+                f'{" selected" if (g.get_name() or "") == active_name else ""}>'
                 f'{e(g.get_label(**ctx) or g.get_name())}</option>'
                 for g in self._groups
             )
             groups_chooser = (
                 f'<div class="or-table-groups-chooser">'
                 f'<label class="or-filter-label">Group</label>'
-                f'<select class="or-select or-select-sm" wire:model="tableGroup">{opts}</select></div>'
+                f'<select class="or-select or-select-sm"'
+                f'{_alpine_wire_call("setTableGroup($event.target.value)")}>'
+                f"{opts}</select></div>"
             )
 
         filters = self._render_filter_chrome(**ctx)
+        columns_mgr = self._render_columns_chrome(**ctx)
         search = self._render_search_chrome(**ctx)
-        toolbar = ""
-        if filters or toolbar_end or groups_chooser or search:
-            toolbar = (
-                f'<div class="or-list-toolbar">'
-                f'<div class="or-list-toolbar-start">{filters}{groups_chooser}{toolbar_end}</div>'
-                f'<div class="or-list-toolbar-end">{search}</div>'
-                f"</div>"
-            )
 
-        bulk_bar = ""
+        bulk_toolbar = ""
+        selection_indicator = ""
         if self._bulk_actions:
             from almasix.orbit.actions.presets import ActionGroup, BulkActionGroup
 
@@ -893,21 +1139,49 @@ class Table(Component):
             if flat_bulk and not grouped:
                 grouped = [BulkActionGroup.make(flat_bulk)]
                 flat_bulk = []
-            elif flat_bulk and grouped:
-                # Ungrouped actions render beside the dropdown(s).
-                pass
-            bulk_html = self._render_actions([*grouped, *flat_bulk], None, **ctx)
-            bulk_bar = (
-                # wire/conduit:ignore — selection + open menus are Alpine-only; morph
-                # must not reset their display/x-cloak or the bar sticks open at 0.
-                '<div class="or-list-bulk or-table-bulk-actions" '
-                "wire:ignore conduit:ignore "
-                'x-show="selected.length > 0" x-cloak>'
-                '<span class="or-list-bulk-label">'
-                '<span x-text="selected.length"></span> selected</span>'
-                f'<div class="or-list-bulk-actions">{bulk_html}</div>'
-                '<button type="button" class="or-btn or-btn-ghost or-btn-sm" @click="clear()">'
-                "Clear</button></div>"
+            bulk_inner = self._render_actions([*grouped, *flat_bulk], None, **ctx)
+            # Filament: Bulk actions only when rows are selected (with the selection bar).
+            selection_indicator = (
+                '<div class="or-ta-selection-indicator" wire:ignore conduit:ignore '
+                'role="status" aria-live="polite" x-show="selectionCount > 0" x-cloak>'
+                '<div class="or-ta-selection-start">'
+                f'<div class="or-list-bulk or-table-bulk-trigger">{bulk_inner}</div>'
+                '<span class="or-ta-selection-label" '
+                "x-text=\"selectionCount === 1 "
+                "? '1 record selected' "
+                ": (selectionCount.toLocaleString() + ' records selected')\"></span>"
+                "</div>"
+                '<div class="or-ta-selection-actions">'
+                '<button type="button" class="or-link-btn or-link-primary" '
+                'x-show="showSelectAllResults" x-cloak @click="selectAllResults()">'
+                "Select all "
+                '<span x-text="Number(total).toLocaleString()"></span></button>'
+                '<button type="button" class="or-link-btn or-link-danger" @click="clear()">'
+                "Deselect all</button></div></div>"
+            )
+
+        toolbar = ""
+        start_chrome = f"{groups_chooser}{toolbar_end}"
+        tools = f"{filters}{columns_mgr}"
+        end_stack = ""
+        if tools.strip() or search:
+            tools_row = (
+                f'<div class="or-list-toolbar-tools">{tools}</div>' if tools.strip() else ""
+            )
+            divider = (
+                '<div class="or-list-toolbar-divider" role="separator"></div>'
+                if tools.strip() and search
+                else ""
+            )
+            end_stack = (
+                f'<div class="or-list-toolbar-end-stack">{tools_row}{divider}{search}</div>'
+            )
+        if start_chrome.strip() or end_stack.strip():
+            toolbar = (
+                f'<div class="or-list-toolbar">'
+                f'<div class="or-list-toolbar-start">{start_chrome}</div>'
+                f'<div class="or-list-toolbar-end">{end_stack}</div>'
+                f"</div>"
             )
 
         _ = flat
@@ -917,21 +1191,25 @@ class Table(Component):
         if has_bulk:
             selected_json = e(json.dumps([str(x) for x in (ctx.get("selected") or [])]))
             selection_attr += f' data-selected="{selected_json}"'
+            selection_attr += f' data-total="{int(self.get_total())}"'
+            if ctx.get("select_all"):
+                selection_attr += ' data-select-all="true"'
         pagination = self._render_pagination_chrome(**ctx)
 
         if self._layout == "kanban":
             return (
                 f'<div class="or-table-wrap or-list-card or-table-kanban">'
-                f"{toolbar}{self._render_kanban(page_records, display, **ctx)}{pagination}</div>"
+                f"{toolbar}{selection_indicator}"
+                f"{self._render_kanban(page_records, display, **ctx)}{pagination}</div>"
             )
 
         return (
             f'<div class="or-table-wrap or-list-card{wrap_extra}{stacked_cls}"'
             f"{grid_attr}{selection_attr}>"
-            f"{toolbar}{bulk_bar}"
+            f"{toolbar}{selection_indicator}"
             f'<div class="or-list-table-scroll or-table-desktop">'
             f'<table class="or-table{striped}">'
-            f'<thead class="or-thead"><tr>{headers}</tr></thead>'
+            f'<thead class="or-thead">{headers}</thead>'
             f'<tbody class="or-tbody">{body}</tbody>'
             f"{tfoot}</table></div>"
             f"{stacked}{pagination}</div>"

@@ -1,7 +1,7 @@
-"""Table cell layout components (Split, Stack, Panel).
+"""Table cell layout components (Split, Stack, Panel, Grid, View).
 
-Parent wiring (into ``table.py`` / ``columns.py`` — forms owns those files):
-- Allow ``Table.columns([...])`` to accept ``Split`` / ``Stack`` / ``Panel`` alongside ``Column``.
+Parent wiring (into ``table.py`` / ``columns.py``):
+- Allow ``Table.columns([...])`` to accept layout components alongside ``Column``.
 - ``Table.flat_columns()`` should recurse layout children to collect searchable/sortable columns.
 - In ``Table.render`` row cells, when a column entry is a layout component, call
   ``layout.render_cell(record, **ctx)`` (single ``<td>`` wrapping the layout) instead of
@@ -206,3 +206,59 @@ class Panel(LayoutComponent):
             f'<div class="{classes}" data-collapsible="{collapsible}" '
             f'data-collapsed="{collapsed}">{children}</div>'
         )
+
+
+class Grid(LayoutComponent):
+    """Responsive multi-column grid inside a cell (Filament ``Columns\\Layout\\Grid``)."""
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._columns_count: int = 2
+
+    def columns(self, count: int) -> Self:  # type: ignore[override]
+        self._columns_count = max(1, int(count))
+        return self
+
+    def render_cell_inner(self, record: Any, **ctx: Any) -> str:
+        n = self._columns_count
+        classes = self._responsive_classes(f"or-layout-grid or-cols-{n}")
+        children = "".join(self._render_child(c, record, **ctx) for c in self._components)
+        return f'<div class="{classes}">{children}</div>'
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["columns"] = self._columns_count
+        return d
+
+
+class View(LayoutComponent):
+    """Custom HTML layout wrapper (Filament ``Columns\\Layout\\View``).
+
+    Distinct from ``ViewColumn`` (a single table column). Use ``.content()`` for a
+    custom wrapper, and/or ``.schema()`` for nested columns rendered inside.
+    """
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._view_html: Any = None
+
+    def content(self, html: Any) -> Self:
+        self._view_html = html
+        return self
+
+    def render_cell_inner(self, record: Any, **ctx: Any) -> str:
+        from almasix.orbit.support.evaluate import evaluate
+
+        classes = self._responsive_classes("or-layout-view")
+        children = "".join(self._render_child(c, record, **ctx) for c in self._components)
+        if self._view_html is not None:
+            body = evaluate(self._view_html, record=record, children=children, **ctx)
+            if body is None:
+                body = children
+            else:
+                body = str(body)
+                if "{children}" in body:
+                    body = body.replace("{children}", children)
+        else:
+            body = children
+        return f'<div class="{classes}">{body}</div>'

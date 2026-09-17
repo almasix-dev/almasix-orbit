@@ -48,6 +48,7 @@ def test_select_filter_default_apply_and_indicators() -> None:
     assert "Alpha" not in html
     assert "or-filters-trigger" in html
     assert "or-filters-panel" in html
+    assert "or-filters-panel-title" in html
     assert "setTableFilter('status'" in html
     assert "filtersOpen" in html
     assert "toggleFilters" in html
@@ -56,6 +57,7 @@ def test_select_filter_default_apply_and_indicators() -> None:
     assert "resetTableFilters" in html
     assert "removeTableFilter('status')" in html
     assert "or-list-toolbar-end" in html and "or-table-search" in html
+    assert 'aria-label="Filter"' in html
 
     host.setTableFilter("status", "draft")
     assert host.table_filters == {"status": "draft"}
@@ -134,7 +136,7 @@ def test_deferred_filters_and_empty_create_cta() -> None:
 
     table.empty_state_actions([Action.make("create").label("Create").url("/create")])
     html = table.render(skip_header_actions=True)
-    assert "Apply" in html and "data-defer-filters" in html
+    assert "Apply filters" in html and "data-defer-filters" in html
     assert "applyDeferred()" in html
     assert "or-filters-trigger" in html
     assert "or-filter-chip" in html
@@ -155,6 +157,16 @@ def test_deferred_filters_and_empty_create_cta() -> None:
     assert "wire:ignore" in html2 and "conduit:ignore" in html2
     assert "or-select-all" in html2
     assert ":checked=\"pageFullySelected\"" not in html2
+    assert "data-total=" in html2
+    assert "selectAllResults()" in html2
+    assert "or-ta-selection-indicator" in html2
+    assert "Deselect all" in html2
+    assert "Bulk actions" in html2
+    host.select_all = True
+    host.selected = ["1"]
+    assert host.get_selected_ids() == ["1", "2", "3"]
+    host.select_all = False
+    assert host.get_selected_ids() == ["1"]
 
 
 def test_filter_apply_branches_and_record_url_callable() -> None:

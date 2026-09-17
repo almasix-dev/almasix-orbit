@@ -70,6 +70,8 @@ def test_list_create_edit_view_pages() -> None:
     ]
     html = PostList.render(records=records, active_tab="published")
     assert "or-page-list" in html and "or-list-tabs" in html
+    assert "or-list-tabs-bar" in html
+    assert "or-list-tab-badge" in html
     assert "AlphaPub" in html
     assert "BetaDraft" not in html
     assert "or-page-create" in PostCreate.render()

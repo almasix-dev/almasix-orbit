@@ -291,20 +291,22 @@ a[class*='link-card'],
 
 /*
  * Orbit example screenshots ship as light + dark pairs under
- * /examples/{light|dark}/…. Show only the pair that matches the active
+ * /examples/{light|dark}/…. Show only the image that matches the active
  * Starlight theme (default :root is dark; light is [data-theme='light']).
+ * Target the <img> itself — Markdown often puts both images in one <p>,
+ * so hiding the parent would hide the entire pair.
  */
-:root[data-theme='light'] .sl-markdown-content :is(p, figure):has(> img[src*='/examples/dark/']),
-:root:not([data-theme='light']) .sl-markdown-content :is(p, figure):has(> img[src*='/examples/light/']) {
+:root[data-theme='light'] .sl-markdown-content img[src*='/examples/dark/'],
+:root:not([data-theme='light']) .sl-markdown-content img[src*='/examples/light/'] {
 	display: none;
 }
 
 @media print {
-	:root .sl-markdown-content :is(p, figure):has(> img[src*='/examples/dark/']) {
+	:root .sl-markdown-content img[src*='/examples/dark/'] {
 		display: none;
 	}
-	:root .sl-markdown-content :is(p, figure):has(> img[src*='/examples/light/']) {
-		display: block;
+	:root .sl-markdown-content img[src*='/examples/light/'] {
+		display: inline-block;
 	}
 	.or-lightbox {
 		display: none !important;

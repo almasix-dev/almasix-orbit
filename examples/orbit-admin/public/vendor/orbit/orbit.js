@@ -217,6 +217,8 @@
 
     window.Alpine.data("orbitTableSelection", () => ({
       selected: [],
+      total: 0,
+      allResultsSelected: false,
       init() {
         // Capture the x-data root once. Alpine's `$el` inside child `@click`
         // handlers is the child node (e.g. Clear button), not the wrap.
@@ -231,6 +233,13 @@
           } catch (_) {
             /* ignore bad JSON */
           }
+        }
+        const totalAttr = this._rootEl?.getAttribute?.("data-total");
+        if (totalAttr != null) {
+          this.total = Number(totalAttr) || 0;
+        }
+        if (this._rootEl?.getAttribute?.("data-select-all") === "true") {
+          this.allResultsSelected = true;
         }
         // Alpine @change/@click on thead checkboxes is unreliable (handler never
         // fires alongside :checked). Bind select-all imperatively instead.
@@ -252,7 +261,9 @@
           if (!(target instanceof Element)) {
             return;
           }
-          const bulk = this._rootEl.querySelector(".or-list-bulk-actions");
+          const bulk = this._rootEl.querySelector(
+            ".or-table-bulk-trigger, .or-list-bulk-actions"
+          );
           if (!bulk || !bulk.contains(target)) {
             return;
           }
@@ -283,21 +294,27 @@
           return;
         }
         const next = this.selected.map(String);
+        const selectAll = !!this.allResultsSelected;
         const prev = this._lastSynced;
+        const prevAll = this._lastSyncedSelectAll;
         if (
           Array.isArray(prev) &&
           prev.length === next.length &&
-          prev.every((value, index) => value === next[index])
+          prev.every((value, index) => value === next[index]) &&
+          prevAll === selectAll
         ) {
           return;
         }
         this._lastSynced = next;
+        this._lastSyncedSelectAll = selectAll;
         if (typeof wire.$set === "function") {
           wire.$set("selected", next);
+          wire.$set("select_all", selectAll);
           return;
         }
         if (typeof wire.set === "function") {
           wire.set("selected", next);
+          wire.set("select_all", selectAll);
         }
       },
       pageIds() {
@@ -314,11 +331,17 @@
       },
       toggle(id, checked) {
         const key = String(id);
-        if (checked) {
+        if (this.allResultsSelected && !checked) {
+          // Leave "all matching" mode: keep only this page, minus the unchecked row.
+          this.allResultsSelected = false;
+          this.selected = this.pageIds().filter((x) => x !== key);
+        } else if (checked) {
+          this.allResultsSelected = false;
           if (!this.selected.includes(key)) {
             this.selected = [...this.selected, key];
           }
         } else {
+          this.allResultsSelected = false;
           this.selected = this.selected.filter((x) => x !== key);
         }
         this._syncHeaderCheck();
@@ -327,6 +350,7 @@
         window.dispatchEvent(new CustomEvent("orbit:close-dropdowns", { detail: {} }));
       },
       toggleAll(checked) {
+        this.allResultsSelected = false;
         const ids = this.pageIds();
         if (checked) {
           const set = new Set(this.selected);
@@ -343,13 +367,51 @@
         window.dispatchEvent(new CustomEvent("orbit:close-dropdowns", { detail: {} }));
       },
       get pageFullySelected() {
+        if (this.allResultsSelected) {
+          return this.pageIds().length > 0;
+        }
         const ids = this.pageIds();
         return ids.length > 0 && ids.every((id) => this.selected.includes(id));
+      },
+      get selectionCount() {
+        return this.allResultsSelected ? this.total : this.selected.length;
+      },
+      get showSelectAllResults() {
+        const pageCount = this.pageIds().length;
+        return (
+          !this.allResultsSelected &&
+          this.pageFullySelected &&
+          this.total > pageCount &&
+          pageCount > 0
+        );
+      },
+      get showSelectPageOnly() {
+        return this.allResultsSelected && this.total > this.pageIds().length;
+      },
+      selectAllResults() {
+        this.allResultsSelected = true;
+        const ids = this.pageIds();
+        const set = new Set(this.selected);
+        ids.forEach((id) => set.add(id));
+        this.selected = Array.from(set);
+        this._root().querySelectorAll("input.or-row-check[data-record-id]").forEach((box) => {
+          box.checked = true;
+        });
+        this._syncHeaderCheck();
+      },
+      selectPageOnly() {
+        this.allResultsSelected = false;
+        this.selected = this.pageIds();
+        this._root().querySelectorAll("input.or-row-check[data-record-id]").forEach((box) => {
+          box.checked = true;
+        });
+        this._syncHeaderCheck();
       },
       togglePage() {
         this.toggleAll(!this.pageFullySelected);
       },
       clear() {
+        this.allResultsSelected = false;
         this.selected = [];
         this._root().querySelectorAll("input.or-row-check[data-record-id]").forEach((box) => {
           box.checked = false;
@@ -375,6 +437,10 @@
       heading: "",
       description: "",
       needsConfirm: false,
+      hasForm: false,
+      formHtml: "",
+      recordId: "",
+      pendingEl: null,
       slideOver: false,
       modalWidth: "md",
       stickyHeader: false,
@@ -389,6 +455,10 @@
           this.heading = detail.heading || detail.name || "Confirm";
           this.description = detail.description || "";
           this.needsConfirm = Boolean(detail.confirm);
+          this.hasForm = Boolean(detail.hasForm);
+          this.formHtml = detail.formHtml || "";
+          this.recordId = detail.recordId || "";
+          this.pendingEl = detail.pendingEl || null;
           this.slideOver = Boolean(detail.slideOver);
           this.modalWidth = detail.modalWidth || "md";
           this.stickyHeader = Boolean(detail.stickyHeader);
@@ -400,9 +470,38 @@
       },
       close() {
         this.open = false;
+        this.formHtml = "";
+        this.pendingEl = null;
+      },
+      _formData() {
+        const root = this.$refs.actionForm;
+        if (!root) return {};
+        const data = {};
+        root.querySelectorAll("input[name], select[name], textarea[name]").forEach((el) => {
+          const name = el.getAttribute("name");
+          if (!name) return;
+          if (el.type === "checkbox") {
+            data[name] = el.checked;
+          } else {
+            data[name] = el.value;
+          }
+        });
+        return data;
       },
       confirm() {
-        this.$dispatch("orbit:action-confirmed", { name: this.name });
+        const payload = {
+          name: this.name,
+          recordId: this.recordId,
+          data: this.hasForm ? this._formData() : {},
+        };
+        const el = this.pendingEl;
+        const wire = el ? window.orbitWire?.(el) : null;
+        if (wire && typeof wire.mountAction === "function") {
+          wire.mountAction(payload.name, payload.recordId || null, { data: payload.data });
+        } else if (wire && typeof wire.$call === "function") {
+          wire.$call("mountAction", payload.name, payload.recordId || null, { data: payload.data });
+        }
+        this.$dispatch("orbit:action-confirmed", payload);
         this.close();
       },
     }));
@@ -412,24 +511,46 @@
       (event) => {
         const target = event.target;
         if (!(target instanceof Element)) return;
-        const btn = target.closest("[data-action][wire\\:click], [data-action][data-confirm]");
+        const btn = target.closest("[data-action]");
         if (!(btn instanceof HTMLElement)) return;
+        const needsConfirm = btn.getAttribute("data-confirm") === "true";
+        const hasForm = btn.getAttribute("data-has-form") === "true";
         const click = btn.getAttribute("wire:click") || "";
-        if (!click.includes("mountAction") && btn.getAttribute("data-confirm") !== "true") {
+        if (!needsConfirm && !hasForm) {
           return;
         }
-        if (window.Livewire || window.Conduit) {
+        if (!click.includes("mountAction") && !needsConfirm && !hasForm) {
           return;
         }
+        // Intercept before Conduit/Livewire so confirm / modal form always shows.
         event.preventDefault();
+        event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === "function") {
+          event.stopImmediatePropagation();
+        }
         const name = btn.getAttribute("data-action") || "";
+        let formHtml = "";
+        const tpl =
+          btn.querySelector("template.or-action-form-tpl") ||
+          btn.parentElement?.querySelector(`template.or-action-form-tpl`);
+        // Prefer sibling template immediately after the button.
+        const next = btn.nextElementSibling;
+        if (next && next.matches?.("template.or-action-form-tpl")) {
+          formHtml = next.innerHTML;
+        } else if (tpl) {
+          formHtml = tpl.innerHTML;
+        }
         window.dispatchEvent(
           new CustomEvent("orbit:mount-action", {
             detail: {
               name,
               heading: btn.getAttribute("data-modal-heading") || name,
               description: btn.getAttribute("data-modal-description") || "",
-              confirm: btn.getAttribute("data-confirm") === "true",
+              confirm: needsConfirm,
+              hasForm,
+              formHtml,
+              recordId: btn.getAttribute("data-record-id") || "",
+              pendingEl: btn,
               slideOver: btn.getAttribute("data-slide-over") === "true",
               modalWidth: btn.getAttribute("data-modal-width") || "md",
               stickyHeader: btn.getAttribute("data-sticky-header") === "true",
@@ -439,6 +560,51 @@
             },
           }),
         );
+      },
+      true,
+    );
+
+    // Inline editable columns (Select / Toggle / TextInput / Checkbox).
+    const emitColumnEdit = (el) => {
+      if (!(el instanceof HTMLElement)) return;
+      const kind = el.getAttribute("data-orbit-column-edit");
+      if (!kind) return;
+      const recordId = el.getAttribute("data-record-id") || "";
+      const column = el.getAttribute("data-column") || "";
+      let value;
+      if (kind === "checkbox" || kind === "toggle") {
+        value = el.checked;
+      } else {
+        value = el.value;
+      }
+      const wire = window.orbitWire?.(el);
+      if (wire && typeof wire.updateColumnState === "function") {
+        wire.updateColumnState(recordId, column, value);
+      } else if (wire && typeof wire.update_column_state === "function") {
+        wire.update_column_state(recordId, column, value);
+      } else if (wire && typeof wire.$call === "function") {
+        wire.$call("updateColumnState", recordId, column, value);
+      }
+    };
+    document.addEventListener(
+      "change",
+      (event) => {
+        const el = event.target;
+        if (!(el instanceof HTMLElement)) return;
+        if (!el.getAttribute("data-orbit-column-edit")) return;
+        const kind = el.getAttribute("data-orbit-column-edit");
+        if (kind === "text") return; // blur only
+        emitColumnEdit(el);
+      },
+      true,
+    );
+    document.addEventListener(
+      "blur",
+      (event) => {
+        const el = event.target;
+        if (!(el instanceof HTMLElement)) return;
+        if (el.getAttribute("data-orbit-column-edit") !== "text") return;
+        emitColumnEdit(el);
       },
       true,
     );
@@ -626,5 +792,41 @@
     } else {
       bootCollapsedTooltips();
     }
+  }
+
+  // Collapsible table group headers (Filament-style).
+  if (typeof document !== "undefined") {
+    document.addEventListener("click", (event) => {
+      const header = event.target?.closest?.(
+        "tr.or-group-header[data-collapsible='true']"
+      );
+      if (!header) {
+        return;
+      }
+      if (event.target?.closest?.("a,button,input,label,select")) {
+        return;
+      }
+      const key = header.getAttribute("data-group-key");
+      if (key == null) {
+        return;
+      }
+      const collapsed = header.getAttribute("data-collapsed") === "true";
+      const next = !collapsed;
+      header.setAttribute("data-collapsed", next ? "true" : "false");
+      const tbody = header.closest("tbody");
+      if (!tbody) {
+        return;
+      }
+      tbody.querySelectorAll("tr.or-group-member").forEach((row) => {
+        if (row.getAttribute("data-group-key") !== key) {
+          return;
+        }
+        if (next) {
+          row.setAttribute("hidden", "hidden");
+        } else {
+          row.removeAttribute("hidden");
+        }
+      });
+    });
   }
 })();

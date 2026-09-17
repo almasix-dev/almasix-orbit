@@ -72,6 +72,7 @@ class ActionGroup(Action):
         self._actions: list[Action] = []
         self._dropdown = True
         self._button_group_style = False
+        self._icon_button = False
 
     @classmethod
     def make(cls, actions: Sequence[Action] | str | None = None) -> Self:  # type: ignore[override]
@@ -98,7 +99,13 @@ class ActionGroup(Action):
         self._dropdown = not condition
         return self
 
+    def icon_button(self, condition: bool = True) -> Self:
+        """Filament-style icon-only trigger (e.g. row ⋮ menu)."""
+        self._icon_button = condition
+        return self
+
     def flat_actions(self) -> list[Action]:
+
         out: list[Action] = []
         for action in self._actions:
             if isinstance(action, ActionGroup):
@@ -133,14 +140,25 @@ class ActionGroup(Action):
                 f'<div class="or-action-group or-btn-group" data-action-group="{name}" role="group">'
                 f"{children}</div>"
             )
+        btn_cls = f"or-btn or-btn-{e(self.get_color(**ctx))}"
+        if self._icon_button:
+            btn_cls += " or-btn-icon or-icon-btn"
+            trigger_inner = ic or f"<span>{label}</span>"
+            label_attr = f' aria-label="{label}"'
+        else:
+            trigger_inner = f"{ic}<span>{label}</span>"
+            label_attr = ""
+        menu_cls = "or-dropdown-menu"
+        if self._icon_button:
+            menu_cls += " or-dropdown-menu-end"
         return (
             f'<div class="or-action-group or-dropdown" data-action-group="{name}" '
             f'data-dropdown="true" x-data="orbitDropdown" @click.outside="closeMenu()">'
-            f'<button type="button" class="or-btn or-btn-{e(self.get_color(**ctx))}" '
+            f'<button type="button" class="{btn_cls}"{label_attr} '
             f'aria-haspopup="menu" @click="toggleMenu($event)" '
             f':aria-expanded="menuOpen.toString()">'
-            f"{ic}<span>{label}</span></button>"
-            f'<div class="or-dropdown-menu" role="menu" x-show="menuOpen" x-cloak>'
+            f"{trigger_inner}</button>"
+            f'<div class="{menu_cls}" role="menu" x-show="menuOpen" x-cloak>'
             f"{children}</div></div>"
         )
 
@@ -150,7 +168,7 @@ class BulkActionGroup(ActionGroup):
 
     def __init__(self, name: str | None = "bulk_actions") -> None:
         super().__init__(name)
-        self.label("Actions").icon("heroicon-o-ellipsis-vertical").color("primary")
+        self.label("Bulk actions").icon("heroicon-o-ellipsis-vertical").color("gray")
 
 
 __all__ = [

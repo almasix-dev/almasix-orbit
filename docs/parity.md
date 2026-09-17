@@ -48,23 +48,36 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 |---------|--------|
 | Summaries (`Sum`/`Average`/`Count`/`Range`) | Done |
 | Row grouping (`Group`) | Done |
-| Layout `Split`/`Stack`/`Panel` | Done |
-| TextColumn money/date/description | Done |
+| Layout `Split`/`Stack`/`Panel`/`Grid`/`View` | Done |
+| TextColumn money/date/description/copyable/weight/wrap/markdown/icon | Done |
+| IconColumn boolean + ImageColumn circular/stacked + ColorColumn | Done |
+| Editable Select/Toggle/TextInput/Checkbox + `update_column_state` | Done |
+| ColumnGroup dual header row | Done |
 | `TrashedFilter` + filter persist/defer flags | Done |
 | Index search / sortable headers / pagination chrome | Done |
+| Always-visible sort carets on orderable columns | Done |
 | Filter chrome (dropdown) + indicator chips + `setTableFilter` | Done |
 | Empty state Create CTA + `record_url` row click | Done |
 | Bulk selection + `BulkActionGroup` Actions dropdown | Done |
+| Select all matching results (across pages) | Done |
+| Filament-style Bulk actions + selection indicator | Done |
+| Filament-style Filters icon dropdown (Apply/Reset) | Done |
 | Column `alignment` / `align_end` mirrored on headers | Done |
-| Numbered pagination + per-page on one row | Done |
+| Filament-style numbered pagination + per-page dropup + 3-zone footer | Done |
+| Filters/Columns above search with toolbar divider | Done |
+| Default row actions as ⋮ dropdown | Done |
 | Content-grid cards (title + stacked fields) | Done |
-| Column visibility manager / breakpoint CSS | Partial |
+| Column visibility manager / breakpoint CSS | Done |
+| List tabs with live/callable badges | Done |
+| `Table.summaries(page=, all=)` + summary footer chrome | Done |
 
 ## Actions — Partial
 
 | Feature | Status |
 |---------|--------|
 | Create/Edit/View/Delete + modal URL modes | Done |
+| Modal forms (`Action.form()` in shell dialog) | Done |
+| Danger actions always confirm (Conduit-safe) | Done |
 | Replicate / ForceDelete / Restore / Import / Export | Done |
 | `ActionGroup` / `BulkActionGroup` + slide-over / modal width / sticky | Done |
 | Host job runners for import/export | Partial (config + docs) |

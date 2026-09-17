@@ -1,49 +1,69 @@
 ---
 title: Boolean column
-description: Orbit BooleanColumn — Yes / No cells for boolean attributes.
+description: BooleanColumn and IconColumn.boolean — check/X icons, plus TextColumn.boolean() for Yes/No text.
 ---
 
-Truthy → Yes, everything else → No. Perfect for flags without inventing icons yet.
+Boolean values can render as icons or as Yes/No text.
 
-## Standalone
+`BooleanColumn` is the Filament-shaped alias for `IconColumn` with `.boolean()` already applied — check and X icons with success and danger colors.
+
+## Standalone example
 
 ```python
-from almasix.orbit.tables import Table, BooleanColumn
+from almasix.orbit.tables import Table, TextColumn, BooleanColumn, IconColumn
 
 table = (
-    Table.make("demo")
+    Table.make("features")
     .columns([
-        BooleanColumn.make("featured").label("Featured"),
+        TextColumn.make("name").searchable(),
+        # Icon check / X (BooleanColumn ≡ IconColumn.boolean)
+        BooleanColumn.make("enabled"),
+        IconColumn.make("verified").boolean()
+            .true_icon("heroicon-o-check-circle")
+            .false_icon("heroicon-o-x-circle"),
+        # Plain Yes / No text
+        TextColumn.make("featured").boolean(),
     ])
     .records(records)
 )
 ```
 
-## In a Resource
+## In a Resource example
 
 ```python
 from almasix.orbit import Resource
-from almasix.orbit.tables import Table, BooleanColumn
+from almasix.orbit.tables import Table, BooleanColumn, IconColumn, TextColumn
 
-class PostResource(Resource):
+class FeatureResource(Resource):
     @classmethod
     def table(cls, table: Table) -> Table:
         return table.columns([
-            BooleanColumn.make("is_published").sortable(),
-            BooleanColumn.make("verified"),
+            TextColumn.make("name").searchable().sortable(),
+            BooleanColumn.make("enabled").sortable().align_center(),
+            IconColumn.make("public").boolean().color(
+                lambda state=None, **_: "success" if state else "gray"
+            ),
+            TextColumn.make("beta").boolean().label("Beta?"),
         ])
 ```
 
+### Which to use
+
+| API | Renders |
+|-----|---------|
+| `BooleanColumn.make(...)` | Check / X icons |
+| `IconColumn.make(...).boolean()` | Same icons (customize with `.true_icon` / `.false_icon`) |
+| `TextColumn.make(...).boolean()` | `"Yes"` / `"No"` text |
+
 ## Key methods
 
-- `Forces boolean rendering (`Yes` / `No`)`
-- `.sortable() / .searchable()`
-- `.color(...) still applies to the span`
-- `.label(...)`
+- `.boolean()` — switch icon (or text) mode on
+- `.true_icon(...)` / `.false_icon(...)` — Heroicon names (IconColumn)
+- `.size(...)` — icon size class
+- `.color(str | callable)` — override default success/danger
+- `.sortable()` / `.align_center()`
 
 ## Preview
 
-![Orbit table example (light)](/examples/light/tables/overview.png)
-
-![Orbit table example (dark)](/examples/dark/tables/overview.png)
-
+![Icon boolean (light)](/examples/light/tables/icon-boolean.png)
+![Icon boolean (dark)](/examples/dark/tables/icon-boolean.png)

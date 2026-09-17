@@ -1,48 +1,61 @@
 ---
 title: Text input column
-description: Orbit TextInputColumn — inline text input with blur-sync.
+description: TextInputColumn — inline text fields for quick edits without opening a form.
 ---
 
-Quick edits in place. Saves on blur via `wire:model.blur`.
+`TextInputColumn` renders an `<input>` in the cell for short editable values such as SKUs or nicknames.
 
-## Standalone
+It persists like other editable columns via `data-orbit-column-edit="text"` → `ListRecordsHost.update_column_state` / `orbit.js`.
 
 ```python
-from almasix.orbit.tables import Table, TextInputColumn
+SelectColumn, TextInputColumn, ToggleColumn, CheckboxColumn
+# persist via ListRecordsHost.update_column_state / orbit.js
+```
+
+## Standalone example
+
+```python
+from almasix.orbit.tables import Table, TextColumn, TextInputColumn
 
 table = (
-    Table.make("demo")
+    Table.make("skus")
     .columns([
-        TextInputColumn.make("title"),
+        TextColumn.make("product").searchable(),
+        TextInputColumn.make("sku").label("SKU"),
+        TextInputColumn.make("qty").align_end(),
     ])
     .records(records)
 )
 ```
 
-## In a Resource
+## In a Resource example
 
 ```python
 from almasix.orbit import Resource
-from almasix.orbit.tables import Table, TextInputColumn
+from almasix.orbit.tables import Table, TextColumn, TextInputColumn
 
-class PostResource(Resource):
+class ProductResource(Resource):
     @classmethod
     def table(cls, table: Table) -> Table:
         return table.columns([
-            TextInputColumn.make("sku").label("SKU"),
-            TextInputColumn.make("sort_order"),
+            TextColumn.make("name").searchable().sortable(),
+            TextInputColumn.make("sku")
+                .label("SKU")
+                .disabled(lambda record=None, **_: record.get("locked")),
+            TextInputColumn.make("nickname"),
         ])
 ```
 
+For long-form content, use a form field instead of an inline input.
+
 ## Key methods
 
-- ``or-input or-input-inline``
-- ``wire:model.blur="table.{name}"``
-- `.label(...) / .format_state_using(...)`
+- `.disabled(bool | callable)` — lock rows that should not change
+- `.label(...)` / `.align_end()` / `.sortable()`
+- Markup: `data-orbit-column-edit="text"`, `data-record-id`, `data-column`
+- Class: `or-input or-input-inline`
 
 ## Preview
 
-![Orbit table example (light)](/examples/light/tables/overview.png)
-
-![Orbit table example (dark)](/examples/dark/tables/overview.png)
-
+![Text input column (light)](/examples/light/tables/editable.png)
+![Text input column (dark)](/examples/dark/tables/editable.png)
