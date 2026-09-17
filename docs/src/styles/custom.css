@@ -288,3 +288,23 @@ a[class*='link-card'],
 .link-card {
 	color: var(--sl-color-white);
 }
+
+/*
+ * Orbit example screenshots ship as light + dark pairs under
+ * /examples/{light|dark}/…. Show only the pair that matches the active
+ * Starlight theme (default :root is dark; light is [data-theme='light']).
+ */
+:root[data-theme='light'] .sl-markdown-content :is(p, figure):has(> img[src*='/examples/dark/']),
+:root:not([data-theme='light']) .sl-markdown-content :is(p, figure):has(> img[src*='/examples/light/']) {
+	display: none;
+}
+
+@media print {
+	:root .sl-markdown-content :is(p, figure):has(> img[src*='/examples/dark/']) {
+		display: none;
+	}
+	:root .sl-markdown-content :is(p, figure):has(> img[src*='/examples/light/']) {
+		display: block;
+	}
+}
+
