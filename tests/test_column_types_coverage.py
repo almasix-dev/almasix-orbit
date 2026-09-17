@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+import sys
 from datetime import date, datetime
 from types import ModuleType
-import sys
 
 from almasix.orbit.actions.action import Action, CreateAction, EditAction
 from almasix.orbit.forms.components import TextInput
 from almasix.orbit.panels.conduit.hosts import ListRecordsHost
-from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.pages.resource_pages import EditRecord, Tab, ViewRecord
+from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.resource import Resource
 from almasix.orbit.support.urls import resolve_public_url
 from almasix.orbit.tables import (
