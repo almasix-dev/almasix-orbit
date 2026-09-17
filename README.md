@@ -1,10 +1,11 @@
 # almasix-orbit
 
-**Orbit brings Filament's power to Almasix.**
+**Orbit** — server-driven admin UI for Almasix.
 
-Server-driven admin UI for Almasix — panels, resources, forms, tables, actions,
-infolists, notifications, widgets, and query builder — on **Conduit** + **Alpine.js**,
-with FilamentPHP 5.x API familiarity and Tailwind compiled to semantic `.or-*` CSS.
+Panels, resources, forms, tables, actions, infolists, notifications, widgets, and
+query builder — on **Conduit** + **Alpine.js**, with semantic `.or-*` CSS.
+
+Inspired by [Filament](https://filamentphp.com/); built for the Almasix/Python world.
 
 ## Install
 
@@ -33,11 +34,8 @@ Requires `almasix`, `almasix-conduit`, and `almasix-permission`.
 
 https://orbit.almasix.com/
 
-## Parity
+## Maintainer notes
 
-See [docs/parity.md](docs/parity.md) for the Filament 5.x parity matrix.
-
-## Publishing
-
-- PyPI: see [PUBLISHING.md](./PUBLISHING.md)
-- Docs / Cloudflare: see [CLOUDFLARE.md](./CLOUDFLARE.md)
+- Feature checklist for contributors: [docs/parity.md](docs/parity.md)
+- PyPI: [PUBLISHING.md](./PUBLISHING.md)
+- Docs / Cloudflare: [CLOUDFLARE.md](./CLOUDFLARE.md)

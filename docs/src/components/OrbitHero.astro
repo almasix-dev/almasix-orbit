@@ -1,0 +1,261 @@
+---
+/**
+ * Orbit marketing hero — term-code slides (code → UI) matching almasix-website.
+ */
+const base = import.meta.env.BASE_URL.endsWith('/')
+	? import.meta.env.BASE_URL
+	: `${import.meta.env.BASE_URL}/`;
+---
+
+<section class="orbit-landing-hero" aria-labelledby="orbit-hero-heading">
+	<div class="hero-plane" aria-hidden="true"></div>
+	<div class="hero-stage">
+		<div class="hero-copy">
+			<a class="hero-brand" href="https://almasix.com" aria-label="Almasix">
+				<img
+					class="brand-mark brand-mark-light"
+					src={`${base}almasix-banner-light.svg`}
+					alt="Almasix"
+					width="280"
+					height="63"
+				/>
+				<img
+					class="brand-mark brand-mark-dark"
+					src={`${base}almasix-banner-dark.svg`}
+					alt=""
+					width="280"
+					height="63"
+				/>
+				<span class="hero-brand-suffix">ORBIT</span>
+			</a>
+			<h1 id="orbit-hero-heading">Admin panels in Python — declare once, ship the shell.</h1>
+			<p class="hero-lede">
+				Resources, forms, tables, and actions on Conduit + Alpine. One fluent API across ten
+				packages — semantic <code class="mono">.or-*</code> CSS out of the box.
+			</p>
+			<div class="cta-row">
+				<a class="btn btn-primary" href={`${base}getting-started/installation/`}>Start building</a>
+				<a class="btn btn-secondary" href={`${base}getting-started/quick-start/`}>Quick start</a>
+			</div>
+		</div>
+
+		<figure class="hero-preview" aria-label="Orbit walkthrough">
+			<div
+				class="term"
+				data-hero-slides
+				tabindex="0"
+				aria-roledescription="carousel"
+				aria-label="Orbit walkthrough. Hover or focus to pause. Use arrow keys to change steps."
+			>
+				<div class="term-chrome" aria-hidden="true">
+					<span></span><span></span><span></span>
+					<code class="term-title">orbit · admin panel</code>
+					<span class="term-hold-hint">paused</span>
+				</div>
+				<div class="term-viewport">
+					{/* 0 — install */}
+					<div class="term-slide is-active" data-slide>
+						<p style="--i: 0"><span class="term-prompt">$</span> pip install almasix-orbit</p>
+						<p class="term-dim" style="--i: 1">panels · forms · tables · actions · …</p>
+						<p class="term-ok" style="--i: 2">✓ OrbitServiceProvider discovered</p>
+						<p class="term-ok" style="--i: 3">✓ import path: almasix.orbit…</p>
+					</div>
+
+					{/* 1 — panel */}
+					<div class="term-slide" data-slide data-ms="5400">
+						<p class="term-dim" style="--i: 0"># register the panel</p>
+						<pre class="term-code od" style="--i: 1" tabindex="0"><code><span class="od-k">from</span> <span class="od-t">almasix.orbit</span> <span class="od-k">import</span> <span class="od-t">Panel</span>, <span class="od-t">PanelRegistry</span>
+
+panel = (
+    <span class="od-t">Panel</span>.<span class="od-f">make</span>(<span class="od-s">"admin"</span>)
+    .<span class="od-f">path</span>(<span class="od-s">"orbit"</span>)
+    .<span class="od-f">brand_name</span>(<span class="od-s">"Acme Admin"</span>)
+    .<span class="od-f">resources</span>([<span class="od-t">PostResource</span>])
+)
+app.<span class="od-f">make</span>(<span class="od-t">PanelRegistry</span>).<span class="od-f">register</span>(panel)</code></pre>
+					</div>
+
+					{/* 2 — resource */}
+					<div class="term-slide" data-slide data-ms="5600">
+						<p class="term-dim" style="--i: 0"># app/orbit/post_resource.py</p>
+						<pre class="term-code od" style="--i: 1" tabindex="0"><code><span class="od-k">class</span> <span class="od-t">PostResource</span>(<span class="od-t">Resource</span>):
+    model = <span class="od-t">Post</span>
+    navigation_label = <span class="od-s">"Posts"</span>
+    navigation_group = <span class="od-s">"Content"</span>
+
+    <span class="od-d">@classmethod</span>
+    <span class="od-k">def</span> <span class="od-f">form</span>(cls, form: <span class="od-t">Form</span>) -> <span class="od-t">Form</span>:
+        <span class="od-k">return</span> form.<span class="od-f">schema</span>([
+            <span class="od-t">TextInput</span>.<span class="od-f">make</span>(<span class="od-s">"title"</span>).<span class="od-f">required</span>(),
+            <span class="od-t">TextInput</span>.<span class="od-f">make</span>(<span class="od-s">"slug"</span>).<span class="od-f">required</span>(),
+        ])</code></pre>
+					</div>
+
+					{/* 3 — table config */}
+					<div class="term-slide" data-slide data-ms="5400">
+						<p class="term-dim" style="--i: 0"># same resource · table()</p>
+						<pre class="term-code od" style="--i: 1" tabindex="0"><code><span class="od-d">@classmethod</span>
+<span class="od-k">def</span> <span class="od-f">table</span>(cls, table: <span class="od-t">Table</span>) -> <span class="od-t">Table</span>:
+    <span class="od-k">return</span> table.<span class="od-f">columns</span>([
+        <span class="od-t">TextColumn</span>.<span class="od-f">make</span>(<span class="od-s">"title"</span>)
+            .<span class="od-f">searchable</span>()
+            .<span class="od-f">sortable</span>(),
+        <span class="od-t">TextColumn</span>.<span class="od-f">make</span>(<span class="od-s">"status"</span>).<span class="od-f">badge</span>(),
+    ])</code></pre>
+					</div>
+
+					{/* 4 — UI: table */}
+					<div class="term-slide" data-slide data-ms="4800">
+						<p class="term-dim" style="--i: 0"># what you get → index table</p>
+						<div class="ui-mock" style="--i: 1" aria-hidden="true">
+							<aside class="ui-mock-nav">
+								<span class="ui-mock-brand">Acme</span>
+								<ul>
+									<li>Dashboard</li>
+									<li class="is-active">Posts</li>
+									<li>Users</li>
+								</ul>
+							</aside>
+							<div class="ui-mock-main">
+								<div class="ui-mock-bar">
+									<strong>Posts</strong>
+									<span class="ui-mock-btn">+ Create</span>
+								</div>
+								<table class="ui-mock-table">
+									<thead>
+										<tr>
+											<th>Title</th>
+											<th>Status</th>
+											<th></th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td>Shipping Orbit docs</td>
+											<td><span class="ui-mock-badge">Published</span></td>
+											<td><div class="ui-mock-actions"><span></span><span></span><span></span></div></td>
+										</tr>
+										<tr>
+											<td>Panel brand colors</td>
+											<td><span class="ui-mock-badge is-draft">Draft</span></td>
+											<td><div class="ui-mock-actions"><span></span><span></span><span></span></div></td>
+										</tr>
+										<tr>
+											<td>Conduit wire hooks</td>
+											<td><span class="ui-mock-badge">Published</span></td>
+											<td><div class="ui-mock-actions"><span></span><span></span><span></span></div></td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+
+					{/* 5 — form code */}
+					<div class="term-slide" data-slide data-ms="5400">
+						<p class="term-dim" style="--i: 0"># forms · sections · validation</p>
+						<pre class="term-code od" style="--i: 1" tabindex="0"><code>form.<span class="od-f">schema</span>([
+    <span class="od-t">Section</span>.<span class="od-f">make</span>(<span class="od-s">"basics"</span>)
+    .<span class="od-f">heading</span>(<span class="od-s">"Basics"</span>)
+    .<span class="od-f">schema</span>([
+        <span class="od-t">TextInput</span>.<span class="od-f">make</span>(<span class="od-s">"title"</span>)
+            .<span class="od-f">required</span>()
+            .<span class="od-f">max_length</span>(<span class="od-n">200</span>),
+        <span class="od-t">Select</span>.<span class="od-f">make</span>(<span class="od-s">"status"</span>)
+            .<span class="od-f">options</span>({<span class="od-s">"draft"</span>: <span class="od-s">"Draft"</span>}),
+        <span class="od-t">Textarea</span>.<span class="od-f">make</span>(<span class="od-s">"body"</span>).<span class="od-f">rows</span>(<span class="od-n">8</span>),
+    ]),
+])</code></pre>
+					</div>
+
+					{/* 6 — UI: form */}
+					<div class="term-slide" data-slide data-ms="4800">
+						<p class="term-dim" style="--i: 0"># what you get → create / edit</p>
+						<div class="ui-mock" style="--i: 1" aria-hidden="true">
+							<aside class="ui-mock-nav">
+								<span class="ui-mock-brand">Acme</span>
+								<ul>
+									<li>Dashboard</li>
+									<li class="is-active">Posts</li>
+									<li>Users</li>
+								</ul>
+							</aside>
+							<div class="ui-mock-main">
+								<div class="ui-mock-bar">
+									<strong>Create post</strong>
+								</div>
+								<div class="ui-mock-form">
+									<div class="ui-mock-field">
+										<label>Title</label>
+										<div class="ui-mock-input">Shipping Orbit docs</div>
+									</div>
+									<div class="ui-mock-field">
+										<label>Status</label>
+										<div class="ui-mock-input">Published</div>
+									</div>
+									<div class="ui-mock-field">
+										<label>Body</label>
+										<div class="ui-mock-input is-tall">Declare once…</div>
+									</div>
+									<div class="ui-mock-form-actions">
+										<span class="ui-mock-btn-ghost">Cancel</span>
+										<span class="ui-mock-btn">Save</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					{/* 7 — actions */}
+					<div class="term-slide" data-slide data-ms="5200">
+						<p class="term-dim" style="--i: 0"># actions · confirm · notify</p>
+						<pre class="term-code od" style="--i: 1" tabindex="0"><code><span class="od-t">DeleteAction</span>.<span class="od-f">make</span>()
+    .<span class="od-f">requires_confirmation</span>()
+    .<span class="od-f">success_notification</span>(<span class="od-s">"Deleted"</span>)
+
+<span class="od-t">CreateAction</span>.<span class="od-f">make</span>()
+<span class="od-t">EditAction</span>.<span class="od-f">make</span>()
+<span class="od-t">ViewAction</span>.<span class="od-f">make</span>()
+<span class="od-c"># wired automatically when slots are empty</span></code></pre>
+					</div>
+
+					{/* 8 — packages */}
+					<div class="term-slide" data-slide>
+						<p style="--i: 0"><span class="term-prompt">$</span> pip show almasix-orbit</p>
+						<p class="term-ok" style="--i: 1">✓ panels · support · schemas</p>
+						<p class="term-ok" style="--i: 2">✓ forms · tables · actions · infolists</p>
+						<p class="term-ok" style="--i: 3">✓ notifications · widgets · query-builder</p>
+						<p class="term-hi" style="--i: 4">one install · ten packages · one import tree</p>
+						<p class="term-cursor" style="--i: 5" aria-hidden="true"></p>
+					</div>
+				</div>
+				<div class="term-footer">
+					<div class="term-dots" role="tablist" aria-label="Walkthrough steps">
+						<button type="button" role="tab" aria-selected="true" data-goto="0" aria-label="Install"></button>
+						<button type="button" role="tab" aria-selected="false" data-goto="1" aria-label="Panel"></button>
+						<button type="button" role="tab" aria-selected="false" data-goto="2" aria-label="Resource"></button>
+						<button type="button" role="tab" aria-selected="false" data-goto="3" aria-label="Table code"></button>
+						<button type="button" role="tab" aria-selected="false" data-goto="4" aria-label="Table UI"></button>
+						<button type="button" role="tab" aria-selected="false" data-goto="5" aria-label="Form code"></button>
+						<button type="button" role="tab" aria-selected="false" data-goto="6" aria-label="Form UI"></button>
+						<button type="button" role="tab" aria-selected="false" data-goto="7" aria-label="Actions"></button>
+						<button type="button" role="tab" aria-selected="false" data-goto="8" aria-label="Packages"></button>
+					</div>
+					<button type="button" class="term-pin" data-pin aria-pressed="false">Pin step</button>
+				</div>
+				<div class="term-progress" aria-hidden="true"><span></span></div>
+			</div>
+			<p class="hero-preview-cap">Hover to pause · pin a step · ← → to move · code then UI</p>
+		</figure>
+	</div>
+</section>
+
+<style>
+	.orbit-landing-hero .hero-lede code.mono {
+		font-family: var(--mono, 'JetBrains Mono', monospace);
+		font-size: 0.92em;
+		padding: 0.1em 0.35em;
+		border-radius: 0.3rem;
+		border: 1px solid color-mix(in srgb, var(--orange, #f1511b) 28%, transparent);
+	}
+</style>

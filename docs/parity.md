@@ -1,6 +1,9 @@
-# Filament 5.x ↔ Orbit parity matrix
+# Orbit feature matrix (maintainer)
 
-Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine). Status values: **Done**, Partial, Planned.
+Internal checklist for contributors. Public docs live at https://orbit.almasix.com/
+([Features](https://orbit.almasix.com/features/)). Status values: **Done**, Partial, Planned.
+
+FilamentPHP 5.x column names below are *inspiration references* only — Orbit is its own product.
 
 ## Packages
 
