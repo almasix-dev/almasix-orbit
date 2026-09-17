@@ -42,8 +42,7 @@ class PostResource(Resource):
 
 ## Preview
 
-```html
-<td class="or-td">
-  <input type="checkbox" class="or-checkbox" name="featured" checked wire:model="table.featured" />
-</td>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+

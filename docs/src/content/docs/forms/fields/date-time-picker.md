@@ -42,10 +42,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-DateTimePicker" data-field="published_at">
-  <label class="or-label" for="or-published_at">Published at</label>
-  <input class="or-input" id="or-published_at" name="published_at" type="datetime-local"
-         value="2026-09-17T09:30" wire:model="published_at" />
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

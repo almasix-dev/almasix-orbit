@@ -44,13 +44,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-ToggleButtons" data-field="size">
-  <span class="or-label">Size</span>
-  <div class="or-toggle-buttons" role="group">
-    <label class="or-toggle-btn"><input type="radio" class="or-sr-only" name="size" value="sm" wire:model="size" /><span>Small</span></label>
-    <label class="or-toggle-btn is-active"><input type="radio" class="or-sr-only" name="size" value="md" wire:model="size" checked /><span>Medium</span></label>
-    <label class="or-toggle-btn"><input type="radio" class="or-sr-only" name="size" value="lg" wire:model="size" /><span>Large</span></label>
-  </div>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

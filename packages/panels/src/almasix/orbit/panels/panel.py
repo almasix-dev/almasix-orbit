@@ -125,6 +125,38 @@ class Panel:
         self._discover_widgets_in.extend(paths)
         return self
 
+    def load_discovered(self) -> Self:
+        """Import discovered modules and register resources, pages, and widgets."""
+        from almasix.orbit.panels.discover import discover_classes
+        from almasix.orbit.panels.page import Page
+        from almasix.orbit.panels.resource import Resource
+
+        seen_resources = {r.__name__ for r in self._resources}
+        seen_pages = {p.__name__ for p in self._pages}
+        seen_widgets = {w.__name__ for w in self._widgets}
+
+        for path in self._discover_resources_in:
+            for cls in discover_classes(path, base_class=Resource):
+                if cls.__name__ not in seen_resources:
+                    self._resources.append(cls)
+                    seen_resources.add(cls.__name__)
+
+        for path in self._discover_pages_in:
+            for cls in discover_classes(path, base_class=Page):
+                if cls.__name__ not in seen_pages:
+                    self._pages.append(cls)
+                    seen_pages.add(cls.__name__)
+
+        for path in self._discover_widgets_in:
+            from almasix.orbit.widgets.widget import Widget
+
+            for cls in discover_classes(path, base_class=Widget):
+                if cls.__name__ not in seen_widgets:
+                    self._widgets.append(cls)
+                    seen_widgets.add(cls.__name__)
+
+        return self
+
     def plugin(self, callback: Callable[[Panel], Any]) -> Self:
         self._plugin_callbacks.append(callback)
         return self
@@ -137,6 +169,9 @@ class Panel:
 
     def get_pages(self) -> list[type[Any]]:
         return list(self._pages)
+
+    def get_widgets(self) -> list[type[Any]]:
+        return list(self._widgets)
 
     def get_middleware(self) -> list[Any]:
         return list(self._middleware)

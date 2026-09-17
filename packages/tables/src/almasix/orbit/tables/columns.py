@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from datetime import date, datetime
 from typing import Any, Self
 
 from almasix.orbit.support.component import Component
@@ -25,6 +26,18 @@ class Column(Component):
         self._url: str | Callable[..., str] | None = None
         self._weight: str | None = None
         self._copyable = False
+        self._summarizers: list[Any] = []
+        self._money_currency: str | None = None
+        self._money_divide_by: float | int = 1
+        self._date_format: str | None = None
+        self._numeric: bool = False
+        self._numeric_decimal_places: int | None = None
+        self._description: str | Callable[..., str] | None = None
+        self._visible_from: str | None = None
+        self._hidden_from: str | None = None
+        self._list_bullet = False
+        self._markdown = False
+        self._html = False
 
     def sortable(self, condition: bool = True) -> Self:
         self._sortable = condition
@@ -74,6 +87,107 @@ class Column(Component):
         self._copyable = condition
         return self
 
+    def summarize(self, summarizers: Any | Sequence[Any]) -> Self:
+        from almasix.orbit.tables.summaries import Summarizer
+
+        if isinstance(summarizers, Summarizer):
+            self._summarizers = [summarizers]
+        else:
+            self._summarizers = list(summarizers)
+        return self
+
+    def get_summarizers(self) -> list[Any]:
+        return list(self._summarizers)
+
+    def money(
+        self,
+        currency: str = "USD",
+        *,
+        divide_by: float | int = 1,
+    ) -> Self:
+        self._money_currency = currency
+        self._money_divide_by = divide_by
+        return self
+
+    def date(self, format: str = "%Y-%m-%d") -> Self:
+        self._date_format = format
+        return self
+
+    def date_time(self, format: str = "%Y-%m-%d %H:%M") -> Self:
+        return self.date(format)
+
+    def numeric(self, decimal_places: int | None = None) -> Self:
+        self._numeric = True
+        self._numeric_decimal_places = decimal_places
+        return self
+
+    def list_with_line_breaks(self, condition: bool = True) -> Self:
+        self._list_bullet = condition
+        return self
+
+    def markdown(self, condition: bool = True) -> Self:
+        self._markdown = condition
+        return self
+
+    def html(self, condition: bool = True) -> Self:
+        self._html = condition
+        return self
+
+    def visible_from(self, breakpoint: str) -> Self:
+        self._visible_from = breakpoint
+        return self
+
+    def hidden_from(self, breakpoint: str) -> Self:
+        self._hidden_from = breakpoint
+        return self
+
+    def description(self, text: str | Callable[..., str]) -> Self:
+        self._description = text
+        return self
+
+    def get_description(self, **ctx: Any) -> str | None:
+        if self._description is None:
+            return None
+        from almasix.orbit.support.evaluate import evaluate
+
+        result = evaluate(self._description, **ctx)
+        return None if result is None else str(result)
+
+    def _format_display_value(self, value: Any) -> str:
+        if value is None:
+            return ""
+        if self._list_bullet and isinstance(value, (list, tuple)):
+            return "\n".join(f"• {item}" for item in value)
+        if self._money_currency is not None:
+            try:
+                num = float(value) / float(self._money_divide_by)
+            except (TypeError, ValueError):
+                return str(value)
+            return f"{self._money_currency} {num:.2f}"
+        if self._numeric:
+            try:
+                num = float(value)
+            except (TypeError, ValueError):
+                return str(value)
+            if self._numeric_decimal_places is not None:
+                return f"{num:.{self._numeric_decimal_places}f}"
+            if num == int(num):
+                return str(int(num))
+            return str(num)
+        if self._date_format is not None:
+            if isinstance(value, datetime):
+                return value.strftime(self._date_format)
+            if isinstance(value, date):
+                return value.strftime(self._date_format)
+            text = str(value)
+            try:
+                if "T" in text:
+                    return datetime.fromisoformat(text[:19]).strftime(self._date_format)
+                return datetime.strptime(text[:10], "%Y-%m-%d").strftime(self._date_format)
+            except ValueError:
+                return text
+        return str(value)
+
     def is_sortable(self) -> bool:
         return self._sortable
 
@@ -96,6 +210,13 @@ class Column(Component):
         value = self.resolve_state(record)
         if self._boolean:
             text = "Yes" if value else "No"
+        elif (
+            self._money_currency is not None
+            or self._date_format is not None
+            or self._numeric
+            or self._list_bullet
+        ):
+            text = self._format_display_value(value)
         else:
             text = "" if value is None else str(value)
         css = "or-badge" if self._badge else "or-cell-text"
@@ -105,7 +226,20 @@ class Column(Component):
 
             color = evaluate(color, record=record, state=value, **ctx)
         color_c = f" or-color-{color}" if color else ""
-        inner = f'<span class="{css}{color_c}">{e(text)}</span>'
+        resp = ""
+        if self._visible_from:
+            resp += f" or-visible-from-{self._visible_from}"
+        if self._hidden_from:
+            resp += f" or-hidden-from-{self._hidden_from}"
+        desc = self.get_description(record=record, state=value, **ctx)
+        desc_attr = f' title="{e(desc)}" data-description="{e(desc)}"' if desc else ""
+        if self._html:
+            body = str(text)
+        elif self._markdown:
+            body = e(text).replace("\n", "<br />")
+        else:
+            body = e(text).replace("\n", "<br />") if self._list_bullet else e(text)
+        inner = f'<span class="{css}{color_c}"{desc_attr}>{body}</span>'
         href = None
         if self._url is not None:
             from almasix.orbit.support.evaluate import evaluate
@@ -113,11 +247,20 @@ class Column(Component):
             href = evaluate(self._url, record=record, state=value, **ctx)
         if href:
             inner = f'<a class="or-cell-link" href="{e(href)}">{inner}</a>'
-        return f'<td class="or-td">{inner}</td>'
+        return f'<td class="or-td{resp}">{inner}</td>'
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
-        d.update({"sortable": self._sortable, "searchable": self._searchable, "badge": self._badge})
+        d.update(
+            {
+                "sortable": self._sortable,
+                "searchable": self._searchable,
+                "badge": self._badge,
+                "has_summarizers": bool(self._summarizers),
+                "money_currency": self._money_currency,
+                "date_format": self._date_format,
+            }
+        )
         return d
 
 

@@ -43,14 +43,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-TagsInput" data-field="tags">
-  <label class="or-label" for="or-tags">Tags</label>
-  <div class="or-tags">
-    <span class="or-tag">orbit</span>
-    <span class="or-tag">docs</span>
-    <input class="or-input or-tags-input" id="or-tags" name="tags"
-           value="orbit,docs" wire:model="tags" placeholder="Add tag…" />
-  </div>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

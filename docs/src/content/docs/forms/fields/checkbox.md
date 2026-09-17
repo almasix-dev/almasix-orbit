@@ -41,11 +41,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-Checkbox" data-field="featured">
-  <label class="or-checkbox-label">
-    <input class="or-checkbox" type="checkbox" name="featured" wire:model="featured" checked />
-    Featured on homepage
-  </label>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

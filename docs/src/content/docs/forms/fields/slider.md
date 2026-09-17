@@ -41,10 +41,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-Slider" data-field="priority">
-  <label class="or-label" for="or-priority">Priority</label>
-  <input class="or-input" id="or-priority" name="priority" type="range"
-         value="50" wire:model="priority" />
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

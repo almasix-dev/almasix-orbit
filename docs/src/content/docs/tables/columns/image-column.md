@@ -42,6 +42,7 @@ class PostResource(Resource):
 
 ## Preview
 
-```html
-<td class="or-td"><img class="or-avatar" src="/media/ada.png" alt="" /></td>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+

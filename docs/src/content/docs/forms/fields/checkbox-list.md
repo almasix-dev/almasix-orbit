@@ -47,12 +47,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-CheckboxList" data-field="permissions">
-  <span class="or-label">Permissions</span>
-  <div class="or-checkbox-list">
-    <label class="or-checkbox-label"><input type="checkbox" class="or-checkbox" name="permissions" value="read" wire:model="permissions" checked /> Read</label>
-    <label class="or-checkbox-label"><input type="checkbox" class="or-checkbox" name="permissions" value="write" wire:model="permissions" /> Write</label>
-  </div>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

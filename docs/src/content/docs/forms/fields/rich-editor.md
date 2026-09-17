@@ -1,9 +1,9 @@
 ---
 title: RichEditor
-description: Orbit RichEditor — Textarea subclass with rich-editor classes and toolbar.
+description: Orbit RichEditor — TipTap CDN surface with toolbar config and hidden HTML input.
 ---
 
-A textarea with light toolbar chrome — B / I / Link today, opinions tomorrow.
+A TipTap-backed editor: toolbar from config, HTML stored in a hidden input for Conduit.
 
 ## Standalone
 
@@ -11,7 +11,9 @@ A textarea with light toolbar chrome — B / I / Link today, opinions tomorrow.
 from almasix.orbit.forms import Form, RichEditor
 
 form = Form.make("demo").schema([
-        RichEditor.make("body").label("Body").rows(12)
+        RichEditor.make("body")
+            .label("Body")
+            .toolbar_buttons(["bold", "italic", "link", "strike"])
 ])
 ```
 
@@ -25,26 +27,24 @@ class PostResource(Resource):
     @classmethod
     def form(cls, form: Form) -> Form:
         return form.schema([
-            RichEditor.make("content").rows(16).required(),
+            RichEditor.make("content").toolbar_buttons(["bold", "italic", "link"]).required(),
             RichEditor.make("bio").helper_text("Keep it short"),
         ])
 ```
 
 ## Key methods
 
-- `Inherits Textarea (`.rows`, `.live`, …)`
-- `Renders `or-editor or-editor-rich` plus a decorative toolbar`
+- `.toolbar_buttons([...])` → toolbar chrome + `data-toolbar` for TipTap init
+- Renders `.or-editor-rich[data-tiptap]` plus a hidden `input` (`data-tiptap-input`) holding HTML
+- Panel `orbit.js` loads TipTap from CDN and syncs `editor.getHTML()` into the hidden input
 - `.required() / .disabled(...) / .visible(...)`
-- `.default(...) for HTML-ish content`
+- `.default(...)` for initial HTML
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
 
 ## Preview
 
-```html
-<div class="or-field or-field-RichEditor" data-field="body">
-  <div class="or-editor-toolbar" aria-hidden="true"><span>B</span><span>I</span><span>Link</span></div>
-  <label class="or-label" for="or-body">Body</label>
-  <textarea class="or-textarea or-editor or-editor-rich" id="or-body" name="body" rows="12" wire:model="body">Hello <strong>Orbit</strong></textarea>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

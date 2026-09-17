@@ -41,9 +41,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-MarkdownEditor" data-field="readme">
-  <label class="or-label" for="or-readme">README</label>
-  <textarea class="or-textarea or-editor or-editor-markdown" id="or-readme" name="readme" rows="14" wire:model="readme"># Orbit</textarea>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

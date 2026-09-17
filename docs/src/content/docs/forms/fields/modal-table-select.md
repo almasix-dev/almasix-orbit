@@ -42,12 +42,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-ModalTableSelect" data-field="post_id">
-  <label class="or-label" for="or-post_id">Post</label>
-  <div class="or-modal-table-select">
-    <input class="or-input" id="or-post_id" name="post_id" value="Shipping Orbit docs" readonly wire:model="post_id" />
-    <button type="button" class="or-btn or-btn-gray" wire:click="mountTableSelect('post_id')">Browse</button>
-  </div>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

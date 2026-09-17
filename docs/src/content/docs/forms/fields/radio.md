@@ -43,10 +43,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-Radio" data-field="visibility" role="radiogroup" aria-label="Visibility">
-  <span class="or-label">Visibility</span>
-  <label class="or-radio-label"><input type="radio" class="or-radio" name="visibility" value="public" wire:model="visibility" checked /> Public</label>
-  <label class="or-radio-label"><input type="radio" class="or-radio" name="visibility" value="private" wire:model="visibility" /> Private</label>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

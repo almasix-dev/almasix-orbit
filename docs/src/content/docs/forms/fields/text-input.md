@@ -47,10 +47,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-TextInput" data-field="title">
-  <label class="or-label" for="or-title">Title <span class="or-required">*</span></label>
-  <input class="or-input" id="or-title" name="title" type="text"
-         value="Shipping Orbit docs" placeholder="Shipping Orbit docs" wire:model="title" />
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

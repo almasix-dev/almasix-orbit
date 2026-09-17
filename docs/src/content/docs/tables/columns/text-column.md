@@ -47,7 +47,7 @@ class PostResource(Resource):
 
 ## Preview
 
-```html
-<td class="or-td"><span class="or-cell-text">Shipping Orbit docs</span></td>
-<td class="or-td"><span class="or-badge or-color-primary">Published</span></td>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+

@@ -44,11 +44,7 @@ Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `
 
 ## Preview
 
-```html
-<div class="or-field or-field-TableSelect" data-field="post_id">
-  <label class="or-label" for="or-post_id">Post Id</label>
-  <select class="or-select or-select-table" id="or-post_id" name="post_id" wire:model="post_id">
-    <option value="1" selected>Shipping Orbit docs</option>
-  </select>
-</div>
-```
+![Orbit form example (light)](/examples/light/form.png)
+
+![Orbit form example (dark)](/examples/dark/form.png)
+

@@ -44,6 +44,7 @@ class PostResource(Resource):
 
 ## Preview
 
-```html
-<td class="or-td"><div class="or-view-column"><span class="or-badge">Live</span></div></td>
-```
+![Orbit table example (light)](/examples/light/table.png)
+
+![Orbit table example (dark)](/examples/dark/table.png)
+
