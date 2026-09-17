@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any, Self, TypeVar
 
+from almasix.orbit.support.evaluate import evaluate
+
 T = TypeVar("T", bound="Component")
 
 
@@ -13,7 +15,7 @@ class Component:
 
     def __init__(self, name: str | None = None) -> None:
         self._name = name
-        self._label: str | None = None
+        self._label: str | Callable[..., str] | None = None
         self._hidden = False
         self._visible: bool | Callable[..., bool] = True
         self._disabled: bool | Callable[..., bool] = False
@@ -24,24 +26,26 @@ class Component:
         self._dehydrated = True
         self._state_path: str | None = None
         self._default: Any = None
-        self._helper_text: str | None = None
-        self._hint: str | None = None
-        self._hint_icon: str | None = None
+        self._helper_text: str | Callable[..., str] | None = None
+        self._hint: str | Callable[..., str] | None = None
+        self._hint_icon: str | Callable[..., str] | None = None
 
     @classmethod
     def make(cls, name: str | None = None) -> Self:
-        return cls(name)
+        # Avoid passing explicit None so subclass __init__ defaults (e.g. "view") apply.
+        return cls() if name is None else cls(name)
 
     def get_name(self) -> str | None:
         return self._name
 
-    def label(self, label: str | None) -> Self:
+    def label(self, label: str | Callable[..., str] | None) -> Self:
         self._label = label
         return self
 
-    def get_label(self) -> str:
+    def get_label(self, **ctx: Any) -> str:
         if self._label is not None:
-            return self._label
+            result = evaluate(self._label, **ctx)
+            return "" if result is None else str(result)
         if not self._name:
             return ""
         return self._name.replace("_", " ").replace(".", " ").title()
@@ -64,19 +68,20 @@ class Component:
     def is_visible(self, **ctx: Any) -> bool:
         if self._hidden:
             return False
-        v = self._visible
-        return bool(v(**ctx) if callable(v) else v)
+        return bool(evaluate(self._visible, **ctx))
 
     def is_disabled(self, **ctx: Any) -> bool:
-        d = self._disabled
-        return bool(d(**ctx) if callable(d) else d)
+        return bool(evaluate(self._disabled, **ctx))
 
     def extra_attributes(self, attrs: dict[str, Any]) -> Self:
         self._extra_attributes.update(attrs)
         return self
 
-    def get_extra_attributes(self) -> dict[str, Any]:
-        return dict(self._extra_attributes)
+    def get_extra_attributes(self, **ctx: Any) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for key, value in self._extra_attributes.items():
+            out[key] = evaluate(value, **ctx)
+        return out
 
     def view(self, view: str) -> Self:
         self._view = view
@@ -111,20 +116,38 @@ class Component:
         self._default = value
         return self
 
-    def get_default(self) -> Any:
-        return self._default
+    def get_default(self, **ctx: Any) -> Any:
+        return evaluate(self._default, **ctx)
 
-    def helper_text(self, text: str) -> Self:
+    def helper_text(self, text: str | Callable[..., str]) -> Self:
         self._helper_text = text
         return self
 
-    def hint(self, text: str) -> Self:
+    def get_helper_text(self, **ctx: Any) -> str | None:
+        if self._helper_text is None:
+            return None
+        result = evaluate(self._helper_text, **ctx)
+        return None if result is None else str(result)
+
+    def hint(self, text: str | Callable[..., str]) -> Self:
         self._hint = text
         return self
 
-    def hint_icon(self, icon_name: str) -> Self:
+    def get_hint(self, **ctx: Any) -> str | None:
+        if self._hint is None:
+            return None
+        result = evaluate(self._hint, **ctx)
+        return None if result is None else str(result)
+
+    def hint_icon(self, icon_name: str | Callable[..., str]) -> Self:
         self._hint_icon = icon_name
         return self
+
+    def get_hint_icon(self, **ctx: Any) -> str | None:
+        if self._hint_icon is None:
+            return None
+        result = evaluate(self._hint_icon, **ctx)
+        return None if result is None else str(result)
 
     def configure(self, callback: Callable[[Self], Any]) -> Self:
         callback(self)
@@ -134,16 +157,18 @@ class Component:
         return {
             "type": type(self).__name__,
             "name": self._name,
-            "label": self.get_label(),
+            "label": self.get_label() if not callable(self._label) else None,
             "hidden": self._hidden,
             "live": self._live,
             "dehydrated": self._dehydrated,
             "state_path": self.get_state_path(),
-            "default": self._default,
-            "helper_text": self._helper_text,
-            "hint": self._hint,
+            "default": self._default if not callable(self._default) else None,
+            "helper_text": self._helper_text if not callable(self._helper_text) else None,
+            "hint": self._hint if not callable(self._hint) else None,
             "column_span": self._column_span,
-            "extra_attributes": self._extra_attributes,
+            "extra_attributes": {
+                k: v for k, v in self._extra_attributes.items() if not callable(v)
+            },
         }
 
     def render(self, state: Any = None, **ctx: Any) -> str:
@@ -152,7 +177,7 @@ class Component:
 
         if not self.is_visible(**ctx):
             return ""
-        label = e(self.get_label())
+        label = e(self.get_label(**ctx))
         name = e(self.get_state_path() or "")
         value = "" if state is None else e(str(state))
         disabled = " disabled" if self.is_disabled(**ctx) else ""

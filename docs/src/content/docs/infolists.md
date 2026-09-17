@@ -1,6 +1,6 @@
 ---
 title: Infolists
-description: Read-only record views with typed entries — text, badges, images, code, and more.
+description: Read-only record views with typed entries — and a form fallback when you skip infolist().
 ---
 
 **Infolists** are the “show” side of a resource — a definition list of entries over a record.
@@ -65,3 +65,29 @@ def infolist(cls, infolist: Infolist) -> Infolist:
 ```
 
 Then `PostResource.get_infolist().render(record)` on your view page.
+
+## Empty infolist → readonly form fallback
+
+Leave `infolist()` empty (or return the untouched builder) and Orbit still gives you a show page. `get_infolist()` notices there are no components and **projects the form schema** into read-only `TextEntry`s:
+
+```python
+@classmethod
+def form(cls, form: Form) -> Form:
+    return form.schema([
+        TextInput.make("title").required(),
+        TextInput.make("slug").required(),
+        Textarea.make("body"),
+    ])
+
+@classmethod
+def infolist(cls, infolist: Infolist) -> Infolist:
+    return infolist  # empty on purpose
+```
+
+Under the hood:
+
+1. `get_form().readonly()` — same fields, edit chrome dialed down.
+2. Walk nested layouts / repeaters for every `Field`.
+3. Emit `TextEntry.make(name).label(field.get_label())` for each.
+
+So create/edit and view stay in sync until you’re ready to hand-craft badges, prose, and copyable slugs. Define an explicit `.schema([...])` whenever the show page should look different from the form — the fallback politely steps aside.

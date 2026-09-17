@@ -67,6 +67,21 @@ def test_component_render_and_schema_components() -> None:
     assert items[0]["name"] == "name"
 
 
+def test_evaluate_and_callable_label() -> None:
+    from almasix.orbit.support import evaluate
+
+    assert evaluate("static") == "static"
+    assert evaluate(lambda **_: "dynamic") == "dynamic"
+    assert evaluate(lambda record: record["n"], record={"n": "Ada"}) == "Ada"
+    c = Component.make("x").label(lambda user=None: f"Hi {user}")
+    assert c.get_label(user="Sam") == "Hi Sam"
+    c2 = Component.make("y").helper_text(lambda **_: "help me").default(lambda **_: 42)
+    assert c2.get_helper_text() == "help me"
+    assert c2.get_default() == 42
+    c3 = Component.make("z").extra_attributes({"data-role": lambda user=None: user or "guest"})
+    assert c3.get_extra_attributes(user="admin")["data-role"] == "admin"
+
+
 def test_colors() -> None:
     assert Colors.hex(Color.PRIMARY) == "#f1511b"
     assert Colors.hex("danger") == "#ef4444"

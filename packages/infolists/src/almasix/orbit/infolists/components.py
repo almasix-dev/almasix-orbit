@@ -7,6 +7,7 @@ from collections.abc import Callable
 from typing import Any, Self
 
 from almasix.orbit.support.component import Component
+from almasix.orbit.support.evaluate import evaluate
 from almasix.orbit.support.html import e
 from almasix.orbit.support.icons import icon as render_icon
 
@@ -18,7 +19,7 @@ class Entry(Component):
         self._url: str | Callable[..., str] | None = None
         self._copyable = False
         self._badge = False
-        self._color: str | None = None
+        self._color: str | Callable[..., str] | None = None
         self._icon: str | None = None
         self._date_time = False
         self._markdown = False
@@ -40,7 +41,7 @@ class Entry(Component):
         self._badge = condition
         return self
 
-    def color(self, color: str) -> Self:
+    def color(self, color: str | Callable[..., str]) -> Self:
         self._color = color
         return self
 
@@ -74,13 +75,18 @@ class Entry(Component):
         record = ctx.get("record", state)
         value = self.resolve_state(record) if record is not None else state
         text = "" if value is None else str(value)
-        label = e(self.get_label())
+        label = e(self.get_label(record=record, state=value, **{k: v for k, v in ctx.items() if k not in ("record", "state")}))
         css = "or-badge" if self._badge else "or-entry-value"
-        color = f" or-color-{self._color}" if self._color else ""
+        color = evaluate(self._color, record=record, state=value, **{k: v for k, v in ctx.items() if k not in ("record", "state")}) if self._color else None
+        color_c = f" or-color-{color}" if color else ""
         ic = render_icon(self._icon) if self._icon else ""
+        inner = f'<span class="{css}{color_c}">{ic}{e(text)}</span>'
+        href = evaluate(self._url, record=record, state=value, **{k: v for k, v in ctx.items() if k not in ("record", "state")}) if self._url else None
+        if href:
+            inner = f'<a class="or-entry-link" href="{e(href)}">{inner}</a>'
         return (
             f'<div class="or-entry"><dt class="or-entry-label">{label}</dt>'
-            f'<dd class="or-entry-dd"><span class="{css}{color}">{ic}{e(text)}</span></dd></div>'
+            f'<dd class="or-entry-dd">{inner}</dd></div>'
         )
 
 
@@ -93,7 +99,7 @@ class IconEntry(Entry):
         record = ctx.get("record", state)
         value = self.resolve_state(record) if record is not None else state
         name = str(value or self._icon or "heroicon-o-information-circle")
-        label = e(self.get_label())
+        label = e(self.get_label(**ctx))
         return (
             f'<div class="or-entry"><dt class="or-entry-label">{label}</dt>'
             f'<dd class="or-entry-dd">{render_icon(name)}</dd></div>'
@@ -104,7 +110,7 @@ class ImageEntry(Entry):
     def render(self, state: Any = None, **ctx: Any) -> str:
         record = ctx.get("record", state)
         value = self.resolve_state(record) if record is not None else state
-        label = e(self.get_label())
+        label = e(self.get_label(**ctx))
         if not value:
             return f'<div class="or-entry"><dt class="or-entry-label">{label}</dt><dd></dd></div>'
         return (
@@ -117,7 +123,7 @@ class ColorEntry(Entry):
     def render(self, state: Any = None, **ctx: Any) -> str:
         record = ctx.get("record", state)
         value = self.resolve_state(record) if record is not None else state
-        label = e(self.get_label())
+        label = e(self.get_label(**ctx))
         color = e(value or "#000000")
         return (
             f'<div class="or-entry"><dt class="or-entry-label">{label}</dt>'
@@ -130,7 +136,7 @@ class CodeEntry(Entry):
     def render(self, state: Any = None, **ctx: Any) -> str:
         record = ctx.get("record", state)
         value = self.resolve_state(record) if record is not None else state
-        label = e(self.get_label())
+        label = e(self.get_label(**ctx))
         return (
             f'<div class="or-entry"><dt class="or-entry-label">{label}</dt>'
             f'<dd class="or-entry-dd"><pre class="or-code"><code>{e(value)}</code></pre></dd></div>'
@@ -141,7 +147,7 @@ class KeyValueEntry(Entry):
     def render(self, state: Any = None, **ctx: Any) -> str:
         record = ctx.get("record", state)
         value = self.resolve_state(record) if record is not None else state
-        label = e(self.get_label())
+        label = e(self.get_label(**ctx))
         rows = ""
         if isinstance(value, dict):
             rows = "".join(
@@ -161,3 +167,21 @@ class RepeatableEntry(Entry):
     def schema(self, components: list[Component]) -> Self:
         self._schema = list(components)
         return self
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        record = ctx.get("record", state)
+        value = self.resolve_state(record) if record is not None else state
+        label = e(self.get_label(**ctx))
+        items = value if isinstance(value, (list, tuple)) else []
+        blocks: list[str] = []
+        for index, item in enumerate(items):
+            parts: list[str] = []
+            child_ctx = {k: v for k, v in ctx.items() if k not in ("record", "index")}
+            for entry in self._schema:
+                parts.append(entry.render(item, record=item, index=index, **child_ctx))
+            blocks.append(f'<div class="or-repeatable-item" data-index="{index}">{"".join(parts)}</div>')
+        body = "".join(blocks) or '<p class="or-empty">No items</p>'
+        return (
+            f'<div class="or-entry or-entry-repeatable"><dt class="or-entry-label">{label}</dt>'
+            f'<dd class="or-entry-dd"><div class="or-repeatable">{body}</div></dd></div>'
+        )

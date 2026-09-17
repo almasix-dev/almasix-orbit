@@ -2,6 +2,7 @@
 
 from almasix.orbit.support.colors import Color, Colors
 from almasix.orbit.support.component import Component
+from almasix.orbit.support.evaluate import evaluate
 from almasix.orbit.support.html import e, tag
 from almasix.orbit.support.icons import Heroicon, icon
 
@@ -11,6 +12,7 @@ __all__ = [
     "Component",
     "Heroicon",
     "e",
+    "evaluate",
     "icon",
     "tag",
 ]

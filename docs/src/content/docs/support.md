@@ -1,12 +1,13 @@
 ---
 title: Support toolkit
-description: Component base, colors, icons, and HTML helpers shared across Orbit.
+description: Component base, colors, icons, evaluate, and HTML helpers shared across Orbit.
 ---
 
 `almasix-orbit-support` is the quiet foundation — fluent components, brand colors, Heroicons, and tiny HTML helpers.
 
 ```python
 from almasix.orbit.support import Component, Color, Colors, Heroicon, e, tag, icon
+from almasix.orbit.support.evaluate import evaluate
 ```
 
 ## Component
@@ -33,6 +34,8 @@ Component.make("demo")
 ```
 
 `get_state_path()` returns the explicit path or falls back to the component name. `get_label()` title-cases the name when you don’t set one. `to_dict()` / `render(state, **ctx)` round out the base.
+
+Callables for label / helper / default / visible / disabled / extra_attributes are documented in [Closures](/support/closures/).
 
 ## Colors
 

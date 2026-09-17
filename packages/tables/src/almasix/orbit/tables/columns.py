@@ -101,9 +101,19 @@ class Column(Component):
         css = "or-badge" if self._badge else "or-cell-text"
         color = self._color
         if callable(color):
-            color = color(record=record, state=value)
+            from almasix.orbit.support.evaluate import evaluate
+
+            color = evaluate(color, record=record, state=value, **ctx)
         color_c = f" or-color-{color}" if color else ""
-        return f'<td class="or-td"><span class="{css}{color_c}">{e(text)}</span></td>'
+        inner = f'<span class="{css}{color_c}">{e(text)}</span>'
+        href = None
+        if self._url is not None:
+            from almasix.orbit.support.evaluate import evaluate
+
+            href = evaluate(self._url, record=record, state=value, **ctx)
+        if href:
+            inner = f'<a class="or-cell-link" href="{e(href)}">{inner}</a>'
+        return f'<td class="or-td">{inner}</td>'
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -128,7 +138,12 @@ class BooleanColumn(Column):
 
 
 class IconColumn(Column):
-    pass
+    def render_cell(self, record: Any, **ctx: Any) -> str:
+        from almasix.orbit.support.icons import icon as render_icon
+
+        value = self.resolve_state(record)
+        name = str(value or "heroicon-o-check")
+        return f'<td class="or-td">{render_icon(name)}</td>'
 
 
 class ImageColumn(Column):
@@ -149,7 +164,30 @@ class ColorColumn(Column):
 
 
 class SelectColumn(Column):
-    pass
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._options: dict[Any, Any] | Callable[..., dict[Any, Any]] = {}
+
+    def options(self, options: dict[Any, Any] | Callable[..., dict[Any, Any]]) -> Self:
+        self._options = options
+        return self
+
+    def render_cell(self, record: Any, **ctx: Any) -> str:
+        from almasix.orbit.support.evaluate import evaluate
+
+        value = self.resolve_state(record)
+        name = e(self.get_name() or "")
+        opts = evaluate(self._options, record=record, state=value, **ctx)
+        if not isinstance(opts, dict):
+            opts = {}
+        options_html = []
+        for k, v in opts.items():
+            sel = " selected" if str(k) == str(value) else ""
+            options_html.append(f'<option value="{e(k)}"{sel}>{e(v)}</option>')
+        return (
+            f'<td class="or-td"><select class="or-select or-select-inline" name="{name}" '
+            f'wire:model="table.{name}">{"".join(options_html)}</select></td>'
+        )
 
 
 class TagsColumn(Column):
@@ -162,19 +200,56 @@ class TagsColumn(Column):
 
 
 class CheckboxColumn(Column):
-    pass
+    def render_cell(self, record: Any, **ctx: Any) -> str:
+        value = self.resolve_state(record)
+        name = e(self.get_name() or "")
+        checked = " checked" if value else ""
+        return (
+            f'<td class="or-td"><input type="checkbox" class="or-checkbox" name="{name}"'
+            f'{checked} wire:model="table.{name}" /></td>'
+        )
 
 
 class TextInputColumn(Column):
-    pass
+    def render_cell(self, record: Any, **ctx: Any) -> str:
+        value = self.resolve_state(record)
+        name = e(self.get_name() or "")
+        val = "" if value is None else e(str(value))
+        return (
+            f'<td class="or-td"><input class="or-input or-input-inline" name="{name}" '
+            f'value="{val}" wire:model.blur="table.{name}" /></td>'
+        )
 
 
 class ToggleColumn(Column):
-    pass
+    def render_cell(self, record: Any, **ctx: Any) -> str:
+        value = self.resolve_state(record)
+        name = e(self.get_name() or "")
+        checked = " checked" if value else ""
+        return (
+            f'<td class="or-td"><input type="checkbox" class="or-toggle" name="{name}"'
+            f'{checked} wire:model.live="table.{name}" /></td>'
+        )
 
 
 class ViewColumn(Column):
-    pass
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._view_html: Callable[..., str] | str | None = None
+
+    def content(self, html: Callable[..., str] | str) -> Self:
+        self._view_html = html
+        return self
+
+    def render_cell(self, record: Any, **ctx: Any) -> str:
+        from almasix.orbit.support.evaluate import evaluate
+
+        value = self.resolve_state(record)
+        if self._view_html is not None:
+            body = evaluate(self._view_html, record=record, state=value, **ctx)
+        else:
+            body = e("" if value is None else str(value))
+        return f'<td class="or-td"><div class="or-view-column">{body}</div></td>'
 
 
 class ColumnGroup(Component):
@@ -185,3 +260,6 @@ class ColumnGroup(Component):
     def columns(self, cols: list[Column]) -> Self:
         self._columns = list(cols)
         return self
+
+    def get_columns(self) -> list[Column]:
+        return list(self._columns)

@@ -28,10 +28,10 @@ const base = import.meta.env.BASE_URL.endsWith('/')
 				/>
 				<span class="hero-brand-suffix">ORBIT</span>
 			</a>
-			<h1 id="orbit-hero-heading">Admin panels in Python — declare once, ship the shell.</h1>
+			<h1 id="orbit-hero-heading">Python admin that stays in orbit — fluent, package-shaped, yours.</h1>
 			<p class="hero-lede">
-				Resources, forms, tables, and actions on Conduit + Alpine. One fluent API across ten
-				packages — semantic <code class="mono">.or-*</code> CSS out of the box.
+				Describe resources once. Orbit paints the shell, tables, and forms on Conduit + Alpine —
+				semantic <code class="mono">.or-*</code> CSS included, ten packages under one import tree.
 			</p>
 			<div class="cta-row">
 				<a class="btn btn-primary" href={`${base}getting-started/installation/`}>Start building</a>
@@ -56,14 +56,14 @@ const base = import.meta.env.BASE_URL.endsWith('/')
 					{/* 0 — install */}
 					<div class="term-slide is-active" data-slide>
 						<p style="--i: 0"><span class="term-prompt">$</span> pip install almasix-orbit</p>
-						<p class="term-dim" style="--i: 1">panels · forms · tables · actions · …</p>
+						<p class="term-dim" style="--i: 1">meta-package · ten modules · one gravity well</p>
 						<p class="term-ok" style="--i: 2">✓ OrbitServiceProvider discovered</p>
 						<p class="term-ok" style="--i: 3">✓ import path: almasix.orbit…</p>
 					</div>
 
 					{/* 1 — panel */}
 					<div class="term-slide" data-slide data-ms="5400">
-						<p class="term-dim" style="--i: 0"># register the panel</p>
+						<p class="term-dim" style="--i: 0"># hang a panel on the app</p>
 						<pre class="term-code od" style="--i: 1" tabindex="0"><code><span class="od-k">from</span> <span class="od-t">almasix.orbit</span> <span class="od-k">import</span> <span class="od-t">Panel</span>, <span class="od-t">PanelRegistry</span>
 
 panel = (
@@ -141,7 +141,7 @@ app.<span class="od-f">make</span>(<span class="od-t">PanelRegistry</span>).<spa
 											<td><div class="ui-mock-actions"><span></span><span></span><span></span></div></td>
 										</tr>
 										<tr>
-											<td>Conduit wire hooks</td>
+											<td>Standalone form demo</td>
 											<td><span class="ui-mock-badge">Published</span></td>
 											<td><div class="ui-mock-actions"><span></span><span></span><span></span></div></td>
 										</tr>
@@ -225,7 +225,7 @@ app.<span class="od-f">make</span>(<span class="od-t">PanelRegistry</span>).<spa
 						<p class="term-ok" style="--i: 1">✓ panels · support · schemas</p>
 						<p class="term-ok" style="--i: 2">✓ forms · tables · actions · infolists</p>
 						<p class="term-ok" style="--i: 3">✓ notifications · widgets · query-builder</p>
-						<p class="term-hi" style="--i: 4">one install · ten packages · one import tree</p>
+						<p class="term-hi" style="--i: 4">install the meta · or pick packages standalone</p>
 						<p class="term-cursor" style="--i: 5" aria-hidden="true"></p>
 					</div>
 				</div>

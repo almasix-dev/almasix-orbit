@@ -327,3 +327,52 @@ def test_orbit_service_provider_with_stub() -> None:
     # Engine not bound
     sp.app.container.bound = lambda *_: False
     sp._register_directives()
+
+
+def test_infolist_falls_back_to_readonly_form_fields() -> None:
+    infolist = PostResource.get_infolist()
+    names = [c.get_name() for c in infolist.get_components()]
+    assert "title" in names
+    html = infolist.render({"title": "Hello"})
+    assert "Hello" in html and "or-infolist" in html
+
+
+def test_default_table_actions_use_page_urls() -> None:
+    table = PostResource.get_table()
+    html = table.records([{"id": 7, "title": "X"}]).render()
+    assert "/post/7" in html
+    assert "/post/7/edit" in html
+    header = "".join(a.render() for a in table._header_actions)
+    assert "/post/create" in header
+    assert 'data-action="view"' in html
+    assert 'data-action="edit"' in html
+
+
+def test_split_navigation_menu_layout() -> None:
+    from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem
+
+    panel = (
+        Panel.make("admin")
+        .path("orbit")
+        .resources([PostResource])
+        .pages([DashboardPage])
+        .navigation_groups([NavigationGroup.make("Content").icon("heroicon-o-folder").sort(1)])
+        .navigation_items(
+            [
+                NavigationItem.make("reports")
+                .label("Reports")
+                .url("/orbit/reports")
+                .group("Content")
+                .subgroup("Analytics")
+                .sort(5)
+            ]
+        )
+        .navigation_layout("sidebar_topbar")
+    )
+    ctx = panel.menu_layout_context(active_path="/orbit/posts")
+    assert ctx.menu_roots
+    assert any(r.label == "Content" for r in ctx.menu_roots)
+    assert ctx.menu_secondary
+    shell = panel.render_shell("<p>Hi</p>", active_path="/orbit/posts")
+    assert "or-topnav" in shell and "or-action-modal-host" in shell
+    assert "Content" in shell

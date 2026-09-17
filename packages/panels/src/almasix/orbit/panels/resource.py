@@ -11,8 +11,11 @@ from almasix.orbit.actions.action import (
     EditAction,
     ViewAction,
 )
+from almasix.orbit.forms.components import Field
 from almasix.orbit.forms.form import Form
+from almasix.orbit.infolists.components import TextEntry
 from almasix.orbit.infolists.infolist import Infolist
+from almasix.orbit.support.component import Component
 from almasix.orbit.tables.table import Table
 
 
@@ -24,6 +27,7 @@ class Resource:
     navigation_icon: ClassVar[str] = "heroicon-o-users"
     navigation_label: ClassVar[str | None] = None
     navigation_group: ClassVar[str | None] = None
+    navigation_subgroup: ClassVar[str | None] = None
     navigation_sort: ClassVar[int] = 0
     record_title_attribute: ClassVar[str] = "id"
     permission_prefix: ClassVar[str | None] = None
@@ -88,21 +92,6 @@ class Resource:
         return cls.form(Form.make("form"))
 
     @classmethod
-    def get_table(cls) -> Table:
-        table = cls.table(Table.make("table"))
-        if not table._actions:
-            table.actions([ViewAction.make(), EditAction.make(), DeleteAction.make()])
-        if not table._bulk_actions:
-            table.bulk_actions([DeleteBulkAction.make()])
-        if not table._header_actions:
-            table.header_actions([CreateAction.make()])
-        return table
-
-    @classmethod
-    def get_infolist(cls) -> Infolist:
-        return cls.infolist(Infolist.make("infolist"))
-
-    @classmethod
     def get_pages(cls) -> dict[str, str]:
         slug = cls.get_slug()
         return {
@@ -113,8 +102,92 @@ class Resource:
         }
 
     @classmethod
+    def page_url(cls, page: str, record: Any = None) -> str:
+        template = cls.get_pages().get(page, "")
+        record_id = ""
+        if record is not None:
+            if isinstance(record, dict):
+                record_id = str(record.get("id", ""))
+            else:
+                record_id = str(getattr(record, "id", ""))
+        return template.replace("{id}", record_id)
+
+    @classmethod
+    def get_table(cls) -> Table:
+        table = cls.table(Table.make("table"))
+        if not table._actions:
+            table.actions(
+                [
+                    ViewAction.make().url(
+                        lambda record=None, **_: cls.page_url("view", record)
+                    ),
+                    EditAction.make().url(
+                        lambda record=None, **_: cls.page_url("edit", record)
+                    ),
+                    DeleteAction.make(),
+                ]
+            )
+        if not table._bulk_actions:
+            table.bulk_actions([DeleteBulkAction.make()])
+        if not table._header_actions:
+            table.header_actions(
+                [CreateAction.make().url(lambda **_: cls.page_url("create"))]
+            )
+        return table
+
+    @classmethod
+    def get_infolist(cls) -> Infolist:
+        infolist = cls.infolist(Infolist.make("infolist"))
+        if infolist.get_components():
+            return infolist
+        # Fallback: readonly projection of the form schema
+        form = cls.get_form().readonly()
+        entries: list[Component] = []
+        for field in _iter_fields(form.get_components()):
+            name = field.get_name()
+            if not name:
+                continue
+            entry = TextEntry.make(name).label(field.get_label())
+            entries.append(entry)
+        return Infolist.make("infolist").schema(entries)
+
+    @classmethod
     def get_relations(cls) -> list[type[Any]]:
         return []
+
+
+def _iter_fields(components: list[Component]) -> list[Field]:
+    fields: list[Field] = []
+    for component in components:
+        if isinstance(component, Field):
+            fields.append(component)
+            continue
+        tabs = getattr(component, "_tabs", None)
+        if isinstance(tabs, list) and tabs:
+            for _label, comps in tabs:
+                fields.extend(_iter_fields(list(comps)))
+            continue
+        steps = getattr(component, "_steps", None)
+        if isinstance(steps, list) and steps:
+            for _label, comps in steps:
+                fields.extend(_iter_fields(list(comps)))
+            continue
+        children = getattr(component, "get_components", None)
+        if callable(children):
+            fields.extend(_iter_fields(children()))
+            continue
+        child_components = getattr(component, "get_child_components", None)
+        if callable(child_components):
+            fields.extend(_iter_fields(child_components()))
+            continue
+        schema = getattr(component, "get_schema", None)
+        if callable(schema):
+            fields.extend(_iter_fields(schema()))
+            continue
+        nested = getattr(component, "_schema", None)
+        if isinstance(nested, list) and nested:
+            fields.extend(_iter_fields(nested))
+    return fields
 
 
 def _snake(name: str) -> str:

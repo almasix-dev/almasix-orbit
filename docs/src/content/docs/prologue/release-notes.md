@@ -9,20 +9,21 @@ header switcher.
 
 ## 0.x
 
-First published line of Orbit — panels, resources, forms, tables, actions,
-infolists, schemas, notifications, widgets, query builder, and the support
-toolkit, rendered on Conduit + Alpine with semantic `.or-*` CSS.
+Published Orbit line — panels, resources, forms, tables, actions, infolists,
+schemas, notifications, widgets, query builder, and the support toolkit on
+Conduit + Alpine with semantic `.or-*` CSS.
 
 Highlights:
 
 - Fluent `Panel` / `Resource` / `Page` / `RelationManager` APIs
-- Form fields with string validation rules
-- Tables with search, sort, pagination, filters, and action slots
-- Action presets for create / edit / view / delete (including bulk delete)
-- Layout schemas: grid, section, tabs, fieldset, wizard
-- Flash / database / broadcast notifications
-- Stats, chart, and table widgets
-- In-memory query builder with typed constraints
+- Standalone packages (forms, tables, …) render without a panel
+- `evaluate()` + closures on labels, helpers, options, authorize, URLs, and more
+- Real field and column renders (including repeaters, tags, editors, inline editors)
+- Infolist falls back to a readonly form projection when unset
+- View/Edit/Create default to **page URLs**; `.modal()` / confirmation for quick actions
+- Navigation: groups, subgroups, custom items, layouts (`sidebar`, `top`, `sidebar_topbar`)
+- Split sidebar → topbar secondary nav (Shamar-style)
+- Query builder UI render over the constraint apply model
 - `LiveResource` test helper
 - Auto-discovered `OrbitServiceProvider` via `almasix.providers`
 

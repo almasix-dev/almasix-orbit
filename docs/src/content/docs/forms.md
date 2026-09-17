@@ -29,6 +29,14 @@ errors = form.validate({"title": ""})
 
 `Form` extends `Schema` — you get `.state()`, `.fill()`, `.dehydrate()`, `.columns()`, and `.render()` for free. Prefer `.schema([...])` over `.components([...])`; both work.
 
+## Guides
+
+| Page | What you’ll find |
+|------|------------------|
+| [Standalone forms](/forms/standalone/) | Forms outside a Resource |
+| [Closures](/forms/closures/) | Callable label / options / visible / disabled |
+| [Field reference](/forms/fields/text-input/) | Every field type, one page each |
+
 ## Field API
 
 Every field starts with `Field.make("name")` (subclasses call the same factory):
@@ -51,7 +59,7 @@ TextInput.make("email")
 
 Handy shortcuts: `.email()`, `.password()`, `.numeric()`, `.integer()`, `.tel()`, `.url()`, `.max_length(n)`, `.min_length(n)`, `.rows(n)`, `.options(...)`, `.multiple()`, `.searchable()`, `.relationship(name, title_attribute)`.
 
-Visibility / disabled can be callables evaluated at render time.
+Visibility / disabled / options / labels can be callables — see [Closures](/forms/closures/).
 
 ## Validation
 
@@ -71,27 +79,22 @@ TextInput.make("age").integer().rules("required", "min:18")
 
 ## Field types
 
-| Field | Notes |
-|-------|-------|
-| `TextInput` | Default text |
-| `Textarea` | `.rows(n)` |
-| `Select` | `.options`, `.multiple`, `.searchable` |
-| `MultiSelect` | Select + multiple |
-| `Checkbox` / `Toggle` | Boolean-ish |
-| `CheckboxList` | Multi options as checkboxes |
-| `Radio` | Single option group |
-| `Hidden` | No label chrome |
-| `Placeholder` | Display-only; not dehydrated |
-| `DatePicker` / `DateTimePicker` / `TimePicker` | Native date controls |
-| `FileUpload` | `.accepted_file_types`, `.max_size` (KB) |
-| `ColorPicker` | `type=color` |
-| `Slider` | `type=range` |
-| `ToggleButtons` | Select rendered as buttons |
-| `RichEditor` / `MarkdownEditor` / `CodeEditor` | Textarea subclasses |
-| `OneTimeCodeInput` | OTP autocomplete |
-| `Repeater` / `Builder` / `RelationshipRepeater` | Nested `.schema([...])` |
-| `TagsInput`, `KeyValue`, `ViewField` | Present; lean implementations |
-| `MorphToSelect`, `TableSelect`, `ModalTableSelect` | Select-shaped stubs |
+| Field | Page |
+|-------|------|
+| `TextInput` | [TextInput](/forms/fields/text-input/) |
+| `Textarea` | [Textarea](/forms/fields/textarea/) |
+| `Select` / `MultiSelect` | [Select](/forms/fields/select/) · [MultiSelect](/forms/fields/multi-select/) |
+| `Checkbox` / `Toggle` | [Checkbox](/forms/fields/checkbox/) · [Toggle](/forms/fields/toggle/) |
+| `CheckboxList` / `Radio` | [CheckboxList](/forms/fields/checkbox-list/) · [Radio](/forms/fields/radio/) |
+| `Hidden` / `Placeholder` | [Hidden](/forms/fields/hidden/) · [Placeholder](/forms/fields/placeholder/) |
+| Date / time | [DatePicker](/forms/fields/date-picker/) · [DateTimePicker](/forms/fields/date-time-picker/) · [TimePicker](/forms/fields/time-picker/) |
+| `FileUpload` / `ColorPicker` / `Slider` | [FileUpload](/forms/fields/file-upload/) · [ColorPicker](/forms/fields/color-picker/) · [Slider](/forms/fields/slider/) |
+| `TagsInput` / `KeyValue` / `ToggleButtons` | [TagsInput](/forms/fields/tags-input/) · [KeyValue](/forms/fields/key-value/) · [ToggleButtons](/forms/fields/toggle-buttons/) |
+| Editors | [RichEditor](/forms/fields/rich-editor/) · [MarkdownEditor](/forms/fields/markdown-editor/) · [CodeEditor](/forms/fields/code-editor/) |
+| `OneTimeCodeInput` | [OneTimeCodeInput](/forms/fields/one-time-code-input/) |
+| Repeaters | [Repeater](/forms/fields/repeater/) · [Builder](/forms/fields/builder/) · [RelationshipRepeater](/forms/fields/relationship-repeater/) |
+| `ViewField` | [ViewField](/forms/fields/view-field/) |
+| Relation-ish selects | [MorphToSelect](/forms/fields/morph-to-select/) · [TableSelect](/forms/fields/table-select/) · [ModalTableSelect](/forms/fields/modal-table-select/) |
 
 Import them from `almasix.orbit.forms`.
 
@@ -126,3 +129,5 @@ payload = form.dehydrate()   # only dehydrated fields with a state path
 ```
 
 Fields emit `wire:model` attributes so Conduit can sync them when you mount the form inside a live component.
+
+Need the form without a Resource? → [Standalone forms](/forms/standalone/).
