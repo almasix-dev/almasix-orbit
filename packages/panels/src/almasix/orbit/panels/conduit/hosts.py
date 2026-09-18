@@ -561,7 +561,7 @@ class ListRecordsHost(OrbitPageHost):
             ids: list[str] = []
             for record in table.get_all_filtered_records():
                 rid = table._record_value(record, "id")
-                if rid is None:
+                if not rid:
                     rid = id(record)
                 ids.append(str(rid))
             return ids
@@ -787,7 +787,7 @@ class FormDataMutations:
             want_list = nxt_key.isdigit()
             if part.isdigit():
                 idx = int(part)
-                if not isinstance(cur, list):
+                if not isinstance(cur, list):  # pragma: no cover - defensive
                     return
                 while len(cur) <= idx:
                     cur.append([] if want_list else {})
@@ -797,7 +797,7 @@ class FormDataMutations:
                     cur[idx] = {}
                 cur = cur[idx]
                 continue
-            if not isinstance(cur, dict):
+            if not isinstance(cur, dict):  # pragma: no cover - defensive
                 return
             nxt = cur.get(part)
             if want_list:
@@ -816,6 +816,8 @@ class FormDataMutations:
             cur[idx] = value
         elif isinstance(cur, dict):
             cur[last] = value
+        else:  # pragma: no cover - walk always leaves dict or list+digit last
+            return
 
     def addRepeaterItem(self, name: str) -> None:
         key = str(name or "")

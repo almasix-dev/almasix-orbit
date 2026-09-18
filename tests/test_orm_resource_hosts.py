@@ -216,6 +216,8 @@ def test_as_record_dict_and_write_payload() -> None:
         _OrmModel,
     )
     assert payload == {"title": "A", "status": "draft"}
+    # no model / no fillable → skip allow-list filter
+    assert _orm_write_payload({"title": "Z", "_skip": 1}) == {"title": "Z"}
     assert _mount_action_args("delete", None, {"recordId": 7, "data": {"x": 1}})[1] == "7"
     assert _mount_action_args("delete", recordId="9")[1] == "9"
 

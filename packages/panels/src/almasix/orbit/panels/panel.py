@@ -674,7 +674,8 @@ class Panel:
             return crumbs
 
         segments = [s for s in remainder.split("/") if s]
-        if not segments:
+        # rstrip('/') above means slash-only remainders never reach here; keep guard anyway.
+        if not segments:  # pragma: no cover
             crumbs[-1]["url"] = None
             return crumbs
 
@@ -700,8 +701,8 @@ class Panel:
                 crumbs.append({"label": "Create", "url": None})
             elif action == "edit":
                 crumbs.append({"label": "Edit", "url": None})
-            elif len(segments) >= 2 and action not in {"create", "edit"}:
-                # /{slug}/{id} view
+            else:
+                # /{slug}/{id} view (len(segments) >= 2 after the early return above)
                 crumbs.append({"label": "View", "url": None})
             return crumbs
 

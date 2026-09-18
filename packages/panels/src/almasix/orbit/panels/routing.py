@@ -248,7 +248,11 @@ def mount_panel(router: Any, panel: Panel) -> None:
     middleware = [str(m) for m in panel.get_middleware()]
 
     def _add(uri: str, action: Any, *, name: str, mw: list[str] | None = None) -> None:
-        full = f"{prefix}{uri}" if uri.startswith("/") else f"{prefix}/{uri}"
+        # Empty ``uri`` (root panel home) uses concat so ``full == ""`` can normalize to ``/``.
+        if uri.startswith("/") or uri == "":
+            full = f"{prefix}{uri}"
+        else:
+            full = f"{prefix}/{uri}"
         if full == "":
             full = "/"
         router.add(
@@ -258,6 +262,8 @@ def mount_panel(router: Any, panel: Panel) -> None:
             name=name,
             middleware=mw if mw is not None else middleware,
         )
+
+    home_uri = "/" if prefix else ""
 
     resources = panel.get_resources()
     dash_cls = panel.dashboard_page() if panel.dashboard_enabled() else None
@@ -283,10 +289,10 @@ def mount_panel(router: Any, panel: Panel) -> None:
             )
             return _html_response(body)
 
-        _add("/", dashboard_home, name=f"orbit.{panel.id}.home")
+        _add(home_uri, dashboard_home, name=f"orbit.{panel.id}.home")
     elif resources:
         home_host = ListRecordsHost.bind(panel=panel, resource=resources[0])
-        _add("/", make_panel_page_action(panel, home_host), name=f"orbit.{panel.id}.home")
+        _add(home_uri, make_panel_page_action(panel, home_host), name=f"orbit.{panel.id}.home")
     else:
 
         async def empty_home(request: Request) -> Any:
@@ -304,7 +310,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
             )
             return _html_response(body)
 
-        _add("/", empty_home, name=f"orbit.{panel.id}.home")
+        _add(home_uri, empty_home, name=f"orbit.{panel.id}.home")
 
     if panel.login_enabled():
         from almasix.conduit import Conduit
@@ -374,22 +380,22 @@ def mount_panel(router: Any, panel: Panel) -> None:
         view_host = ViewRecordHost.bind(panel=panel, resource=resource)
 
         _add(
-            f"/{slug}",
+            f"{slug}",
             make_panel_page_action(panel, list_host),
             name=f"orbit.{panel.id}.{slug}.index",
         )
         _add(
-            f"/{slug}/create",
+            f"{slug}/create",
             make_panel_page_action(panel, create_host),
             name=f"orbit.{panel.id}.{slug}.create",
         )
         _add(
-            f"/{slug}/{{record_id}}/edit",
+            f"{slug}/{{record_id}}/edit",
             make_panel_page_action(panel, edit_host, pass_record_id=True),
             name=f"orbit.{panel.id}.{slug}.edit",
         )
         _add(
-            f"/{slug}/{{record_id}}",
+            f"{slug}/{{record_id}}",
             make_panel_page_action(panel, view_host, pass_record_id=True),
             name=f"orbit.{panel.id}.{slug}.view",
         )
@@ -418,7 +424,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
             return page_action
 
-        _add(f"/{slug}", _make_page_action(page), name=f"orbit.{panel.id}.page.{slug}")
+        _add(f"{slug}", _make_page_action(page), name=f"orbit.{panel.id}.page.{slug}")
 
 
 def mount_orbit_assets(router: Any) -> None:
