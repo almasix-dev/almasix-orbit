@@ -93,10 +93,11 @@ See `examples/orbit-admin` for a full Almasix app (`./scripts/bootstrap.sh` then
 ## Tests
 
 ```bash
-pytest tests --cov=almasix.orbit --cov-branch --cov-fail-under=99
+pytest tests --cov=almasix.orbit --cov-branch
 ```
 
-Aim for **100%** statement + branch coverage; CI fails under **99%**.
+Aim for **100%** statement + branch coverage. The CI fail-under is configured in
+`pyproject.toml` / `.github/workflows/ci.yml`.
 
 ## Discovery
 
