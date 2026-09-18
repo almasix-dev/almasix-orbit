@@ -118,9 +118,44 @@ def _request_path(request: Request | None = None) -> str | None:
 
 
 def _embed(component: Any) -> str:
+    """Sync embed (tests / non-async callers). Prefer ``_embed_async`` in routes."""
     from almasix.conduit.routing import embed_component
 
     return embed_component(component)
+
+
+async def _embed_async(component: Any) -> str:
+    """Embed a Conduit host, awaiting async ``mount()`` (ORM-backed resources)."""
+    import inspect
+
+    from almasix.conduit.mechanism import (
+        new_id,
+        render_html,
+        snapshot,
+        wrap_root,
+    )
+
+    if getattr(component, "conduit_id", None) is None:
+        component.conduit_id = new_id()
+    if getattr(component, "lazy", False) or getattr(component, "defer", False):
+        from almasix.conduit.mechanism import _embed_lazy
+
+        return _embed_lazy(
+            component,
+            defer=bool(getattr(component, "defer", False) and not getattr(component, "lazy", False)),
+        )
+
+    mount = getattr(component, "mount", None)
+    if callable(mount):
+        result = mount()
+        if inspect.iscoroutine(result):
+            await result
+    booted = getattr(component, "booted", None)
+    if callable(booted):
+        booted()
+    snap = snapshot(component)
+    html = render_html(component)
+    return wrap_root(component, html, snap)
 
 
 def _conduit_assets() -> str:
@@ -171,7 +206,7 @@ def make_panel_page_action(
                 return gated
             extras = {**(params or {}), "record_id": record_id}
             instance = _instantiate_host(host_cls, extras)
-            slot = _embed(instance)
+            slot = await _embed_async(instance)
             body = panel.render_shell(
                 slot,
                 user=user,
@@ -190,7 +225,7 @@ def make_panel_page_action(
         if gated is not None:
             return gated
         instance = _instantiate_host(host_cls, params)
-        slot = _embed(instance)
+        slot = await _embed_async(instance)
         body = panel.render_shell(
             slot,
             user=user,

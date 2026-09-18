@@ -199,6 +199,7 @@ def test_action_object_record_and_form_schema() -> None:
 def test_list_host_mutations_and_filtered_selection() -> None:
     class Demo(Resource):
         model = type("X", (), {})
+        records_mutable = True
         records = [
             {"id": 1, "title": "A", "status": "draft"},
             {"id": 2, "title": "B", "status": "published"},

@@ -46,6 +46,7 @@ class PostResource(Resource):
     navigation_group = "Content"
     navigation_sort = 1
     permission_prefix = "posts"
+    records_mutable = True
 
     @classmethod
     def form(cls, form: Form) -> Form:

@@ -4,17 +4,134 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
+from almasix.orbit.actions.action import DeleteAction, EditAction, ViewAction
+from almasix.orbit.forms.walk import iter_fields
 from almasix.orbit.panels.content_width import resolve_content_max_width
 from almasix.orbit.panels.page import Page
 from almasix.orbit.support.conduit_attrs import conduit_attr
 from almasix.orbit.support.html import e
 
+# Narrower default for create/edit/view so forms/infolists read comfortably.
+DEFAULT_FORM_CONTENT_MAX_WIDTH = "screen-lg"
 
-def _resource_width_style(resource: type[Any]) -> str:
+
+def _resource_width_style(resource: type[Any], *, operation: str | None = None) -> str:
     raw = getattr(resource, "content_max_width", None)
+    if operation in {"create", "edit", "view"}:
+        form_raw = getattr(resource, "form_content_max_width", None)
+        if form_raw:
+            raw = form_raw
+        elif not raw:
+            raw = DEFAULT_FORM_CONTENT_MAX_WIDTH
     if not raw:
         return ""
     return f' style="max-width: {e(resolve_content_max_width(raw).css_value)}"'
+
+
+def _auth_user() -> Any:
+    try:
+        from almasix.orbit.panels.routing import _current_user
+
+        return _current_user()
+    except Exception:
+        return None
+
+
+def _page_header_actions(resource: type[Any], operation: str, record: Any = None) -> str:
+    """Filament-style header actions for view/edit.
+
+    Shown by default like table row actions. When a permission API is present and
+    denies the ability, the action is omitted.
+    """
+    user = _auth_user()
+    mutable_fn = getattr(resource, "records_are_mutable", None)
+    mutable = bool(mutable_fn()) if callable(mutable_fn) else bool(
+        getattr(resource, "records_mutable", False)
+    )
+
+    def allowed(fn: Any) -> bool:
+        if user is None:
+            return True
+        try:
+            return bool(fn(user, record))
+        except TypeError:
+            return bool(fn(user))
+
+    # Prefer Resource.can_*; if Gate/auth denies everything (no policies), still
+    # show chrome so panels work before policies are registered.
+    def show(fn: Any) -> bool:
+        if user is None:
+            return True
+        if allowed(fn):
+            return True
+        # Gate-backed User.can() returns False with no policy — fall open.
+        can_fn = getattr(user, "can", None)
+        if callable(can_fn) and not any(
+            callable(getattr(user, attr, None))
+            for attr in ("has_permission", "hasPermissionTo")
+        ):
+            perms = getattr(user, "permissions", None)
+            if perms is None and not hasattr(user, "is_admin"):
+                return True
+        return False
+
+    actions: list[Any] = []
+    if operation == "view":
+        if mutable and show(resource.can_update):
+            actions.append(
+                EditAction.make().url(lambda r=record, **_: resource.page_url("edit", r))
+            )
+        if mutable and show(resource.can_delete):
+            actions.append(DeleteAction.make())
+    elif operation == "edit":
+        if show(resource.can_view):
+            actions.append(
+                ViewAction.make().url(lambda r=record, **_: resource.page_url("view", r))
+            )
+        if mutable and show(resource.can_delete):
+            actions.append(DeleteAction.make())
+    if not actions:
+        return ""
+    return (
+        '<div class="or-page-actions">'
+        + "".join(a.render(record=record) for a in actions)
+        + "</div>"
+    )
+
+
+def _resource_is_mutable(resource: type[Any]) -> bool:
+    mutable_fn = getattr(resource, "records_are_mutable", None)
+    if callable(mutable_fn):
+        return bool(mutable_fn())
+    return bool(getattr(resource, "records_mutable", False))
+
+
+def _record_id(record: Any) -> str:
+    if record is None:
+        return ""
+    if isinstance(record, dict):
+        return str(record.get("id", ""))
+    return str(getattr(record, "id", "") or "")
+
+
+def _hydrate_form_state(form: Any, record: Any) -> dict[str, Any]:
+    data: dict[str, Any] = {}
+    if record is None:
+        return data
+    for field in iter_fields(form.get_components()):
+        name = field.get_state_path() or field.get_name()
+        if not name:
+            continue
+        if isinstance(record, dict):
+            if name in record:
+                data[name] = record[name]
+        else:
+            data[name] = getattr(record, name, None)
+    # Keep nested keys that aren't top-level fields (wizard bags, etc.).
+    if isinstance(record, dict):
+        for key, value in record.items():
+            data.setdefault(key, value)
+    return data
 
 
 class Tab:
@@ -145,7 +262,7 @@ class ListRecords(ResourcePage):
             table.filter_state(filters)
         table.paginate(page, per_page)
         header_actions = "".join(a.render(**ctx) for a in table._header_actions)
-        width = _resource_width_style(resource)
+        width = _resource_width_style(resource, operation="list")
         return (
             f'<div class="or-page or-page-list" data-resource="{e(resource.get_slug())}"{width}>'
             f'<header class="or-page-header"><h1 class="or-page-title">{title}</h1>'
@@ -158,13 +275,25 @@ class CreateRecord(ResourcePage):
     @classmethod
     def render(cls, state: dict[str, Any] | None = None, **ctx: Any) -> str:
         resource = cls.get_resource()
+        if not _resource_is_mutable(resource):
+            return (
+                f'<div class="or-page or-page-create" data-resource="{e(resource.get_slug())}"'
+                f"{_resource_width_style(resource, operation='create')}>"
+                f'<header class="or-page-header">'
+                f'<h1 class="or-page-title">Create {e(resource.get_navigation_label())}</h1>'
+                f"</header>"
+                f'<p class="or-muted">This demo resource uses a fixed seed list and cannot be changed.</p>'
+                f"</div>"
+            )
         form = resource.get_form()
         if state:
             form.fill(state)
         return (
             f'<div class="or-page or-page-create" data-resource="{e(resource.get_slug())}"'
-            f"{_resource_width_style(resource)}>"
+            f"{_resource_width_style(resource, operation='create')}>"
+            f'<header class="or-page-header">'
             f'<h1 class="or-page-title">Create {e(resource.get_navigation_label())}</h1>'
+            f"</header>"
             f'<form class="or-form"{conduit_attr("submit", "create")}>'
             f"{form.render(form.get_state() if state is None else state, **ctx)}"
             f'<div class="or-form-actions">'
@@ -179,22 +308,30 @@ class EditRecord(ResourcePage):
         resource = cls.get_resource()
         form = resource.get_form()
         data = state
-        if data is None and record is not None:
-            data = {}
-            for c in form.get_components():
-                name = c.get_state_path() or c.get_name()
-                if not name:
-                    continue
-                data[name] = record[name] if isinstance(record, dict) else getattr(record, name, None)
+        if not data and record is not None:
+            data = _hydrate_form_state(form, record)
         if data:
             form.fill(data)
-        record_id = ""
-        if record is not None:
-            record_id = str(record.get("id", "") if isinstance(record, dict) else getattr(record, "id", ""))
+        record_id = _record_id(record)
+        header_actions = _page_header_actions(resource, "edit", record)
+        mutable = _resource_is_mutable(resource)
+        if not mutable:
+            readonly = form.readonly() if hasattr(form, "readonly") else form
+            return (
+                f'<div class="or-page or-page-edit" data-resource="{e(resource.get_slug())}" '
+                f'data-record="{e(record_id)}"{_resource_width_style(resource, operation="edit")}>'
+                f'<header class="or-page-header">'
+                f'<h1 class="or-page-title">{e(resource.get_navigation_label())}</h1>'
+                f"{header_actions}</header>"
+                f'<p class="or-muted">This demo resource uses a fixed seed list and cannot be changed.</p>'
+                f"{readonly.render(data or form.get_state(), **ctx)}</div>"
+            )
         return (
             f'<div class="or-page or-page-edit" data-resource="{e(resource.get_slug())}" '
-            f'data-record="{e(record_id)}"{_resource_width_style(resource)}>'
+            f'data-record="{e(record_id)}"{_resource_width_style(resource, operation="edit")}>'
+            f'<header class="or-page-header">'
             f'<h1 class="or-page-title">Edit {e(resource.get_navigation_label())}</h1>'
+            f"{header_actions}</header>"
             f'<form class="or-form"{conduit_attr("submit", "save")}>'
             f"{form.render(data or form.get_state(), **ctx)}"
             f'<div class="or-form-actions">'
@@ -208,12 +345,13 @@ class ViewRecord(ResourcePage):
     def render(cls, record: Any = None, **ctx: Any) -> str:
         resource = cls.get_resource()
         infolist = resource.get_infolist()
-        record_id = ""
-        if record is not None:
-            record_id = str(record.get("id", "") if isinstance(record, dict) else getattr(record, "id", ""))
+        record_id = _record_id(record)
+        header_actions = _page_header_actions(resource, "view", record)
         return (
             f'<div class="or-page or-page-view" data-resource="{e(resource.get_slug())}" '
-            f'data-record="{e(record_id)}"{_resource_width_style(resource)}>'
+            f'data-record="{e(record_id)}"{_resource_width_style(resource, operation="view")}>'
+            f'<header class="or-page-header">'
             f'<h1 class="or-page-title">{e(resource.get_navigation_label())}</h1>'
+            f"{header_actions}</header>"
             f"{infolist.render(record, **ctx)}</div>"
         )

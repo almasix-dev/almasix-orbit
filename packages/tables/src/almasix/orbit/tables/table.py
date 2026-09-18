@@ -477,7 +477,6 @@ class Table(Component):
         else:
             footer = ""
         funnel = render_icon("heroicon-o-funnel", size=20)
-        indicators = self._render_filter_indicators(**ctx)
         return (
             f'<div class="or-table-filters" x-data="orbitTableFilters"{attr_s} '
             f'@click.outside="closeFilters()">'
@@ -493,7 +492,7 @@ class Table(Component):
             f'<div class="or-filters-panel-header">'
             f'<h3 class="or-filters-panel-title">Filters</h3>{reset_btn}</div>'
             f'<div class="or-table-filters-row">{"".join(parts)}</div>'
-            f"{qb_html}{footer}</div>{indicators}</div>"
+            f"{qb_html}{footer}</div></div>"
         )
 
     def _render_filter_indicators(self, **ctx: Any) -> str:
@@ -1121,6 +1120,7 @@ class Table(Component):
             )
 
         filters = self._render_filter_chrome(**ctx)
+        filter_indicators = self._render_filter_indicators(**ctx)
         columns_mgr = self._render_columns_chrome(**ctx)
         search = self._render_search_chrome(**ctx)
 
@@ -1161,12 +1161,23 @@ class Table(Component):
 
         toolbar = ""
         start_chrome = f"{groups_chooser}{toolbar_end}"
-        tools = f"{filters}{columns_mgr}"
+        tools_end = f"{filters}{columns_mgr}"
+        tools = ""
+        if filter_indicators or tools_end.strip():
+            start = (
+                f'<div class="or-list-toolbar-tools-start">{filter_indicators}</div>'
+                if filter_indicators
+                else ""
+            )
+            end = (
+                f'<div class="or-list-toolbar-tools-end">{tools_end}</div>'
+                if tools_end.strip()
+                else ""
+            )
+            tools = f'<div class="or-list-toolbar-tools">{start}{end}</div>'
         end_stack = ""
         if tools.strip() or search:
-            tools_row = (
-                f'<div class="or-list-toolbar-tools">{tools}</div>' if tools.strip() else ""
-            )
+            tools_row = tools if tools.strip() else ""
             divider = (
                 '<div class="or-list-toolbar-divider" role="separator"></div>'
                 if tools.strip() and search

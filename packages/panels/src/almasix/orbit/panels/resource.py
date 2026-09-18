@@ -37,6 +37,35 @@ class Resource:
     record_title_attribute: ClassVar[str] = "id"
     permission_prefix: ClassVar[str | None] = None
     content_max_width: ClassVar[str | None] = None
+    #: Max width for create/edit/view pages (list keeps panel / content_max_width).
+    form_content_max_width: ClassVar[str | None] = None
+    #: ``True`` → CRUD mutates records. ``False`` → seed/demo list is read-only.
+    #: ``None`` (default) → mutable when ``model`` is an Almasix ORM ``Model``.
+    records_mutable: ClassVar[bool | None] = None
+
+    @classmethod
+    def records_are_mutable(cls) -> bool:
+        """Whether create/edit/delete should persist for this resource."""
+        flag = getattr(cls, "records_mutable", None)
+        if flag is True:
+            return True
+        if flag is False:
+            return False
+        return cls._uses_orm_model()
+
+    @classmethod
+    def _uses_orm_model(cls) -> bool:
+        model = getattr(cls, "model", None)
+        if model is None or not isinstance(model, type):
+            return False
+        if model.__module__ == "builtins" or model.__name__ in {"type", "object"}:
+            return False
+        try:
+            from almasix.orm import Model
+
+            return issubclass(model, Model) and model is not Model
+        except Exception:
+            return False
 
     @classmethod
     def get_slug(cls) -> str:
@@ -125,19 +154,22 @@ class Resource:
     @classmethod
     def get_table(cls) -> Table:
         table = cls.table(Table.make("table"))
+        mutable = cls.records_are_mutable()
         if not table._actions:
-            table.actions(
-                [
-                    ViewAction.make().url(
-                        lambda record=None, **_: cls.page_url("view", record)
-                    ),
+            actions = [
+                ViewAction.make().url(
+                    lambda record=None, **_: cls.page_url("view", record)
+                ),
+            ]
+            if mutable:
+                actions.append(
                     EditAction.make().url(
                         lambda record=None, **_: cls.page_url("edit", record)
-                    ),
-                    DeleteAction.make(),
-                ]
-            )
-        if not table._bulk_actions:
+                    )
+                )
+                actions.append(DeleteAction.make())
+            table.actions(actions)
+        if not table._bulk_actions and mutable:
             table.bulk_actions(
                 [
                     BulkActionGroup.make(
@@ -145,7 +177,7 @@ class Resource:
                     )
                 ]
             )
-        if not table._header_actions:
+        if not table._header_actions and mutable:
             table.header_actions(
                 [CreateAction.make().url(lambda **_: cls.page_url("create"))]
             )

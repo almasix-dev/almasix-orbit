@@ -28,6 +28,7 @@ class Post:
 class PostResource(Resource):
     model = Post
     navigation_label = "Posts"
+    records_mutable = True
 
     @classmethod
     def form(cls, form: Form) -> Form:

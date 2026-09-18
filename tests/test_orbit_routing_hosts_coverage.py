@@ -52,6 +52,7 @@ from almasix.routing.router import Router
 class PostResource(Resource):
     model = type("Post", (), {})
     navigation_label = "Posts"
+    records_mutable = True
     records = [{"id": 1, "title": "Hello", "status": "draft"}]
 
     @classmethod
@@ -125,10 +126,11 @@ def test_list_create_edit_view_hosts() -> None:
 
     create_cls = CreateRecordHost.bind(panel=panel, resource=PostResource)
     create = create_cls()
-    create.mount(data={"title": "New", "id": "9"})
+    create.mount(data={"title": "New"})
     create.create()
     create.mountAction("x")
-    assert create.created_id == "9"
+    assert create.created_id is not None
+    assert create.take_redirect() is not None
     assert "or-page-create" in create.render()
 
     edit_cls = EditRecordHost.bind(panel=panel, resource=PostResource)

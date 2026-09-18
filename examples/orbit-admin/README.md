@@ -34,11 +34,16 @@ Panel.make("admin").apps_navigation()      # sidebar roots + topbar (default)
 **Auth user (database):**
 
 ```bash
-smith migrate
+smith migrate --seed
 smith orbit:user
 # or non-interactive:
 smith orbit:user --name="Ada" --email="ada@orbit.test" --password="secret"
 ```
+
+`migrate --seed` creates the `users` + `posts` tables and fills **Content → Posts**
+with sample rows. Posts are real ORM records — create / edit / delete persist to
+SQLite. Other demo resources (Authors, column galleries, etc.) stay seed-list
+immutable.
 
 Fresh apps without a User model: `smith orbit:user --scaffold`, then migrate, then create.
 
