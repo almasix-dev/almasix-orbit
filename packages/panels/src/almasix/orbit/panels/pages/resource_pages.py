@@ -50,8 +50,7 @@ def _page_header_actions(resource: type[Any], operation: str, record: Any = None
     )
 
     def allowed(fn: Any) -> bool:
-        if user is None:
-            return True
+        # ``show`` only calls this when ``user`` is not None.
         try:
             return bool(fn(user, record))
         except TypeError:
