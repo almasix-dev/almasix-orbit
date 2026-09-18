@@ -1637,7 +1637,32 @@ html.dark .or-login-logo-dark {
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
+  width: 100%;
+}
+
+.or-list-toolbar-tools:has(.or-list-toolbar-tools-start) {
+  justify-content: space-between;
+}
+
+.or-list-toolbar-tools-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
   gap: 0.4rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.or-list-toolbar-tools-end {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .or-list-toolbar-divider {
@@ -1750,8 +1775,10 @@ html.dark .or-login-logo-dark {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.4rem;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
 }
 
 .or-filter-chip {
@@ -2259,6 +2286,62 @@ html.dark .or-login-logo-dark {
 .or-dropdown-menu .or-btn {
   justify-content: flex-start;
   width: 100%;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  box-shadow: none;
+  color: var(--or-ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.or-dropdown-menu .or-btn:hover {
+  background: color-mix(in srgb, var(--or-muted) 14%, var(--or-card));
+  color: var(--or-ink);
+}
+
+.or-dropdown-menu .or-btn-primary,
+.or-dropdown-menu .or-btn-secondary,
+.or-dropdown-menu .or-btn-gray,
+.or-dropdown-menu .or-btn-success,
+.or-dropdown-menu .or-btn-warning,
+.or-dropdown-menu .or-btn-info,
+.or-dropdown-menu .or-btn-ghost {
+  background: transparent;
+  color: var(--or-ink);
+}
+
+.or-dropdown-menu .or-btn-primary:hover,
+.or-dropdown-menu .or-btn-secondary:hover,
+.or-dropdown-menu .or-btn-gray:hover,
+.or-dropdown-menu .or-btn-success:hover,
+.or-dropdown-menu .or-btn-warning:hover,
+.or-dropdown-menu .or-btn-info:hover,
+.or-dropdown-menu .or-btn-ghost:hover {
+  background: color-mix(in srgb, var(--or-muted) 14%, var(--or-card));
+  color: var(--or-ink);
+}
+
+.or-dropdown-menu .or-btn-danger {
+  background: transparent;
+  color: var(--or-danger, #dc2626);
+}
+
+.or-dropdown-menu .or-btn-danger:hover {
+  background: color-mix(in srgb, var(--or-danger, #dc2626) 12%, var(--or-card));
+  color: var(--or-danger, #b91c1c);
+}
+
+.or-dropdown-menu .or-btn svg,
+.or-dropdown-menu .or-btn .or-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  opacity: 0.85;
+  flex-shrink: 0;
 }
 
 .or-th-select,

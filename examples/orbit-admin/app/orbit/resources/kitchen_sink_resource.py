@@ -43,6 +43,7 @@ class KitchenSinkResource(Resource):
     navigation_label = "Kitchen sink"
     navigation_group = "Demos"
     slug = "kitchen-sink"
+    records_mutable = True
     records = [
         {
             "id": 1,

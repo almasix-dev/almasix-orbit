@@ -12,7 +12,7 @@ from almasix.orbit.support.conduit_attrs import conduit_attr
 from almasix.orbit.support.html import e
 
 # Narrower default for create/edit/view so forms/infolists read comfortably.
-DEFAULT_FORM_CONTENT_MAX_WIDTH = "screen-md"
+DEFAULT_FORM_CONTENT_MAX_WIDTH = "screen-lg"
 
 
 def _resource_width_style(resource: type[Any], *, operation: str | None = None) -> str:
@@ -44,6 +44,10 @@ def _page_header_actions(resource: type[Any], operation: str, record: Any = None
     denies the ability, the action is omitted.
     """
     user = _auth_user()
+    mutable_fn = getattr(resource, "records_are_mutable", None)
+    mutable = bool(mutable_fn()) if callable(mutable_fn) else bool(
+        getattr(resource, "records_mutable", False)
+    )
 
     def allowed(fn: Any) -> bool:
         if user is None:
@@ -73,18 +77,18 @@ def _page_header_actions(resource: type[Any], operation: str, record: Any = None
 
     actions: list[Any] = []
     if operation == "view":
-        if show(resource.can_update):
+        if mutable and show(resource.can_update):
             actions.append(
                 EditAction.make().url(lambda r=record, **_: resource.page_url("edit", r))
             )
-        if show(resource.can_delete):
+        if mutable and show(resource.can_delete):
             actions.append(DeleteAction.make())
     elif operation == "edit":
         if show(resource.can_view):
             actions.append(
                 ViewAction.make().url(lambda r=record, **_: resource.page_url("view", r))
             )
-        if show(resource.can_delete):
+        if mutable and show(resource.can_delete):
             actions.append(DeleteAction.make())
     if not actions:
         return ""
@@ -93,6 +97,13 @@ def _page_header_actions(resource: type[Any], operation: str, record: Any = None
         + "".join(a.render(record=record) for a in actions)
         + "</div>"
     )
+
+
+def _resource_is_mutable(resource: type[Any]) -> bool:
+    mutable_fn = getattr(resource, "records_are_mutable", None)
+    if callable(mutable_fn):
+        return bool(mutable_fn())
+    return bool(getattr(resource, "records_mutable", False))
 
 
 def _record_id(record: Any) -> str:
@@ -264,6 +275,16 @@ class CreateRecord(ResourcePage):
     @classmethod
     def render(cls, state: dict[str, Any] | None = None, **ctx: Any) -> str:
         resource = cls.get_resource()
+        if not _resource_is_mutable(resource):
+            return (
+                f'<div class="or-page or-page-create" data-resource="{e(resource.get_slug())}"'
+                f"{_resource_width_style(resource, operation='create')}>"
+                f'<header class="or-page-header">'
+                f'<h1 class="or-page-title">Create {e(resource.get_navigation_label())}</h1>'
+                f"</header>"
+                f'<p class="or-muted">This demo resource uses a fixed seed list and cannot be changed.</p>'
+                f"</div>"
+            )
         form = resource.get_form()
         if state:
             form.fill(state)
@@ -293,6 +314,18 @@ class EditRecord(ResourcePage):
             form.fill(data)
         record_id = _record_id(record)
         header_actions = _page_header_actions(resource, "edit", record)
+        mutable = _resource_is_mutable(resource)
+        if not mutable:
+            readonly = form.readonly() if hasattr(form, "readonly") else form
+            return (
+                f'<div class="or-page or-page-edit" data-resource="{e(resource.get_slug())}" '
+                f'data-record="{e(record_id)}"{_resource_width_style(resource, operation="edit")}>'
+                f'<header class="or-page-header">'
+                f'<h1 class="or-page-title">{e(resource.get_navigation_label())}</h1>'
+                f"{header_actions}</header>"
+                f'<p class="or-muted">This demo resource uses a fixed seed list and cannot be changed.</p>'
+                f"{readonly.render(data or form.get_state(), **ctx)}</div>"
+            )
         return (
             f'<div class="or-page or-page-edit" data-resource="{e(resource.get_slug())}" '
             f'data-record="{e(record_id)}"{_resource_width_style(resource, operation="edit")}>'

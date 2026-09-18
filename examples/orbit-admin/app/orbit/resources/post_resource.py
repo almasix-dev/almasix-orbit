@@ -1,62 +1,55 @@
-"""Posts resource."""
+"""Posts resource — ORM-backed CRUD (create / edit / delete against SQLite)."""
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import Any
 
 from almasix.orbit import Resource
 from almasix.orbit.forms import Form, Select, TextInput, Textarea
 from almasix.orbit.panels.pages import Tab
 from almasix.orbit.tables import Average, Count, SelectFilter, Sum, Table, TextColumn
 
+from app.models.post import Post
+
 
 class PostResource(Resource):
-    model = type("Post", (), {})
+    model = Post
     navigation_label = "Posts"
     navigation_group = "Content"
     navigation_icon = "heroicon-o-pencil-square"
     navigation_sort = 1
-
-    records: ClassVar[list[dict[str, Any]]] = [
-        {"id": 1, "title": "Launch Orbit", "status": "published", "amount": 1200},
-        {"id": 2, "title": "Conduit hosts", "status": "draft", "amount": 120},
-        {"id": 3, "title": "Mobile tables", "status": "review", "amount": 450},
-        {"id": 4, "title": "Panel branding", "status": "published", "amount": 880},
-        {"id": 5, "title": "Auth signup flow", "status": "published", "amount": 640},
-        {"id": 6, "title": "Dashboard widgets", "status": "draft", "amount": 90},
-        {"id": 7, "title": "Filter chrome", "status": "review", "amount": 330},
-        {"id": 8, "title": "Bulk actions", "status": "draft", "amount": 170},
-        {"id": 9, "title": "Empty states", "status": "review", "amount": 210},
-        {"id": 10, "title": "Content grid cards", "status": "draft", "amount": 140},
-        {"id": 11, "title": "Sortable columns", "status": "published", "amount": 560},
-        {"id": 12, "title": "Pagination footer", "status": "published", "amount": 410},
-        {"id": 13, "title": "Search toolbar", "status": "review", "amount": 280},
-        {"id": 14, "title": "Relation managers", "status": "draft", "amount": 70},
-    ]
-
-    @classmethod
-    def get_records(cls) -> list[dict[str, Any]]:
-        return list(cls.records)
+    record_title_attribute = "title"
 
     @classmethod
     def get_tabs(cls) -> list[Tab]:
-        def count_status(status: str) -> int:
-            return sum(1 for r in cls.get_records() if r.get("status") == status)
+        def count_status(status: str, records: list[Any] | None = None, **_: Any) -> int:
+            rows = records or []
+            return sum(1 for r in rows if (r.get("status") if isinstance(r, dict) else getattr(r, "status", None)) == status)
 
         return [
-            Tab("all").label("All").badge(lambda: len(cls.get_records())),
+            Tab("all").label("All").badge(lambda records=None, **_: len(records or [])),
             Tab("published")
             .label("Published")
-            .badge(lambda: count_status("published"))
+            .badge(lambda records=None, **kw: count_status("published", records, **kw))
             .badge_color("success")
             .modify_query_using(
-                lambda rows: [r for r in rows if r.get("status") == "published"]
+                lambda rows: [
+                    r
+                    for r in rows
+                    if (r.get("status") if isinstance(r, dict) else getattr(r, "status", None))
+                    == "published"
+                ]
             ),
             Tab("draft")
             .label("Draft")
-            .badge(lambda: count_status("draft"))
+            .badge(lambda records=None, **kw: count_status("draft", records, **kw))
             .modify_query_using(
-                lambda rows: [r for r in rows if r.get("status") == "draft"]
+                lambda rows: [
+                    r
+                    for r in rows
+                    if (r.get("status") if isinstance(r, dict) else getattr(r, "status", None))
+                    == "draft"
+                ]
             ),
         ]
 
@@ -68,6 +61,7 @@ class PostResource(Resource):
                 Select.make("status")
                 .options({"draft": "Draft", "review": "Review", "published": "Published"})
                 .required(),
+                TextInput.make("amount").numeric().label("Amount"),
                 Textarea.make("body").rows(6),
             ]
         )

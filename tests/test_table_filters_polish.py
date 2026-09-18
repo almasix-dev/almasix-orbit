@@ -12,6 +12,7 @@ class _Post(Resource):
     model = type("Post", (), {})
     navigation_label = "Posts"
     slug = "posts"
+    records_mutable = True
     records = [
         {"id": 1, "title": "Alpha", "status": "draft", "featured": True},
         {"id": 2, "title": "Beta", "status": "published", "featured": False},

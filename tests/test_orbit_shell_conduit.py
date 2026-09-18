@@ -27,6 +27,7 @@ class PostResource(Resource):
     model = type("Post", (), {})
     navigation_label = "Posts"
     navigation_group = "Content"
+    records_mutable = True
     records = [{"id": 1, "title": "Hello", "status": "draft"}]
 
     @classmethod

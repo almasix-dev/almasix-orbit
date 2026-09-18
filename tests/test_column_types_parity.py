@@ -154,6 +154,7 @@ def test_list_host_update_column_and_delete() -> None:
 
     class Demo(Resource):
         model = type("X", (), {})
+        records_mutable = True
         records = [
             {"id": 1, "title": "A", "status": "draft"},
             {"id": 2, "title": "B", "status": "draft"},

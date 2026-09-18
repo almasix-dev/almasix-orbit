@@ -62,19 +62,198 @@ def _next_record_id(records: Iterable[Any]) -> int:
     return next_id
 
 
+def _jsonable_value(value: Any) -> Any:
+    """Coerce ORM values so Conduit snapshots stay JSON-serializable."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, dict):
+        return {str(k): _jsonable_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable_value(v) for v in value]
+    # datetime / date / time
+    iso = getattr(value, "isoformat", None)
+    if callable(iso):
+        try:
+            return iso()
+        except Exception:
+            pass
+    # Decimal, UUID, Path, enums, etc.
+    if isinstance(value, (bytes, bytearray)):
+        return value.decode("utf-8", errors="replace")
+    try:
+        from decimal import Decimal
+
+        if isinstance(value, Decimal):
+            return float(value) if value % 1 else int(value)
+    except Exception:
+        pass
+    try:
+        from enum import Enum
+
+        if isinstance(value, Enum):
+            return _jsonable_value(value.value)
+    except Exception:
+        pass
+    return str(value)
+
+
 def _as_record_dict(record: Any) -> dict[str, Any]:
     if isinstance(record, dict):
-        return dict(record)
+        return {str(k): _jsonable_value(v) for k, v in record.items()}
     if record is None:
         return {}
     out: dict[str, Any] = {}
+    attrs = getattr(record, "get_attributes", None)
+    if callable(attrs):
+        try:
+            raw = attrs()
+            if isinstance(raw, dict):
+                return {str(k): _jsonable_value(v) for k, v in raw.items()}
+        except Exception:
+            pass
     for key in getattr(record, "__dict__", {}):
         if not str(key).startswith("_"):
-            out[str(key)] = getattr(record, key, None)
+            out[str(key)] = _jsonable_value(getattr(record, key, None))
     rid = getattr(record, "id", None)
     if rid is not None:
-        out.setdefault("id", rid)
+        out.setdefault("id", _jsonable_value(rid))
     return out
+
+
+_ORM_WRITE_SKIP = frozenset(
+    {
+        "id",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "createdAt",
+        "updatedAt",
+        "deletedAt",
+    }
+)
+
+
+def _orm_write_payload(data: dict[str, Any], model: type[Any] | None = None) -> dict[str, Any]:
+    """Strip ids/timestamps and non-fillable keys before create/update."""
+    payload = {
+        k: v
+        for k, v in dict(data or {}).items()
+        if k not in _ORM_WRITE_SKIP and not str(k).startswith("_")
+    }
+    fillable = getattr(model, "fillable", None) if model is not None else None
+    if fillable:
+        allowed = {str(k) for k in fillable}
+        payload = {k: v for k, v in payload.items() if k in allowed}
+    return payload
+
+
+def _is_orm_model(model: Any) -> bool:
+    if model is None or not isinstance(model, type):
+        return False
+    # Fake demo models are empty types: type("Post", (), {}).
+    if model.__module__ == "builtins" or model.__name__ in {"type", "object"}:
+        return False
+    try:
+        from almasix.orm import Model
+
+        return issubclass(model, Model) and model is not Model
+    except Exception:
+        return False
+
+
+def _resource_model(resource: type[Any]) -> type[Any] | None:
+    model = getattr(resource, "model", None)
+    return model if _is_orm_model(model) else None
+
+
+def _resource_mutable(resource: type[Any]) -> bool:
+    """ORM models are mutable; in-memory seed lists are read-only unless opted in."""
+    fn = getattr(resource, "records_are_mutable", None)
+    if callable(fn):
+        return bool(fn())
+    flag = getattr(resource, "records_mutable", None)
+    if flag is True:
+        return True
+    if flag is False:
+        return False
+    return _resource_model(resource) is not None
+
+
+async def _await_maybe(value: Any) -> Any:
+    if hasattr(value, "__await__"):
+        return await value
+    return value
+
+
+async def _orm_fetch_all(model: type[Any]) -> list[dict[str, Any]]:
+    rows = await _await_maybe(model.all())
+    return [_as_record_dict(r) for r in (rows or [])]
+
+
+async def _orm_find(model: type[Any], record_id: str) -> Any | None:
+    found = await _await_maybe(model.find(record_id))
+    if found is None and str(record_id).isdigit():
+        found = await _await_maybe(model.find(int(record_id)))
+    return found
+
+
+async def _orm_create(model: type[Any], data: dict[str, Any]) -> dict[str, Any]:
+    payload = _orm_write_payload(data, model)
+    row = await _await_maybe(model.create(payload))
+    return _as_record_dict(row)
+
+
+async def _orm_update(model: type[Any], record_id: str, data: dict[str, Any]) -> dict[str, Any]:
+    instance = await _orm_find(model, record_id)
+    if instance is None:
+        return await _orm_create(model, data)
+    payload = _orm_write_payload(data, model)
+    for key, val in payload.items():
+        try:
+            setattr(instance, key, val)
+        except Exception:
+            pass
+    await _await_maybe(instance.save())
+    return _as_record_dict(instance)
+
+
+async def _orm_delete_ids(model: type[Any], ids: set[str]) -> None:
+    for rid in ids:
+        if not rid:
+            continue
+        instance = await _orm_find(model, rid)
+        if instance is not None:
+            await _await_maybe(instance.delete())
+
+
+def _mount_action_args(
+    name: str,
+    record_id: Any = None,
+    payload: Any = None,
+    **kwargs: Any,
+) -> tuple[str, str, dict[str, Any]]:
+    """Normalize Conduit ``mountAction`` params from JS / Python callers.
+
+    Client confirm calls ``mountAction(name, recordId, { data })`` with a third
+    positional dict (not ``**kwargs``), so the third arg must be accepted positionally.
+    """
+    action_name = str(name or "")
+    extra = payload if isinstance(payload, dict) else {}
+    rid = str(
+        record_id
+        if record_id is not None
+        else kwargs.get("recordId")
+        if kwargs.get("recordId") is not None
+        else extra.get("recordId")
+        if extra.get("recordId") is not None
+        else ""
+    )
+    data = kwargs.get("data") if isinstance(kwargs.get("data"), dict) else None
+    if data is None and isinstance(extra.get("data"), dict):
+        data = extra["data"]
+    if data is None:
+        data = {}
+    return action_name, rid, data
 
 
 class ConduitHost(Component):
@@ -159,11 +338,14 @@ class ListRecordsHost(OrbitPageHost):
     table_group: str = ""
     toggled_columns: dict[str, bool] = {}
 
-    def mount(self, **kwargs: Any) -> None:
+    def mount(self, **kwargs: Any) -> Any:
         resource = self.get_resource()
         if "records" in kwargs and kwargs["records"] is not None:
             self.records = list(kwargs["records"])
         elif not self.records:
+            model = _resource_model(resource)
+            if model is not None:
+                return self._mount_orm(model, resource=resource)
             getter = getattr(resource, "get_records", None)
             if callable(getter):
                 self.records = list(getter())
@@ -171,6 +353,14 @@ class ListRecordsHost(OrbitPageHost):
                 stored = getattr(resource, "records", None)
                 if isinstance(stored, list):
                     self.records = list(stored)
+        self._mount_list_page(resource)
+        return None
+
+    async def _mount_orm(self, model: type[Any], *, resource: type[Any] | None = None) -> None:
+        self.records = await _orm_fetch_all(model)
+        self._mount_list_page(resource or self.get_resource())
+
+    def _mount_list_page(self, resource: type[Any]) -> None:
         from almasix.orbit.panels.pages.resource_pages import ListRecords
 
         page = getattr(resource, "get_pages", lambda: {})()
@@ -413,22 +603,44 @@ class ListRecordsHost(OrbitPageHost):
     def updateColumnState(self, record_id: str, column: str, value: Any = None) -> None:
         self.update_column_state(record_id, column, value)
 
-    def mountAction(self, name: str, record_id: str | None = None, **kwargs: Any) -> None:
-        action_name = str(name or "")
-        rid = str(record_id or kwargs.get("recordId") or "")
-        data = kwargs.get("data") if isinstance(kwargs.get("data"), dict) else {}
+    def mountAction(
+        self,
+        name: str,
+        record_id: str | None = None,
+        payload: Any = None,
+        **kwargs: Any,
+    ) -> Any:
+        action_name, rid, data = _mount_action_args(name, record_id, payload, **kwargs)
+        resource = self.get_resource()
+        mutable = _resource_mutable(resource)
+        if action_name in {"delete", "force_delete", "delete_bulk", "create", "edit"} and not mutable:
+            self.dispatch(
+                "orbit-records-readonly",
+                name=action_name,
+                message="This demo resource uses a fixed seed list and cannot be changed.",
+            )
+            return None
+        model = _resource_model(resource)
+        if model is not None and action_name in {
+            "delete",
+            "force_delete",
+            "delete_bulk",
+            "create",
+            "edit",
+        }:
+            return self._mount_action_orm(model, action_name, rid, data)
         if action_name in {"delete", "force_delete"} and rid:
             self.records = [r for r in self.records if self._record_key(r) != rid]
             self._sync_resource_records()
             self.selected = [s for s in (self.selected or []) if s != rid]
-            return
+            return None
         if action_name == "delete_bulk":
             ids = set(self.get_selected_ids())
             self.records = [r for r in self.records if self._record_key(r) not in ids]
             self._sync_resource_records()
             self.selected = []
             self.select_all = False
-            return
+            return None
         if action_name == "create" and data:
             next_id = 1
             for r in self.records:
@@ -438,7 +650,7 @@ class ListRecordsHost(OrbitPageHost):
                     pass
             self.records = [*self.records, {"id": next_id, **dict(data)}]
             self._sync_resource_records()
-            return
+            return None
         if action_name == "edit" and rid and data:
             out: list[Any] = []
             for r in self.records:
@@ -456,8 +668,48 @@ class ListRecordsHost(OrbitPageHost):
                     out.append(r)
             self.records = out
             self._sync_resource_records()
-            return
+            return None
         self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
+        return None
+
+    async def _mount_action_orm(
+        self,
+        model: type[Any],
+        action_name: str,
+        rid: str,
+        data: dict[str, Any],
+    ) -> None:
+        if action_name in {"delete", "force_delete"} and rid:
+            await _orm_delete_ids(model, {rid})
+            self.records = [r for r in self.records if self._record_key(r) != rid]
+            self.selected = [s for s in (self.selected or []) if s != rid]
+            return
+        if action_name == "delete_bulk":
+            ids = set(self.get_selected_ids())
+            await _orm_delete_ids(model, ids)
+            self.records = [r for r in self.records if self._record_key(r) not in ids]
+            self.selected = []
+            self.select_all = False
+            return
+        if action_name == "create" and data:
+            row = await _orm_create(model, dict(data))
+            self.records = [*self.records, row]
+            return
+        if action_name == "edit" and rid and data:
+            row = await _orm_update(model, rid, dict(data))
+            out: list[Any] = []
+            replaced = False
+            for r in self.records:
+                if self._record_key(r) != rid:
+                    out.append(r)
+                    continue
+                out.append(row)
+                replaced = True
+            if not replaced:
+                out.append(row)
+            self.records = out
+            return
+        self.dispatch("orbit-mount-action", name=action_name, record_id=rid)
 
     def render(self) -> str:
         resource = self.get_resource()
@@ -656,8 +908,17 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
         if isinstance(kwargs.get("data"), dict):
             self.data = dict(kwargs["data"])
 
-    def create(self) -> None:
+    def create(self) -> Any:
         resource = self.get_resource()
+        if not _resource_mutable(resource):
+            self.dispatch(
+                "orbit-records-readonly",
+                message="This demo resource uses a fixed seed list and cannot be changed.",
+            )
+            return None
+        model = _resource_model(resource)
+        if model is not None:
+            return self._create_orm(model, resource)
         records = _resource_records(resource)
         next_id = _next_record_id(records)
         payload = dict(self.data or {})
@@ -669,9 +930,24 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
         self.data = dict(row)
         self.dispatch("orbit-record-created", data=dict(row))
         self.redirect(resource.page_url("view", row))
+        return None
 
-    def mountAction(self, name: str, **kwargs: Any) -> None:
-        self.dispatch("orbit-mount-action", name=name, **kwargs)
+    async def _create_orm(self, model: type[Any], resource: type[Any]) -> None:
+        row = await _orm_create(model, dict(self.data or {}))
+        self.created_id = str(row.get("id") or "")
+        self.data = dict(row)
+        self.dispatch("orbit-record-created", data=dict(row))
+        self.redirect(resource.page_url("view", row))
+
+    def mountAction(
+        self,
+        name: str,
+        record_id: Any = None,
+        payload: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        action_name, rid, _ = _mount_action_args(name, record_id, payload, **kwargs)
+        self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
 
     def render(self) -> str:
         from almasix.orbit.panels.pages.resource_pages import CreateRecord
@@ -687,7 +963,7 @@ class EditRecordHost(FormDataMutations, OrbitPageHost):
     record_id: str = ""
     data: dict[str, Any] = {}
 
-    def mount(self, **kwargs: Any) -> None:
+    def mount(self, **kwargs: Any) -> Any:
         if kwargs.get("record_id") is not None:
             self.record_id = str(kwargs["record_id"])
         if isinstance(kwargs.get("data"), dict):
@@ -696,12 +972,30 @@ class EditRecordHost(FormDataMutations, OrbitPageHost):
             self.data = dict(kwargs["record"])
             self.record_id = str(self.data.get("id") or self.record_id)
         elif self.record_id and not self.data:
+            model = _resource_model(self.get_resource())
+            if model is not None:
+                return self._mount_orm(model)
             found = _find_record(_resource_records(self.get_resource()), self.record_id)
             if found is not None:
                 self.data = _as_record_dict(found)
+        return None
 
-    def save(self) -> None:
+    async def _mount_orm(self, model: type[Any]) -> None:
+        found = await _orm_find(model, self.record_id)
+        if found is not None:
+            self.data = _as_record_dict(found)
+
+    def save(self) -> Any:
         resource = self.get_resource()
+        if not _resource_mutable(resource):
+            self.dispatch(
+                "orbit-records-readonly",
+                message="This demo resource uses a fixed seed list and cannot be changed.",
+            )
+            return None
+        model = _resource_model(resource)
+        if model is not None:
+            return self._save_orm(model, resource)
         rid = str(self.record_id or self.data.get("id") or "")
         records = _resource_records(resource)
         payload = dict(self.data or {})
@@ -742,18 +1036,49 @@ class EditRecordHost(FormDataMutations, OrbitPageHost):
         self.data = dict(payload)
         self.dispatch("orbit-record-saved", record_id=self.record_id, data=dict(self.data))
         self.redirect(resource.page_url("view", self.data))
+        return None
 
-    def mountAction(self, name: str, record_id: str | None = None, **kwargs: Any) -> None:
-        action_name = str(name or "")
-        rid = str(record_id or kwargs.get("recordId") or self.record_id or "")
+    async def _save_orm(self, model: type[Any], resource: type[Any]) -> None:
+        rid = str(self.record_id or self.data.get("id") or "")
+        row = await _orm_update(model, rid, dict(self.data or {}))
+        self.record_id = str(row.get("id") or rid)
+        self.data = dict(row)
+        self.dispatch("orbit-record-saved", record_id=self.record_id, data=dict(self.data))
+        self.redirect(resource.page_url("view", self.data))
+
+    def mountAction(
+        self,
+        name: str,
+        record_id: str | None = None,
+        payload: Any = None,
+        **kwargs: Any,
+    ) -> Any:
+        action_name, rid, _ = _mount_action_args(name, record_id, payload, **kwargs)
+        if not rid:
+            rid = str(self.record_id or "")
         if action_name in {"delete", "force_delete"} and rid:
             resource = self.get_resource()
+            if not _resource_mutable(resource):
+                self.dispatch(
+                    "orbit-records-readonly",
+                    message="This demo resource uses a fixed seed list and cannot be changed.",
+                )
+                return None
+            model = _resource_model(resource)
+            if model is not None:
+                return self._delete_orm(model, resource, rid)
             records = [r for r in _resource_records(resource) if _record_key(r) != rid]
             _save_resource_records(resource, records)
             self.dispatch("orbit-record-deleted", record_id=rid)
             self.redirect(resource.page_url("index"))
-            return
+            return None
         self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
+        return None
+
+    async def _delete_orm(self, model: type[Any], resource: type[Any], rid: str) -> None:
+        await _orm_delete_ids(model, {rid})
+        self.dispatch("orbit-record-deleted", record_id=rid)
+        self.redirect(resource.page_url("index"))
 
     def render(self) -> str:
         from almasix.orbit.panels.pages.resource_pages import EditRecord
@@ -772,28 +1097,59 @@ class ViewRecordHost(OrbitPageHost):
     record_id: str = ""
     record: dict[str, Any] = {}
 
-    def mount(self, **kwargs: Any) -> None:
+    def mount(self, **kwargs: Any) -> Any:
         if kwargs.get("record_id") is not None:
             self.record_id = str(kwargs["record_id"])
         if isinstance(kwargs.get("record"), dict):
             self.record = dict(kwargs["record"])
             self.record_id = str(self.record.get("id") or self.record_id)
         elif self.record_id and not self.record:
+            model = _resource_model(self.get_resource())
+            if model is not None:
+                return self._mount_orm(model)
             found = _find_record(_resource_records(self.get_resource()), self.record_id)
             if found is not None:
                 self.record = _as_record_dict(found)
+        return None
 
-    def mountAction(self, name: str, record_id: str | None = None, **kwargs: Any) -> None:
-        action_name = str(name or "")
-        rid = str(record_id or kwargs.get("recordId") or self.record_id or "")
+    async def _mount_orm(self, model: type[Any]) -> None:
+        found = await _orm_find(model, self.record_id)
+        if found is not None:
+            self.record = _as_record_dict(found)
+
+    def mountAction(
+        self,
+        name: str,
+        record_id: str | None = None,
+        payload: Any = None,
+        **kwargs: Any,
+    ) -> Any:
+        action_name, rid, _ = _mount_action_args(name, record_id, payload, **kwargs)
+        if not rid:
+            rid = str(self.record_id or "")
         if action_name in {"delete", "force_delete"} and rid:
             resource = self.get_resource()
+            if not _resource_mutable(resource):
+                self.dispatch(
+                    "orbit-records-readonly",
+                    message="This demo resource uses a fixed seed list and cannot be changed.",
+                )
+                return None
+            model = _resource_model(resource)
+            if model is not None:
+                return self._delete_orm(model, resource, rid)
             records = [r for r in _resource_records(resource) if _record_key(r) != rid]
             _save_resource_records(resource, records)
             self.dispatch("orbit-record-deleted", record_id=rid)
             self.redirect(resource.page_url("index"))
-            return
+            return None
         self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
+        return None
+
+    async def _delete_orm(self, model: type[Any], resource: type[Any], rid: str) -> None:
+        await _orm_delete_ids(model, {rid})
+        self.dispatch("orbit-record-deleted", record_id=rid)
+        self.redirect(resource.page_url("index"))
 
     def render(self) -> str:
         from almasix.orbit.panels.pages.resource_pages import ViewRecord
@@ -822,8 +1178,15 @@ class FormHost(FormDataMutations, ConduitHost):
     def save(self) -> None:
         self.dispatch("orbit-form-saved", data=dict(self.data))
 
-    def mountAction(self, name: str, **kwargs: Any) -> None:
-        self.dispatch("orbit-mount-action", name=name, **kwargs)
+    def mountAction(
+        self,
+        name: str,
+        record_id: Any = None,
+        payload: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        action_name, rid, _ = _mount_action_args(name, record_id, payload, **kwargs)
+        self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
 
     def render(self) -> str:
         factory = type(self)._form_factory

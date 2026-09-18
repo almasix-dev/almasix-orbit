@@ -52,6 +52,7 @@ from almasix.routing.router import Router
 class PostResource(Resource):
     model = type("Post", (), {})
     navigation_label = "Posts"
+    records_mutable = True
     records = [{"id": 1, "title": "Hello", "status": "draft"}]
 
     @classmethod
