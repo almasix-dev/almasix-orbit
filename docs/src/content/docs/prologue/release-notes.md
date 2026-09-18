@@ -7,25 +7,28 @@ Orbit follows Almasix’s major-line docs model. This page tracks notable
 changes; pin a package version in production and read the matching line in the
 header switcher.
 
-## Unreleased (`main`)
+## 0.3.0
 
-Working from the tip of `main`? Switch the docs to **main** in the header.
-Breaking changes will land here before they become a new major.
+Per-panel component directories ([#32](https://github.com/almasix-dev/almasix-orbit/issues/32) / [#33](https://github.com/almasix-dev/almasix-orbit/pull/33) / [#35](https://github.com/almasix-dev/almasix-orbit/pull/35) / [#36](https://github.com/almasix-dev/almasix-orbit/pull/36)).
 
-### Per-panel component directories ([#32](https://github.com/almasix-dev/almasix-orbit/issues/32))
+**Breaking:** each panel owns its components under `app/orbit/{id}/` (flat `app/orbit/resources` is no longer the implied home).
 
-**Breaking (targets 0.3.0):** each panel owns its components under `app/orbit/{id}/`.
+Highlights:
 
 - `orbit:install` / `make:orbit-panel` → `app/orbit/{id}/panel.py` + `resources/`, `pages/`, `widgets/`, `themes/` (stub `custom.css`)
 - `make:orbit-resource|page|widget --panel=` writes into that panel’s tree
 - `make:orbit-field` → `app/orbit/shared/fields/` (never auto-discovered)
-- `.discover_panel_dirs()` discovers resources/pages/widgets **and** loads `themes/*.css`; FQCN dedupe; legacy `*_panel.py` still loads with `DeprecationWarning`
+- `.discover_panel_dirs()` discovers resources/pages/widgets **and** loads `themes/*.css`; FQCN dedupe; legacy `*_panel.py` still loads with `DeprecationWarning` (removed in 0.4)
 - `.theme_package(...)` / `.theme_stylesheet(...)` for extra theme CSS
 - Plugins **only** via `.plugin(...)` — no `{id}/plugins` autodisc
 - Shared resources: explicit `.resources([...])` on each panel; `app/orbit/shared/` is never auto-pulled
-- Thin provider unchanged; examples migrated to colocated layout
+- Login/register hosts bind form fields under `data.*` ([#35](https://github.com/almasix-dev/almasix-orbit/pull/35))
 
-See [Installation](/getting-started/installation/) for the upgrade path from flat `app/orbit/resources`.
+See [Installation](/getting-started/installation/) for the upgrade path from 0.2.x.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.3.0'
+```
 
 ## 0.2.2
 
@@ -42,7 +45,7 @@ Highlights:
 **Upgrading from 0.2.1:** move inline `Panel.make(...)` from the provider into `app/orbit/admin_panel.py` as `register_admin_panel`, switch the provider to `register_app_orbit_panels(registry)`, keep `OrbitPanelProvider` in `config/app.py`, restart.
 
 ```bash title="terminal"
-pip install -U 'almasix-orbit==0.2.2'
+pip install -U 'almasix-orbit==0.3.0'
 ```
 
 ## 0.2.1
@@ -69,7 +72,7 @@ Command not loaded — … ImportError: cannot import name '__version__' from 'a
 **1. Upgrade Orbit packages to 0.2.1+**
 
 ```bash title="terminal"
-pip install -U 'almasix-orbit==0.2.2'
+pip install -U 'almasix-orbit==0.3.0'
 ```
 
 (Or bump every `almasix-orbit-*` pin your app uses and reinstall.)
@@ -93,7 +96,7 @@ smith version
 
 You should see a version print and **no** `Command not loaded` lines for `version` / `list` / introspection. Then re-run `smith orbit:install` if you still need assets or the provider scaffold.
 
-**Clean venv alternative:** recreate the virtualenv and install `almasix` + `almasix-orbit==0.2.2` fresh (framework first or together is fine — 0.2.1+ no longer overwrites the init).
+**Clean venv alternative:** recreate the virtualenv and install `almasix` + `almasix-orbit==0.3.0` fresh (framework first or together is fine — 0.2.1+ no longer overwrites the init).
 
 **Plugin / package authors:** do not ship `almasix/__init__.py` in your wheels. Only contribute subpackages (see [Plugin development](/panels/plugins/)).
 
