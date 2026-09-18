@@ -463,35 +463,52 @@ class Panel:
         self._discover_widgets_in.extend(str(p) for p in paths)
         return self
 
+    def discover_panel_dirs(self, package: str | None = None) -> Self:
+        """Discover resources/pages/widgets under a colocated panel package.
+
+        Defaults to ``app.orbit.{panel_id}`` (v0.3 layout)::
+
+            app/orbit/admin/resources|pages|widgets
+        """
+        pkg = (package or f"app.orbit.{self.id}").strip()
+        return (
+            self.discover_resources(f"{pkg}.resources")
+            .discover_pages(f"{pkg}.pages")
+            .discover_widgets(f"{pkg}.widgets")
+        )
+
     def load_discovered(self) -> Self:
         """Import discovered modules and register resources, pages, and widgets."""
-        from almasix.orbit.panels.discover import discover_classes
+        from almasix.orbit.panels.discover import class_key, discover_classes
         from almasix.orbit.panels.page import Page
         from almasix.orbit.panels.resource import Resource
 
-        seen_resources = {r.__name__ for r in self._resources}
-        seen_pages = {p.__name__ for p in self._pages}
-        seen_widgets = {w.__name__ for w in self._widgets}
+        seen_resources = {class_key(r) for r in self._resources}
+        seen_pages = {class_key(p) for p in self._pages}
+        seen_widgets = {class_key(w) for w in self._widgets}
 
         for path in self._discover_resources_in:
             for cls in discover_classes(path, base_class=Resource):
-                if cls.__name__ not in seen_resources:
+                key = class_key(cls)
+                if key not in seen_resources:
                     self._resources.append(cls)
-                    seen_resources.add(cls.__name__)
+                    seen_resources.add(key)
 
         for path in self._discover_pages_in:
             for cls in discover_classes(path, base_class=Page):
-                if cls.__name__ not in seen_pages:
+                key = class_key(cls)
+                if key not in seen_pages:
                     self._pages.append(cls)
-                    seen_pages.add(cls.__name__)
+                    seen_pages.add(key)
 
         for path in self._discover_widgets_in:
             from almasix.orbit.widgets.widget import Widget
 
             for cls in discover_classes(path, base_class=Widget):
-                if cls.__name__ not in seen_widgets:
+                key = class_key(cls)
+                if key not in seen_widgets:
                     self._widgets.append(cls)
-                    seen_widgets.add(cls.__name__)
+                    seen_widgets.add(key)
 
         return self
 

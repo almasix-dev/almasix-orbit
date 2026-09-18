@@ -92,6 +92,7 @@ def register_{panel_id}_panel(registry: PanelRegistry) -> Panel:
         .brand_name("{brand}")
         .navigation_layout("apps")
         .login()
+        .discover_panel_dirs()
     )
     registry.register(panel)
     return panel
@@ -99,7 +100,7 @@ def register_{panel_id}_panel(registry: PanelRegistry) -> Panel:
 
 
 def _thin_provider_source() -> str:
-    return '''"""Register every panel defined under ``app/orbit/*_panel.py``."""
+    return '''"""Register every panel defined under ``app/orbit/*/panel.py``."""
 
 from __future__ import annotations
 
@@ -119,7 +120,17 @@ def _ensure_orbit_package_init(app: Any) -> None:
     orbit_dir.mkdir(parents=True, exist_ok=True)
     init = orbit_dir / "__init__.py"
     if not init.is_file():
-        init.write_text('"""Application Orbit panels, resources, pages, and widgets."""\n', encoding="utf-8")
+        init.write_text(
+            '"""Application Orbit panels (colocated per panel id)."""\n',
+            encoding="utf-8",
+        )
+
+
+def _ensure_pkg_init(directory: Path, docstring: str) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    init = directory / "__init__.py"
+    if not init.is_file():
+        init.write_text(f'"""{docstring}"""\n', encoding="utf-8")
 
 
 def _write_panel_stub(
@@ -130,9 +141,19 @@ def _write_panel_stub(
     brand: str,
     force: bool,
 ) -> tuple[Path, bool]:
-    """Write ``app/orbit/{panel_id}_panel.py``. Returns (path, created)."""
+    """Write ``app/orbit/{panel_id}/panel.py`` + empty component dirs. Returns (path, created)."""
     _ensure_orbit_package_init(app)
-    out = Path(app.path("app", "orbit", f"{panel_id}_panel.py"))
+    panel_dir = Path(app.path("app", "orbit", panel_id))
+    _ensure_pkg_init(panel_dir, f"Orbit panel package: {panel_id}")
+    for sub, doc in (
+        ("resources", f"{panel_id} resources"),
+        ("pages", f"{panel_id} pages"),
+        ("widgets", f"{panel_id} widgets"),
+        ("themes", f"{panel_id} themes"),
+    ):
+        _ensure_pkg_init(panel_dir / sub, doc)
+
+    out = panel_dir / "panel.py"
     if out.exists() and not force:
         return out, False
     out.write_text(
@@ -143,7 +164,7 @@ def _write_panel_stub(
 
 
 def _ensure_thin_provider(app: Any, *, force: bool = False) -> str:
-    """Ensure OrbitPanelProvider only discovers ``app/orbit/*_panel`` modules."""
+    """Ensure OrbitPanelProvider only discovers ``app/orbit/*/panel.py`` modules."""
     provider_path = Path(app.path("app", "providers", "orbit_panel_provider.py"))
     provider_path.parent.mkdir(parents=True, exist_ok=True)
     desired = _thin_provider_source()
@@ -151,11 +172,18 @@ def _ensure_thin_provider(app: Any, *, force: bool = False) -> str:
         text = provider_path.read_text(encoding="utf-8")
         if "register_app_orbit_panels" in text:
             return f"provider already discovers app/orbit panels → {provider_path}"
-        # Upgrade legacy inline providers to the thin discoverer.
         provider_path.write_text(desired, encoding="utf-8")
-        return f"upgraded {provider_path} to discover app/orbit/*_panel.py"
+        return f"upgraded {provider_path} to discover app/orbit/*/panel.py"
     provider_path.write_text(desired, encoding="utf-8")
     return f"wrote {provider_path}"
+
+
+def _panel_id_option(command: Command, **kwargs: Any) -> str:
+    raw = kwargs.get("panel")
+    if raw is None:
+        raw = command.option("panel")
+    text = str(raw or "admin").strip().replace("-", "_").replace("/", "_").lower()
+    return text or "admin"
 
 
 class OrbitInstallCommand(Command):
@@ -165,12 +193,13 @@ class OrbitInstallCommand(Command):
         " {--panel=admin : Panel id}"
         " {--force : Overwrite existing config / provider stubs}"
     )
-    description = "Publish Orbit assets and scaffold config + first panel under app/orbit"
+    description = "Publish Orbit assets and scaffold config + first panel under app/orbit/{id}/"
     aliases: ClassVar[tuple[str, ...]] = ()
     boots_application: ClassVar[bool] = True
 
     def handle(self) -> int:
         panel_id = str(self.option("panel") or "admin").strip() or "admin"
+        panel_id = panel_id.replace("-", "_").replace("/", "_").lower()
         path = str(self.option("path") or "admin").strip().lstrip("/") or "admin"
         force = bool(self.option("force"))
 
@@ -222,9 +251,9 @@ ORBIT = {{
         self.info(_ensure_thin_provider(self.app, force=force))
         self.info(_ensure_provider_in_app_config(self.app))
         self.success(
-            f"Orbit installed. Panels live in app/orbit/*_panel.py; "
+            f"Orbit installed. Panels live in app/orbit/{{id}}/panel.py; "
             f"OrbitPanelProvider discovers them. Next: "
-            f"smith orbit:resource Post --panel={panel_id} then open /{path}"
+            f"smith make:orbit-resource Post --panel={panel_id} then open /{path}"
         )
         return self.SUCCESS
 
@@ -235,7 +264,7 @@ class MakeOrbitPanelCommand(Command):
         " {--path= : URL path (defaults to panel id)}"
         " {--force : Overwrite}"
     )
-    description = "Create app/orbit/{id}_panel.py (auto-registered by OrbitPanelProvider)"
+    description = "Create app/orbit/{id}/panel.py + component dirs (auto-registered)"
     aliases: ClassVar[tuple[str, ...]] = ("orbit:panel",)
     boots_application: ClassVar[bool] = True
 
@@ -250,7 +279,7 @@ class MakeOrbitPanelCommand(Command):
         if self.app is None:
             self.error("Application is required")
             return self.FAILURE
-        out = Path(self.app.path("app", "orbit", f"{panel_id}_panel.py"))
+        out = Path(self.app.path("app", "orbit", panel_id, "panel.py"))
         if out.exists() and not force:
             self.error(f"{out} already exists")
             return self.FAILURE
@@ -265,7 +294,7 @@ class MakeOrbitPanelCommand(Command):
         self.info(_ensure_thin_provider(self.app, force=False))
         self.info(_ensure_provider_in_app_config(self.app))
         self.success(
-            f"Panel {panel_id!r} added under app/orbit. "
+            f"Panel {panel_id!r} added under app/orbit/{panel_id}/. "
             f"Restart the app and open /{path}"
         )
         return self.SUCCESS
@@ -274,10 +303,10 @@ class MakeOrbitPanelCommand(Command):
 class MakeOrbitResourceCommand(Command):
     signature = (
         "make:orbit-resource {name : Resource class name (e.g. Post or Blog/Post)}"
-        " {--panel=admin : Panel id (documentation only)}"
+        " {--panel=admin : Panel id (writes under app/orbit/{{panel}}/resources)}"
         " {--force : Overwrite}"
     )
-    description = "Create a new Orbit resource class"
+    description = "Create a new Orbit resource class under a panel package"
     aliases: ClassVar[tuple[str, ...]] = ("orbit:resource",)
     boots_application: ClassVar[bool] = True
 
@@ -287,6 +316,7 @@ class MakeOrbitResourceCommand(Command):
             self.error("name is required")
             return self.INVALID
         force = bool(self.option("force") or kwargs.get("force"))
+        panel_id = _panel_id_option(self, **kwargs)
         parts = [p for p in raw.replace("\\", "/").replace(".", "/").split("/") if p]
         class_name = _studly(parts[-1])
         if not class_name.endswith("Resource"):
@@ -296,9 +326,10 @@ class MakeOrbitResourceCommand(Command):
             module_parts[-1] = _snake(class_name)
         rel = Path(*module_parts[:-1]) if len(module_parts) > 1 else Path()
         if self.app is None:
-            # Unit-test / dry path: validate only.
             return self.SUCCESS
-        out = Path(self.app.path("app", "orbit", "resources", *rel.parts, f"{module_parts[-1]}.py"))
+        resources_dir = Path(self.app.path("app", "orbit", panel_id, "resources"))
+        _ensure_pkg_init(resources_dir, f"{panel_id} resources")
+        out = resources_dir / rel / f"{module_parts[-1]}.py"
         out.parent.mkdir(parents=True, exist_ok=True)
         if out.exists() and not force:
             self.error(f"{out} already exists")
@@ -339,7 +370,111 @@ class {class_name}(Resource):
             encoding="utf-8",
         )
         self.info(f"resource → {out}")
-        self.success("orbit resource created")
+        self.success(f"orbit resource created under panel {panel_id!r}")
+        return self.SUCCESS
+
+
+class MakeOrbitPageCommand(Command):
+    signature = (
+        "make:orbit-page {name : Page class name (e.g. Settings)}"
+        " {--panel=admin : Panel id}"
+        " {--force : Overwrite}"
+    )
+    description = "Create a custom Orbit page under a panel package"
+    aliases: ClassVar[tuple[str, ...]] = ("orbit:page",)
+    boots_application: ClassVar[bool] = True
+
+    def handle(self, *args: Any, **kwargs: Any) -> int:
+        raw = _resolve_name(self, *args, **kwargs)
+        if not raw:
+            self.error("name is required")
+            return self.INVALID
+        force = bool(self.option("force") or kwargs.get("force"))
+        panel_id = _panel_id_option(self, **kwargs)
+        class_name = _studly(raw)
+        if not class_name.endswith("Page"):
+            class_name = f"{class_name}Page"
+        snake = _snake(class_name)
+        if self.app is None:
+            return self.SUCCESS
+        pages_dir = Path(self.app.path("app", "orbit", panel_id, "pages"))
+        _ensure_pkg_init(pages_dir, f"{panel_id} pages")
+        out = pages_dir / f"{snake}.py"
+        if out.exists() and not force:
+            self.error(f"{out} already exists")
+            return self.FAILURE
+        title = class_name.removesuffix("Page")
+        out.write_text(
+            f'''"""Orbit page: {class_name}."""
+
+from __future__ import annotations
+
+from almasix.orbit import Page
+
+
+class {class_name}(Page):
+    title = "{title}"
+    navigation_label = "{title}"
+    navigation_icon = "heroicon-o-document-text"
+    slug = "{_snake(title)}"
+''',
+            encoding="utf-8",
+        )
+        self.info(f"page → {out}")
+        self.success(f"orbit page created under panel {panel_id!r}")
+        return self.SUCCESS
+
+
+class MakeOrbitWidgetCommand(Command):
+    signature = (
+        "make:orbit-widget {name : Widget class name (e.g. StatsOverview)}"
+        " {--panel=admin : Panel id}"
+        " {--force : Overwrite}"
+    )
+    description = "Create an Orbit widget under a panel package"
+    aliases: ClassVar[tuple[str, ...]] = ("orbit:widget",)
+    boots_application: ClassVar[bool] = True
+
+    def handle(self, *args: Any, **kwargs: Any) -> int:
+        raw = _resolve_name(self, *args, **kwargs)
+        if not raw:
+            self.error("name is required")
+            return self.INVALID
+        force = bool(self.option("force") or kwargs.get("force"))
+        panel_id = _panel_id_option(self, **kwargs)
+        class_name = _studly(raw)
+        if not class_name.endswith("Widget"):
+            class_name = f"{class_name}Widget"
+        snake = _snake(class_name)
+        if self.app is None:
+            return self.SUCCESS
+        widgets_dir = Path(self.app.path("app", "orbit", panel_id, "widgets"))
+        _ensure_pkg_init(widgets_dir, f"{panel_id} widgets")
+        out = widgets_dir / f"{snake}.py"
+        if out.exists() and not force:
+            self.error(f"{out} already exists")
+            return self.FAILURE
+        out.write_text(
+            f'''"""Orbit widget: {class_name}."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from almasix.orbit.widgets import Widget
+
+
+class {class_name}(Widget):
+    def __init__(self) -> None:
+        super().__init__("{_snake(class_name.removesuffix("Widget"))}")
+
+    def get_data(self) -> Any:
+        return None
+''',
+            encoding="utf-8",
+        )
+        self.info(f"widget → {out}")
+        self.success(f"orbit widget created under panel {panel_id!r}")
         return self.SUCCESS
 
 
@@ -589,6 +724,8 @@ ORBIT_COMMANDS: list[type[Command]] = [
     OrbitInstallCommand,
     MakeOrbitPanelCommand,
     MakeOrbitResourceCommand,
+    MakeOrbitPageCommand,
+    MakeOrbitWidgetCommand,
     MakeOrbitFieldCommand,
     MakeOrbitUserCommand,
 ]

@@ -7,6 +7,22 @@ Orbit follows Almasix’s major-line docs model. This page tracks notable
 changes; pin a package version in production and read the matching line in the
 header switcher.
 
+## Unreleased (`main`)
+
+Working from the tip of `main`? Switch the docs to **main** in the header.
+Breaking changes will land here before they become a new major.
+
+### Per-panel component directories ([#32](https://github.com/almasix-dev/almasix-orbit/issues/32))
+
+**Breaking (targets 0.3.0):** each panel owns its components under `app/orbit/{id}/`.
+
+- `orbit:install` / `make:orbit-panel` → `app/orbit/{id}/panel.py` + `resources/`, `pages/`, `widgets/`, `themes/`
+- `make:orbit-resource|page|widget --panel=` writes into that panel’s tree
+- `.discover_panel_dirs()` + FQCN dedupe; legacy `*_panel.py` still loads with `DeprecationWarning`
+- Thin provider unchanged; examples migrated to colocated layout
+
+See [Installation](/getting-started/installation/) for the upgrade path from flat `app/orbit/resources`.
+
 ## 0.2.2
 
 Scaffold wiring for panels under `app/orbit` ([#27](https://github.com/almasix-dev/almasix-orbit/issues/27) / [#28](https://github.com/almasix-dev/almasix-orbit/pull/28)) plus docs recovered after the 0.2.1 squash ([#29](https://github.com/almasix-dev/almasix-orbit/pull/29)).

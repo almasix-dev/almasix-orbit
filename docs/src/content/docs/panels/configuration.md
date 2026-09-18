@@ -7,9 +7,9 @@ A **panel** is the admin shell: brand, path, navigation, middleware, and the lis
 
 ## Where panels live
 
-After `orbit:install`, configure panels in `app/orbit/{id}_panel.py`. The app’s `OrbitPanelProvider` only discovers those files — it should not contain `Panel.make(...)`. Full layout and discovery rules: [Installation](/getting-started/installation/).
+After `orbit:install`, configure panels in `app/orbit/{id}/panel.py`. Components for that panel live beside it under `resources/`, `pages/`, `widgets/`, and `themes/`. The app’s `OrbitPanelProvider` only discovers panel packages — it should not contain `Panel.make(...)`. Full layout: [Installation](/getting-started/installation/).
 
-```python title="app/orbit/admin_panel.py"
+```python title="app/orbit/admin/panel.py"
 from almasix.orbit import Panel, PanelRegistry, Plugin
 from almasix.orbit.panels.hooks import register_render_hook
 
@@ -45,6 +45,7 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
         .sidebar_collapsible()
         # .home_url("/welcome")
         # .breadcrumbs_enabled(False)
+        .discover_panel_dirs()   # app.orbit.admin.resources|pages|widgets
     )
     registry.register(panel)
     return panel
@@ -109,8 +110,14 @@ panel.login(MyLogin).signup().dashboard()
 
 ### Discovery paths
 
-Auto-import ``Resource`` / ``Page`` / ``Widget`` subclasses from a directory or package.
-``mount_panel`` calls ``load_discovered()`` for you; call it yourself only when you need the classes before mount.
+Prefer the colocated helper (scaffolding emits this):
+
+```python
+panel = Panel.make("admin").discover_panel_dirs()
+# → app.orbit.admin.resources|pages|widgets
+```
+
+Or pass directories / packages explicitly. ``mount_panel`` calls ``load_discovered()`` for you; call it yourself only when you need the classes before mount.
 
 ```python
 from almasix import app_path
@@ -118,22 +125,21 @@ from almasix import app_path
 
 panel = (
     Panel.make("admin")
-    .discover_resources(app_path("orbit", "resources"))
-    .discover_pages(app_path("orbit", "pages"))
-    .discover_widgets(app_path("orbit", "widgets"))
+    .discover_resources(app_path("orbit", "admin", "resources"))
+    .discover_pages("app.orbit.admin.pages")
+    .discover_widgets("app.orbit.admin.widgets")
 )
-# Dotted packages also work: .discover_pages("app.orbit.pages")
 ```
 
 Paths may be:
 
 | Form | Example |
 |------|---------|
-| Absolute FS dir (preferred with ``app_path``) | ``app_path("orbit", "resources")`` → ``…/app/orbit/resources`` |
-| Dotted package | ``"app.orbit.resources"`` |
-| Relative dir (only if it exists vs process cwd) | ``"app/orbit/resources"`` |
+| Absolute FS dir (preferred with ``app_path``) | ``app_path("orbit", "admin", "resources")`` |
+| Dotted package | ``"app.orbit.admin.resources"`` |
+| Relative dir (only if it exists vs process cwd) | ``"app/orbit/admin/resources"`` |
 
-Discovered classes are merged with any you still register via ``.resources([...])``.
+Discovered classes are merged with any you still register via ``.resources([...])``. Deduplication uses the fully-qualified class name so two panels may each define ``PostResource``.
 
 ## Plugins and render hooks
 
