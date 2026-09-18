@@ -823,16 +823,28 @@
     window.Alpine.data("orbitSearchableSelect", () => ({
       q: "",
       filter() {
+        const root = this.$el;
         const select = this.$refs.select;
         if (!(select instanceof HTMLSelectElement)) return;
-        const q = (this.q || "").toLowerCase();
+        const ajax = root.getAttribute("data-ajax-search") === "true";
+        const q = this.q || "";
+        if (ajax) {
+          const field = root.getAttribute("data-field") || "";
+          const wireRoot = root.closest("[wire\\:id], [conduit\\:id], [data-conduit]");
+          const wire = wireRoot && (wireRoot.__wire || wireRoot.__conduit);
+          if (wire && typeof wire.searchSelectOptions === "function") {
+            wire.searchSelectOptions(field, q);
+            return;
+          }
+        }
+        const needle = q.toLowerCase();
         Array.from(select.options).forEach((opt) => {
           if (!opt.value) {
             opt.hidden = false;
             return;
           }
           const label = (opt.dataset.label || opt.textContent || "").toLowerCase();
-          opt.hidden = Boolean(q) && !label.includes(q);
+          opt.hidden = Boolean(needle) && !label.includes(needle);
         });
       },
     }));

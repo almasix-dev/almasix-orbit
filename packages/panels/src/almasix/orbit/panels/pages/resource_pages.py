@@ -287,6 +287,12 @@ class CreateRecord(ResourcePage):
         form = resource.get_form()
         if state:
             form.fill(state)
+        ctx = {**ctx, "resource": resource}
+        if "model" not in ctx:
+            try:
+                ctx["model"] = resource.get_model()
+            except Exception:
+                ctx["model"] = getattr(resource, "model", None)
         return (
             f'<div class="or-page or-page-create" data-resource="{e(resource.get_slug())}"'
             f"{_resource_width_style(resource, operation='create')}>"
@@ -314,6 +320,12 @@ class EditRecord(ResourcePage):
         record_id = _record_id(record)
         header_actions = _page_header_actions(resource, "edit", record)
         mutable = _resource_is_mutable(resource)
+        ctx = {**ctx, "resource": resource}
+        if "model" not in ctx:
+            try:
+                ctx["model"] = resource.get_model()
+            except Exception:
+                ctx["model"] = getattr(resource, "model", None)
         if not mutable:
             readonly = form.readonly() if hasattr(form, "readonly") else form
             return (

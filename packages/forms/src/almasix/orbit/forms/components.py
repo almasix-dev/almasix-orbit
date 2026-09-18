@@ -294,22 +294,95 @@ class Field(Component):
 
     def relationship(
         self,
-        name: str,
-        title_attribute: str,
+        name: str | None = None,
+        title_attribute: str | None = None,
         *,
+        model: type[Any] | None = None,
+        option_label: str | None = None,
         search_columns: Sequence[str] | None = None,
         preload: bool = False,
         modify_query: Callable[..., Any] | None = None,
         get_option_label: Callable[..., Any] | None = None,
+        get_option_label_from_record_using: Callable[..., Any] | None = None,
     ) -> Self:
+        """Wire options to an Eloquent-style relationship or related model.
+
+        Filament parity:
+
+        - ``relationship("author", "name")`` resolves the related model from the
+          owning resource model in render context.
+        - Pass ``model=Artist`` when the related class is known explicitly.
+        - ``option_label="{name} - {bio}"`` formats labels from multiple columns.
+        - ``get_option_label_from_record_using(lambda r: ...)`` for full control.
+        - ``searchable()`` without ``preload()`` uses AJAX search (capped by
+          ``options_limit``, default 50).
+        - ``preload()`` eagerly loads a capped option set.
+        """
+        from almasix.orbit.forms.select_relationship import option_label_placeholders
+
+        label_cb = get_option_label_from_record_using or get_option_label
+        fmt = option_label
+        placeholders = option_label_placeholders(fmt) if fmt else []
+        title = title_attribute
+        if title is None:
+            title = placeholders[0] if placeholders else "id"
+        cols = list(search_columns) if search_columns else None
+        if cols is None and placeholders:
+            cols = placeholders
         self._relationship = {
             "name": name,
-            "title_attribute": title_attribute,
-            "search_columns": list(search_columns) if search_columns else None,
+            "title_attribute": title,
+            "model": model,
+            "option_label": fmt,
+            "search_columns": cols,
             "preload": preload,
             "modify_query": modify_query,
-            "get_option_label": get_option_label,
+            "get_option_label": label_cb,
         }
+        return self
+
+    def get_option_label_from_record_using(self, callback: Callable[..., Any]) -> Self:
+        """Filament alias — set label formatter on an existing relationship config."""
+        if self._relationship is None:
+            self._relationship = {
+                "name": None,
+                "title_attribute": "id",
+                "model": None,
+                "option_label": None,
+                "search_columns": None,
+                "preload": False,
+                "modify_query": None,
+                "get_option_label": callback,
+            }
+        elif isinstance(self._relationship, dict):
+            self._relationship["get_option_label"] = callback
+        return self
+
+    def option_label(self, template: str) -> Self:
+        """Set a ``{column}`` format string for relationship option labels.
+
+        Example: ``.option_label("{name} - {country}")``.
+        """
+        from almasix.orbit.forms.select_relationship import option_label_placeholders
+
+        placeholders = option_label_placeholders(template)
+        if self._relationship is None:
+            self._relationship = {
+                "name": None,
+                "title_attribute": placeholders[0] if placeholders else "id",
+                "model": None,
+                "option_label": template,
+                "search_columns": placeholders or None,
+                "preload": False,
+                "modify_query": None,
+                "get_option_label": None,
+            }
+        elif isinstance(self._relationship, dict):
+            self._relationship["option_label"] = template
+            if not self._relationship.get("search_columns") and placeholders:
+                self._relationship["search_columns"] = placeholders
+            if self._relationship.get("title_attribute") in (None, "id") and placeholders:
+                self._relationship["title_attribute"] = placeholders[0]
         return self
 
     def get_relationship(self) -> dict[str, Any] | None:
@@ -522,9 +595,11 @@ class Field(Component):
             "searchable": self._searchable,
             "relationship": (
                 (rel["name"], rel["title_attribute"]) if rel and set(rel.keys()) <= {
-                    "name", "title_attribute", "search_columns", "preload", "modify_query", "get_option_label",
+                    "name", "title_attribute", "search_columns", "preload", "modify_query",
+                    "get_option_label", "model", "option_label",
                 } and not rel.get("search_columns") and not rel.get("preload")
                 and rel.get("modify_query") is None and rel.get("get_option_label") is None
+                and rel.get("model") is None and not rel.get("option_label")
                 else rel
             ),
             "options": self.get_options() if not callable(self._options) else {},
@@ -742,28 +817,139 @@ class Select(Field):
         self._selectable_placeholder = condition
         return self
 
+    def effective_options_limit(self) -> int:
+        from almasix.orbit.forms.select_relationship import DEFAULT_OPTIONS_LIMIT
+
+        if self._options_limit is not None:
+            return int(self._options_limit)
+        if self.get_relationship() is not None:
+            return DEFAULT_OPTIONS_LIMIT
+        return DEFAULT_OPTIONS_LIMIT
+
+    def _owner_model(self, **ctx: Any) -> type[Any] | None:
+        model = ctx.get("model")
+        if isinstance(model, type):
+            return model
+        resource = ctx.get("resource")
+        if resource is not None:
+            getter = getattr(resource, "get_model", None)
+            if callable(getter):
+                try:
+                    return getter()
+                except Exception:
+                    return getattr(resource, "model", None)
+            return getattr(resource, "model", None)
+        return None
+
+    def resolve_relationship_options(
+        self,
+        state: Any = None,
+        *,
+        search: str | None = None,
+        **ctx: Any,
+    ) -> dict[str, str]:
+        """Load relationship options for render or AJAX search."""
+        from almasix.orbit.forms.select_relationship import (
+            load_relationship_options,
+            relationship_should_ajax,
+            resolve_related_model,
+        )
+
+        rel = self.get_relationship()
+        if not rel:
+            return {}
+        related = resolve_related_model(
+            relationship_name=rel.get("name"),
+            related_model=rel.get("model"),
+            owner_model=self._owner_model(**ctx),
+        )
+        if related is None:
+            return {}
+        limit = self.effective_options_limit()
+        title = str(rel.get("title_attribute") or "id")
+        searchable = bool(self._searchable or not self._native)
+        ajax = relationship_should_ajax(rel, searchable=searchable)
+
+        selected = state if isinstance(state, (list, tuple, set)) else (
+            [state] if state not in (None, "") else []
+        )
+
+        if ajax and not (search or "").strip():
+            # Initial searchable render: only hydrate selected labels.
+            if not selected:
+                return {}
+            return load_relationship_options(
+                model=related,
+                title_attribute=title,
+                limit=limit,
+                modify_query=rel.get("modify_query"),
+                get_option_label=rel.get("get_option_label"),
+                option_label=rel.get("option_label"),
+                keys=list(selected),
+            )
+
+        return load_relationship_options(
+            model=related,
+            title_attribute=title,
+            search=(search or "").strip() or None,
+            search_columns=rel.get("search_columns"),
+            limit=limit,
+            modify_query=rel.get("modify_query"),
+            get_option_label=rel.get("get_option_label"),
+            option_label=rel.get("option_label"),
+        )
+
+    def _relationship_options_for_render(self, state: Any, **ctx: Any) -> dict[str, str]:
+        rel = self.get_relationship()
+        if not rel:
+            return {}
+        # Explicit static options win over relationship resolution.
+        if self._options not in (None, {}):
+            return {}
+        field_name = self.get_state_path() or self.get_name() or ""
+        select_search = ctx.get("select_search") or {}
+        search = None
+        if isinstance(select_search, dict) and field_name in select_search:
+            search = str(select_search.get(field_name) or "")
+        return self.resolve_relationship_options(state, search=search, **ctx)
+
     def _render_options_html(self, state: Any, **ctx: Any) -> str:
-        selected = state if isinstance(state, (list, tuple, set)) else ([state] if state not in (None, "") else [])
-        selected_s = {str(s) for s in selected}
-        chunks: list[str] = []
-        count = 0
-        for group_label, opts in self.get_option_groups(**ctx):
-            inner = []
-            for k, v in opts.items():
-                if self._options_limit is not None and count >= self._options_limit:
-                    break
-                sel = " selected" if str(k) in selected_s else ""
-                label = str(v) if self._allow_html else e(v)
-                inner.append(
-                    f'<option value="{e(k)}" data-label="{e(v)}"{sel}>{label}</option>'
-                )
-                count += 1
-            body = "".join(inner)
-            if group_label:
-                chunks.append(f'<optgroup label="{e(group_label)}">{body}</optgroup>')
-            else:
-                chunks.append(body)
-        return "".join(chunks)
+        # Merge relationship-backed options into the field for this render.
+        rel_opts = self._relationship_options_for_render(state, **ctx)
+        prior = self._options
+        if rel_opts:
+            self._options = rel_opts
+        try:
+            selected = state if isinstance(state, (list, tuple, set)) else (
+                [state] if state not in (None, "") else []
+            )
+            selected_s = {str(s) for s in selected}
+            chunks: list[str] = []
+            count = 0
+            limit = self._options_limit
+            if self.get_relationship() is not None and limit is None:
+                from almasix.orbit.forms.select_relationship import DEFAULT_OPTIONS_LIMIT
+
+                limit = DEFAULT_OPTIONS_LIMIT
+            for group_label, opts in self.get_option_groups(**ctx):
+                inner = []
+                for k, v in opts.items():
+                    if limit is not None and count >= limit:
+                        break
+                    sel = " selected" if str(k) in selected_s else ""
+                    label = str(v) if self._allow_html else e(v)
+                    inner.append(
+                        f'<option value="{e(k)}" data-label="{e(v)}"{sel}>{label}</option>'
+                    )
+                    count += 1
+                body = "".join(inner)
+                if group_label:
+                    chunks.append(f'<optgroup label="{e(group_label)}">{body}</optgroup>')
+                else:
+                    chunks.append(body)
+            return "".join(chunks)
+        finally:
+            self._options = prior
 
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
@@ -779,9 +965,10 @@ class Select(Field):
         search_input = ""
         if searchable:
             prompt = e(self._search_prompt or "Search…")
+            debounce = self._search_debounce or 200
             search_input = (
                 f'<input type="search" class="or-input or-select-search" placeholder="{prompt}" '
-                f'x-model="q" x-on:input.debounce.{self._search_debounce or 200}ms="filter()" '
+                f'x-model="q" x-on:input.debounce.{debounce}ms="filter()" '
                 f'aria-label="Search" />'
             )
         select_ref = ' x-ref="select"' if searchable else ""
@@ -803,11 +990,17 @@ class Select(Field):
         rel = self.get_relationship()
         rel_attrs = ""
         if rel:
-            rel_attrs = f' data-relationship="{e(rel["name"])}"'
+            if rel.get("name"):
+                rel_attrs = f' data-relationship="{e(rel["name"])}"'
             if rel.get("search_columns"):
                 rel_attrs += f' data-search-columns="{e(",".join(rel["search_columns"]))}"'
             if rel.get("preload"):
                 rel_attrs += ' data-preload="true"'
+            from almasix.orbit.forms.select_relationship import relationship_should_ajax
+
+            if relationship_should_ajax(rel, searchable=searchable):
+                rel_attrs += ' data-ajax-search="true"'
+            rel_attrs += f' data-options-limit="{self.effective_options_limit()}"'
         if self._get_search_results_using is not None:
             rel_attrs += ' data-ajax-search="true"'
         if self._no_search_results_message:
@@ -833,7 +1026,6 @@ class Select(Field):
             f'{select_ref}{wire}{self._after_state_attr()}>{placeholder_opt}{opts_html}</select>'
             f"{actions_html}"
         )
-        # wrap_field adds outer div — inject searchable attrs onto wrapper via extra
         html = self.wrap_field(name, control, **ctx)
         inject = f'data-field="{name}"{searchable_attr}{rel_attrs}{alpine}'
         return html.replace(f'data-field="{name}"', inject, 1)

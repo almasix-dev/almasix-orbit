@@ -746,6 +746,7 @@ class FormDataMutations:
     """Shared Conduit handlers for nested form fields (repeater / builder / key-value)."""
 
     data: dict[str, Any]
+    select_search: dict[str, str] = {}
 
     @classmethod
     def _public_property_names(cls) -> set[str]:
@@ -902,9 +903,17 @@ class FormDataMutations:
     def mountEditOption(self, name: str, **kwargs: Any) -> None:
         self.dispatch("orbit-mount-edit-option", name=str(name or ""), **kwargs)
 
+    def searchSelectOptions(self, name: str, search: str = "") -> None:
+        """AJAX option search for relationship / custom searchable Selects (Filament parity)."""
+        field_name = str(name or "")
+        current = dict(getattr(self, "select_search", None) or {})
+        current[field_name] = str(search or "")
+        self.select_search = current
+
 
 class CreateRecordHost(FormDataMutations, OrbitPageHost):
     data: dict[str, Any] = {}
+    select_search: dict[str, str] = {}
     created_id: str | None = None
 
     def mount(self, **kwargs: Any) -> None:
@@ -958,13 +967,25 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
         class Bound(CreateRecord):
             pass
 
-        Bound.resource = self.get_resource()  # type: ignore[misc]
-        return Bound.render(state=dict(self.data))
+        resource = self.get_resource()
+        Bound.resource = resource  # type: ignore[misc]
+        model = None
+        try:
+            model = resource.get_model()
+        except Exception:
+            model = getattr(resource, "model", None)
+        return Bound.render(
+            state=dict(self.data),
+            select_search=dict(self.select_search or {}),
+            model=model,
+            resource=resource,
+        )
 
 
 class EditRecordHost(FormDataMutations, OrbitPageHost):
     record_id: str = ""
     data: dict[str, Any] = {}
+    select_search: dict[str, str] = {}
 
     def mount(self, **kwargs: Any) -> Any:
         if kwargs.get("record_id") is not None:
@@ -1093,7 +1114,19 @@ class EditRecordHost(FormDataMutations, OrbitPageHost):
         record = dict(self.data)
         if self.record_id and "id" not in record:
             record["id"] = self.record_id
-        return Bound.render(record=record, state=dict(self.data) if self.data else None)
+        resource = self.get_resource()
+        model = None
+        try:
+            model = resource.get_model()
+        except Exception:
+            model = getattr(resource, "model", None)
+        return Bound.render(
+            record=record,
+            state=dict(self.data) if self.data else None,
+            select_search=dict(self.select_search or {}),
+            model=model,
+            resource=resource,
+        )
 
 
 class ViewRecordHost(OrbitPageHost):
@@ -1171,6 +1204,7 @@ class FormHost(FormDataMutations, ConduitHost):
     """Standalone form host for custom pages."""
 
     data: dict[str, Any] = {}
+    select_search: dict[str, str] = {}
     _form_factory: ClassVar[Any] = None
     _title: ClassVar[str] = "Form"
 
@@ -1200,7 +1234,7 @@ class FormHost(FormDataMutations, ConduitHost):
         title = type(self)._title
         return (
             f'<div class="or-page or-page-form"><h1 class="or-page-title">{title}</h1>'
-            f'<form class="or-form"{conduit_attr("submit", "save")}>{form.render(self.data)}'
+            f'<form class="or-form"{conduit_attr("submit", "save")}>{form.render(self.data, select_search=dict(self.select_search or {}))}'
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Save</button>'
             f"</div></form></div>"

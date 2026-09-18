@@ -1,0 +1,35 @@
+# Render Blueprint — free web service for the music catalog demo.
+# https://render.com/docs/blueprint-spec
+#
+# SQLite on Free is ephemeral (wiped on spin-down / redeploy). The container
+# entrypoint runs ``smith migrate --force --seed`` on every boot so demo data
+# returns. For durable SQLite later: upgrade to Starter and attach a disk at
+# /app/database ($0.25/GB/mo).
+
+services:
+  - type: web
+    name: orbit-demo
+    runtime: docker
+    plan: free
+    rootDir: examples/demo
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /login
+    envVars:
+      - key: APP_NAME
+        value: Orbit Demo
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        sync: false
+      - key: DB_CONNECTION
+        value: sqlite
+      - key: DB_DATABASE
+        value: /app/database/database.sqlite
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
