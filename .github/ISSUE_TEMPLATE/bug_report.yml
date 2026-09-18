@@ -1,0 +1,92 @@
+name: Bug report
+description: Something isn't working as documented or expected.
+title: "bug: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please fill every section you can — incomplete reports are harder to reproduce.
+
+  - type: input
+    id: orbit-version
+    attributes:
+      label: Orbit version
+      description: e.g. `0.3.0` (`pip show almasix-orbit`)
+      placeholder: "0.3.0"
+    validations:
+      required: true
+
+  - type: input
+    id: almasix-version
+    attributes:
+      label: Almasix / Conduit versions
+      description: Framework and Conduit pins if relevant
+      placeholder: "almasix==0.6.x, almasix-conduit==0.2.x"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Panels / shell
+        - Forms / schemas
+        - Tables
+        - Actions
+        - Auth / login
+        - Scaffolding / Smith commands
+        - Docs / examples
+        - Packaging / install
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Clear description of the bug.
+      placeholder: When I open /admin/login, …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps or a small code sample.
+      placeholder: |
+        1. …
+        2. …
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, browser (if UI).
+      placeholder: |
+        - OS: Linux
+        - Python: 3.13
+        - Browser: Firefox …
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / stack traces
+      render: shell
+    validations:
+      required: false
