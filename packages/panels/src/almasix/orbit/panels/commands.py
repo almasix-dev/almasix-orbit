@@ -149,9 +149,26 @@ def _write_panel_stub(
         ("resources", f"{panel_id} resources"),
         ("pages", f"{panel_id} pages"),
         ("widgets", f"{panel_id} widgets"),
-        ("themes", f"{panel_id} themes"),
+        ("themes", f"{panel_id} theme CSS (loaded via discover_panel_dirs)"),
     ):
         _ensure_pkg_init(panel_dir / sub, doc)
+
+    themes_css = panel_dir / "themes" / "custom.css"
+    if not themes_css.is_file():
+        themes_css.write_text(
+            f"""/* Panel theme overrides for `{panel_id}`.
+ * Loaded automatically when the panel calls `.discover_panel_dirs()`.
+ * Prefer CSS variables (--or-*) over hard-coded colors.
+ */
+""",
+            encoding="utf-8",
+        )
+
+    # Shared package (fields live here — never auto-discovered onto panels).
+    shared = Path(app.path("app", "orbit", "shared"))
+    _ensure_pkg_init(shared, "Shared Orbit modules (not auto-discovered)")
+    _ensure_pkg_init(shared / "fields", "Shared custom form fields")
+    _ensure_pkg_init(shared / "resources", "Shared resources (register explicitly on panels)")
 
     out = panel_dir / "panel.py"
     if out.exists() and not force:
@@ -483,7 +500,7 @@ class MakeOrbitFieldCommand(Command):
         "make:orbit-field {name : Field class name (e.g. MoneyInput)}"
         " {--force : Overwrite}"
     )
-    description = "Create a custom Orbit form Field subclass"
+    description = "Create a custom Orbit form Field under app/orbit/shared/fields"
     aliases: ClassVar[tuple[str, ...]] = ("orbit:field",)
     boots_application: ClassVar[bool] = True
 
@@ -497,8 +514,13 @@ class MakeOrbitFieldCommand(Command):
         snake = _snake(class_name)
         if self.app is None:
             return self.SUCCESS
-        out = Path(self.app.path("app", "orbit", "fields", f"{snake}.py"))
+        out = Path(self.app.path("app", "orbit", "shared", "fields", f"{snake}.py"))
         out.parent.mkdir(parents=True, exist_ok=True)
+        _ensure_pkg_init(
+            Path(self.app.path("app", "orbit", "shared")),
+            "Shared Orbit modules (not auto-discovered)",
+        )
+        _ensure_pkg_init(out.parent, "Shared custom form fields")
         if out.exists() and not force:
             self.error(f"{out} already exists")
             return self.FAILURE

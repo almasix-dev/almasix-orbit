@@ -28,6 +28,41 @@ def class_key(cls: type[Any]) -> str:
     return f"{cls.__module__}.{cls.__qualname__}"
 
 
+def load_theme_css(*packages: str) -> list[tuple[str, str]]:
+    """Load ``*.css`` files from theme packages.
+
+    Returns ``(source_id, css_text)`` pairs. ``source_id`` is
+    ``{package}:{relative/path.css}`` for stable ``data-orbit-theme`` attrs.
+    Missing packages are skipped (empty list contribution).
+    """
+    out: list[tuple[str, str]] = []
+    for package in packages:
+        pkg = str(package).strip()
+        if not pkg:
+            continue
+        try:
+            mod = importlib.import_module(pkg)
+        except ImportError:
+            continue
+        paths = getattr(mod, "__path__", None)
+        if not paths:
+            continue
+        for root in paths:
+            root_p = Path(root)
+            if not root_p.is_dir():
+                continue
+            for css in sorted(root_p.rglob("*.css")):
+                if css.name.startswith("_"):
+                    continue
+                try:
+                    text = css.read_text(encoding="utf-8")
+                except OSError:
+                    continue
+                rel = css.relative_to(root_p).as_posix()
+                out.append((f"{pkg}:{rel}", text))
+    return out
+
+
 def _discover_in_path(path: str, base_class: type[Any], seen: set[type[Any]]) -> list[type[Any]]:
     out: list[type[Any]] = []
     root = Path(path)
@@ -142,8 +177,9 @@ def register_app_orbit_panels(
 
         app/orbit/admin_panel.py → ``register_admin_panel``
 
-    Skips the reserved ``shared`` package. Returns panels from registrars
-    (may include ``None``).
+    Skips reserved packages (``shared``, ``fields``, ``plugins``) that are not
+    panels. Plugins are never auto-discovered — register with ``Panel.plugin``.
+    Returns panels from registrars (may include ``None``).
     """
     registered: list[Any] = []
     try:
@@ -157,10 +193,11 @@ def register_app_orbit_panels(
 
     prefix = package_mod.__name__ + "."
     seen_ids: set[str] = set()
+    _reserved = frozenset({"shared", "fields", "plugins"})
 
     for modinfo in pkgutil.iter_modules(paths, prefix):
         name = modinfo.name.rsplit(".", 1)[-1]
-        if name.startswith("_") or name in {"shared", "fields"}:
+        if name.startswith("_") or name in _reserved:
             continue
 
         # v0.3: app.orbit.<id> package with nested panel.py

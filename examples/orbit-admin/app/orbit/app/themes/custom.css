@@ -1,0 +1,4 @@
+/* Panel theme overrides for `app`.
+ * Loaded automatically via `.discover_panel_dirs()` → `.theme_package(...)`.
+ * Prefer CSS variables (--or-*) over hard-coded colors.
+ */

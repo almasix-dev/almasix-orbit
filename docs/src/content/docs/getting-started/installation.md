@@ -34,9 +34,8 @@ Orbit expects this split (v0.3+):
 | Path | Responsibility |
 |------|----------------|
 | `app/orbit/{id}/panel.py` | **Define** the panel — brand, path, resources, pages, plugins. Export `register_{id}_panel(registry)`. |
-| `app/orbit/{id}/resources\|pages\|widgets\|themes/` | Components **owned by that panel** (auto-discovered via `.discover_panel_dirs()`). |
-| `app/orbit/shared/` | Optional shared code — **not** auto-discovered; register explicitly. |
-| `app/orbit/fields/` | Shared custom fields (generators still write here). |
+| `app/orbit/{id}/resources\|pages\|widgets\|themes/` | Components **owned by that panel**. Resources/pages/widgets + theme CSS via `.discover_panel_dirs()`. |
+| `app/orbit/shared/` | Shared code (`fields/`, `resources/`, …) — **never** auto-discovered; import and register explicitly. |
 | `app/providers/orbit_panel_provider.py` | **Register** panels — call `register_app_orbit_panels(...)`. Do not put `Panel.make(...)` here. |
 | `config/app.py` | List `OrbitPanelProvider` under `providers` so discovery runs on boot. |
 
@@ -49,12 +48,13 @@ app/
       resources/
       pages/
       widgets/
-      themes/
+      themes/               ← *.css inlined by discover_panel_dirs
     app/                    ← optional second panel
       panel.py
       resources/
     shared/                 ← optional; explicit register only
-    fields/                 ← shared custom fields
+      fields/               ← make:orbit-field writes here
+      resources/
   providers/
     orbit_panel_provider.py ← thin: discover only
 ```
@@ -114,9 +114,11 @@ class OrbitPanelProvider(ServiceProvider):
 
 Legacy `app/orbit/{id}_panel.py` still loads with a **DeprecationWarning** (removed in 0.4).
 
-`.discover_panel_dirs()` (emitted by scaffolding) points discovery at `{panel_pkg}.resources` / `.pages` / `.widgets`. You can still call `.resources([...])` explicitly or pass custom paths to `.discover_resources(...)`.
+`.discover_panel_dirs()` (emitted by scaffolding) points discovery at `{panel_pkg}.resources` / `.pages` / `.widgets` and loads `*.css` from `{panel_pkg}.themes`. You can still call `.resources([...])` explicitly or pass custom paths to `.discover_resources(...)`.
 
-Cross-panel sharing: put code under `app/orbit/shared/` and register it on each panel that needs it — never auto-pulled into every panel.
+**Plugins** are never auto-discovered — only `.plugin(...)` / `.plugins([...])` in `panel.py`.
+
+**Cross-panel resources:** put the class under `app/orbit/shared/resources/` (or anywhere) and register it explicitly on each panel that needs it (`.resources([SharedPostResource])`). Autodiscovery only covers the panel’s own package tree.
 
 ## Add another panel
 
@@ -132,7 +134,7 @@ Other generators (panel-scoped):
 smith make:orbit-resource Post --panel=admin
 smith make:orbit-page Settings --panel=admin
 smith make:orbit-widget StatsOverview --panel=admin
-smith make:orbit-field MoneyInput             # shared under app/orbit/fields
+smith make:orbit-field MoneyInput             # app/orbit/shared/fields/
 ```
 
 ## Troubleshooting 404s

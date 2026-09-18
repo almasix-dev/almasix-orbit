@@ -16,9 +16,13 @@ Breaking changes will land here before they become a new major.
 
 **Breaking (targets 0.3.0):** each panel owns its components under `app/orbit/{id}/`.
 
-- `orbit:install` / `make:orbit-panel` → `app/orbit/{id}/panel.py` + `resources/`, `pages/`, `widgets/`, `themes/`
+- `orbit:install` / `make:orbit-panel` → `app/orbit/{id}/panel.py` + `resources/`, `pages/`, `widgets/`, `themes/` (stub `custom.css`)
 - `make:orbit-resource|page|widget --panel=` writes into that panel’s tree
-- `.discover_panel_dirs()` + FQCN dedupe; legacy `*_panel.py` still loads with `DeprecationWarning`
+- `make:orbit-field` → `app/orbit/shared/fields/` (never auto-discovered)
+- `.discover_panel_dirs()` discovers resources/pages/widgets **and** loads `themes/*.css`; FQCN dedupe; legacy `*_panel.py` still loads with `DeprecationWarning`
+- `.theme_package(...)` / `.theme_stylesheet(...)` for extra theme CSS
+- Plugins **only** via `.plugin(...)` — no `{id}/plugins` autodisc
+- Shared resources: explicit `.resources([...])` on each panel; `app/orbit/shared/` is never auto-pulled
 - Thin provider unchanged; examples migrated to colocated layout
 
 See [Installation](/getting-started/installation/) for the upgrade path from flat `app/orbit/resources`.

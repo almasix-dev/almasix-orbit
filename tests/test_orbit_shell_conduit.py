@@ -189,7 +189,7 @@ def test_smith_commands_and_aliases(tmp_path: Path) -> None:
     field_cmd._arguments = {"name": "MoneyInput"}
     field_cmd._options = {"force": True}
     assert field_cmd.handle() == 0
-    assert (tmp_path / "app" / "orbit" / "fields" / "money_input.py").is_file()
+    assert (tmp_path / "app" / "orbit" / "shared" / "fields" / "money_input.py").is_file()
 
     # dry / no-app still validates name
     assert MakeOrbitResourceCommand().handle(name="Post") == 0

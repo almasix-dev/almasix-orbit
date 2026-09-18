@@ -45,7 +45,7 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
         .sidebar_collapsible()
         # .home_url("/welcome")
         # .breadcrumbs_enabled(False)
-        .discover_panel_dirs()   # app.orbit.admin.resources|pages|widgets
+        .discover_panel_dirs()   # resources|pages|widgets + themes/*.css
     )
     registry.register(panel)
     return panel
@@ -104,9 +104,11 @@ panel.login(MyLogin).signup().dashboard()
 | `.default_theme_mode(...)` | `"system"` / `"light"` / `"dark"` when the user has no stored choice |
 | `.sidebar_collapsible()` | Off by default. Pass `True` (or call with no args) to show the collapse control |
 | `.breadcrumbs_enabled()` | On by default; pass `False` to hide the trail |
-| `.plugin(...)` / `.plugins([...])` | Callable **or** `Plugin` instance (`register` → callbacks → `boot`) |
+| `.plugin(...)` / `.plugins([...])` | Callable **or** `Plugin` instance (`register` → callbacks → `boot`). **Only** way to load plugins — no `{id}/plugins` autodisc. |
 | `.boot_using(fn)` | Runs after plugins when the panel mounts |
 | `.render_hook(name, fn)` | Panel-scoped HTML injection (see hooks below) |
+| `.theme_package(...)` | Load `*.css` from dotted packages (also wired by `.discover_panel_dirs()` → `{pkg}.themes`) |
+| `.theme_stylesheet(...)` | Extra `<link rel="stylesheet">` URLs in the shell head |
 
 ### Discovery paths
 
@@ -115,7 +117,12 @@ Prefer the colocated helper (scaffolding emits this):
 ```python
 panel = Panel.make("admin").discover_panel_dirs()
 # → app.orbit.admin.resources|pages|widgets
+# → theme CSS from app.orbit.admin.themes
 ```
+
+Put overrides in `app/orbit/admin/themes/custom.css` (any `*.css` under `themes/`). Files are inlined as `<style data-orbit-theme="…">` after Orbit’s core CSS.
+
+Shared custom fields live under `app/orbit/shared/fields/` (`make:orbit-field`). Shared resources under `app/orbit/shared/resources/` must be registered explicitly on every panel that uses them — they are never auto-discovered.
 
 Or pass directories / packages explicitly. ``mount_panel`` calls ``load_discovered()`` for you; call it yourself only when you need the classes before mount.
 
