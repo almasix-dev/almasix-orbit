@@ -6,10 +6,8 @@ import asyncio
 import sys
 import types
 from pathlib import Path
-from typing import Any
 
 import pytest
-
 from almasix.orbit.forms import Form, TextInput
 from almasix.orbit.panels.auth import AppAuthentication, MfaProvider, _login_brand_html
 from almasix.orbit.panels.cluster import Cluster
@@ -131,7 +129,6 @@ def test_make_user_password_match_scaffold_fail_unique_and_load(
     assert uniq.handle() == 1
 
     # _default_user_model except path
-    import almasix.orbit.panels.commands as commands_mod
 
     fake_config = types.ModuleType("almasix.config")
 

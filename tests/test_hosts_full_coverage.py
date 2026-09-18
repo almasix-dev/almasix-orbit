@@ -404,8 +404,7 @@ async def test_login_authenticate_relative_home(monkeypatch: pytest.MonkeyPatch)
 
 def test_hosts_remaining_branch_partials(monkeypatch: pytest.MonkeyPatch) -> None:
     """Close residual statement/branch gaps in hosts.py."""
-    from almasix.orbit.panels.conduit.hosts import RegisterHost, TableHost
-    from almasix.orbit.panels.conduit.hosts import _orm_write_payload
+    from almasix.orbit.panels.conduit.hosts import RegisterHost, TableHost, _orm_write_payload
 
     # private __dict__ keys skipped (116→115)
     class Row:
