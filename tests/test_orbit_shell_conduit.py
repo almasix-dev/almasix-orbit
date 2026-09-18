@@ -158,12 +158,16 @@ def test_smith_commands_and_aliases(tmp_path: Path) -> None:
     assert "orbit:install" in names
     assert "make:orbit-resource" in names
     assert "make:orbit-panel" in names
+    assert "make:orbit-page" in names
+    assert "make:orbit-widget" in names
     assert "make:orbit-field" in names
     assert "make:orbit-user" in names
 
     aliases = {a for cls in ORBIT_COMMANDS for a in cls.aliases}
     assert "orbit:resource" in aliases
     assert "orbit:panel" in aliases
+    assert "orbit:page" in aliases
+    assert "orbit:widget" in aliases
     assert "orbit:field" in aliases
     assert "orbit:user" in aliases
 
@@ -171,13 +175,15 @@ def test_smith_commands_and_aliases(tmp_path: Path) -> None:
     resource_cmd._arguments = {"name": "Blog/Post"}
     resource_cmd._options = {"force": True, "panel": "admin"}
     assert resource_cmd.handle() == 0
-    assert (tmp_path / "app" / "orbit" / "resources" / "blog" / "post_resource.py").is_file()
+    assert (
+        tmp_path / "app" / "orbit" / "admin" / "resources" / "blog" / "post_resource.py"
+    ).is_file()
 
     panel_cmd = MakeOrbitPanelCommand(app)
     panel_cmd._arguments = {"name": "ops"}
     panel_cmd._options = {"path": "ops", "force": True}
     assert panel_cmd.handle() == 0
-    assert (tmp_path / "app" / "orbit" / "ops_panel.py").is_file()
+    assert (tmp_path / "app" / "orbit" / "ops" / "panel.py").is_file()
 
     field_cmd = MakeOrbitFieldCommand(app)
     field_cmd._arguments = {"name": "MoneyInput"}
