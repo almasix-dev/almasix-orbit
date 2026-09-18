@@ -96,6 +96,12 @@ class Login(Page):
         brand_logo_only = bool(ctx.get("brand_logo_only"))
         error = ctx.get("error")
         form = cls.get_form()
+        state = ctx.get("data")
+        if not isinstance(state, dict):
+            state = {
+                "email": ctx.get("email") or "",
+                "remember": bool(ctx.get("remember")),
+            }
         error_html = ""
         if error:
             error_html = (
@@ -115,7 +121,7 @@ class Login(Page):
             f"{_login_header_html(title=cls.get_title(), subtitle=subtitle, brand=brand, brand_logo=brand_logo, brand_logo_dark=brand_logo_dark, brand_logo_only=brand_logo_only)}"
             f"{error_html}"
             f'<form class="or-form or-login-form"{conduit_attr("submit", "authenticate")}>'
-            f"{form.render()}"
+            f"{form.render(state)}"
             f'<button type="submit" class="or-btn or-btn-primary or-btn-block">'
             f"Sign in</button>"
             f"</form>"
@@ -150,6 +156,12 @@ class Register(Page):
         brand_logo_dark = ctx.get("brand_logo_dark")
         brand_logo_only = bool(ctx.get("brand_logo_only"))
         error = ctx.get("error")
+        state = ctx.get("data")
+        if not isinstance(state, dict):
+            state = {
+                "name": ctx.get("name") or "",
+                "email": ctx.get("email") or "",
+            }
         error_html = ""
         if error:
             error_html = (
@@ -169,7 +181,7 @@ class Register(Page):
             f"{_login_header_html(title=cls.get_title(), subtitle=subtitle, brand=brand, brand_logo=brand_logo, brand_logo_dark=brand_logo_dark, brand_logo_only=brand_logo_only)}"
             f"{error_html}"
             f'<form class="or-form or-login-form"{conduit_attr("submit", "register")}>'
-            f"{cls.get_form().render()}"
+            f"{cls.get_form().render(state)}"
             f'<button type="submit" class="or-btn or-btn-primary or-btn-block">'
             f"Create account</button>"
             f"</form>"

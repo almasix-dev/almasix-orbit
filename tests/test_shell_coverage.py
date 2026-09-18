@@ -427,7 +427,7 @@ def test_register_host_full_paths(monkeypatch) -> None:
     asyncio.run(ok.register())
     assert ok.error == ""
     assert ok.take_redirect()["url"] == "/admin"
-    assert ok.password == ""
+    assert ok.data.get("password") == ""
 
     class AsyncUser:
         @staticmethod

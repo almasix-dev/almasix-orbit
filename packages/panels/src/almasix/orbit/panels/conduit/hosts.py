@@ -1268,26 +1268,37 @@ class TableHost(ConduitHost):
         )
 
 
-class LoginHost(ConduitHost):
-    """Auth login Conduit host (guest-accessible route)."""
+class LoginHost(FormDataMutations, ConduitHost):
+    """Auth login Conduit host (guest-accessible route).
 
-    email: str = ""
-    password: str = ""
-    remember: bool = False
+    Form fields bind as ``data.email`` / ``data.password`` (see Field._wire_binding).
+    """
+
+    data: dict[str, Any] = {}
     error: str = ""
     panel_id: ClassVar[str] = "admin"
     _panel: ClassVar[Any] = None
     _page_cls: ClassVar[Any] = None
 
+    def __init__(self, **kwargs: Any) -> None:
+        data = dict(kwargs.pop("data", None) or {})
+        # Compat: callers may still pass top-level email/password/remember.
+        for key in ("email", "password", "remember"):
+            if key in kwargs and key not in data:
+                data[key] = kwargs.pop(key)
+        super().__init__(**kwargs)
+        self.data = dict(data)
+
     async def authenticate(self) -> None:
         self.error = ""
-        email = str(self.email or "").strip()
-        password = str(self.password or "")
+        payload = dict(self.data or {})
+        email = str(payload.get("email") or "").strip()
+        password = str(payload.get("password") or "")
         if not email or not password:
             self.error = "Email and password are required."
             return
 
-        remember = bool(self.remember)
+        remember = bool(payload.get("remember"))
         try:
             from almasix.auth import auth
 
@@ -1321,7 +1332,7 @@ class LoginHost(ConduitHost):
             home = panel.url() if hasattr(panel, "url") else str(panel.get_path() or "/")
             if not str(home).startswith("/"):
                 home = f"/{home}"
-        self.password = ""
+        self.data = {**payload, "password": ""}
         self.redirect(home)
 
     def render(self) -> str:
@@ -1349,8 +1360,7 @@ class LoginHost(ConduitHost):
                 show_signup = True
                 signup_url = panel.url("register")
         return page_cls.render(
-            email=self.email,
-            remember=self.remember,
+            data=dict(self.data or {}),
             brand=brand,
             brand_logo=brand_logo,
             brand_logo_dark=brand_logo_dark,
@@ -1364,31 +1374,45 @@ class LoginHost(ConduitHost):
         if self.error:
             return self.error
         bag = getattr(self, "errors", None) or {}
-        for key in ("email", "password", "name", "password_confirmation", "_method"):
+        for key in (
+            "email",
+            "password",
+            "name",
+            "password_confirmation",
+            "data.email",
+            "data.password",
+            "_method",
+        ):
             msgs = bag.get(key)
             if msgs:
                 return str(msgs[0])
         return None
 
 
-class RegisterHost(ConduitHost):
+class RegisterHost(FormDataMutations, ConduitHost):
     """Auth registration Conduit host (guest-accessible when signup is enabled)."""
 
-    name: str = ""
-    email: str = ""
-    password: str = ""
-    password_confirmation: str = ""
+    data: dict[str, Any] = {}
     error: str = ""
     panel_id: ClassVar[str] = "admin"
     _panel: ClassVar[Any] = None
     _page_cls: ClassVar[Any] = None
 
+    def __init__(self, **kwargs: Any) -> None:
+        data = dict(kwargs.pop("data", None) or {})
+        for key in ("name", "email", "password", "password_confirmation"):
+            if key in kwargs and key not in data:
+                data[key] = kwargs.pop(key)
+        super().__init__(**kwargs)
+        self.data = dict(data)
+
     async def register(self) -> None:
         self.error = ""
-        name = str(self.name or "").strip()
-        email = str(self.email or "").strip()
-        password = str(self.password or "")
-        confirm = str(self.password_confirmation or "")
+        payload = dict(self.data or {})
+        name = str(payload.get("name") or "").strip()
+        email = str(payload.get("email") or "").strip()
+        password = str(payload.get("password") or "")
+        confirm = str(payload.get("password_confirmation") or "")
         if not name or not email or not password:
             self.error = "Name, email, and password are required."
             return
@@ -1439,8 +1463,7 @@ class RegisterHost(ConduitHost):
             home = panel.url() if hasattr(panel, "url") else str(panel.get_path() or "/")
             if not str(home).startswith("/"):
                 home = f"/{home}"
-        self.password = ""
-        self.password_confirmation = ""
+        self.data = {**payload, "password": "", "password_confirmation": ""}
         self.redirect(home)
 
     def _user_model(self) -> type[Any]:
@@ -1529,8 +1552,7 @@ class RegisterHost(ConduitHost):
             brand_logo_only = bool(getattr(panel, "_brand_logo_only", False))
             login_url = panel.url("login")
         return page_cls.render(
-            name=self.name,
-            email=self.email,
+            data=dict(self.data or {}),
             brand=brand,
             brand_logo=brand_logo,
             brand_logo_dark=brand_logo_dark,
@@ -1543,7 +1565,16 @@ class RegisterHost(ConduitHost):
         if self.error:
             return self.error
         bag = getattr(self, "errors", None) or {}
-        for key in ("email", "password", "name", "password_confirmation", "_method"):
+        for key in (
+            "email",
+            "password",
+            "name",
+            "password_confirmation",
+            "data.email",
+            "data.password",
+            "data.name",
+            "_method",
+        ):
             msgs = bag.get(key)
             if msgs:
                 return str(msgs[0])
