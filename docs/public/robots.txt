@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
+# Internal screenshot gallery (not documentation)
+Disallow: /examples/gallery
+Disallow: /examples/gallery.html
+
 Sitemap: https://orbit.almasix.com/sitemap-index.xml
