@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Install almasix-orbit, scaffold panels under app/orbit, and confirm the thin provider.
+description: Install almasix-orbit, scaffold colocated panels under app/orbit/{id}/, and confirm the thin provider.
 ---
 
 Orbit lives in its own package — [`almasix-orbit`](https://pypi.org/project/almasix-orbit/) — so you can add an admin panel without dragging it into every Almasix app by default.
@@ -21,7 +21,7 @@ smith orbit:install
 That command:
 
 1. Publishes Orbit CSS/JS and writes `config/orbit.py`
-2. Creates the default panel at `app/orbit/admin_panel.py` (id/path overridable with `--panel` / `--path`)
+2. Creates the default panel package at `app/orbit/admin/` (id/path overridable with `--panel` / `--path`)
 3. Writes a **thin** `app/providers/orbit_panel_provider.py` whose only job is discovery
 4. Lists that provider in `config/app.py`
 
@@ -29,11 +29,14 @@ After install, open `/admin` (or whatever `--path` you chose). Restart `smith se
 
 ## Layout: panels vs provider
 
-Orbit expects this split:
+Orbit expects this split (v0.3+):
 
 | Path | Responsibility |
 |------|----------------|
-| `app/orbit/{id}_panel.py` | **Define** the panel — brand, path, resources, pages, plugins. Export `register_{id}_panel(registry)`. |
+| `app/orbit/{id}/panel.py` | **Define** the panel — brand, path, resources, pages, plugins. Export `register_{id}_panel(registry)`. |
+| `app/orbit/{id}/resources\|pages\|widgets\|themes/` | Components **owned by that panel** (auto-discovered via `.discover_panel_dirs()`). |
+| `app/orbit/shared/` | Optional shared code — **not** auto-discovered; register explicitly. |
+| `app/orbit/fields/` | Shared custom fields (generators still write here). |
 | `app/providers/orbit_panel_provider.py` | **Register** panels — call `register_app_orbit_panels(...)`. Do not put `Panel.make(...)` here. |
 | `config/app.py` | List `OrbitPanelProvider` under `providers` so discovery runs on boot. |
 
@@ -41,16 +44,24 @@ Orbit expects this split:
 app/
   orbit/
     __init__.py
-    admin_panel.py      ← Panel.make("admin") …
-    app_panel.py        ← optional second panel
-    resources/          ← resources, pages, widgets, …
+    admin/
+      panel.py              ← Panel.make("admin") …
+      resources/
+      pages/
+      widgets/
+      themes/
+    app/                    ← optional second panel
+      panel.py
+      resources/
+    shared/                 ← optional; explicit register only
+    fields/                 ← shared custom fields
   providers/
-    orbit_panel_provider.py   ← thin: discover only
+    orbit_panel_provider.py ← thin: discover only
 ```
 
 ### Panel file (where you configure)
 
-```python title="app/orbit/admin_panel.py"
+```python title="app/orbit/admin/panel.py"
 from almasix.orbit import Panel, PanelRegistry
 
 
@@ -61,6 +72,7 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
         .brand_name("Orbit")
         .navigation_layout("apps")
         .login()
+        .discover_panel_dirs()
     )
     registry.register(panel)
     return panel
@@ -92,15 +104,19 @@ class OrbitPanelProvider(ServiceProvider):
 
 ## Discovery rules
 
-`register_app_orbit_panels` imports every top-level module under `app.orbit` whose name ends in `_panel`, then calls `register_{id}_panel(registry)`:
+`register_app_orbit_panels` loads every `app.orbit.<id>.panel` module and calls `register_{id}_panel(registry)`:
 
-| File | Function called |
+| Path | Function called |
 |------|-----------------|
-| `app/orbit/admin_panel.py` | `register_admin_panel` |
-| `app/orbit/app_panel.py` | `register_app_panel` |
-| `app/orbit/shop_panel.py` | `register_shop_panel` |
+| `app/orbit/admin/panel.py` | `register_admin_panel` |
+| `app/orbit/app/panel.py` | `register_app_panel` |
+| `app/orbit/shop/panel.py` | `register_shop_panel` |
 
-Resources, pages, and widgets are **not** auto-registered as panels. Put them on the panel inside your `register_*_panel` (e.g. `.resources([...])`), or use the panel’s discover helpers documented under [Panel configuration](/panels/configuration/).
+Legacy `app/orbit/{id}_panel.py` still loads with a **DeprecationWarning** (removed in 0.4).
+
+`.discover_panel_dirs()` (emitted by scaffolding) points discovery at `{panel_pkg}.resources` / `.pages` / `.widgets`. You can still call `.resources([...])` explicitly or pass custom paths to `.discover_resources(...)`.
+
+Cross-panel sharing: put code under `app/orbit/shared/` and register it on each panel that needs it — never auto-pulled into every panel.
 
 ## Add another panel
 
@@ -108,13 +124,15 @@ Resources, pages, and widgets are **not** auto-registered as panels. Put them on
 smith make:orbit-panel app --path=app   # alias: smith orbit:panel …
 ```
 
-That only writes `app/orbit/app_panel.py`. The thin provider already discovers it — no provider edit. Restart `smith serve`, then open `/app`.
+That writes `app/orbit/app/panel.py` plus empty component dirs. The thin provider already discovers it — no provider edit. Restart `smith serve`, then open `/app`.
 
-Other generators:
+Other generators (panel-scoped):
 
 ```bash title="terminal"
-smith make:orbit-resource Post --panel=admin  # alias: smith orbit:resource …
-smith make:orbit-field MoneyInput             # alias: smith orbit:field …
+smith make:orbit-resource Post --panel=admin
+smith make:orbit-page Settings --panel=admin
+smith make:orbit-widget StatsOverview --panel=admin
+smith make:orbit-field MoneyInput             # shared under app/orbit/fields
 ```
 
 ## Troubleshooting 404s
@@ -122,10 +140,18 @@ smith make:orbit-field MoneyInput             # alias: smith orbit:field …
 If `/admin` or `/app` 404s:
 
 1. `config/app.py` lists `OrbitPanelProvider`
-2. `app/orbit/{id}_panel.py` exists and defines `register_{id}_panel`
+2. `app/orbit/{id}/panel.py` exists and defines `register_{id}_panel`
 3. You restarted after scaffolding
 
 Panels mount on a **path prefix** only — existing host routes (for example `/`) stay put unless you set `.path("/")`.
+
+## Migrating from 0.2.x
+
+1. Move `admin_panel.py` → `admin/panel.py` (keep `register_admin_panel`)
+2. Move panel-owned resources/pages/widgets under `admin/{resources,pages,widgets}/`
+3. Put truly shared classes under `shared/` and register them explicitly
+4. Add `.discover_panel_dirs()` (or rely on auto-wire when discover paths are empty)
+5. Keep the thin provider; restart
 
 ## Imports
 
@@ -170,6 +196,6 @@ On register, the provider seeds in-memory config if nothing is set yet:
 }
 ```
 
-Tune brand, path, and colors on the `Panel` instance in `app/orbit/*_panel.py` — see [Panel configuration](/panels/configuration/). Interactive pages are Conduit hosts; SDUI forms/tables paint into those hosts.
+Tune brand, path, and colors on the `Panel` instance in `app/orbit/{id}/panel.py` — see [Panel configuration](/panels/configuration/). Interactive pages are Conduit hosts; SDUI forms/tables paint into those hosts.
 
 Next up: [Quick start](/getting-started/quick-start/).

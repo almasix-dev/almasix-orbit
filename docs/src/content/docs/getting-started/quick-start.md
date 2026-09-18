@@ -7,7 +7,7 @@ Let’s build a tiny Posts admin — one resource, one panel, done.
 
 ## 1. Define a resource
 
-```python title="app/orbit/post_resource.py"
+```python title="app/orbit/admin/resources/post_resource.py"
 from almasix.orbit import Resource
 from almasix.orbit.forms import Form, TextInput, Textarea
 from almasix.orbit.tables import Table, TextColumn
@@ -55,10 +55,10 @@ Orbit fills row / bulk / header actions for you when you leave those slots empty
 
 After `smith orbit:install`, edit the generated panel file (not the provider):
 
-```python title="app/orbit/admin_panel.py"
+```python title="app/orbit/admin/panel.py"
 from almasix.orbit import Panel, PanelRegistry
 
-from app.orbit.post_resource import PostResource
+from app.orbit.admin.resources.post_resource import PostResource
 
 
 def register_admin_panel(registry: PanelRegistry) -> Panel:
@@ -69,6 +69,7 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
         .primary("#f1511b")
         .resources([PostResource])
         .login()
+        .discover_panel_dirs()
     )
     registry.register(panel)
     return panel

@@ -1,28 +1,12 @@
-"""Register the Orbit music catalog panel."""
+"""Register every panel defined under ``app/orbit/*/panel.py``."""
 
 from __future__ import annotations
 
-from almasix.orbit import Panel, PanelRegistry
-from almasix.orbit.panels.navigation import NavigationGroup
+from almasix.orbit import PanelRegistry
+from almasix.orbit.panels.discover import register_app_orbit_panels
 from almasix.providers import ServiceProvider
-from app.orbit.resources.album_resource import AlbumResource
-from app.orbit.resources.artist_resource import ArtistResource
 
 
 class OrbitPanelProvider(ServiceProvider):
     def boot(self) -> None:
-        panel = (
-            Panel.make("demo")
-            .path("/")
-            .brand_name("Orbit Demo")
-            .brand_logo("images/almasix-light.svg")
-            .brand_logo_dark("images/almasix-dark.svg")
-            .login()
-            .navigation_group(
-                NavigationGroup.make("Catalog")
-                .icon("heroicon-o-musical-note")
-                .sort(0)
-            )
-            .resources([ArtistResource, AlbumResource])
-        )
-        self.app.make(PanelRegistry).register(panel)
+        register_app_orbit_panels(self.app.make(PanelRegistry))
