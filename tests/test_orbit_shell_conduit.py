@@ -239,7 +239,7 @@ def test_login_host_authenticate_redirects_on_success(monkeypatch) -> None:
     host = host_cls(email="ada@orbit.test", password="password")
     asyncio.run(host.authenticate())
     assert host.error == ""
-    assert host.password == ""
+    assert host.data.get("password") == ""
     redirect = host.take_redirect()
     assert redirect is not None
     assert redirect.get("url") == "/admin"
