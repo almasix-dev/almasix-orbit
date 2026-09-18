@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "almasix-orbit"
-version = "0.1.1"
+version = "0.2.0"
 description = "Orbit panels — local combined install for apps / IDEs"
 requires-python = ">=3.11"
 license = "MIT"

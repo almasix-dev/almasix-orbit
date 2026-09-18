@@ -27,6 +27,20 @@ Highlights:
 - `LiveResource` test helper
 - Auto-discovered `OrbitServiceProvider` via `almasix.providers`
 
+## 0.2.0
+
+Filament-parity expansion across forms, schemas, tables, shell, and docs —
+plus CRUD/selection fixes and a 99% coverage gate.
+
+Highlights:
+
+- Forms & schemas Filament parity (gallery screenshots, fluent docs snippets)
+- Table UX: search, sort, filters, record URLs, column types, action menus
+- Orbit shell: Conduit admin, branding, panel defaults, extendable auth pages
+- Resource CRUD, selection/delete, and dropdown overflow fixes
+- Docs: SEO, Filament-style previews, code-before-shots gallery polish
+- Full coverage test suite with 99% fail-under CI gate
+
 ## Unreleased (`main`)
 
 Working from the tip of `main`? Switch the docs to **main** in the header.
