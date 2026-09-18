@@ -1,10 +1,11 @@
-"""Orbit panel defaults."""
+"""Orbit panel defaults (kept in sync with OrbitPanelProvider)."""
 
 from __future__ import annotations
 
 ORBIT = {
-    "path": "/admin",
+    "path": "/",
     "font": "Outfit",
-    "brand": "Orbit",
-    "panel": "admin",
+    "brand": "Orbit Admin",
+    "panel": "app",
+    "primary": "#f1511b",
 }

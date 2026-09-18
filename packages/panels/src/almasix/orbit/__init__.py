@@ -3,6 +3,7 @@
 __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
 from almasix.orbit.panels.auth import Login, Register
+from almasix.orbit.panels.hooks import PANEL_HOOKS, Plugin, register_render_hook
 from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem
 from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.pages.dashboard import Dashboard
@@ -28,4 +29,7 @@ __all__ = [
     "OrbitUser",
     "UserMenuItem",
     "PanelNotification",
+    "Plugin",
+    "PANEL_HOOKS",
+    "register_render_hook",
 ]

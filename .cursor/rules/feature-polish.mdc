@@ -1,0 +1,23 @@
+---
+description: One-feature-at-a-time polish process (Filament 5 parity → sample → tests → docs)
+alwaysApply: true
+---
+
+# Feature polish — one at a time
+
+Orbit features are polished **sequentially**. Do not start the next feature until the current one is **closed** in [`.cursor/feature-polish.md`](../feature-polish.md).
+
+## Process (every feature)
+
+1. **Interrogate** — Orbit docs + implementation + Filament 5 equivalent.
+2. **Parity** — Fix bugs and add Filament 5–equivalent APIs for *this* feature only.
+3. **Sample** — Focused showcase in `examples/orbit-admin/`.
+4. **Tests** — 100% coverage on the touched surface + regression tests.
+5. **Docs** — Update docs, examples, light/dark screenshots under `docs/public/examples/`.
+6. **Close** — Mark done in `.cursor/feature-polish.md`; only then open the next.
+
+## Rules
+
+- Out-of-scope Filament pages become later features — do not expand mid-flight.
+- Prefer extending the current feature’s docs page over scattering examples.
+- Keep orbit-admin samples focused on the active feature (not a kitchen sink).

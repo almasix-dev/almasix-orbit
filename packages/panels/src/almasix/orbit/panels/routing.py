@@ -246,8 +246,21 @@ def mount_panel(router: Any, panel: Panel) -> None:
         prefix = ""
 
     middleware = [str(m) for m in panel.get_middleware()]
+    auth_extra = [str(m) for m in panel.get_auth_middleware()]
+    auth_middleware = list(middleware)
+    for item in auth_extra:
+        if item not in auth_middleware:
+            auth_middleware.append(item)
+    domain = panel.get_domain()
 
-    def _add(uri: str, action: Any, *, name: str, mw: list[str] | None = None) -> None:
+    def _add(
+        uri: str,
+        action: Any,
+        *,
+        name: str,
+        mw: list[str] | None = None,
+        authed: bool = False,
+    ) -> None:
         # Empty ``uri`` (root panel home) uses concat so ``full == ""`` can normalize to ``/``.
         if uri.startswith("/") or uri == "":
             full = f"{prefix}{uri}"
@@ -255,12 +268,19 @@ def mount_panel(router: Any, panel: Panel) -> None:
             full = f"{prefix}/{uri}"
         if full == "":
             full = "/"
+        if mw is not None:
+            stack = mw
+        elif authed:
+            stack = auth_middleware
+        else:
+            stack = middleware
         router.add(
             ["GET"],
             full,
             action,
             name=name,
-            middleware=mw if mw is not None else middleware,
+            middleware=stack,
+            domain=domain,
         )
 
     home_uri = "/" if prefix else ""
@@ -289,10 +309,15 @@ def mount_panel(router: Any, panel: Panel) -> None:
             )
             return _html_response(body)
 
-        _add(home_uri, dashboard_home, name=f"orbit.{panel.id}.home")
+        _add(home_uri, dashboard_home, name=f"orbit.{panel.id}.home", authed=True)
     elif resources:
         home_host = ListRecordsHost.bind(panel=panel, resource=resources[0])
-        _add(home_uri, make_panel_page_action(panel, home_host), name=f"orbit.{panel.id}.home")
+        _add(
+            home_uri,
+            make_panel_page_action(panel, home_host),
+            name=f"orbit.{panel.id}.home",
+            authed=True,
+        )
     else:
 
         async def empty_home(request: Request) -> Any:
@@ -310,7 +335,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
             )
             return _html_response(body)
 
-        _add(home_uri, empty_home, name=f"orbit.{panel.id}.home")
+        _add(home_uri, empty_home, name=f"orbit.{panel.id}.home", authed=True)
 
     if panel.login_enabled():
         from almasix.conduit import Conduit
@@ -383,21 +408,25 @@ def mount_panel(router: Any, panel: Panel) -> None:
             f"{slug}",
             make_panel_page_action(panel, list_host),
             name=f"orbit.{panel.id}.{slug}.index",
+            authed=True,
         )
         _add(
             f"{slug}/create",
             make_panel_page_action(panel, create_host),
             name=f"orbit.{panel.id}.{slug}.create",
+            authed=True,
         )
         _add(
             f"{slug}/{{record_id}}/edit",
             make_panel_page_action(panel, edit_host, pass_record_id=True),
             name=f"orbit.{panel.id}.{slug}.edit",
+            authed=True,
         )
         _add(
             f"{slug}/{{record_id}}",
             make_panel_page_action(panel, view_host, pass_record_id=True),
             name=f"orbit.{panel.id}.{slug}.view",
+            authed=True,
         )
 
     for page in panel.get_pages():
@@ -424,7 +453,12 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
             return page_action
 
-        _add(f"{slug}", _make_page_action(page), name=f"orbit.{panel.id}.page.{slug}")
+        _add(
+            f"{slug}",
+            _make_page_action(page),
+            name=f"orbit.{panel.id}.page.{slug}",
+            authed=True,
+        )
 
 
 def mount_orbit_assets(router: Any) -> None:
@@ -478,6 +512,5 @@ def mount_registered_panels(app: Any) -> None:
     except Exception:  # pragma: no cover
         pass
     for panel in registry.all():
-        for callback in panel._plugin_callbacks:
-            callback(panel)
+        panel.run_plugins()
         mount_panel(router, panel)
