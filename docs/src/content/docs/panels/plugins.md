@@ -44,6 +44,8 @@ Lifecycle when the app boots:
    - every `.boot_using` callback
 3. `mount_panel` loads discovery paths and registers routes.
 
+**Orbit does not auto-discover plugins** from `app/orbit/{id}/plugins/` (or anywhere else). Keep plugin modules next to the panel if you like, but always wire them with `.plugin(...)` / `.plugins([...])` in `panel.py`.
+
 Legacy callables still work:
 
 ```python title="app/providers/orbit_panel_provider.py"

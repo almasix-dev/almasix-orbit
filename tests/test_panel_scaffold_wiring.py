@@ -52,6 +52,8 @@ def test_orbit_install_writes_colocated_panel_and_thin_provider(tmp_path: Path) 
     assert (tmp_path / "app" / "orbit" / "admin" / "pages" / "__init__.py").is_file()
     assert (tmp_path / "app" / "orbit" / "admin" / "widgets" / "__init__.py").is_file()
     assert (tmp_path / "app" / "orbit" / "admin" / "themes" / "__init__.py").is_file()
+    assert (tmp_path / "app" / "orbit" / "admin" / "themes" / "custom.css").is_file()
+    assert (tmp_path / "app" / "orbit" / "shared" / "fields" / "__init__.py").is_file()
 
     provider = (tmp_path / "app" / "providers" / "orbit_panel_provider.py").read_text(
         encoding="utf-8"

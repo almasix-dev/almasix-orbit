@@ -197,3 +197,41 @@ def test_panel_configuration_edge_cases() -> None:
     second = Panel.make("second")
     empty.register(second)
     assert empty.get_default() is only
+
+
+def test_panel_theme_package_and_stylesheet(tmp_path, monkeypatch) -> None:
+    from almasix.orbit.panels import discover as discover_mod
+
+    themes = tmp_path / "themes_pkg"
+    themes.mkdir()
+    (themes / "__init__.py").write_text("", encoding="utf-8")
+    (themes / "brand.css").write_text(":root { --or-primary: #112233; }\n", encoding="utf-8")
+    (themes / "_skip.css").write_text("/* ignored */\n", encoding="utf-8")
+
+    import sys
+    import types
+
+    pkg = types.ModuleType("orbit_test_themes")
+    pkg.__path__ = [str(themes)]  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "orbit_test_themes", pkg)
+
+    panel = (
+        Panel.make("themed")
+        .theme_package("orbit_test_themes")
+        .theme_stylesheet("/vendor/custom.css")
+        .theme_package("missing.package.ignored")
+    )
+    html = panel.render_shell("<p>x</p>")
+    assert 'data-orbit-theme="orbit_test_themes:brand.css"' in html
+    assert "--or-primary: #112233" in html
+    assert "_skip.css" not in html
+    assert 'href="/vendor/custom.css"' in html
+
+    # Helper returns empty for missing packages
+    assert discover_mod.load_theme_css("does.not.exist") == []
+
+
+def test_discover_panel_dirs_wires_theme_package() -> None:
+    panel = Panel.make("admin").discover_panel_dirs()
+    assert "app.orbit.admin.resources" in panel._discover_resources_in
+    assert "app.orbit.admin.themes" in panel._theme_packages

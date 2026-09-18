@@ -9,6 +9,7 @@ from almasix.orbit.panels.content_width import (
     DEFAULT_CONTENT_MAX_WIDTH,
     resolve_content_max_width,
 )
+from almasix.orbit.panels.discover import load_theme_css
 from almasix.orbit.panels.hooks import register_render_hook, render_hook
 from almasix.orbit.panels.navigation import (
     NavigationGroup,
@@ -85,6 +86,8 @@ class Panel:
         self._discover_resources_in: list[str] = []
         self._discover_pages_in: list[str] = []
         self._discover_widgets_in: list[str] = []
+        self._theme_packages: list[str] = []
+        self._theme_stylesheets: list[str] = []
         self._custom_nav_items: list[NavigationItem] = []
         self._nav_groups: dict[str, NavigationGroup] = {}
         self._navigation_layout: NavLayout = "apps"
@@ -464,18 +467,33 @@ class Panel:
         return self
 
     def discover_panel_dirs(self, package: str | None = None) -> Self:
-        """Discover resources/pages/widgets under a colocated panel package.
+        """Discover resources/pages/widgets and load theme CSS under a panel package.
 
         Defaults to ``app.orbit.{panel_id}`` (v0.3 layout)::
 
-            app/orbit/admin/resources|pages|widgets
+            app/orbit/admin/resources|pages|widgets|themes
+
+        Does **not** auto-discover ``plugins/`` — register with :meth:`plugin`.
+        Shared modules under ``app/orbit/shared/`` are never auto-discovered;
+        register them explicitly (e.g. ``.resources([SharedPostResource])``).
         """
         pkg = (package or f"app.orbit.{self.id}").strip()
         return (
             self.discover_resources(f"{pkg}.resources")
             .discover_pages(f"{pkg}.pages")
             .discover_widgets(f"{pkg}.widgets")
+            .theme_package(f"{pkg}.themes")
         )
+
+    def theme_package(self, *packages: str) -> Self:
+        """Load ``*.css`` files from dotted theme packages into the shell head."""
+        self._theme_packages.extend(str(p).strip() for p in packages if str(p).strip())
+        return self
+
+    def theme_stylesheet(self, *urls: str) -> Self:
+        """Link extra stylesheets (absolute or app-relative URLs) in the shell head."""
+        self._theme_stylesheets.extend(str(u).strip() for u in urls if str(u).strip())
+        return self
 
     def load_discovered(self) -> Self:
         """Import discovered modules and register resources, pages, and widgets."""
@@ -672,6 +690,15 @@ class Panel:
             panel_path=self._path,
         )
 
+    def _render_theme_styles(self) -> str:
+        """Inline theme package CSS + linked stylesheets for the shell head."""
+        parts: list[str] = []
+        for url in self._theme_stylesheets:
+            parts.append(f'  <link rel="stylesheet" href="{e(url)}" />\n')
+        for source_id, css in load_theme_css(*self._theme_packages):
+            parts.append(f'  <style data-orbit-theme="{e(source_id)}">\n{css}\n  </style>\n')
+        return "".join(parts)
+
     def render_shell(
         self,
         content: str,
@@ -813,6 +840,7 @@ class Panel:
             f"{color_vars}--or-brand-name-size: {brand_name_size}; "
             f"--or-brand-logo-height: {brand_logo_height}; "
             f"--or-content-max: {width_css}; }}</style>\n"
+            f"{self._render_theme_styles()}"
             f"{extra_head}\n"
             f'{render_hook("panels::styles.after", scope=scope)}\n'
             f'{render_hook("panels::head.end", scope=scope)}\n'

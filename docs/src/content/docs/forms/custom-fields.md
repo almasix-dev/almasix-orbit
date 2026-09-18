@@ -26,3 +26,5 @@ class Rating(Field):
 ![Orbit money input (dark)](/examples/dark/forms/money-input/usd.png)
 
 Prefer composing existing fields inside a `ViewField` or schema layout when you only need custom markup. See the orbit-admin `MoneyInput` demo and [Money input](/forms/money-input/) for a packaged currency field.
+
+Scaffold with `smith make:orbit-field Rating` → `app/orbit/shared/fields/rating.py` (shared across panels; import where needed — never auto-discovered).
