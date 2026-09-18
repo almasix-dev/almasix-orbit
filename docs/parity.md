@@ -97,7 +97,7 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | Clusters / auth pages / MFA protocol / tenancy | Done |
 | Render hooks + Plugin base | Done |
 | `discover_*` + `load_discovered` + scaffolding writes files | Done |
-| User menu / multi-panel domains / SPA / billing adapters | Partial |
+| User menu / multi-panel domains / SPA / billing adapters | Partial (domains Done; SPA/billing later) |
 | Real DB notification persistence / Echo | Partial |
 
 ## Docs / screenshots

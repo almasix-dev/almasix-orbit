@@ -166,7 +166,7 @@ html.or-scroll-lock body {
 }
 
 .or-brand-logo {
-  height: 2rem;
+  height: var(--or-brand-logo-height, 2rem);
   width: auto;
   max-width: 9rem;
   object-fit: contain;
@@ -176,7 +176,7 @@ html.or-scroll-lock body {
 
 .or-brand-logo-only .or-brand-logo {
   max-width: 11rem;
-  height: 2.25rem;
+  height: var(--or-brand-logo-height, 2.25rem);
 }
 
 .or-brand-logo-dark {

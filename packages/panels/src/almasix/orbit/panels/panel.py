@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 from almasix.orbit.panels.content_width import (
     DEFAULT_CONTENT_MAX_WIDTH,
     resolve_content_max_width,
 )
-from almasix.orbit.panels.hooks import render_hook
+from almasix.orbit.panels.hooks import register_render_hook, render_hook
 from almasix.orbit.panels.navigation import (
     NavigationGroup,
     NavigationItem,
@@ -30,8 +30,12 @@ from almasix.orbit.support.icons import icon as render_icon
 
 _TOPBAR_ICON = 20
 DEFAULT_BRAND_NAME_FONT_SIZE = "1.05rem"
+DEFAULT_BRAND_LOGO_HEIGHT = "2rem"
+DEFAULT_SIMPLE_PAGE_MAX_CONTENT_WIDTH = "lg"
 
 PageOption = bool | type[Page]
+ThemeMode = Literal["light", "dark", "system"]
+PluginLike = Any  # ``Plugin`` / ``PanelPlugin`` or ``Callable[[Panel], Any]``
 
 
 def _resolve_page_option(value: PageOption, *, default_cls: type[Page]) -> type[Page] | None:
@@ -49,24 +53,35 @@ class Panel:
     def __init__(self, panel_id: str = "admin") -> None:
         self.id = panel_id
         self._path = f"/{panel_id}"
+        self._is_default = False
+        self._domain: str | None = None
+        self._home_url: str | None = None
+        self._favicon: str | None = None
         self._brand = "Orbit"
         self._brand_logo: str | None = None
         self._brand_logo_dark: str | None = None
         self._brand_logo_only: bool = False
         self._brand_name_font_size: str = DEFAULT_BRAND_NAME_FONT_SIZE
+        self._brand_logo_height: str = DEFAULT_BRAND_LOGO_HEIGHT
         self._font = "Outfit"
         self._colors: dict[str, str] = {"primary": DEFAULT_PRIMARY}
         self._resources: list[type[Any]] = []
         self._pages: list[type[Any]] = []
         self._widgets: list[type[Any]] = []
         self._middleware: list[Any] = ["web"]
+        self._auth_middleware: list[Any] = []
         self._login: PageOption = True
         self._signup: PageOption = False
         self._dashboard: PageOption = True
         self._auth_guard: str | None = None
         self._plugin_callbacks: list[Callable[[Panel], Any]] = []
+        self._plugins: list[Any] = []
+        self._boot_callbacks: list[Callable[[Panel], Any]] = []
         self._dark_mode = True
+        self._theme_switcher = True
+        self._default_theme_mode: ThemeMode = "system"
         self._sidebar_collapsible = False
+        self._breadcrumbs_enabled = True
         self._discover_resources_in: list[str] = []
         self._discover_pages_in: list[str] = []
         self._discover_widgets_in: list[str] = []
@@ -78,6 +93,7 @@ class Panel:
         self._database_notifications: list[dict[str, Any]] = []
         self._panel_user: Any = None
         self._content_max_width: str = DEFAULT_CONTENT_MAX_WIDTH
+        self._simple_page_max_content_width: str = DEFAULT_SIMPLE_PAGE_MAX_CONTENT_WIDTH
         # Back-compat alias used by older callers / routing.
         self._demo_user: Any = None
 
@@ -85,9 +101,50 @@ class Panel:
     def make(cls, panel_id: str = "admin") -> Self:
         return cls(panel_id)
 
-    def path(self, path: str) -> Self:
-        self._path = path if path.startswith("/") else f"/{path}"
+    def default(self, condition: bool = True) -> Self:
+        """Mark this panel as the application default (see :meth:`PanelRegistry.get_default`)."""
+        self._is_default = bool(condition)
         return self
+
+    def is_default(self) -> bool:
+        return self._is_default
+
+    def path(self, path: str) -> Self:
+        # Filament allows ``path('')`` for a root panel; treat empty as ``/``.
+        cleaned = (path or "").strip()
+        if cleaned in ("", "/"):
+            self._path = "/"
+            return self
+        self._path = cleaned if cleaned.startswith("/") else f"/{cleaned}"
+        return self
+
+    def domain(self, domain: str | None) -> Self:
+        """Bind panel routes to a host (passed to Almasix ``Router.add(domain=…)``)."""
+        self._domain = (domain or "").strip() or None
+        return self
+
+    def get_domain(self) -> str | None:
+        return self._domain
+
+    def home_url(self, url: str | None) -> Self:
+        """Override the brand / breadcrumb home URL (defaults to the panel root)."""
+        self._home_url = (url or "").strip() or None
+        return self
+
+    def get_home_url(self) -> str:
+        if self._home_url:
+            return self._home_url
+        return self.url()
+
+    def favicon(self, url: str | None) -> Self:
+        """Set ``<link rel=\"icon\">`` in the panel shell head."""
+        self._favicon = (url or "").strip() or None
+        return self
+
+    def get_favicon_url(self) -> str | None:
+        from almasix.orbit.support.urls import resolve_public_url
+
+        return resolve_public_url(self._favicon) if self._favicon else None
 
     def brand_name(self, name: str) -> Self:
         self._brand = name
@@ -128,6 +185,13 @@ class Panel:
         """Font size for the visible brand name (shell + login). CSS length, e.g. ``1.25rem``."""
         self._brand_name_font_size = (size or DEFAULT_BRAND_NAME_FONT_SIZE).strip() or (
             DEFAULT_BRAND_NAME_FONT_SIZE
+        )
+        return self
+
+    def brand_logo_height(self, height: str) -> Self:
+        """CSS height for brand logos (default ``2rem``)."""
+        self._brand_logo_height = (height or DEFAULT_BRAND_LOGO_HEIGHT).strip() or (
+            DEFAULT_BRAND_LOGO_HEIGHT
         )
         return self
 
@@ -189,6 +253,24 @@ class Panel:
                 self._middleware.append(item)
         return self
 
+    def auth_middleware(
+        self,
+        middleware: Sequence[Any],
+        *,
+        replace: bool = False,
+    ) -> Self:
+        """Middleware applied only to authenticated panel routes (not login/register)."""
+        if replace:
+            self._auth_middleware = list(middleware)
+            return self
+        for item in middleware:
+            if item not in self._auth_middleware:
+                self._auth_middleware.append(item)
+        return self
+
+    def get_auth_middleware(self) -> list[Any]:
+        return list(self._auth_middleware)
+
     def login(self, page: PageOption = True) -> Self:
         """Enable login (default), disable with ``False``, or pass a custom ``Login`` page class."""
         self._login = page
@@ -233,11 +315,30 @@ class Panel:
         return self
 
     def dark_mode(self, condition: bool = True) -> Self:
+        """Enable dark-mode CSS / preference boot. Use :meth:`theme_switcher` for the toggle."""
         self._dark_mode = bool(condition)
+        return self
+
+    def theme_switcher(self, condition: bool = True) -> Self:
+        """Show the light/dark/system toggle (requires :meth:`dark_mode`)."""
+        self._theme_switcher = bool(condition)
+        return self
+
+    def default_theme_mode(self, mode: ThemeMode = "system") -> Self:
+        """Default theme preference when the user has no stored choice (``light``/``dark``/``system``)."""
+        normalized = str(mode or "system").strip().lower()
+        if normalized not in ("light", "dark", "system"):
+            normalized = "system"
+        self._default_theme_mode = normalized  # type: ignore[assignment]
         return self
 
     def sidebar_collapsible(self, condition: bool = True) -> Self:
         self._sidebar_collapsible = bool(condition)
+        return self
+
+    def breadcrumbs_enabled(self, condition: bool = True) -> Self:
+        """Toggle the shell breadcrumb trail (on by default)."""
+        self._breadcrumbs_enabled = bool(condition)
         return self
 
     def navigation_layout(self, layout: NavLayout) -> Self:
@@ -313,6 +414,14 @@ class Panel:
     def get_content_max_width(self) -> str:
         return self._content_max_width
 
+    def simple_page_max_content_width(self, value: str) -> Self:
+        """Max content width for bare/auth pages (login, register). Default ``lg``."""
+        self._simple_page_max_content_width = value
+        return self
+
+    def get_simple_page_max_content_width(self) -> str:
+        return self._simple_page_max_content_width
+
     def navigation_items(self, items: Sequence[NavigationItem] | None = None) -> Any:
         """Register custom items when passed; otherwise return computed nav dicts."""
         if items is not None:
@@ -386,8 +495,53 @@ class Panel:
 
         return self
 
-    def plugin(self, callback: Callable[[Panel], Any]) -> Self:
-        self._plugin_callbacks.append(callback)
+    def plugin(self, plugin: PluginLike) -> Self:
+        """Register a mount-time plugin.
+
+        Accepts a ``Callable[[Panel], Any]`` (legacy) or a ``Plugin`` / ``PanelPlugin``
+        instance (``register`` then ``boot`` at mount).
+        """
+        if callable(plugin) and not hasattr(plugin, "get_id"):
+            self._plugin_callbacks.append(plugin)
+            return self
+        self._plugins.append(plugin)
+        return self
+
+    def plugins(self, plugins: Sequence[PluginLike]) -> Self:
+        for item in plugins:
+            self.plugin(item)
+        return self
+
+    def boot_using(self, callback: Callable[[Panel], Any]) -> Self:
+        """Run ``callback(panel)`` after plugins when the panel is mounted."""
+        self._boot_callbacks.append(callback)
+        return self
+
+    def render_hook(
+        self,
+        name: str,
+        callback: Callable[..., str],
+        *,
+        scopes: list[str] | None = None,
+    ) -> Self:
+        """Register a panel-scoped render hook (defaults to this panel's id)."""
+        register_render_hook(name, callback, scopes=scopes if scopes is not None else [self.id])
+        return self
+
+    def run_plugins(self) -> Self:
+        """Invoke plugin ``register`` / callbacks / ``boot`` / ``boot_using`` (also called at mount)."""
+        for plugin in self._plugins:
+            register = getattr(plugin, "register", None)
+            if callable(register):
+                register(self)
+        for callback in self._plugin_callbacks:
+            callback(self)
+        for plugin in self._plugins:
+            boot = getattr(plugin, "boot", None)
+            if callable(boot):
+                boot(self)
+        for callback in self._boot_callbacks:
+            callback(self)
         return self
 
     def get_path(self) -> str:
@@ -521,20 +675,26 @@ class Panel:
         font = e(self._font)
         collapsible = self._sidebar_collapsible
         scope = self.id
-        width = resolve_content_max_width(self._content_max_width)
+        width_token = (
+            self._simple_page_max_content_width if bare else self._content_max_width
+        )
+        width = resolve_content_max_width(width_token)
         width_css = e(width.css_value)
         color_vars = "".join(
             f"{e(name)}: {e(value)}; "
             for name, value in resolve_panel_color_vars(self._colors).items()
         )
         brand_name_size = e(self._brand_name_font_size or DEFAULT_BRAND_NAME_FONT_SIZE)
+        brand_logo_height = e(self._brand_logo_height or DEFAULT_BRAND_LOGO_HEIGHT)
+        show_theme_toggle = self._dark_mode and self._theme_switcher
+        default_theme = e(self._default_theme_mode or "system")
 
         if bare:
             sun = render_icon("heroicon-o-sun", size=20)
             moon = render_icon("heroicon-o-moon", size=20)
             system = render_icon("heroicon-o-computer-desktop", size=20)
             theme_btn = ""
-            if self._dark_mode:
+            if show_theme_toggle:
                 theme_btn = (
                     '<button type="button" class="or-icon-btn or-theme-toggle or-auth-theme" '
                     '@click="cycleTheme()" :aria-label="\'Theme: \' + theme">'
@@ -587,8 +747,9 @@ class Panel:
 
         theme_boot = (
             "<script>(function(){try{"
+            f"var fallback='{default_theme}';"
             "var t=localStorage.getItem('orbit-theme');"
-            "if(t!=='light'&&t!=='dark'&&t!=='system'){t='system';}"
+            "if(t!=='light'&&t!=='dark'&&t!=='system'){t=fallback;}"
             "var dark=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);"
             "document.documentElement.setAttribute('data-theme',dark?'dark':'light');"
             "document.documentElement.setAttribute('data-theme-preference',t);"
@@ -608,6 +769,11 @@ class Panel:
         except Exception:
             pass
 
+        favicon_html = ""
+        fav = self.get_favicon_url()
+        if fav:
+            favicon_html = f'  <link rel="icon" href="{e(fav)}" />\n'
+
         return (
             "<!DOCTYPE html>\n"
             f'<html lang="en" translate="no" data-orbit-panel="{e(self.id)}" data-theme="light">\n'
@@ -616,6 +782,7 @@ class Panel:
             '  <meta name="viewport" content="width=device-width, initial-scale=1" />\n'
             '  <meta name="google" content="notranslate" />\n'
             f"{csrf_meta}"
+            f"{favicon_html}"
             f"  <title>{brand}</title>\n"
             f"{theme_boot}\n"
             f'{render_hook("panels::head.start", scope=scope)}\n'
@@ -627,6 +794,7 @@ class Panel:
             '  <script src="/vendor/orbit/orbit.js"></script>\n'
             f"  <style>:root {{ --or-font: '{font}', ui-sans-serif, system-ui, sans-serif; "
             f"{color_vars}--or-brand-name-size: {brand_name_size}; "
+            f"--or-brand-logo-height: {brand_logo_height}; "
             f"--or-content-max: {width_css}; }}</style>\n"
             f"{extra_head}\n"
             f'{render_hook("panels::styles.after", scope=scope)}\n'
@@ -650,7 +818,7 @@ class Panel:
         Each item is ``{"label": str, "url": str | None}``. The last item is the
         current page (``url`` is ``None``).
         """
-        home_url = self.url()
+        home_url = self.get_home_url()
         crumbs: list[dict[str, str | None]] = [
             {"label": self._brand, "url": home_url},
         ]
@@ -722,6 +890,8 @@ class Panel:
         return crumbs
 
     def _render_breadcrumbs(self, active_path: str | None) -> str:
+        if not self._breadcrumbs_enabled:
+            return ""
         items = self.breadcrumbs(active_path)
         if len(items) <= 1:
             # Home-only: omit the trail (the brand already marks where you are).
@@ -749,6 +919,7 @@ class Panel:
         logo = ""
         show_name = True
         light = self.get_brand_logo_url(dark=False)
+        home = e(self.get_home_url())
         if light:
             dark = self.get_brand_logo_url(dark=True) or light
             if dark == light:
@@ -766,7 +937,7 @@ class Panel:
         if logo and not show_name:
             classes += " or-brand-logo-only"
         name_html = f'<span class="or-brand-name">{name}</span>' if show_name else ""
-        return f'<a class="{classes}" href="{e(self.url())}">{logo}{name_html}</a>'
+        return f'<a class="{classes}" href="{home}">{logo}{name_html}</a>'
 
     def _nav_group(self, label: str) -> str:
         tip = e(label)
@@ -961,7 +1132,7 @@ class Panel:
         parts.append('<div class="or-global-search-slot" data-orbit-global-search></div>')
         parts.append(render_hook("panels::global-search.after", scope=scope, user=user))
 
-        if self._dark_mode:
+        if self._dark_mode and self._theme_switcher:
             sun = render_icon("heroicon-o-sun", size=_TOPBAR_ICON)
             moon = render_icon("heroicon-o-moon", size=_TOPBAR_ICON)
             system = render_icon("heroicon-o-computer-desktop", size=_TOPBAR_ICON)
@@ -1025,15 +1196,26 @@ class Panel:
         return {
             "id": self.id,
             "path": self._path,
+            "default": self._is_default,
+            "domain": self._domain,
+            "home_url": self._home_url,
+            "favicon": self._favicon,
             "brand": self._brand,
             "brand_name_font_size": self._brand_name_font_size,
+            "brand_logo_height": self._brand_logo_height,
             "font": self._font,
             "colors": self._colors,
             "resources": [r.__name__ for r in self._resources],
             "pages": [p.__name__ for p in self._pages],
             "middleware": [str(m) for m in self._middleware],
+            "auth_middleware": [str(m) for m in self._auth_middleware],
             "navigation_layout": normalize_nav_layout(self._navigation_layout),
             "content_max_width": self._content_max_width,
+            "simple_page_max_content_width": self._simple_page_max_content_width,
+            "dark_mode": self._dark_mode,
+            "theme_switcher": self._theme_switcher,
+            "default_theme_mode": self._default_theme_mode,
+            "breadcrumbs": self._breadcrumbs_enabled,
         }
 
 
@@ -1061,13 +1243,31 @@ def _action_modal_html() -> str:
 class PanelRegistry:
     def __init__(self) -> None:
         self._panels: dict[str, Panel] = {}
+        self._default_id: str | None = None
 
     def register(self, panel: Panel) -> Panel:
         self._panels[panel.id] = panel
+        if panel.is_default() or self._default_id is None:
+            self._default_id = panel.id
         return panel
 
     def get(self, panel_id: str) -> Panel | None:
         return self._panels.get(panel_id)
+
+    def default(self, panel_id: str) -> Panel | None:
+        """Mark ``panel_id`` as the default panel (must already be registered)."""
+        panel = self._panels.get(panel_id)
+        if panel is None:
+            return None
+        panel.default(True)
+        self._default_id = panel_id
+        return panel
+
+    def get_default(self) -> Panel | None:
+        if self._default_id and self._default_id in self._panels:
+            return self._panels[self._default_id]
+        panels = self.all()
+        return panels[0] if panels else None
 
     def all(self) -> list[Panel]:
         return list(self._panels.values())
