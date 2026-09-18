@@ -167,6 +167,12 @@
     window.Alpine.data("orbitDropdown", () => ({
       menuOpen: false,
       init() {
+        this._menu =
+          this.$el?.querySelector?.(
+            ":scope > .or-dropdown-menu, :scope > .or-columns-panel, :scope > .or-filters-panel"
+          ) || null;
+        this._trigger =
+          this.$el?.querySelector?.(":scope > .or-btn, :scope > button") || null;
         this._onCloseOthers = (event) => {
           if (event?.detail?.except === "dropdown") {
             return;
@@ -174,8 +180,16 @@
           this.menuOpen = false;
         };
         window.addEventListener("orbit:close-dropdowns", this._onCloseOthers);
+        this.$watch("menuOpen", (open) => {
+          if (open) {
+            this._positionMenu();
+          } else {
+            this._clearMenuPosition();
+          }
+        });
       },
       destroy() {
+        this._clearMenuPosition();
         if (this._onCloseOthers) {
           window.removeEventListener("orbit:close-dropdowns", this._onCloseOthers);
         }
@@ -195,6 +209,60 @@
           }
         } catch (_) {
           /* selection root may not be Alpine-bound yet */
+        }
+      },
+      _positionMenu() {
+        const menu = this._menu;
+        const trigger = this._trigger;
+        if (!menu || !trigger) {
+          return;
+        }
+        const place = () => {
+          menu.classList.add("or-dropdown-menu-fixed");
+          const rect = trigger.getBoundingClientRect();
+          const preferEnd =
+            menu.classList.contains("or-dropdown-menu-end") ||
+            !!trigger.closest(".or-td-actions, .or-row-actions, .or-page-actions");
+          const mw = menu.offsetWidth || 192;
+          const mh = menu.offsetHeight || 0;
+          let top = rect.bottom + 6;
+          let left = preferEnd ? rect.right - mw : rect.left;
+          if (top + mh > window.innerHeight - 8 && rect.top - mh - 6 > 8) {
+            top = rect.top - mh - 6;
+          }
+          left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
+          menu.style.top = `${Math.round(top)}px`;
+          menu.style.left = `${Math.round(left)}px`;
+          menu.style.right = "auto";
+        };
+        // x-show applies display after this tick — measure once visible.
+        if (typeof this.$nextTick === "function") {
+          this.$nextTick(place);
+        } else {
+          requestAnimationFrame(place);
+        }
+        if (!this._onReposition) {
+          this._onReposition = () => {
+            if (this.menuOpen) {
+              place();
+            }
+          };
+          window.addEventListener("scroll", this._onReposition, true);
+          window.addEventListener("resize", this._onReposition);
+        }
+      },
+      _clearMenuPosition() {
+        const menu = this._menu;
+        if (menu) {
+          menu.classList.remove("or-dropdown-menu-fixed");
+          menu.style.top = "";
+          menu.style.left = "";
+          menu.style.right = "";
+        }
+        if (this._onReposition) {
+          window.removeEventListener("scroll", this._onReposition, true);
+          window.removeEventListener("resize", this._onReposition);
+          this._onReposition = null;
         }
       },
       toggleMenu(event) {
