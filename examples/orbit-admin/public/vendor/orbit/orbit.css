@@ -2241,6 +2241,15 @@ html.dark .or-login-logo-dark {
   gap: 0.15rem;
 }
 
+/* Escape .or-list-table-scroll overflow so row ⋮ menus float above the table. */
+.or-dropdown-menu.or-dropdown-menu-fixed,
+.or-columns-panel.or-dropdown-menu-fixed,
+.or-filters-panel.or-dropdown-menu-fixed {
+  position: fixed;
+  z-index: 220;
+  margin: 0;
+}
+
 .or-list-bulk .or-dropdown-menu,
 .or-table-bulk-trigger .or-dropdown-menu {
   /* Anchor under the Bulk actions trigger (Filament-style). */
