@@ -1,50 +1,24 @@
 ---
 title: Table select
-description: Orbit TableSelect — Select subclass styled for table-backed picking.
+description: TableSelect presents options with table-like chrome while still dehydrating a single (or multiple) key.
 ---
 
-Select that hints at a tabular picker — still options under the hood.
+## Introduction
 
-## Standalone
+TableSelect presents options with table-like chrome while still dehydrating a single (or multiple) key. Prefer it when labels need columns of context beyond a flat Select list.
 
-```python
-from almasix.orbit.forms import Form, TableSelect
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        TableSelect.make("post_id")
-            .options({"1": "Shipping Orbit docs", "2": "Panel brand colors"})
-            .searchable()
-])
-```
+## Table select
 
-## In a Resource
+![Orbit Table select (light)](/examples/light/forms/select/basic.png)
+
+![Orbit Table select (dark)](/examples/dark/forms/select/basic.png)
+
+Renders like a select with table-oriented class hooks.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, TableSelect
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            TableSelect.make("user_id")
-                .options(lambda **ctx: ctx.get("users", {}))
-                .required(),
-        ])
+TableSelect.make('post_id').label('Post').options({'1': 'Launch', '2': 'Hosts'})
 ```
 
-## Key methods
-
-- `Inherits Select`
-- `Adds `or-select-table``
-- `.options(...) / .searchable() / .required()`
-- `.disabled(...) / .visible(...)`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/select (light)](/examples/light/forms/select.png)
-
-![Orbit forms/select (dark)](/examples/dark/forms/select.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

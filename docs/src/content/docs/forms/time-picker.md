@@ -1,46 +1,36 @@
 ---
 title: Time picker
-description: Orbit TimePicker using native time input.
+description: TimePicker is a native time input for reminders, slots, and office hours.
 ---
 
-Just the clock — opening hours, reminder times, quiet hours.
+## Introduction
 
-## Standalone
+TimePicker is a native time input for reminders, slots, and office hours. Min/max attributes bound acceptable times.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Basic time picker
+
+![Orbit Basic time picker (light)](/examples/light/forms/time-picker/basic.png)
+
+![Orbit Basic time picker (dark)](/examples/dark/forms/time-picker/basic.png)
+
+HH:MM time selection.
 
 ```python
-from almasix.orbit.forms import Form, TimePicker
-
-form = Form.make("demo").schema([
-        TimePicker.make("opens_at").label("Opens at").default("09:00")
-])
+TimePicker.make('remind_at').label('Remind at')
 ```
 
-## In a Resource
+## Time window
+
+![Orbit Time window (light)](/examples/light/forms/time-picker/min-max.png)
+
+![Orbit Time window (dark)](/examples/dark/forms/time-picker/min-max.png)
+
+Business-hours style constraints.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, TimePicker
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            TimePicker.make("reminder_at").required(),
-            TimePicker.make("quiet_until"),
-        ])
+TimePicker.make('slot').label('Time slot').min_date('08:00').max_date('18:00')
 ```
 
-## Key methods
-
-- `Sets `input_type` to `time``
-- `.default("09:00") / .required()`
-- `.disabled(...) / .visible(...)`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/date-pickers (light)](/examples/light/forms/date-pickers.png)
-
-![Orbit forms/date-pickers (dark)](/examples/dark/forms/date-pickers.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

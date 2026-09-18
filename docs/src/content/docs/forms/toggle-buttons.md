@@ -1,50 +1,24 @@
 ---
 title: Toggle buttons
-description: Orbit ToggleButtons — select options rendered as segmented buttons.
+description: ToggleButtons render segmented radio controls styled as button groups — great for visibility, alignment, or enum-like choices with few options.
 ---
 
-Radio options that look like a button strip — status, size, mood.
+## Introduction
 
-## Standalone
+ToggleButtons render segmented radio controls styled as button groups — great for visibility, alignment, or enum-like choices with few options.
 
-```python
-from almasix.orbit.forms import Form, ToggleButtons
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        ToggleButtons.make("size")
-            .options({"sm": "Small", "md": "Medium", "lg": "Large"})
-            .default("md")
-])
-```
+## Basic toggle buttons
 
-## In a Resource
+![Orbit Basic toggle buttons (light)](/examples/light/forms/toggle-buttons/basic.png)
+
+![Orbit Basic toggle buttons (dark)](/examples/dark/forms/toggle-buttons/basic.png)
+
+Public / private / draft visibility.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, ToggleButtons
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            ToggleButtons.make("status")
-                .options({"draft": "Draft", "live": "Live"})
-                .required(),
-        ])
+ToggleButtons.make('visibility').label('Visibility').options({'public': 'Public', 'private': 'Private'})
 ```
 
-## Key methods
-
-- `.options(dict | callable)`
-- `.default(...) / .required(...)`
-- `.disabled(...) / .visible(...) / .label(...)`
-- `Active option gets `is-active` on the label`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/toggle-buttons (light)](/examples/light/forms/toggle-buttons.png)
-
-![Orbit forms/toggle-buttons (dark)](/examples/dark/forms/toggle-buttons.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

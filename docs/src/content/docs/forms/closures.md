@@ -3,13 +3,17 @@ title: Closures
 description: Callable labels, options, defaults, visibility, and disabled state on Orbit fields.
 ---
 
-Static config is fine until the field needs to know about the record, the user, or the weather on Mars. Orbit evaluates callables at render / validation time via `almasix.orbit.support.evaluate`.
+## Introduction
+
+Static config is enough until a field must react to the record, tenant, or operation. Orbit evaluates callables at render and validation time through `almasix.orbit.support.evaluate`, injecting whatever keyword context you pass into `render()` / `validate()`.
+
+![Orbit text input (light)](/examples/light/forms/text-input/basic.png)
+
+![Orbit text input (dark)](/examples/dark/forms/text-input/basic.png)
 
 Deep dive on the helper itself: [Support closures](/support/closures/).
 
 ## What can be a callable?
-
-On fields (and most components):
 
 | Surface | Example |
 |---------|---------|
@@ -37,40 +41,4 @@ TextInput.make("slug")
 
 ## Passing context
 
-Whatever you pass into `field.render(state, **ctx)` (or the form’s render) becomes keyword args for the callable:
-
-```python
-form.render(form.get_state(), record=post, user=request.user, tenant=tenant)
-```
-
-Match parameter names to what you pass (`record=`, `user=`, …). Extra kwargs are fine — `evaluate` tries a few call shapes.
-
-## Options that aren’t static
-
-```python
-Select.make("status").options({
-    "draft": "Draft",
-    "published": "Published",
-})
-
-# Same idea, deferred:
-Select.make("status").options(lambda **_: fetch_statuses())
-```
-
-`get_options(**ctx)` always returns a plain `dict`.
-
-## Invisible ≠ deleted
-
-`.visible(False)` (or a callable that returns false) skips HTML. Dehydration still respects `.dehydrated()` — hide chrome carefully if the value must round-trip.
-
-## Related
-
-- [Support closures](/support/closures/) — `evaluate` behaviour
-- [Standalone forms](/components/form/)
-- [Forms overview](/forms/overview/)
-
-## Preview
-
-![Orbit forms/overview (light)](/examples/light/forms/overview.png)
-
-![Orbit forms/overview (dark)](/examples/dark/forms/overview.png)
+Whatever you pass into `field.render(state, **ctx)` (or the form’s render) becomes keyword args for the callable. Resource pages typically pass `record`, `operation`, and auth-related values from the Conduit host.

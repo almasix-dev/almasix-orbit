@@ -1,60 +1,24 @@
 ---
 title: Builder
-description: Orbit Builder — block picker with Block.make().label().icon().schema().
+description: Builder extends Repeater with typed blocks — each block has its own schema and picker button.
 ---
 
-A Repeater with a block picker — compose pages from typed chunks.
+## Introduction
 
-## Standalone
+Builder extends Repeater with typed blocks — each block has its own schema and picker button. Use for page builders, email sections, or CMS layouts.
 
-```python
-from almasix.orbit.forms import Form, Builder, Block, TextInput, Textarea
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        Builder.make("blocks").blocks([
-            Block.make("hero").label("Hero").icon("sparkles").schema([
-                TextInput.make("heading").required(),
-            ]).max_items(1),
-            Block.make("quote").label("Quote").schema([
-                Textarea.make("body").rows(3),
-            ]),
-        ])
-])
-```
+## Basic builder
 
-## In a Resource
+![Orbit Basic builder (light)](/examples/light/forms/builder/basic.png)
+
+![Orbit Basic builder (dark)](/examples/dark/forms/builder/basic.png)
+
+Hero and text blocks with picker.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Builder, Block, TextInput, Select
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            Builder.make("sections").blocks([
-                Block.make("text").label("Text").schema([
-                    TextInput.make("title").required(),
-                ]),
-                Block.make("gallery").label("Gallery").max_items(3).schema([
-                    Select.make("layout").options({"grid": "Grid", "row": "Row"}),
-                ]),
-            ]),
-        ])
+Builder.make('content').label('Page blocks').blocks([Block.make('hero').label('Hero').schema([TextInput.make('heading')])])
 ```
 
-## Key methods
-
-- `.blocks([Block.make(...), …])` — typed schemas; picker replaces plain “Add item”
-- `Block.make(name).label(...).icon(...).schema([...]).max_items(n)`
-- Inherits Repeater: `.cloneable()`, `.collapsible()`, `.reorderable()`, `.min_items` / `.max_items`
-- Wire: `addBuilderBlock(name, block)` when a picker button is clicked
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/builder (light)](/examples/light/forms/builder.png)
-
-![Orbit forms/builder (dark)](/examples/dark/forms/builder.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

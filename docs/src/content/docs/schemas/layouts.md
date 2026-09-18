@@ -1,20 +1,15 @@
 ---
 title: Layouts
-description: Structure schemas with Grid, Flex, Group, Split, and Fieldset.
+description: Structure schemas with Grid, Flex, Group, Split, Fieldset, and related layout components.
 ---
 
-Use layout components from `almasix.orbit.schemas` inside any schema (forms, infolists, pages).
+## Introduction
 
-| Component | Role |
-|-----------|------|
-| `Grid` | Responsive columns, dense/gap, optional grid container |
-| `Flex` | Flex row with grow + breakpoint stacking |
-| `Group` | Fuse children without fieldset chrome (optional columns) |
-| `Split` | Side-by-side panes that stack below a breakpoint |
-| `Section` | Bordered section with heading, icon, compact/aside, collapsible |
-| `Fieldset` | Native fieldset + legend |
-| `Tabs` | Tabbed panels with optional icons, badges, persist |
-| `Wizard` | Multi-step flow with nav, continue/back, optional skip |
+Layout components from `almasix.orbit.schemas` nest inside any schema — forms, infolists, and custom pages. Prefer `Section` for titled panels, `Tabs` / `Wizard` for progressive disclosure, and `Grid` / `Flex` / `Group` / `Split` for alignment without extra chrome.
+
+![Orbit grid + flex (light)](/examples/light/schemas/grid-flex.png)
+
+![Orbit grid + flex (dark)](/examples/dark/schemas/grid-flex.png)
 
 ```python
 from almasix.orbit.schemas import Grid, Flex, Group, Split, Section, Fieldset
@@ -36,10 +31,25 @@ layout = Section.make("profile").heading("Profile").collapsible().schema([
 ])
 ```
 
-See [Schemas overview](/schemas/overview/) for nesting with forms.
+## Component map
 
-## Preview
+| Component | Role |
+|-----------|------|
+| [`Grid`](/schemas/grid/) | Responsive columns, dense/gap |
+| [`Flex`](/schemas/flex/) | Flex row with breakpoint stacking |
+| [`Group`](/schemas/group/) | Fuse children (optional columns) |
+| [`Split`](/schemas/split/) | Side-by-side panes that stack |
+| [`Section`](/schemas/sections/) | Heading, icon, compact/aside, collapsible |
+| [`Fieldset`](/schemas/fieldset/) | Native fieldset + legend |
+| [`Tabs`](/schemas/tabs/) | Icons, badges, persist |
+| [`Wizard`](/schemas/wizards/) | Nav, continue/back, skip |
 
-![Orbit schemas/grid-flex (light)](/examples/light/schemas/grid-flex.png)
+## More layout shots
 
-![Orbit schemas/grid-flex (dark)](/examples/dark/schemas/grid-flex.png)
+![Orbit group + split (light)](/examples/light/schemas/group-split.png)
+
+![Orbit group + split (dark)](/examples/dark/schemas/group-split.png)
+
+![Orbit fieldset (light)](/examples/light/schemas/fieldset.png)
+
+![Orbit fieldset (dark)](/examples/dark/schemas/fieldset.png)

@@ -1,48 +1,24 @@
 ---
 title: Modal table select
-description: Orbit ModalTableSelect — browse records via mountTableSelect.
+description: ModalTableSelect opens a browse modal backed by an Orbit table so users can search and pick records without leaving the form.
 ---
 
-Readonly display + Browse button that mounts a table picker modal.
+## Introduction
 
-## Standalone
+ModalTableSelect opens a browse modal backed by an Orbit table so users can search and pick records without leaving the form. The field shows a readonly summary input plus a Browse action that mounts mountTableSelect on the Conduit host.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Modal table select
+
+![Orbit Modal table select (light)](/examples/light/forms/select/basic.png)
+
+![Orbit Modal table select (dark)](/examples/dark/forms/select/basic.png)
+
+Readonly value plus Browse button.
 
 ```python
-from almasix.orbit.forms import Form, ModalTableSelect
-
-form = Form.make("demo").schema([
-        ModalTableSelect.make("post_id").label("Post")
-])
+ModalTableSelect.make('author_id').label('Author')
 ```
 
-## In a Resource
-
-```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, ModalTableSelect
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            ModalTableSelect.make("assignee_id")
-                .label("Assignee")
-                .required(),
-        ])
-```
-
-## Key methods
-
-- `.label(...) / .required(...)`
-- `.disabled(...) / .visible(...)`
-- `Renders readonly input + Browse (`wire:click="mountTableSelect(...)")``
-- `State is the selected id/display value you wire in`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/select (light)](/examples/light/forms/select.png)
-
-![Orbit forms/select (dark)](/examples/dark/forms/select.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

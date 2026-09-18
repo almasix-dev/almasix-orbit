@@ -1,49 +1,48 @@
 ---
 title: Radio
-description: Orbit Radio field — single-select option group.
+description: Radio presents mutually exclusive options with optional per-option descriptions and multi-column layouts.
 ---
 
-One choice from a small set — when a Select feels like overkill.
+## Introduction
 
-## Standalone
+Radio presents mutually exclusive options with optional per-option descriptions and multi-column layouts. State is a single selected key.
 
-```python
-from almasix.orbit.forms import Form, Radio
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        Radio.make("visibility")
-            .options({"public": "Public", "private": "Private"})
-            .default("public")
-])
-```
+## Basic radio
 
-## In a Resource
+![Orbit Basic radio (light)](/examples/light/forms/radio/basic.png)
+
+![Orbit Basic radio (dark)](/examples/dark/forms/radio/basic.png)
+
+Plan or tier selection.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Radio
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            Radio.make("priority")
-                .options({"low": "Low", "normal": "Normal", "high": "High"})
-                .required(),
-        ])
+Radio.make('plan').label('Plan').options({'starter': 'Starter', 'pro': 'Pro'})
 ```
 
-## Key methods
+## With descriptions
 
-- `.options(dict | callable)`
-- `.default(...) / .required(...)`
-- `.disabled(...) / .visible(...) / .label(...)`
+![Orbit With descriptions (light)](/examples/light/forms/radio/with-descriptions.png)
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
+![Orbit With descriptions (dark)](/examples/dark/forms/radio/with-descriptions.png)
 
+Helper copy under each option label.
 
-## Preview
+```python
+Radio.make('plan').label('Plan').options({...}).descriptions({'starter': 'For side projects'})
+```
 
-![Orbit forms/radio-checkbox-list (light)](/examples/light/forms/radio-checkbox-list.png)
+## Multi-column
 
-![Orbit forms/radio-checkbox-list (dark)](/examples/dark/forms/radio-checkbox-list.png)
+![Orbit Multi-column (light)](/examples/light/forms/radio/columns.png)
+
+![Orbit Multi-column (dark)](/examples/dark/forms/radio/columns.png)
+
+Grid layout for dense option sets.
+
+```python
+Radio.make('plan').label('Plan').options({...}).options_columns(2)
+```
+
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

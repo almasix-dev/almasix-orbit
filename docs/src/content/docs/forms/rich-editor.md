@@ -1,50 +1,24 @@
 ---
 title: Rich editor
-description: Orbit RichEditor — TipTap CDN surface with toolbar config and hidden HTML input.
+description: RichEditor provides a TipTap-backed WYSIWYG surface with a configurable toolbar.
 ---
 
-A TipTap-backed editor: toolbar from config, HTML stored in a hidden input for Conduit.
+## Introduction
 
-## Standalone
+RichEditor provides a TipTap-backed WYSIWYG surface with a configurable toolbar. Content dehydrates as HTML in a hidden input bound with wire:model.
 
-```python
-from almasix.orbit.forms import Form, RichEditor
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        RichEditor.make("body")
-            .label("Body")
-            .toolbar_buttons(["bold", "italic", "link", "strike"])
-])
-```
+## Basic rich editor
 
-## In a Resource
+![Orbit Basic rich editor (light)](/examples/light/forms/rich-editor/basic.png)
+
+![Orbit Basic rich editor (dark)](/examples/dark/forms/rich-editor/basic.png)
+
+Bold, italic, link, and heading tools.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, RichEditor
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            RichEditor.make("content").toolbar_buttons(["bold", "italic", "link"]).required(),
-            RichEditor.make("bio").helper_text("Keep it short"),
-        ])
+RichEditor.make('body').label('Body').toolbar_buttons(['bold', 'italic', 'link', 'heading'])
 ```
 
-## Key methods
-
-- `.toolbar_buttons([...])` → toolbar chrome + `data-toolbar` for TipTap init
-- Renders `.or-editor-rich[data-tiptap]` plus a hidden `input` (`data-tiptap-input`) holding HTML
-- Panel `orbit.js` loads TipTap from CDN and syncs `editor.getHTML()` into the hidden input
-- `.required() / .disabled(...) / .visible(...)`
-- `.default(...)` for initial HTML
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/rich-editor (light)](/examples/light/forms/rich-editor.png)
-
-![Orbit forms/rich-editor (dark)](/examples/dark/forms/rich-editor.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

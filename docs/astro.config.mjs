@@ -1,10 +1,15 @@
 // @ts-check
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { ExpressiveCodeTheme } from 'astro-expressive-code';
 
 const base = '/';
+const kimbieDark = ExpressiveCodeTheme.fromJSONString(
+	readFileSync(fileURLToPath(new URL('./src/themes/kimbie-dark.json', import.meta.url)), 'utf8'),
+);
 
 // https://astro.build/config
 export default defineConfig({
@@ -42,7 +47,9 @@ export default defineConfig({
 				ThemeSelect: './src/components/ThemeSelect.astro',
 			},
 			expressiveCode: {
-				themes: ['one-dark-pro'],
+				// Custom Kimbie Dark (not in current Shiki bundle) for code snippets
+				// — warmer than One Dark Pro, especially on light docs UI.
+				themes: [kimbieDark],
 				useStarlightDarkModeSwitch: false,
 				useStarlightUiThemeColors: false,
 				// Must stay true on Astro 7: inlining can break code-frame CSS.
@@ -52,12 +59,8 @@ export default defineConfig({
 					borderWidth: '1px',
 					codeFontFamily: "'JetBrains Mono', ui-monospace, monospace",
 					codeFontSize: '0.9rem',
-					codeBackground: '#282c34',
-					codeForeground: '#abb2bf',
 					frames: {
-						shadowColor: 'rgba(0, 0, 0, 0.4)',
-						editorBackground: '#282c34',
-						terminalBackground: '#282c34',
+						shadowColor: 'rgba(0, 0, 0, 0.35)',
 					},
 				},
 			},
@@ -193,6 +196,11 @@ export default defineConfig({
 					items: [
 						{ label: 'Overview', slug: 'schemas/overview' },
 						{ label: 'Layouts', slug: 'schemas/layouts' },
+						{ label: 'Grid', slug: 'schemas/grid' },
+						{ label: 'Flex', slug: 'schemas/flex' },
+						{ label: 'Group', slug: 'schemas/group' },
+						{ label: 'Split', slug: 'schemas/split' },
+						{ label: 'Fieldset', slug: 'schemas/fieldset' },
 						{ label: 'Sections', slug: 'schemas/sections' },
 						{ label: 'Tabs', slug: 'schemas/tabs' },
 						{ label: 'Wizards', slug: 'schemas/wizards' },

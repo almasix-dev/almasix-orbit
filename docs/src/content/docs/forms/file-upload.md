@@ -1,56 +1,48 @@
 ---
 title: File upload
-description: Orbit FileUpload with disk, avatar, previews, and accept helpers.
+description: FileUpload handles single or multiple files with image preview, avatar cropping layout, and accepted MIME filters.
 ---
 
-Attach a file — covers, avatars, CSVs that somehow always arrive on Friday.
+## Introduction
 
-## Standalone
+FileUpload handles single or multiple files with image preview, avatar cropping layout, and accepted MIME filters. Image and avatar presets configure accept lists and preview grids automatically.
 
-```python
-from almasix.orbit.forms import Form, FileUpload
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        FileUpload.make("cover")
-            .disk("public")
-            .directory("covers")
-            .accepted_file_types(["image/png", "image/jpeg"])
-            .image_preview()
-            .max_size(2048)  # KB
-])
-```
+## Basic file upload
 
-## In a Resource
+![Orbit Basic file upload (light)](/examples/light/forms/file-upload/basic.png)
+
+![Orbit Basic file upload (dark)](/examples/dark/forms/file-upload/basic.png)
+
+Generic attachment picker.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, FileUpload
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            FileUpload.make("avatar").avatar().disk("s3").directory("avatars"),
-            FileUpload.make("gallery").image().multiple().reorderable(),
-            FileUpload.make("attachment").label("Attachment"),
-        ])
+FileUpload.make('attachment').label('Attachment')
 ```
 
-## Key methods
+## Image upload
 
-- `.disk(name)` / `.directory(path)` → `data-disk` / `data-directory`
-- `.multiple()` / `.avatar()` / `.image_preview()` / `.reorderable()`
-- `.image()` / `.accepted_images()` — common image MIME set + preview
-- `.accepted_file_types([...])` → `accept` attribute
-- `.max_size` / `.min_size` (KB) and `.image_size(min_width=…, …)` for host validation hints
-- `.required() / .disabled(...) / .visible(...)`
-- `.label(...) / .helper_text(...)`
+![Orbit Image upload (light)](/examples/light/forms/file-upload/image.png)
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
+![Orbit Image upload (dark)](/examples/dark/forms/file-upload/image.png)
 
+Image MIME types with preview.
 
-## Preview
+```python
+FileUpload.make('cover').image().label('Cover image')
+```
 
-![Orbit forms/file-upload (light)](/examples/light/forms/file-upload.png)
+## Avatar upload
 
-![Orbit forms/file-upload (dark)](/examples/dark/forms/file-upload.png)
+![Orbit Avatar upload (light)](/examples/light/forms/file-upload/avatar.png)
+
+![Orbit Avatar upload (dark)](/examples/dark/forms/file-upload/avatar.png)
+
+Circular avatar preset with image/* accept.
+
+```python
+FileUpload.make('avatar').avatar().label('Avatar')
+```
+
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

@@ -1,47 +1,24 @@
 ---
 title: Markdown editor
-description: Orbit MarkdownEditor — Textarea subclass with markdown editor classes.
+description: MarkdownEditor styles a Textarea for markdown source editing.
 ---
 
-Markdown in a textarea — for people who type `**bold**` for fun.
+## Introduction
 
-## Standalone
+MarkdownEditor styles a Textarea for markdown source editing. Pair with a preview prime on infolists for rendered output.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Basic markdown editor
+
+![Orbit Basic markdown editor (light)](/examples/light/forms/markdown-editor/basic.png)
+
+![Orbit Basic markdown editor (dark)](/examples/dark/forms/markdown-editor/basic.png)
+
+Multi-line markdown source.
 
 ```python
-from almasix.orbit.forms import Form, MarkdownEditor
-
-form = Form.make("demo").schema([
-        MarkdownEditor.make("readme").label("README").rows(14)
-])
+MarkdownEditor.make('readme').label('README').rows(5)
 ```
 
-## In a Resource
-
-```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, MarkdownEditor
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            MarkdownEditor.make("body").rows(20).required(),
-            MarkdownEditor.make("changelog"),
-        ])
-```
-
-## Key methods
-
-- `Inherits Textarea`
-- `Adds `or-editor or-editor-markdown``
-- `.rows(n) / .required() / .disabled(...)`
-- `.default("# Title\n")`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/rich-editor (light)](/examples/light/forms/rich-editor.png)
-
-![Orbit forms/rich-editor (dark)](/examples/dark/forms/rich-editor.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

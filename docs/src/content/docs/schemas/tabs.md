@@ -1,20 +1,36 @@
 ---
 title: Tabs
-description: Tabbed schema layouts.
+description: Tabs split a form into horizontal panels — each tab owns its own schema.
 ---
 
-```python
-from almasix.orbit.schemas import Tabs
-from almasix.orbit.forms import TextInput
+## Introduction
 
-Tabs.make().tabs(
-    ("Account", [TextInput.make("email")]),
-    ("Profile", [TextInput.make("bio")]),
-)
+Tabs split a form into horizontal panels — each tab owns its own schema. Icons and badges help surface counts or status without leaving the page.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Basic tabs
+
+![Orbit Basic tabs (light)](/examples/light/schemas/tabs/basic.png)
+
+![Orbit Basic tabs (dark)](/examples/dark/schemas/tabs/basic.png)
+
+General and SEO panels.
+
+```python
+Tabs.make('main').tabs({'label': 'General', 'schema': [...]}, {'label': 'SEO', 'schema': [...]}).active_tab(0)
 ```
 
-## Preview
+## Tabs with badges
 
-![Orbit schemas/tabs (light)](/examples/light/schemas/tabs.png)
+![Orbit Tabs with badges (light)](/examples/light/schemas/tabs/with-badges.png)
 
-![Orbit schemas/tabs (dark)](/examples/dark/schemas/tabs.png)
+![Orbit Tabs with badges (dark)](/examples/dark/schemas/tabs/with-badges.png)
+
+Icons and numeric badges on tab labels.
+
+```python
+Tabs.make('main').tabs({'label': 'SEO', 'icon': 'heroicon-o-magnifying-glass', 'badge': '3', 'schema': [...]})
+```
+
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

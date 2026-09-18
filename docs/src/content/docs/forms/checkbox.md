@@ -1,47 +1,24 @@
 ---
 title: Checkbox
-description: Orbit Checkbox field for boolean form state.
+description: Checkbox renders a single boolean toggle with an inline label.
 ---
 
-A boolean with a label beside it — featured, active, “yes I agree,” etc.
+## Introduction
 
-## Standalone
+Checkbox renders a single boolean toggle with an inline label. Use CheckboxList when users pick many options from a set; use Toggle for on/off settings with switch styling.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Basic checkbox
+
+![Orbit Basic checkbox (light)](/examples/light/forms/checkbox/basic.png)
+
+![Orbit Basic checkbox (dark)](/examples/dark/forms/checkbox/basic.png)
+
+Single boolean consent or feature flag.
 
 ```python
-from almasix.orbit.forms import Form, Checkbox
-
-form = Form.make("demo").schema([
-        Checkbox.make("featured").label("Featured on homepage")
-])
+Checkbox.make('terms').label('Accept terms and conditions')
 ```
 
-## In a Resource
-
-```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Checkbox
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            Checkbox.make("is_published").label("Published"),
-            Checkbox.make("notify").default(True),
-        ])
-```
-
-## Key methods
-
-- `.label(...) — rendered next to the input`
-- `.default(True|False)`
-- `.disabled(...) / .visible(...) / .readonly()`
-- `.required(...) when the box must be checked`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/checkbox-toggle (light)](/examples/light/forms/checkbox-toggle.png)
-
-![Orbit forms/checkbox-toggle (dark)](/examples/dark/forms/checkbox-toggle.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

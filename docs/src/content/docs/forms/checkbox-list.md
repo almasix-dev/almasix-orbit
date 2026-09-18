@@ -1,53 +1,36 @@
 ---
 title: Checkbox list
-description: Orbit CheckboxList — multi-select rendered as a vertical checkbox group.
+description: CheckboxList allows many selections from a static option map.
 ---
 
-Many options, many checks — permissions, tags, “pick your toppings.”
+## Introduction
 
-## Standalone
+CheckboxList allows many selections from a static option map. Bulk toggle adds select-all / deselect-all links; descriptions mirror Radio.
 
-```python
-from almasix.orbit.forms import Form, CheckboxList
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        CheckboxList.make("permissions")
-            .options({
-                "read": "Read",
-                "write": "Write",
-                "delete": "Delete",
-            })
-])
-```
+## Basic checkbox list
 
-## In a Resource
+![Orbit Basic checkbox list (light)](/examples/light/forms/checkbox-list/basic.png)
+
+![Orbit Basic checkbox list (dark)](/examples/dark/forms/checkbox-list/basic.png)
+
+Feature flags or permissions.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, CheckboxList
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            CheckboxList.make("channels")
-                .options({"email": "Email", "sms": "SMS", "push": "Push"})
-                .required(),
-        ])
+CheckboxList.make('features').label('Features').options({'api': 'API access', 'sso': 'SSO'})
 ```
 
-## Key methods
+## Bulk toggle
 
-- `.options(dict | callable) — multiple is always on`
-- `.label(...) / .helper_text(...)`
-- `.disabled(...) / .visible(...) / .required(...)`
-- `.default([...]) for pre-checked values`
+![Orbit Bulk toggle (light)](/examples/light/forms/checkbox-list/bulk-toggle.png)
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
+![Orbit Bulk toggle (dark)](/examples/dark/forms/checkbox-list/bulk-toggle.png)
 
+Select all / deselect all controls.
 
-## Preview
+```python
+CheckboxList.make('features').label('Features').options({...}).bulk_toggleable().options_columns(2)
+```
 
-![Orbit forms/radio-checkbox-list (light)](/examples/light/forms/radio-checkbox-list.png)
-
-![Orbit forms/radio-checkbox-list (dark)](/examples/dark/forms/radio-checkbox-list.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

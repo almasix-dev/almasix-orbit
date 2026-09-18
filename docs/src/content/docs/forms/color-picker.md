@@ -1,47 +1,24 @@
 ---
 title: Color picker
-description: Orbit ColorPicker field using native color input.
+description: ColorPicker wraps the native color input for brand swatches and theme tokens.
 ---
 
-A brand hex, a badge tint, a mood — `type=color` with Orbit chrome.
+## Introduction
 
-## Standalone
+ColorPicker wraps the native color input for brand swatches and theme tokens. Values dehydrate as hex strings.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Basic color picker
+
+![Orbit Basic color picker (light)](/examples/light/forms/color-picker/basic.png)
+
+![Orbit Basic color picker (dark)](/examples/dark/forms/color-picker/basic.png)
+
+Single color selection.
 
 ```python
-from almasix.orbit.forms import Form, ColorPicker
-
-form = Form.make("demo").schema([
-        ColorPicker.make("brand").label("Brand color").default("#f1511b")
-])
+ColorPicker.make('brand').label('Brand color')
 ```
 
-## In a Resource
-
-```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, ColorPicker
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            ColorPicker.make("accent").helper_text("Used in the panel shell"),
-            ColorPicker.make("badge_color"),
-        ])
-```
-
-## Key methods
-
-- `Sets `input_type` to `color``
-- `.default("#f1511b")`
-- `.label(...) / .helper_text(...)`
-- `.disabled(...) / .visible(...)`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/color-money (light)](/examples/light/forms/color-money.png)
-
-![Orbit forms/color-money (dark)](/examples/dark/forms/color-money.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

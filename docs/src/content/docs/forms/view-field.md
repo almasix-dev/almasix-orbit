@@ -1,49 +1,24 @@
 ---
 title: View field
-description: Orbit ViewField — custom HTML content field that skips dehydration.
+description: ViewField displays read-only HTML or computed content inside a form — summaries, previews, or audit snippets without dehydrating user input.
 ---
 
-Custom HTML inside the form — not dehydrated, fully yours.
+## Introduction
 
-## Standalone
+ViewField displays read-only HTML or computed content inside a form — summaries, previews, or audit snippets without dehydrating user input.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Basic view field
+
+![Orbit Basic view field (light)](/examples/light/forms/view-field/basic.png)
+
+![Orbit Basic view field (dark)](/examples/dark/forms/view-field/basic.png)
+
+Static HTML summary block.
 
 ```python
-from almasix.orbit.forms import Form, ViewField
-
-form = Form.make("demo").schema([
-        ViewField.make("preview")
-            .content("<strong class=\"or-badge\">Live preview</strong>")
-])
+ViewField.make('summary').label('Summary').content('<p>Published on <strong>18 Sep 2026</strong>.</p>')
 ```
 
-## In a Resource
-
-```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, ViewField
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            ViewField.make("summary")
-                .content(lambda state=None, record=None, **_: f"<p>{record.get('title')}</p>")
-                .label("Summary"),
-        ])
-```
-
-## Key methods
-
-- `.content(str | callable) — HTML string (callable gets `state` + ctx)`
-- `Not dehydrated by default`
-- `.label(...) / .visible(...)`
-- `Falls back to escaped state when content is unset`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/overview (light)](/examples/light/forms/overview.png)
-
-![Orbit forms/overview (dark)](/examples/dark/forms/overview.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).
