@@ -48,9 +48,10 @@ Breaking changes will land here before they become a new major.
 
 ### Scaffold wiring ([#27](https://github.com/almasix-dev/almasix-orbit/issues/27))
 
-- `orbit:install` writes the default panel as `app/orbit/{id}_panel.py` and a thin `OrbitPanelProvider` that discovers every `app/orbit/*_panel.py`
-- `orbit:panel` only adds another `*_panel.py` (auto-picked up on next boot)
-- Provider is registered in `config/app.py` automatically
-- Installation docs: panels live under `app/orbit`; the provider only registers them
+**Rule:** define panels in `app/orbit/{id}_panel.py`; `OrbitPanelProvider` only calls `register_app_orbit_panels(...)`.
+
+- `orbit:install` scaffolds that layout and lists the provider in `config/app.py`
+- `orbit:panel` only adds another `*_panel.py` (discovered on next boot)
+- Docs: [Installation](/getting-started/installation/) (layout + discovery), [Quick start](/getting-started/quick-start/), [Panel configuration](/panels/configuration/)
 
 **Existing apps on 0.2.1:** move inline `Panel.make(...)` from the provider into `app/orbit/admin_panel.py` as `register_admin_panel`, switch the provider to `register_app_orbit_panels(registry)`, keep `OrbitPanelProvider` in `config/app.py`, restart.

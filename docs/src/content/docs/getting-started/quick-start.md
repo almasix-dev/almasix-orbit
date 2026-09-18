@@ -51,15 +51,17 @@ class PostResource(Resource):
 
 Orbit fills row / bulk / header actions for you when you leave those slots empty — view, edit, delete, delete selected, and create.
 
-## 2. Register a panel
+## 2. Configure the panel
 
-```python title="app/providers/orbit_panel.py"
+After `smith orbit:install`, edit the generated panel file (not the provider):
+
+```python title="app/orbit/admin_panel.py"
 from almasix.orbit import Panel, PanelRegistry
 
 from app.orbit.post_resource import PostResource
 
 
-def register_orbit(app) -> None:
+def register_admin_panel(registry: PanelRegistry) -> Panel:
     panel = (
         Panel.make("admin")
         .path("orbit")
@@ -68,10 +70,11 @@ def register_orbit(app) -> None:
         .resources([PostResource])
         .login()
     )
-    app.make(PanelRegistry).register(panel)
+    registry.register(panel)
+    return panel
 ```
 
-Call `register_orbit(app)` from a service provider’s `boot()` (or wherever you wire app services). The registry is a singleton bound by `OrbitServiceProvider`.
+`OrbitPanelProvider` already calls `register_app_orbit_panels(...)` on boot, so this file is picked up automatically. Keep brand, resources, and plugins here — leave the provider thin. See [Installation](/getting-started/installation/).
 
 ## 3. Render the shell
 
