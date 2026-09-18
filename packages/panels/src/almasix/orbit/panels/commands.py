@@ -303,7 +303,7 @@ class MakeOrbitPanelCommand(Command):
 class MakeOrbitResourceCommand(Command):
     signature = (
         "make:orbit-resource {name : Resource class name (e.g. Post or Blog/Post)}"
-        " {--panel=admin : Panel id (writes under app/orbit/{{panel}}/resources)}"
+        " {--panel=admin : Panel id (writes under that panel's resources dir)}"
         " {--force : Overwrite}"
     )
     description = "Create a new Orbit resource class under a panel package"
