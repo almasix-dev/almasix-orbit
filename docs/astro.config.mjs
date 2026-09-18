@@ -384,6 +384,8 @@ export default defineConfig({
 					items: [
 						{ label: 'Overview', slug: 'panels/configuration' },
 						{ label: 'Actions in the panel', slug: 'panels/actions' },
+						{ label: 'Render hooks', slug: 'panels/render-hooks' },
+						{ label: 'Plugin development', slug: 'panels/plugins' },
 					],
 				},
 				{
