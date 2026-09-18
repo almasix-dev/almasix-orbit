@@ -1,47 +1,29 @@
 ---
 title: Slider
-description: Orbit Slider field using native range input.
+description: Slider wraps a range input with optional pip marks for volume, priority, or percentage selection.
 ---
 
-A range input for scores, opacity, “how spicy is this incident?”
+## Introduction
 
-## Standalone
+Slider wraps a range input with optional pip marks for volume, priority, or percentage selection.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Basic slider
+
+![Orbit Basic slider (light)](/examples/light/forms/slider/basic.png)
+
+![Orbit Basic slider (dark)](/examples/dark/forms/slider/basic.png)
+
+0–100 range control.
 
 ```python
-from almasix.orbit.forms import Form, Slider
-
-form = Form.make("demo").schema([
-        Slider.make("priority").label("Priority").default(50)
-])
+(
+    Slider.make('volume')
+    .label('Volume')
+    .min_value(0)
+    .max_value(100)
+)
 ```
 
-## In a Resource
-
-```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Slider
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            Slider.make("opacity").helper_text("0–100"),
-            Slider.make("volume").disabled(False),
-        ])
-```
-
-## Key methods
-
-- `Sets `input_type` to `range``
-- `.default(n) / .rules("min:0", "max:100")`
-- `.label(...) / .helper_text(...)`
-- `.live() for continuous updates`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/overview (light)](/examples/light/forms/overview.png)
-
-![Orbit forms/overview (dark)](/examples/dark/forms/overview.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

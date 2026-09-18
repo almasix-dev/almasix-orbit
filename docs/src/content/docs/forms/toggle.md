@@ -1,48 +1,27 @@
 ---
 title: Toggle
-description: Orbit Toggle field — boolean switch styled distinctly from Checkbox.
+description: Toggle is a styled switch built on Checkbox semantics — same wire:model binding, different visual treatment.
 ---
 
-Same boolean energy as Checkbox, dressed as a switch.
+## Introduction
 
-## Standalone
+Toggle is a styled switch built on Checkbox semantics — same wire:model binding, different visual treatment. Pair toggles in Flex rows for compact settings panels.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Basic toggle
+
+![Orbit Basic toggle (light)](/examples/light/forms/toggle/basic.png)
+
+![Orbit Basic toggle (dark)](/examples/dark/forms/toggle/basic.png)
+
+On/off switch with label.
 
 ```python
-from almasix.orbit.forms import Form, Toggle
-
-form = Form.make("demo").schema([
-        Toggle.make("notifications").label("Email notifications")
-])
+(
+    Toggle.make('active')
+    .label('Active account')
+)
 ```
 
-## In a Resource
-
-```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Toggle
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            Toggle.make("dark_mode").label("Dark mode"),
-            Toggle.make("public")
-                .disabled(lambda record=None, **_: record and record.get("locked")),
-        ])
-```
-
-## Key methods
-
-- `.label(...)`
-- `.default(...) / .disabled(...) / .visible(...)`
-- `.live() for immediate wire updates`
-- `Inherits Checkbox behaviour; CSS class is `or-toggle``
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/checkbox-toggle (light)](/examples/light/forms/checkbox-toggle.png)
-
-![Orbit forms/checkbox-toggle (dark)](/examples/dark/forms/checkbox-toggle.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

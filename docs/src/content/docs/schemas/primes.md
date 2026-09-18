@@ -1,21 +1,78 @@
 ---
-title: Prime components
-description: Text, Icon, Image, and UnorderedList primes.
+title: Primes
+description: Primes are read-only display components — text badges, icons, images, and lists — for infolists and inline form summaries without editable state.
 ---
 
-```python
-from almasix.orbit.schemas import Text, Icon, Image, UnorderedList
+## Introduction
 
-Text.make("Hello")
-Icon.make("heroicon-o-home")
-Image.make().url("/logo.png")
-UnorderedList.make().items(["One", "Two"])
+Primes are read-only display components — text badges, icons, images, and lists — for infolists and inline form summaries without editable state.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Text prime
+
+![Orbit Text prime (light)](/examples/light/schemas/primes/text.png)
+
+![Orbit Text prime (dark)](/examples/dark/schemas/primes/text.png)
+
+Badge-styled status text.
+
+```python
+(
+    Text.make()
+    .content('Published')
+    .badge()
+    .color('success')
+)
 ```
 
+## Icon prime
 
+![Orbit Icon prime (light)](/examples/light/schemas/primes/icon.png)
 
-## Preview
+![Orbit Icon prime (dark)](/examples/dark/schemas/primes/icon.png)
 
-![Orbit schemas/primes-all (light)](/examples/light/schemas/primes-all.png)
+Heroicon with color and size.
 
-![Orbit schemas/primes-all (dark)](/examples/dark/schemas/primes-all.png)
+```python
+(
+    Icon.make()
+    .icon('heroicon-o-check')
+    .color('success')
+    .size('lg')
+)
+```
+
+## Image prime
+
+![Orbit Image prime (light)](/examples/light/schemas/primes/image.png)
+
+![Orbit Image prime (dark)](/examples/dark/schemas/primes/image.png)
+
+Avatar or thumbnail display.
+
+```python
+(
+    Image.make()
+    .src('https://api.dicebear.com/9.x/shapes/svg?seed=orbit')
+    .image_size(48)
+)
+```
+
+## List prime
+
+![Orbit List prime (light)](/examples/light/schemas/primes/list.png)
+
+![Orbit List prime (dark)](/examples/dark/schemas/primes/list.png)
+
+Bulleted unordered list.
+
+```python
+(
+    UnorderedList.make()
+    .items(['Tables', 'Forms', 'Panels'])
+    .bullet_size('sm')
+)
+```
+
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

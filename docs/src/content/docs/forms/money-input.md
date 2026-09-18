@@ -1,26 +1,44 @@
 ---
 title: Money input
-description: Currency amount field with prefix chrome (Filament MoneyInput-style).
+description: MoneyInput extends TextInput with currency prefix symbols and data attributes for locale-aware formatting on the client.
 ---
 
-`MoneyInput` is a numeric field with currency prefix, decimal step, and `data-currency` / `data-locale` attributes for client formatting hooks.
+## Introduction
+
+MoneyInput extends TextInput with currency prefix symbols and data attributes for locale-aware formatting on the client. Choose currency codes for USD, EUR, GBP, or KES.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## USD
+
+![Orbit USD (light)](/examples/light/forms/money-input/usd.png)
+
+![Orbit USD (dark)](/examples/dark/forms/money-input/usd.png)
+
+Dollar prefix and USD metadata.
 
 ```python
-from almasix.orbit.forms import Form, MoneyInput
-
-form = Form.make().schema([
-    MoneyInput.make("amount").currency("EUR").locale("de").label("Budget"),
-])
+(
+    MoneyInput.make('price')
+    .label('Price')
+    .currency('USD')
+)
 ```
 
-## Key methods
+## EUR
 
-- `.currency("USD"|"EUR"|"GBP"|"KES"|…)` — sets prefix symbol and `data-currency`
-- `.locale("en")` — optional `data-locale`
-- Inherits `TextInput` / `Field` chrome (prefix, suffix, actions, validation)
+![Orbit EUR (light)](/examples/light/forms/money-input/eur.png)
 
-## Preview
+![Orbit EUR (dark)](/examples/dark/forms/money-input/eur.png)
 
-![Orbit forms/color-money (light)](/examples/light/forms/color-money.png)
+Euro prefix and EUR metadata.
 
-![Orbit forms/color-money (dark)](/examples/dark/forms/color-money.png)
+```python
+(
+    MoneyInput.make('price')
+    .label('Price')
+    .currency('EUR')
+)
+```
+
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

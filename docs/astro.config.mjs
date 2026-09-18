@@ -6,11 +6,40 @@ import starlight from '@astrojs/starlight';
 
 const base = '/';
 
+/** Section roots linked from the landing page → first real doc page. */
+const sectionRedirects = Object.fromEntries(
+	[
+		['forms', 'forms/overview'],
+		['tables', 'tables/overview'],
+		['tables/columns', 'tables/columns/overview'],
+		['tables/filters', 'tables/filters/overview'],
+		['schemas', 'schemas/overview'],
+		['resources', 'resources/overview'],
+		['actions', 'actions/overview'],
+		['infolists', 'infolists/overview'],
+		['notifications', 'notifications/overview'],
+		['widgets', 'widgets/overview'],
+		['query-builder', 'query-builder/overview'],
+		['support', 'support/overview'],
+		['navigation', 'navigation/overview'],
+		['users', 'users/overview'],
+		['testing', 'testing/overview'],
+		['panels', 'panels/configuration'],
+		['getting-started', 'getting-started/installation'],
+		['components', 'components/form'],
+		['prologue', 'prologue/versions'],
+	].flatMap(([from, to]) => [
+		[`/${from}`, `/${to}`],
+		[`/${from}/`, `/${to}/`],
+	]),
+);
+
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://orbit.almasix.com',
 	base,
 	devToolbar: { enabled: false },
+	redirects: sectionRedirects,
 	integrations: [
 		starlight({
 			title: 'Orbit',
@@ -42,6 +71,9 @@ export default defineConfig({
 				ThemeSelect: './src/components/ThemeSelect.astro',
 			},
 			expressiveCode: {
+				// One Dark Pro for light + dark UI (matches Almasix/Conduit docs).
+				// A Ristretto-style CSS filter in custom.css warms the cool blue-gray
+				// toward Monokai Pro Filter Ristretto’s brown/rose cast.
 				themes: ['one-dark-pro'],
 				useStarlightDarkModeSwitch: false,
 				useStarlightUiThemeColors: false,
@@ -52,12 +84,12 @@ export default defineConfig({
 					borderWidth: '1px',
 					codeFontFamily: "'JetBrains Mono', ui-monospace, monospace",
 					codeFontSize: '0.9rem',
-					codeBackground: '#282c34',
-					codeForeground: '#abb2bf',
+					// Warm charcoal closer to Ristretto’s #2c2525 than stock #282c34.
+					codeBackground: '#2c2525',
 					frames: {
-						shadowColor: 'rgba(0, 0, 0, 0.4)',
-						editorBackground: '#282c34',
-						terminalBackground: '#282c34',
+						editorBackground: '#2c2525',
+						terminalBackground: '#2c2525',
+						shadowColor: 'rgba(44, 37, 37, 0.45)',
 					},
 				},
 			},
@@ -193,6 +225,11 @@ export default defineConfig({
 					items: [
 						{ label: 'Overview', slug: 'schemas/overview' },
 						{ label: 'Layouts', slug: 'schemas/layouts' },
+						{ label: 'Grid', slug: 'schemas/grid' },
+						{ label: 'Flex', slug: 'schemas/flex' },
+						{ label: 'Group', slug: 'schemas/group' },
+						{ label: 'Split', slug: 'schemas/split' },
+						{ label: 'Fieldset', slug: 'schemas/fieldset' },
 						{ label: 'Sections', slug: 'schemas/sections' },
 						{ label: 'Tabs', slug: 'schemas/tabs' },
 						{ label: 'Wizards', slug: 'schemas/wizards' },

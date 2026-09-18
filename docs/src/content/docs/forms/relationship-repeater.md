@@ -1,52 +1,47 @@
 ---
 title: Relationship repeater
-description: Orbit RelationshipRepeater — Repeater subclass for related record lists.
+description: RelationshipRepeater is a Repeater tuned for related models — same item chrome (add, remove, clone, reorder) with relationship metadata for hydrate/mutate ho…
 ---
 
-Repeater aimed at related records — same nested schema, relationship-shaped intent.
+## Introduction
 
-## Standalone
+RelationshipRepeater is a Repeater tuned for related models — same item chrome (add, remove, clone, reorder) with relationship metadata for hydrate/mutate hooks. Use it when nested rows map to hasMany / belongsToMany records rather than free-form JSON.
 
-```python
-from almasix.orbit.forms import Form, RelationshipRepeater, TextInput, Textarea, Select
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        RelationshipRepeater.make("comments").schema([
-            TextInput.make("author").required(),
-            Textarea.make("body").rows(3),
-        ])
-])
-```
+## Basic repeater
 
-## In a Resource
+![Orbit Basic repeater (light)](/examples/light/forms/repeater/basic.png)
+
+![Orbit Basic repeater (dark)](/examples/dark/forms/repeater/basic.png)
+
+Simple stacked items with add/remove.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, RelationshipRepeater, TextInput, Textarea, Select
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            RelationshipRepeater.make("items").schema([
-                TextInput.make("sku").required(),
-                TextInput.make("qty").integer().required(),
-            ]),
-        ])
+(
+    Repeater.make('items')
+    .label('Line items')
+    .schema([TextInput.make('name').label('Name')])
+    .default_items(1)
+)
 ```
 
-## Key methods
+## Cloneable and reorderable
 
-- `.schema([...])`
-- `.relationship(...) available via Field base when you wire titles`
-- `CSS: `or-field-RelationshipRepeater``
-- `.label(...) / .visible(...)`
+![Orbit Cloneable and reorderable (light)](/examples/light/forms/repeater/cloneable-reorderable.png)
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
+![Orbit Cloneable and reorderable (dark)](/examples/dark/forms/repeater/cloneable-reorderable.png)
 
+Duplicate rows and move up/down.
 
-## Preview
+```python
+(
+    Repeater.make('items')
+    .cloneable()
+    .reorderable()
+    .collapsible()
+    .schema([...])
+)
+```
 
-![Orbit forms/repeater (light)](/examples/light/forms/repeater.png)
-
-![Orbit forms/repeater (dark)](/examples/dark/forms/repeater.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

@@ -1,62 +1,63 @@
 ---
 title: Repeater
-description: Orbit Repeater — nested schema with clone, collapse, reorder, and limits.
+description: Repeater repeats a nested schema for line items, addresses, or JSON arrays.
 ---
 
-A list of nested field schemas — line items, speakers, “add another.”
+## Introduction
 
-## Standalone
+Repeater repeats a nested schema for line items, addresses, or JSON arrays. Clone, reorder, collapse, and table layouts mirror Filament repeaters.
 
-```python
-from almasix.orbit.forms import Form, Repeater, TextInput
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        Repeater.make("links")
-            .schema([
-                TextInput.make("label").required(),
-                TextInput.make("url").url().required(),
-            ])
-            .cloneable()
-            .collapsible()
-            .reorderable()
-            .item_label(lambda index, **_: f"Link {index + 1}")
-            .min_items(1)
-            .max_items(5)
-])
-```
+## Basic repeater
 
-## In a Resource
+![Orbit Basic repeater (light)](/examples/light/forms/repeater/basic.png)
+
+![Orbit Basic repeater (dark)](/examples/dark/forms/repeater/basic.png)
+
+Simple stacked items with add/remove.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Repeater, TextInput
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            Repeater.make("speakers").schema([
-                TextInput.make("name").required(),
-                TextInput.make("title"),
-            ]),
-        ])
+(
+    Repeater.make('items')
+    .label('Line items')
+    .schema([TextInput.make('name').label('Name')])
+    .default_items(1)
+)
 ```
 
-## Key methods
+## Cloneable and reorderable
 
-- `.schema([...])` — nested fields / layouts
-- `.cloneable()` / `.collapsible()` / `.reorderable()` — item action buttons
-- `.item_label(str | callable)` — per-item header
-- `.min_items(n)` / `.max_items(n)` — limits (`data-min-items` / `data-max-items`)
-- Wire actions: `addRepeaterItem`, `removeRepeaterItem`, `cloneRepeaterItem`, `moveRepeaterItem`
+![Orbit Cloneable and reorderable (light)](/examples/light/forms/repeater/cloneable-reorderable.png)
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
+![Orbit Cloneable and reorderable (dark)](/examples/dark/forms/repeater/cloneable-reorderable.png)
 
-Import nested fields from `almasix.orbit.forms` as usual.
+Duplicate rows and move up/down.
 
+```python
+(
+    Repeater.make('items')
+    .cloneable()
+    .reorderable()
+    .collapsible()
+    .schema([...])
+)
+```
 
-## Preview
+## Table layout
 
-![Orbit forms/repeater (light)](/examples/light/forms/repeater.png)
+![Orbit Table layout (light)](/examples/light/forms/repeater/table.png)
 
-![Orbit forms/repeater (dark)](/examples/dark/forms/repeater.png)
+![Orbit Table layout (dark)](/examples/dark/forms/repeater/table.png)
+
+Column headers for spreadsheet-like entry.
+
+```python
+(
+    Repeater.make('items')
+    .table(['Name', 'Qty'])
+    .schema([TextInput.make('name'), TextInput.make('qty')])
+)
+```
+
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

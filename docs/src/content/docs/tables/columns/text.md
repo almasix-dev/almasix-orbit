@@ -112,7 +112,10 @@ TextColumn.make("status").align_center()
 ### Lists
 
 ```python
-TextColumn.make("tags").list_with_line_breaks()  # • one per line
+(
+    TextColumn.make("tags")
+    .list_with_line_breaks()
+)  # • one per line
 ```
 
 ## Key methods

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from gallery_variants import build_form_variants, build_schema_variants
+
 from almasix.orbit.actions.action import CreateAction, EditAction
 from almasix.orbit.forms.components import (
     Block,
@@ -95,6 +97,71 @@ SHOTS: list[tuple[str, str]] = [
     ("forms/builder", "Builder"),
     ("forms/toggle-buttons", "Toggle buttons"),
     ("forms/morph-to-select", "Morph-to select"),
+    # TextInput variants
+    ("forms/text-input/basic", "Text input — basic"),
+    ("forms/text-input/email", "Text input — email"),
+    ("forms/text-input/password", "Text input — password"),
+    ("forms/text-input/url", "Text input — url"),
+    ("forms/text-input/tel", "Text input — tel"),
+    ("forms/text-input/numeric", "Text input — numeric"),
+    ("forms/text-input/prefix", "Text input — prefix"),
+    ("forms/text-input/suffix", "Text input — suffix"),
+    ("forms/text-input/prefix-icon", "Text input — prefix icon"),
+    ("forms/text-input/suffix-icon", "Text input — suffix icon"),
+    ("forms/text-input/required", "Text input — required"),
+    ("forms/text-input/disabled", "Text input — disabled"),
+    ("forms/text-input/readonly", "Text input — readonly"),
+    ("forms/text-input/copyable", "Text input — copyable"),
+    ("forms/text-input/mask", "Text input — mask"),
+    ("forms/text-input/datalist", "Text input — datalist"),
+    ("forms/text-input/with-hint", "Text input — with hint"),
+    # Select / textarea / checkbox / toggle
+    ("forms/select/basic", "Select — basic"),
+    ("forms/select/searchable", "Select — searchable"),
+    ("forms/select/multiple", "Select — multiple"),
+    ("forms/textarea/basic", "Textarea — basic"),
+    ("forms/textarea/rows", "Textarea — rows"),
+    ("forms/checkbox/basic", "Checkbox — basic"),
+    ("forms/toggle/basic", "Toggle — basic"),
+    # Date / time pickers
+    ("forms/date-picker/basic", "Date picker — basic"),
+    ("forms/date-picker/min-max", "Date picker — min/max"),
+    ("forms/date-time-picker/basic", "Date time picker — basic"),
+    ("forms/date-time-picker/min-max", "Date time picker — min/max"),
+    ("forms/time-picker/basic", "Time picker — basic"),
+    ("forms/time-picker/min-max", "Time picker — min/max"),
+    # File upload
+    ("forms/file-upload/basic", "File upload — basic"),
+    ("forms/file-upload/image", "File upload — image"),
+    ("forms/file-upload/avatar", "File upload — avatar"),
+    # Radio / checkbox list
+    ("forms/radio/basic", "Radio — basic"),
+    ("forms/radio/with-descriptions", "Radio — with descriptions"),
+    ("forms/radio/columns", "Radio — columns"),
+    ("forms/checkbox-list/basic", "Checkbox list — basic"),
+    ("forms/checkbox-list/bulk-toggle", "Checkbox list — bulk toggle"),
+    # Tags / color / money
+    ("forms/tags-input/basic", "Tags input — basic"),
+    ("forms/tags-input/suggestions", "Tags input — suggestions"),
+    ("forms/color-picker/basic", "Color picker — basic"),
+    ("forms/money-input/usd", "Money input — USD"),
+    ("forms/money-input/eur", "Money input — EUR"),
+    # Editors / key-value / repeater / builder
+    ("forms/rich-editor/basic", "Rich editor — basic"),
+    ("forms/markdown-editor/basic", "Markdown editor — basic"),
+    ("forms/key-value/basic", "Key-value — basic"),
+    ("forms/key-value/populated", "Key-value — populated"),
+    ("forms/repeater/basic", "Repeater — basic"),
+    ("forms/repeater/cloneable-reorderable", "Repeater — cloneable + reorderable"),
+    ("forms/repeater/table", "Repeater — table layout"),
+    ("forms/builder/basic", "Builder — basic"),
+    ("forms/toggle-buttons/basic", "Toggle buttons — basic"),
+    ("forms/morph-to-select/basic", "Morph-to select — basic"),
+    ("forms/placeholder/basic", "Placeholder — basic"),
+    ("forms/hidden/basic", "Hidden — note"),
+    ("forms/one-time-code-input/basic", "One-time code — basic"),
+    ("forms/view-field/basic", "View field — basic"),
+    ("forms/slider/basic", "Slider — basic"),
     ("tables/overview", "Tables overview"),
     ("tables/money", "Money / currency"),
     ("tables/text-features", "Text column features"),
@@ -119,6 +186,26 @@ SHOTS: list[tuple[str, str]] = [
     ("schemas/group-split", "Group + split"),
     ("schemas/fieldset", "Fieldset"),
     ("schemas/primes-all", "All primes"),
+    # Schema layout variants
+    ("schemas/section/basic", "Section — basic"),
+    ("schemas/section/collapsible", "Section — collapsible"),
+    ("schemas/section/compact", "Section — compact"),
+    ("schemas/tabs/basic", "Tabs — basic"),
+    ("schemas/tabs/with-badges", "Tabs — with badges"),
+    ("schemas/wizard/basic", "Wizard — basic"),
+    ("schemas/grid/basic", "Grid — basic"),
+    ("schemas/flex/basic", "Flex — basic"),
+    ("schemas/group/basic", "Group — basic"),
+    ("schemas/split/basic", "Split — basic"),
+    ("schemas/fieldset/basic", "Fieldset — basic"),
+    ("schemas/callout/info", "Callout — info"),
+    ("schemas/callout/danger", "Callout — danger"),
+    ("schemas/callout/success", "Callout — success"),
+    ("schemas/empty-state/basic", "Empty state — basic"),
+    ("schemas/primes/text", "Prime — text"),
+    ("schemas/primes/icon", "Prime — icon"),
+    ("schemas/primes/image", "Prime — image"),
+    ("schemas/primes/list", "Prime — list"),
     ("panels/shell", "Panel shell"),
     ("users/login", "Login"),
 ]
@@ -940,6 +1027,9 @@ def build() -> str:
         active_path="/post",
     )
 
+    form_variants = build_form_variants()
+    schema_variants = build_schema_variants()
+
     parts = [
         shot("forms/overview", "Forms overview", form_overview.render()),
         shot("forms/text-input", "Text input", text_input),
@@ -957,6 +1047,14 @@ def build() -> str:
         shot("forms/builder", "Builder", form_builder),
         shot("forms/toggle-buttons", "Toggle buttons", form_toggle_buttons),
         shot("forms/morph-to-select", "Morph-to select", form_morph_to_select),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in form_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in schema_variants.items()
+        ),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/money", "Money / currency", table_money.render()),
         shot("tables/text-features", "Text column features", table_text.render()),
@@ -1017,8 +1115,8 @@ html, body {{
   color: var(--or-ink);
 }}
 body.dark {{
-  background: #0f0e0d;
-  color: #f3efe9;
+  background: #140f0d;
+  color: #faf7f5;
 }}
 .gallery-header {{
   max-width: 960px;
@@ -1053,9 +1151,9 @@ body.dark {{
   overflow: hidden;
 }}
 body.dark .or-shot {{
-  background: #1a1715;
-  border-color: #2e2926;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  background: #1c1613;
+  border-color: #3a302b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }}
 .or-shot-shell {{
   min-height: 420px;

@@ -1,50 +1,44 @@
 ---
 title: Date picker
-description: Orbit DatePicker field using native date input.
+description: DatePicker wraps a native date input with min/max constraints and optional non-native picker chrome.
 ---
 
-A calendar day via the browser’s native `type=date` control.
+## Introduction
 
-## Standalone
+DatePicker wraps a native date input with min/max constraints and optional non-native picker chrome. Values dehydrate as ISO date strings.
 
-```python
-from almasix.orbit.forms import Form, DatePicker
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        DatePicker.make("published_on")
-            .label("Publish date")
-            .required()
-])
-```
+## Basic date picker
 
-## In a Resource
+![Orbit Basic date picker (light)](/examples/light/forms/date-picker/basic.png)
+
+![Orbit Basic date picker (dark)](/examples/dark/forms/date-picker/basic.png)
+
+Standard date field.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, DatePicker
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            DatePicker.make("starts_on").required(),
-            DatePicker.make("ends_on")
-                .visible(lambda record=None, **_: True),
-        ])
+(
+    DatePicker.make('starts')
+    .label('Starts on')
+)
 ```
 
-## Key methods
+## Min and max dates
 
-- `Sets `input_type` to `date``
-- `.required() / .default("2026-09-17")`
-- `.min_length / max rules via `.rules(...)` if needed`
-- `.disabled(...) / .visible(...) / .live()`
+![Orbit Min and max dates (light)](/examples/light/forms/date-picker/min-max.png)
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
+![Orbit Min and max dates (dark)](/examples/dark/forms/date-picker/min-max.png)
 
+Restrict selectable range.
 
-## Preview
+```python
+(
+    DatePicker.make('window')
+    .label('Window')
+    .min_date('2026-01-01')
+    .max_date('2026-12-31')
+)
+```
 
-![Orbit forms/date-pickers (light)](/examples/light/forms/date-pickers.png)
-
-![Orbit forms/date-pickers (dark)](/examples/dark/forms/date-pickers.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

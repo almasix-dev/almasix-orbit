@@ -1,50 +1,45 @@
 ---
 title: Textarea
-description: Orbit Textarea field for multi-line text input.
+description: Textarea captures multi-line plain text — bios, notes, and markdown source.
 ---
 
-Multi-line text for bodies, notes, and anything taller than one thought.
+## Introduction
 
-## Standalone
+Textarea captures multi-line plain text — bios, notes, and markdown source. Control height with rows or cols; autosize grows with content. MarkdownEditor and RichEditor extend Textarea for formatted content.
 
-```python
-from almasix.orbit.forms import Form, Textarea
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        Textarea.make("body")
-            .label("Body")
-            .rows(8)
-            .placeholder("Write something memorable…")
-])
-```
+## Basic textarea
 
-## In a Resource
+![Orbit Basic textarea (light)](/examples/light/forms/textarea/basic.png)
+
+![Orbit Basic textarea (dark)](/examples/dark/forms/textarea/basic.png)
+
+Default multi-line field with placeholder and helper.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Textarea
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            Textarea.make("body").rows(10).required(),
-            Textarea.make("excerpt").rows(3).helper_text("Optional teaser"),
-        ])
+(
+    Textarea.make('bio')
+    .label('Bio')
+    .placeholder('Tell us about yourself…')
+    .helper_text('Brief summary.')
+)
 ```
 
-## Key methods
+## Custom rows
 
-- `.rows(n) — defaults to 4 when unset`
-- `.label(...) / .helper_text(...) / .required(...)`
-- `.readonly() / .disabled(...) / .visible(...) / .live()`
-- `.default(...) / .dehydrated(...)`
+![Orbit Custom rows (light)](/examples/light/forms/textarea/rows.png)
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
+![Orbit Custom rows (dark)](/examples/dark/forms/textarea/rows.png)
 
+Explicit row count for taller editing surfaces.
 
-## Preview
+```python
+(
+    Textarea.make('notes')
+    .label('Notes')
+    .rows(6)
+)
+```
 
-![Orbit forms/textarea (light)](/examples/light/forms/textarea.png)
-
-![Orbit forms/textarea (dark)](/examples/dark/forms/textarea.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

@@ -1,50 +1,28 @@
 ---
-title: Multi-select
-description: Orbit MultiSelect — Select with multiple selection enabled by default.
+title: Multi select
+description: MultiSelect extends Select for choosing many options at once.
 ---
 
-A Select that wakes up already multiple — tags, roles, categories, the usual suspects.
+## Introduction
 
-## Standalone
+MultiSelect extends Select for choosing many options at once. Options render as a multi native select (or searchable multi when combined with searchable). Use it for tags, roles, and any many-to-many style attribute that still fits a fixed option list.
 
-```python
-from almasix.orbit.forms import Form, MultiSelect
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        MultiSelect.make("roles")
-            .options({"admin": "Admin", "editor": "Editor", "viewer": "Viewer"})
-            .searchable()
-])
-```
+## Multi select
 
-## In a Resource
+![Orbit Multi select (light)](/examples/light/forms/select/multiple.png)
+
+![Orbit Multi select (dark)](/examples/dark/forms/select/multiple.png)
+
+Multiple selection via MultiSelect.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, MultiSelect
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            MultiSelect.make("category_ids")
-                .options(lambda **ctx: ctx.get("categories", {}))
-                .searchable(),
-        ])
+(
+    MultiSelect.make('tags')
+    .label('Tags')
+    .options({'orbit': 'Orbit', 'forms': 'Forms'})
+)
 ```
 
-## Key methods
-
-- `.options(dict | callable)`
-- `.searchable() — `.multiple()` is already on`
-- `.required() / .disabled(...) / .visible(...)`
-- `.label(...) / .helper_text(...) / .default([...])`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/select (light)](/examples/light/forms/select.png)
-
-![Orbit forms/select (dark)](/examples/dark/forms/select.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

@@ -1,49 +1,27 @@
 ---
 title: Placeholder
-description: Orbit Placeholder — display-only content that is not dehydrated.
+description: Placeholder renders static prose inside the schema — useful for section intros, upgrade prompts, or spacing without a bound field.
 ---
 
-Read-only copy inside the form — tips, computed summaries, gentle reminders.
+## Introduction
 
-## Standalone
+Placeholder renders static prose inside the schema — useful for section intros, upgrade prompts, or spacing without a bound field.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Basic placeholder
+
+![Orbit Basic placeholder (light)](/examples/light/forms/placeholder/basic.png)
+
+![Orbit Basic placeholder (dark)](/examples/dark/forms/placeholder/basic.png)
+
+Non-input informational slot.
 
 ```python
-from almasix.orbit.forms import Form, Placeholder
-
-form = Form.make("demo").schema([
-        Placeholder.make("hint")
-            .content("Slugs can’t change after publish.")
-])
+(
+    Placeholder.make('note')
+    .content('This slot is reserved for future fields.')
+)
 ```
 
-## In a Resource
-
-```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Placeholder
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            Placeholder.make("stats")
-                .content("Word count updates after save.")
-                .label("Stats"),
-        ])
-```
-
-## Key methods
-
-- `.content(text) — static HTML-escaped body`
-- `Not dehydrated by default (`_dehydrated = False`)`
-- `.label(...) optional; body can fall back to state`
-- `.visible(...)`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/overview (light)](/examples/light/forms/overview.png)
-
-![Orbit forms/overview (dark)](/examples/dark/forms/overview.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

@@ -1,49 +1,44 @@
 ---
 title: Tags input
-description: Orbit TagsInput — chip-style tag editor backed by wire:model.
+description: TagsInput manages a list of string tags with chip UI, optional datalist suggestions, and reorderable chips for manual ordering.
 ---
 
-Free-form tags as chips — keywords without pretending they’re a taxonomy.
+## Introduction
 
-## Standalone
+TagsInput manages a list of string tags with chip UI, optional datalist suggestions, and reorderable chips for manual ordering.
 
-```python
-from almasix.orbit.forms import Form, TagsInput
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        TagsInput.make("tags")
-            .label("Tags")
-            .placeholder("Add tag…")
-])
-```
+## Basic tags
 
-## In a Resource
+![Orbit Basic tags (light)](/examples/light/forms/tags-input/basic.png)
+
+![Orbit Basic tags (dark)](/examples/dark/forms/tags-input/basic.png)
+
+Free-form tag entry.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, TagsInput
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            TagsInput.make("keywords").helper_text("Comma-separated works too"),
-            TagsInput.make("labels").default(["orbit", "docs"]),
-        ])
+(
+    TagsInput.make('tags')
+    .label('Tags')
+)
 ```
 
-## Key methods
+## With suggestions
 
-- `State may be a list or a comma-separated string`
-- `.label(...) / .placeholder(...) (via input)`
-- `.disabled(...) / .visible(...) / .readonly()`
-- `.default([...])`
+![Orbit With suggestions (light)](/examples/light/forms/tags-input/suggestions.png)
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
+![Orbit With suggestions (dark)](/examples/dark/forms/tags-input/suggestions.png)
 
+Datalist-backed autocomplete plus reorderable chips.
 
-## Preview
+```python
+(
+    TagsInput.make('tags')
+    .label('Tags')
+    .suggestions(['orbit', 'tables'])
+    .reorderable()
+)
+```
 
-![Orbit forms/tags-input (light)](/examples/light/forms/tags-input.png)
-
-![Orbit forms/tags-input (dark)](/examples/dark/forms/tags-input.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

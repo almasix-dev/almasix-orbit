@@ -1,47 +1,24 @@
 ---
 title: Hidden
-description: Orbit Hidden field — no label, just wire:model state.
+description: Hidden fields dehydrate values without visible chrome — CSRF tokens, foreign keys, or serialized state.
 ---
 
-State without chrome — IDs, tokens, and secrets the UI shouldn’t stare at.
+## Introduction
 
-## Standalone
+Hidden fields dehydrate values without visible chrome — CSRF tokens, foreign keys, or serialized state. They render as plain hidden inputs and are omitted from screenshots.
+
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+
+## Hidden field note
+
+![Orbit Hidden field note (light)](/examples/light/forms/hidden/basic.png)
+
+![Orbit Hidden field note (dark)](/examples/dark/forms/hidden/basic.png)
+
+Not visually captured — renders as <input type="hidden">.
 
 ```python
-from almasix.orbit.forms import Form, Hidden
-
-form = Form.make("demo").schema([
-        Hidden.make("tenant_id").default("acme")
-])
+Hidden.make('token')  # value set via fill() or default
 ```
 
-## In a Resource
-
-```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Hidden
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            Hidden.make("id"),
-            Hidden.make("version").default(1),
-        ])
-```
-
-## Key methods
-
-- `.default(...)`
-- `.state_path(...) when the key differs from the name`
-- `.dehydrated(False) to keep it out of payloads`
-- `No label / helper rendering`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/overview (light)](/examples/light/forms/overview.png)
-
-![Orbit forms/overview (dark)](/examples/dark/forms/overview.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

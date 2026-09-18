@@ -1,50 +1,27 @@
 ---
 title: One-time code input
-description: Orbit OneTimeCodeInput for verification codes and OTP fields.
+description: OneTimeCodeInput optimizes for OTP and 2FA codes with autocomplete hints for password managers and SMS autofill.
 ---
 
-OTP-friendly text input with `autocomplete="one-time-code"`.
+## Introduction
 
-## Standalone
+OneTimeCodeInput optimizes for OTP and 2FA codes with autocomplete hints for password managers and SMS autofill.
 
-```python
-from almasix.orbit.forms import Form, OneTimeCodeInput
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        OneTimeCodeInput.make("code")
-            .label("Verification code")
-            .required()
-            .max_length(6)
-])
-```
+## Basic OTP input
 
-## In a Resource
+![Orbit Basic OTP input (light)](/examples/light/forms/one-time-code-input/basic.png)
+
+![Orbit Basic OTP input (dark)](/examples/dark/forms/one-time-code-input/basic.png)
+
+Six-digit verification code.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, OneTimeCodeInput
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            OneTimeCodeInput.make("otp").required().max_length(6),
-            OneTimeCodeInput.make("backup_code").helper_text("From your recovery list"),
-        ])
+(
+    OneTimeCodeInput.make('code')
+    .label('Verification code')
+)
 ```
 
-## Key methods
-
-- `Inherits TextInput; autocomplete defaults to `one-time-code``
-- `.max_length(n) / .required()`
-- `.autocomplete(...) to override`
-- `.disabled(...) / .visible(...)`
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
-
-
-## Preview
-
-![Orbit forms/text-input (light)](/examples/light/forms/text-input.png)
-
-![Orbit forms/text-input (dark)](/examples/dark/forms/text-input.png)
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

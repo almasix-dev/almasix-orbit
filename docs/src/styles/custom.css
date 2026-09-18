@@ -225,10 +225,54 @@ a.sl-link-button.primary:hover {
 	color: var(--sl-color-white);
 }
 
-/* One Dark code frames */
+/*
+ * Sidebar scrollbar — Filament-style: thin, transparent until hover/focus.
+ */
+.sidebar-pane {
+	scrollbar-width: thin;
+	scrollbar-color: transparent transparent;
+}
+
+.sidebar-pane:hover,
+.sidebar-pane:focus-within {
+	scrollbar-color: color-mix(in srgb, var(--sl-color-gray-3) 55%, transparent) transparent;
+}
+
+.sidebar-pane::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+.sidebar-pane::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.sidebar-pane::-webkit-scrollbar-thumb {
+	background: transparent;
+	border-radius: 999px;
+}
+
+.sidebar-pane:hover::-webkit-scrollbar-thumb,
+.sidebar-pane:focus-within::-webkit-scrollbar-thumb {
+	background: color-mix(in srgb, var(--sl-color-gray-3) 55%, transparent);
+}
+
+.sidebar-pane::-webkit-scrollbar-thumb:hover {
+	background: color-mix(in srgb, var(--sl-color-gray-2) 70%, transparent);
+}
+
+/*
+ * Code frames — One Dark Pro + Ristretto-style warmth on both UI themes.
+ * Sepia / hue-rotate shifts Atom’s cool blue-gray tokens toward the warm
+ * brown–rose cast of Monokai Pro Filter Ristretto without vendoring that theme.
+ */
 .expressive-code {
-	--ec-frm-frameBoxShdCssVal: 0 12px 40px rgba(0, 0, 0, 0.35),
-		0 0 0 1px rgba(241, 81, 27, 0.18);
+	--ec-frm-frameBoxShdCssVal: 0 12px 40px rgba(44, 37, 37, 0.45),
+		0 0 0 1px rgba(241, 81, 27, 0.16);
+}
+
+.expressive-code .frame {
+	filter: sepia(0.28) saturate(1.2) hue-rotate(-16deg) brightness(0.98) contrast(1.03);
 }
 
 .expressive-code .frame {

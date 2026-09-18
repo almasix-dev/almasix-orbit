@@ -1,65 +1,61 @@
 ---
 title: Select
-description: Orbit Select field with options, groups, searchable UI, and relationships.
+description: Select fields render native or searchable dropdowns with static options, grouped options, or relationship-backed search.
 ---
 
-Pick one (or many) from a map of options — searchable when the list gets long.
+## Introduction
 
-## Standalone
+Select fields render native or searchable dropdowns with static options, grouped options, or relationship-backed search. Searchable selects add a filter input; MultiSelect extends Select with multiple selection. Options can carry descriptions when used with Radio or CheckboxList patterns.
 
-```python
-from almasix.orbit.forms import Form, Select
+The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
 
-form = Form.make("demo").schema([
-        Select.make("status")
-            .options({"draft": "Draft", "published": "Published"})
-            .searchable()
-            .required()
-])
-```
+## Basic select
 
-## In a Resource
+![Orbit Basic select (light)](/examples/light/forms/select/basic.png)
+
+![Orbit Basic select (dark)](/examples/dark/forms/select/basic.png)
+
+Native dropdown with a static options map.
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Select
-
-class PostResource(Resource):
-    @classmethod
-    def form(cls, form: Form) -> Form:
-        return form.schema([
-            Select.make("status")
-                .options({"draft": "Draft", "published": "Published"})
-                .default("draft"),
-            Select.make("author_id")
-                .relationship(
-                    "author",
-                    "name",
-                    search_columns=["name", "email"],
-                    preload=True,
-                )
-                .searchable(),
-            Select.make("city").options({
-                "Europe": {"berlin": "Berlin", "paris": "Paris"},
-                "Asia": {"tokyo": "Tokyo"},
-            }),
-        ])
+(
+    Select.make('status')
+    .label('Status')
+    .options({'draft': 'Draft', 'published': 'Published'})
+)
 ```
 
-## Key methods
+## Searchable select
 
-- `.options(dict | callable | list[{label, options}])` — flat map, nested groups, or list of groups
-- `.multiple() / .searchable()` — searchable adds Alpine filter + `data-searchable`
-- `.relationship(name, title_attribute, *, search_columns, preload, modify_query, get_option_label)`
-- `.create_option_form(...)` / `.edit_option_action(...)` — mount buttons for create/edit flows
-- `.required() / .disabled(...) / .visible(...) / .live()`
-- `.default(...) / .label(...)`
+![Orbit Searchable select (light)](/examples/light/forms/select/searchable.png)
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
+![Orbit Searchable select (dark)](/examples/dark/forms/select/searchable.png)
 
+Filterable list — ideal for long option sets.
 
-## Preview
+```python
+(
+    Select.make('status')
+    .label('Status')
+    .options({...})
+    .searchable()
+)
+```
 
-![Orbit forms/select (light)](/examples/light/forms/select.png)
+## Multi select
 
-![Orbit forms/select (dark)](/examples/dark/forms/select.png)
+![Orbit Multi select (light)](/examples/light/forms/select/multiple.png)
+
+![Orbit Multi select (dark)](/examples/dark/forms/select/multiple.png)
+
+Multiple selection via MultiSelect.
+
+```python
+(
+    MultiSelect.make('tags')
+    .label('Tags')
+    .options({'orbit': 'Orbit', 'forms': 'Forms'})
+)
+```
+
+Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).
