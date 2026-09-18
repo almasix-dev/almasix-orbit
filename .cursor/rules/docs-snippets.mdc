@@ -1,0 +1,50 @@
+---
+description: Orbit docs snippet conventions (paths + no wrapping parentheses)
+globs: docs/**/*.md,docs/**/*.mdx
+alwaysApply: false
+---
+
+# Docs code snippets
+
+## Always show a path
+
+Every fenced example that belongs in an app file must include a Starlight `title` path (arbitrary but realistic):
+
+````markdown
+```python title="app/providers/orbit_panel_provider.py"
+Panel.make("admin")
+    .path("admin")
+    .brand_name("Acme")
+```
+````
+
+Use `title="terminal"` for shell commands. Do not leave path-less Python fences.
+
+## No wrapping parentheses
+
+Do **not** wrap fluent chains in assignment parentheses.
+
+```python
+# ❌ BAD
+panel = (
+    Panel.make("admin")
+    .path("admin")
+)
+
+# ❌ BAD (invalid Python — assignment + indented continuation)
+panel = Panel.make("admin")
+    .path("admin")
+
+# ✅ GOOD — expression fragment (docs convention, matches forms pages)
+Panel.make("admin")
+    .path("admin")
+    .brand_name("Acme")
+```
+
+When you need a real assignment in a full class/method example, keep the chain on one line. Prefer expression fragments for fluent demos.
+
+Keep real call parentheses on methods that take arguments (`.path("admin")`, `.email()`).
+
+## API tables
+
+List method names **without** filler `()` / `(...)` — e.g. `.dark_mode`, `.path` — and describe arguments in the Notes column.

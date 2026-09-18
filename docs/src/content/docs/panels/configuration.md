@@ -164,6 +164,8 @@ panel = (
 
 Hooks run at mount via ``panel.run_plugins()`` (also called by ``mount_registered_panels``). Common positions live in ``PANEL_HOOKS`` (`panels::head.*`, `body.*`, `sidebar.nav.*`, `topbar.*`, `content.*`, …).
 
+Full guides: [Render hooks](/panels/render-hooks/), [Plugin development](/panels/plugins/).
+
 ## Registry
 
 ```python
