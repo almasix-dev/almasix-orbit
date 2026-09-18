@@ -7,20 +7,23 @@ Orbit follows Almasix’s major-line docs model. This page tracks notable
 changes; pin a package version in production and read the matching line in the
 header switcher.
 
-## Unreleased (`main`)
+## 0.2.2
 
-Working from the tip of `main`? Switch the docs to **main** in the header.
-Breaking changes will land here before they become a new major.
+Scaffold wiring for panels under `app/orbit` ([#27](https://github.com/almasix-dev/almasix-orbit/issues/27) / [#28](https://github.com/almasix-dev/almasix-orbit/pull/28)) plus docs recovered after the 0.2.1 squash ([#29](https://github.com/almasix-dev/almasix-orbit/pull/29)).
 
-### Scaffold wiring ([#27](https://github.com/almasix-dev/almasix-orbit/issues/27))
+Highlights:
 
-**Rule:** define panels in `app/orbit/{id}_panel.py`; `OrbitPanelProvider` only calls `register_app_orbit_panels(...)`.
-
-- `orbit:install` scaffolds that layout and lists the provider in `config/app.py`
-- `orbit:panel` only adds another `*_panel.py` (discovered on next boot)
+- **`orbit:install`** writes `app/orbit/{id}_panel.py` and a thin `OrbitPanelProvider` that only calls `register_app_orbit_panels(...)`
+- **`orbit:panel`** adds another `*_panel.py` (auto-discovered on next boot); provider stays thin
+- Provider is listed in `config/app.py` automatically
 - Docs: [Installation](/getting-started/installation/) (layout + discovery), [Quick start](/getting-started/quick-start/), [Panel configuration](/panels/configuration/)
+- Docs: [Render hooks](/panels/render-hooks/), [Plugin development](/panels/plugins/), and the full **0.2.1 / #24 upgrade** section
 
-**Existing apps on 0.2.1:** move inline `Panel.make(...)` from the provider into `app/orbit/admin_panel.py` as `register_admin_panel`, switch the provider to `register_app_orbit_panels(registry)`, keep `OrbitPanelProvider` in `config/app.py`, restart.
+**Upgrading from 0.2.1:** move inline `Panel.make(...)` from the provider into `app/orbit/admin_panel.py` as `register_admin_panel`, switch the provider to `register_app_orbit_panels(registry)`, keep `OrbitPanelProvider` in `config/app.py`, restart.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.2.2'
+```
 
 ## 0.2.1
 
@@ -43,13 +46,13 @@ Command not loaded — … ImportError: cannot import name '__version__' from 'a
 
 `orbit:install` could still succeed; the warnings are the symptom.
 
-**1. Upgrade Orbit packages to 0.2.1**
+**1. Upgrade Orbit packages to 0.2.1+**
 
 ```bash title="terminal"
-pip install -U 'almasix-orbit==0.2.1'
+pip install -U 'almasix-orbit==0.2.2'
 ```
 
-(Or bump every `almasix-orbit-*` pin your app uses to `0.2.1` and reinstall.)
+(Or bump every `almasix-orbit-*` pin your app uses and reinstall.)
 
 **2. Restore the framework `__init__.py`**
 
@@ -70,7 +73,7 @@ smith version
 
 You should see a version print and **no** `Command not loaded` lines for `version` / `list` / introspection. Then re-run `smith orbit:install` if you still need assets or the provider scaffold.
 
-**Clean venv alternative:** recreate the virtualenv and install `almasix` + `almasix-orbit==0.2.1` fresh (framework first or together is fine — 0.2.1 no longer overwrites the init).
+**Clean venv alternative:** recreate the virtualenv and install `almasix` + `almasix-orbit==0.2.2` fresh (framework first or together is fine — 0.2.1+ no longer overwrites the init).
 
 **Plugin / package authors:** do not ship `almasix/__init__.py` in your wheels. Only contribute subpackages (see [Plugin development](/panels/plugins/)).
 
@@ -107,3 +110,8 @@ Highlights:
 - Query builder UI render over the constraint apply model
 - `LiveResource` test helper
 - Auto-discovered `OrbitServiceProvider` via `almasix.providers`
+
+## Unreleased (`main`)
+
+Working from the tip of `main`? Switch the docs to **main** in the header.
+Breaking changes will land here before they become a new major.
