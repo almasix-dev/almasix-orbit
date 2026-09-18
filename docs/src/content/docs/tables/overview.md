@@ -68,17 +68,15 @@ table = (
 `get_records()` / `get_total()` operate on the in-memory list: search uses **searchable** columns, sort uses the column name as a key or attribute, then pagination slices the result. Use `.query()` (or the [query builder](/query-builder/overview/)) when the database should filter, sort, and paginate.
 
 ```python
-table = (
-    Table.make("orders")
+Table.make("orders")
     .columns([TextColumn.make("sku").searchable().sortable()])
     .records([
-        {"id": 1, "sku": "ORB-01", "amount": 1200},
-        {"id": 2, "sku": "ORB-02", "amount": 450},
-    ])
+    {"id": 1, "sku": "ORB-01", "amount": 1200},
+    {"id": 2, "sku": "ORB-02", "amount": 450},
+])
     .search("ORB")
     .sort("sku", "asc")
     .paginate(page=1, per_page=25)
-)
 ```
 
 ## Columns inventory

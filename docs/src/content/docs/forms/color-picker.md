@@ -18,10 +18,8 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Single color selection.
 
 ```python
-(
-    ColorPicker.make('brand')
+ColorPicker.make('brand')
     .label('Brand color')
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

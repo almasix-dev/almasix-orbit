@@ -18,10 +18,8 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 On/off switch with label.
 
 ```python
-(
-    Toggle.make('active')
+Toggle.make('active')
     .label('Active account')
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

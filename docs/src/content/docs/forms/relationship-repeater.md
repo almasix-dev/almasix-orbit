@@ -18,12 +18,10 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Simple stacked items with add/remove.
 
 ```python
-(
-    Repeater.make('items')
+Repeater.make('items')
     .label('Line items')
     .schema([TextInput.make('name').label('Name')])
     .default_items(1)
-)
 ```
 
 ## Cloneable and reorderable
@@ -35,13 +33,11 @@ Simple stacked items with add/remove.
 Duplicate rows and move up/down.
 
 ```python
-(
-    Repeater.make('items')
+Repeater.make('items')
     .cloneable()
     .reorderable()
     .collapsible()
     .schema([...])
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

@@ -18,11 +18,9 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Feature flags or permissions.
 
 ```python
-(
-    CheckboxList.make('features')
+CheckboxList.make('features')
     .label('Features')
     .options({'api': 'API access', 'sso': 'SSO'})
-)
 ```
 
 ## Bulk toggle
@@ -34,13 +32,11 @@ Feature flags or permissions.
 Select all / deselect all controls.
 
 ```python
-(
-    CheckboxList.make('features')
+CheckboxList.make('features')
     .label('Features')
     .options({...})
     .bulk_toggleable()
     .options_columns(2)
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

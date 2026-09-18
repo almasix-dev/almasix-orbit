@@ -18,11 +18,9 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Plan or tier selection.
 
 ```python
-(
-    Radio.make('plan')
+Radio.make('plan')
     .label('Plan')
     .options({'starter': 'Starter', 'pro': 'Pro'})
-)
 ```
 
 ## With descriptions
@@ -34,12 +32,10 @@ Plan or tier selection.
 Helper copy under each option label.
 
 ```python
-(
-    Radio.make('plan')
+Radio.make('plan')
     .label('Plan')
     .options({...})
     .descriptions({'starter': 'For side projects'})
-)
 ```
 
 ## Multi-column
@@ -51,12 +47,10 @@ Helper copy under each option label.
 Grid layout for dense option sets.
 
 ```python
-(
-    Radio.make('plan')
+Radio.make('plan')
     .label('Plan')
     .options({...})
     .options_columns(2)
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

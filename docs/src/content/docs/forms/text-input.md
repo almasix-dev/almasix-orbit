@@ -18,12 +18,10 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Label, placeholder, and helper text — the default starting point.
 
 ```python
-(
-    TextInput.make('title')
+TextInput.make('title')
     .label('Title')
     .placeholder('Enter a title…')
     .helper_text('Shown on the public page.')
-)
 ```
 
 ## Email
@@ -35,12 +33,10 @@ Label, placeholder, and helper text — the default starting point.
 Sets input type to email and adds an email validation rule.
 
 ```python
-(
-    TextInput.make('email')
+TextInput.make('email')
     .email()
     .label('Email')
     .placeholder('you@acme.test')
-)
 ```
 
 ## Password (revealable)
@@ -52,12 +48,10 @@ Sets input type to email and adds an email validation rule.
 Password type with an optional reveal toggle for accessibility.
 
 ```python
-(
-    TextInput.make('password')
+TextInput.make('password')
     .password()
     .revealable()
     .label('Password')
-)
 ```
 
 ## URL
@@ -69,12 +63,10 @@ Password type with an optional reveal toggle for accessibility.
 URL input type with built-in url validation.
 
 ```python
-(
-    TextInput.make('website')
+TextInput.make('website')
     .url()
     .label('Website')
     .placeholder('https://')
-)
 ```
 
 ## Telephone
@@ -86,11 +78,9 @@ URL input type with built-in url validation.
 Tel input type for phone numbers.
 
 ```python
-(
-    TextInput.make('phone')
+TextInput.make('phone')
     .tel()
     .label('Phone')
-)
 ```
 
 ## Numeric
@@ -102,13 +92,11 @@ Tel input type for phone numbers.
 Number input with optional min/max bounds.
 
 ```python
-(
-    TextInput.make('quantity')
+TextInput.make('quantity')
     .numeric()
     .label('Quantity')
     .min_value(0)
     .max_value(99)
-)
 ```
 
 ## Prefix text
@@ -120,12 +108,10 @@ Number input with optional min/max bounds.
 Static text before the control — common for currency symbols.
 
 ```python
-(
-    TextInput.make('price')
+TextInput.make('price')
     .label('Price')
     .prefix('$')
     .numeric()
-)
 ```
 
 ## Suffix text
@@ -137,12 +123,10 @@ Static text before the control — common for currency symbols.
 Static text after the control — units, domains, etc.
 
 ```python
-(
-    TextInput.make('weight')
+TextInput.make('weight')
     .label('Weight')
     .suffix('kg')
     .numeric()
-)
 ```
 
 ## Prefix icon
@@ -154,11 +138,9 @@ Static text after the control — units, domains, etc.
 Heroicon rendered inside the affix rail.
 
 ```python
-(
-    TextInput.make('search')
+TextInput.make('search')
     .label('Search')
     .prefix_icon('heroicon-o-magnifying-glass')
-)
 ```
 
 ## Suffix icon
@@ -170,11 +152,9 @@ Heroicon rendered inside the affix rail.
 Trailing icon affix for links, locks, or status.
 
 ```python
-(
-    TextInput.make('slug')
+TextInput.make('slug')
     .label('Slug')
     .suffix_icon('heroicon-o-link')
-)
 ```
 
 ## Required
@@ -186,11 +166,9 @@ Trailing icon affix for links, locks, or status.
 Shows the required asterisk and injects a required rule.
 
 ```python
-(
-    TextInput.make('name')
+TextInput.make('name')
     .label('Name')
     .required()
-)
 ```
 
 ## Disabled
@@ -202,11 +180,9 @@ Shows the required asterisk and injects a required rule.
 Non-interactive state for read-only contexts.
 
 ```python
-(
-    TextInput.make('locked')
+TextInput.make('locked')
     .label('Locked field')
     .disabled()
-)
 ```
 
 ## Readonly
@@ -218,11 +194,9 @@ Non-interactive state for read-only contexts.
 Value visible but not editable — good for generated IDs.
 
 ```python
-(
-    TextInput.make('id')
+TextInput.make('id')
     .label('Record ID')
     .readonly()
-)
 ```
 
 ## Copyable
@@ -234,12 +208,10 @@ Value visible but not editable — good for generated IDs.
 Adds a one-click copy button beside the input.
 
 ```python
-(
-    TextInput.make('token')
+TextInput.make('token')
     .label('API token')
     .copyable()
     .readonly()
-)
 ```
 
 ## Input mask
@@ -251,11 +223,9 @@ Adds a one-click copy button beside the input.
 Client-side mask pattern for structured values like card numbers.
 
 ```python
-(
-    TextInput.make('card')
+TextInput.make('card')
     .label('Card number')
     .mask('9999 9999 9999 9999')
-)
 ```
 
 ## Datalist suggestions
@@ -267,11 +237,9 @@ Client-side mask pattern for structured values like card numbers.
 Native datalist autocomplete from a string list.
 
 ```python
-(
-    TextInput.make('city')
+TextInput.make('city')
     .label('City')
     .datalist(['Nairobi', 'London', 'Berlin'])
-)
 ```
 
 ## With hint
@@ -283,12 +251,10 @@ Native datalist autocomplete from a string list.
 Inline hint text and optional hint icon above the control.
 
 ```python
-(
-    TextInput.make('slug')
+TextInput.make('slug')
     .label('Slug')
     .hint('Used in the public URL.')
     .hint_icon('heroicon-o-information-circle')
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

@@ -18,11 +18,9 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Responsive two-up layout.
 
 ```python
-(
-    Flex.make()
+Flex.make()
     .from_breakpoint('md')
     .schema([TextInput.make('left'), TextInput.make('right')])
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

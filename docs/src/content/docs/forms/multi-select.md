@@ -18,11 +18,9 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Multiple selection via MultiSelect.
 
 ```python
-(
-    MultiSelect.make('tags')
+MultiSelect.make('tags')
     .label('Tags')
     .options({'orbit': 'Orbit', 'forms': 'Forms'})
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

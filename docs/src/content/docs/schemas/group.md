@@ -18,11 +18,9 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 SKU and quantity on one row.
 
 ```python
-(
-    Group.make()
+Group.make()
     .columns(2)
     .schema([TextInput.make('sku'), TextInput.make('qty')])
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

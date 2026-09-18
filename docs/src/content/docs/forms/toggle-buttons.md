@@ -18,11 +18,9 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Public / private / draft visibility.
 
 ```python
-(
-    ToggleButtons.make('visibility')
+ToggleButtons.make('visibility')
     .label('Visibility')
     .options({'public': 'Public', 'private': 'Private'})
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

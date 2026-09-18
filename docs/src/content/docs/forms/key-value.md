@@ -18,10 +18,8 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Metadata editor with no initial rows.
 
 ```python
-(
-    KeyValue.make('meta')
+KeyValue.make('meta')
     .label('Metadata')
-)
 ```
 
 ## Populated key-value
@@ -33,10 +31,8 @@ Metadata editor with no initial rows.
 Existing key/value pairs.
 
 ```python
-(
-    KeyValue.make('meta')
-    .label('Metadata')
-)  # fill({'meta': {'version': '1.0'}})
+KeyValue.make('meta')
+    .label('Metadata')  # fill({'meta': {'version': '1.0'}})
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

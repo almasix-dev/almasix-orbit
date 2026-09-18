@@ -21,14 +21,11 @@ DOCS = ROOT / "src" / "content" / "docs"
 
 
 def fold_fluent_code(code: str) -> str:
-    """Stack fluent ``.method()`` calls vertically so snippets don't need horizontal scroll.
+    """Stack fluent ``.method()`` calls vertically (Filament-style).
 
-    ``Class.make(...)`` stays on the first line; each subsequent chained call is indented.
-    Trailing ``#`` comments are preserved on the last line. Nested calls inside ``()``/``[]``
-    are left alone so only top-level chain links break.
-
-    Assignments like ``x = Foo.make().bar()`` become ``x = (\\n    Foo.make()\\n    .bar()\\n)``.
-    Incomplete lines (unbalanced brackets) are left unchanged.
+    Shows the exact chain users paste into ``.schema([...])`` / ``.columns([...])`` —
+    no wrapping parentheses. Trailing ``#`` comments stay on the last line.
+    Nested calls inside ``()`` / ``[]`` are left alone.
     """
     code = code.strip()
     if not code or "\n" in code:
@@ -40,7 +37,7 @@ def fold_fluent_code(code: str) -> str:
         comment = "  #" + rest
         code = code.rstrip()
 
-    # Preserve leading assignment / return / yield targets outside the wrap.
+    # Keep an existing assignment / return on the first line of the chain.
     prefix = ""
     assign = re.match(r"^((?:return|yield)\s+|[A-Za-z_][\w.]*\s*=\s*)", code)
     if assign:
@@ -68,7 +65,6 @@ def fold_fluent_code(code: str) -> str:
                 depth = max(0, depth - 1)
         return depth
 
-    # Don't touch continuation lines or incomplete calls.
     if bracket_balance(code) != 0:
         return prefix + code + comment
 
@@ -113,7 +109,7 @@ def fold_fluent_code(code: str) -> str:
             ):
                 parts.append("".join(buf))
                 buf = ["."]
-                i += 1  # consume '.'
+                i += 1
                 continue
             continue
         buf.append(ch)
@@ -124,9 +120,45 @@ def fold_fluent_code(code: str) -> str:
     if len(parts) <= 1:
         return prefix + code + comment
 
-    # Parentheses make vertical fluent chains valid Python (unlike PHP's ->).
+    # Filament-style: stack methods — paste into schema/columns lists as-is.
     body = parts[0] + "".join("\n    " + part for part in parts[1:])
-    return prefix + "(\n    " + body + "\n)" + comment
+    if prefix:
+        # Assignment needs an open paren for a valid multi-line RHS in Python.
+        # Prefer dropping the assignment so the snippet matches field definitions.
+        return body + comment
+    return body + comment
+
+
+def unwrap_paren_expression(body: str) -> str:
+    """Turn ``(\\n    expr\\n)`` / ``name = (\\n    expr\\n)`` into a Filament-style chain."""
+
+    def restack(inner: str) -> str:
+        lines = []
+        for line in inner.split("\n"):
+            lines.append(line[4:] if line.startswith("    ") else line)
+        if not lines:
+            return inner
+        out = [lines[0]]
+        for line in lines[1:]:
+            # Re-indent chained .method() lines that sat at the same indent inside ().
+            if line.startswith("."):
+                out.append("    " + line)
+            else:
+                out.append(line)
+        return "\n".join(out)
+
+    text = body.strip("\n")
+    # Optional trailing comment after closing paren: )\n or )  # note
+    assign_m = re.match(
+        r"^([A-Za-z_][\w.]*\s*=\s*)\(\n([\s\S]*?)\n\)(\s*#.*)?$",
+        text,
+    )
+    if assign_m:
+        return restack(assign_m.group(2)) + (assign_m.group(3) or "")
+    bare_m = re.match(r"^\(\n([\s\S]*?)\n\)(\s*#.*)?$", text)
+    if bare_m:
+        return restack(bare_m.group(1)) + (bare_m.group(2) or "")
+    return body
 
 
 def preview_pair(shot_id: str, alt: str) -> str:
@@ -192,17 +224,20 @@ def render_page(slug: str, page: dict) -> str:
 
 
 def fold_python_fences_in_markdown(text: str) -> str:
-    """Fold single-line fluent fences only — leave multi-line examples untouched."""
+    """Fold single-line fluent fences; unwrap earlier paren-wrapped chains."""
 
     def repl(match: re.Match[str]) -> str:
         body = match.group(1)
         stripped = body.strip("\n")
-        if "\n" in stripped:
-            return match.group(0)
-        folded = fold_fluent_code(stripped)
-        if folded == stripped:
-            return match.group(0)
-        return "```python\n" + folded + "\n```"
+        unwrapped = unwrap_paren_expression(stripped)
+        if "\n" not in unwrapped:
+            folded = fold_fluent_code(unwrapped)
+            if folded == stripped:
+                return match.group(0)
+            return "```python\n" + folded + "\n```"
+        if unwrapped != stripped:
+            return "```python\n" + unwrapped + "\n```"
+        return match.group(0)
 
     return re.sub(r"```python\n(.*?)```", repl, text, flags=re.S)
 
