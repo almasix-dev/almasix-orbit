@@ -38,6 +38,27 @@ Select.make('status')
 
 ![Orbit Searchable select (dark)](/examples/dark/forms/select/searchable.png)
 
+## Relationship select
+
+Model-backed options (Filament-style). Without ``preload()``, searchable selects
+load results via AJAX in pages of ``options_limit`` (default **50**). With
+``preload()``, a capped set is loaded eagerly.
+
+```python
+Select.make('artist_id')
+    .label('Artist')
+    .relationship('artist', option_label='{name} - {country}')
+    .searchable()
+    # .preload()           # optional: eager load up to options_limit
+    # .options_limit(50)   # optional: cap (default 50)
+    # .get_option_label_from_record_using(lambda r: f"{r.name} ({r.id})")
+```
+
+``option_label`` formats labels from multiple columns (``{name} - {bio}``).
+For full control use ``get_option_label_from_record_using``. Pass ``model=Artist``
+when the related class is known and the owning resource model is not in render
+context.
+
 ## Multi select
 
 Multiple selection via MultiSelect.
