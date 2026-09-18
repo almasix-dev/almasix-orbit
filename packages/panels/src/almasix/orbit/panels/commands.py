@@ -77,119 +77,85 @@ def _ensure_provider_in_app_config(app: Any) -> str:
     return f"registered OrbitPanelProvider in {config_path}"
 
 
-def _default_provider_source(*, panel_id: str, path: str) -> str:
-    return f'''"""Register Orbit panels (called during app boot)."""
+def _panel_stub_source(*, panel_id: str, path: str, brand: str) -> str:
+    return f'''"""Orbit panel: {panel_id}."""
 
 from __future__ import annotations
 
 from almasix.orbit import Panel, PanelRegistry
-from almasix.providers import ServiceProvider
 
 
-class OrbitPanelProvider(ServiceProvider):
-    def boot(self) -> None:
-        registry = self.app.make(PanelRegistry)
-        panel = (
-            Panel.make("{panel_id}")
-            .path("{path}")
-            .brand_name("Orbit")
-            .navigation_layout("apps")
-            .login()
-        )
-        registry.register(panel)
+def register_{panel_id}_panel(registry: PanelRegistry) -> Panel:
+    panel = (
+        Panel.make("{panel_id}")
+        .path("{path}")
+        .brand_name("{brand}")
+        .navigation_layout("apps")
+        .login()
+    )
+    registry.register(panel)
+    return panel
 '''
 
 
-def _wire_panel_stub_into_provider(app: Any, panel_id: str) -> str:
-    """Ensure ``OrbitPanelProvider.boot`` calls ``register_{panel_id}_panel``.
-
-    Returns a short status string for the CLI.
-    """
-    provider_path = Path(app.path("app", "providers", "orbit_panel_provider.py"))
-    import_line = f"from app.orbit.{panel_id}_panel import register_{panel_id}_panel"
-    call_line = f"        register_{panel_id}_panel(registry)"
-
-    if not provider_path.is_file():
-        provider_path.parent.mkdir(parents=True, exist_ok=True)
-        provider_path.write_text(
-            f'''"""Register Orbit panels (called during app boot)."""
+def _thin_provider_source() -> str:
+    return '''"""Register every panel defined under ``app/orbit/*_panel.py``."""
 
 from __future__ import annotations
 
 from almasix.orbit import PanelRegistry
+from almasix.orbit.panels.discover import register_app_orbit_panels
 from almasix.providers import ServiceProvider
-{import_line}
 
 
 class OrbitPanelProvider(ServiceProvider):
     def boot(self) -> None:
-        registry = self.app.make(PanelRegistry)
-{call_line}
-''',
-            encoding="utf-8",
-        )
-        return f"wrote {provider_path} (calls register_{panel_id}_panel)"
+        register_app_orbit_panels(self.app.make(PanelRegistry))
+'''
 
-    text = provider_path.read_text(encoding="utf-8")
-    if f"register_{panel_id}_panel(" in text:
-        return f"provider already calls register_{panel_id}_panel"
 
-    if import_line not in text:
-        if "from almasix.providers import ServiceProvider\n" in text:
-            text = text.replace(
-                "from almasix.providers import ServiceProvider\n",
-                f"from almasix.providers import ServiceProvider\n{import_line}\n",
-                1,
-            )
-        else:
-            text = f"{import_line}\n{text}"
+def _ensure_orbit_package_init(app: Any) -> None:
+    orbit_dir = Path(app.path("app", "orbit"))
+    orbit_dir.mkdir(parents=True, exist_ok=True)
+    init = orbit_dir / "__init__.py"
+    if not init.is_file():
+        init.write_text('"""Application Orbit panels, resources, pages, and widgets."""\n', encoding="utf-8")
 
-    if "PanelRegistry" not in text:
-        if "from almasix.orbit import Panel\n" in text:
-            text = text.replace(
-                "from almasix.orbit import Panel\n",
-                "from almasix.orbit import Panel, PanelRegistry\n",
-                1,
-            )
-        elif "from almasix.orbit import Panel," in text:
-            text = text.replace(
-                "from almasix.orbit import Panel,",
-                "from almasix.orbit import Panel, PanelRegistry,",
-                1,
-            )
-        else:
-            text = f"from almasix.orbit import PanelRegistry\n{text}"
 
-    if "registry = self.app.make(PanelRegistry)" in text:
-        text = text.replace(
-            "registry = self.app.make(PanelRegistry)",
-            f"registry = self.app.make(PanelRegistry)\n{call_line}",
-            1,
-        )
-    elif "self.app.make(PanelRegistry).register(panel)" in text:
-        text = text.replace(
-            "self.app.make(PanelRegistry).register(panel)",
-            "registry = self.app.make(PanelRegistry)\n"
-            "        registry.register(panel)\n"
-            f"{call_line}",
-            1,
-        )
-    elif "def boot(self) -> None:" in text:
-        text = text.replace(
-            "def boot(self) -> None:",
-            "def boot(self) -> None:\n"
-            "        registry = self.app.make(PanelRegistry)\n"
-            f"{call_line}",
-            1,
-        )
-    else:
-        return (
-            f"could not patch {provider_path} — call register_{panel_id}_panel(registry) "
-            "from OrbitPanelProvider.boot"
-        )
+def _write_panel_stub(
+    app: Any,
+    *,
+    panel_id: str,
+    path: str,
+    brand: str,
+    force: bool,
+) -> tuple[Path, bool]:
+    """Write ``app/orbit/{panel_id}_panel.py``. Returns (path, created)."""
+    _ensure_orbit_package_init(app)
+    out = Path(app.path("app", "orbit", f"{panel_id}_panel.py"))
+    if out.exists() and not force:
+        return out, False
+    out.write_text(
+        _panel_stub_source(panel_id=panel_id, path=path, brand=brand),
+        encoding="utf-8",
+    )
+    return out, True
 
-    provider_path.write_text(text, encoding="utf-8")
-    return f"wired register_{panel_id}_panel into {provider_path}"
+
+def _ensure_thin_provider(app: Any, *, force: bool = False) -> str:
+    """Ensure OrbitPanelProvider only discovers ``app/orbit/*_panel`` modules."""
+    provider_path = Path(app.path("app", "providers", "orbit_panel_provider.py"))
+    provider_path.parent.mkdir(parents=True, exist_ok=True)
+    desired = _thin_provider_source()
+    if provider_path.is_file() and not force:
+        text = provider_path.read_text(encoding="utf-8")
+        if "register_app_orbit_panels" in text:
+            return f"provider already discovers app/orbit panels → {provider_path}"
+        # Upgrade legacy inline providers to the thin discoverer.
+        provider_path.write_text(desired, encoding="utf-8")
+        return f"upgraded {provider_path} to discover app/orbit/*_panel.py"
+    provider_path.write_text(desired, encoding="utf-8")
+    return f"wrote {provider_path}"
 
 
 class OrbitInstallCommand(Command):
@@ -199,7 +165,7 @@ class OrbitInstallCommand(Command):
         " {--panel=admin : Panel id}"
         " {--force : Overwrite existing config / provider stubs}"
     )
-    description = "Publish Orbit assets and scaffold config + first panel provider"
+    description = "Publish Orbit assets and scaffold config + first panel under app/orbit"
     aliases: ClassVar[tuple[str, ...]] = ()
     boots_application: ClassVar[bool] = True
 
@@ -241,21 +207,23 @@ ORBIT = {{
             )
             self.info(f"wrote {config_path}")
 
-        provider_path = Path(self.app.path("app", "providers", "orbit_panel_provider.py"))
-        if provider_path.exists() and not force:
-            self.info(f"provider exists → {provider_path}")
+        stub, created = _write_panel_stub(
+            self.app,
+            panel_id=panel_id,
+            path=path,
+            brand="Orbit",
+            force=force,
+        )
+        if created:
+            self.info(f"panel → {stub}")
         else:
-            provider_path.parent.mkdir(parents=True, exist_ok=True)
-            provider_path.write_text(
-                _default_provider_source(panel_id=panel_id, path=path),
-                encoding="utf-8",
-            )
-            self.info(f"wrote {provider_path}")
+            self.info(f"panel exists → {stub}")
 
+        self.info(_ensure_thin_provider(self.app, force=force))
         self.info(_ensure_provider_in_app_config(self.app))
         self.success(
-            f"Orbit installed. Panels only mount when OrbitPanelProvider boots — "
-            f"it must be in config/app.py providers. Next: "
+            f"Orbit installed. Panels live in app/orbit/*_panel.py; "
+            f"OrbitPanelProvider discovers them. Next: "
             f"smith orbit:resource Post --panel={panel_id} then open /{path}"
         )
         return self.SUCCESS
@@ -267,7 +235,7 @@ class MakeOrbitPanelCommand(Command):
         " {--path= : URL path (defaults to panel id)}"
         " {--force : Overwrite}"
     )
-    description = "Create an Orbit panel registration stub and wire it into OrbitPanelProvider"
+    description = "Create app/orbit/{id}_panel.py (auto-registered by OrbitPanelProvider)"
     aliases: ClassVar[tuple[str, ...]] = ("orbit:panel",)
     boots_application: ClassVar[bool] = True
 
@@ -283,39 +251,22 @@ class MakeOrbitPanelCommand(Command):
             self.error("Application is required")
             return self.FAILURE
         out = Path(self.app.path("app", "orbit", f"{panel_id}_panel.py"))
-        out.parent.mkdir(parents=True, exist_ok=True)
         if out.exists() and not force:
             self.error(f"{out} already exists")
             return self.FAILURE
-        studly = _studly(panel_id)
-        out.write_text(
-            f'''"""Orbit panel: {panel_id}."""
-
-from __future__ import annotations
-
-from almasix.orbit import Panel, PanelRegistry
-
-
-def register_{panel_id}_panel(registry: PanelRegistry) -> Panel:
-    panel = (
-        Panel.make("{panel_id}")
-        .path("{path}")
-        .brand_name("{studly}")
-        .navigation_layout("apps")
-        .login()
-    )
-    registry.register(panel)
-    return panel
-''',
-            encoding="utf-8",
+        stub, _ = _write_panel_stub(
+            self.app,
+            panel_id=panel_id,
+            path=path,
+            brand=_studly(panel_id),
+            force=True,
         )
-        self.info(f"panel → {out}")
-        self.info(_wire_panel_stub_into_provider(self.app, panel_id))
+        self.info(f"panel → {stub}")
+        self.info(_ensure_thin_provider(self.app, force=False))
         self.info(_ensure_provider_in_app_config(self.app))
         self.success(
-            f"Panel {panel_id!r} stub created and wired. "
-            f"Restart the app and open /{path} "
-            f"(OrbitPanelProvider must be listed in config/app.py)."
+            f"Panel {panel_id!r} added under app/orbit. "
+            f"Restart the app and open /{path}"
         )
         return self.SUCCESS
 

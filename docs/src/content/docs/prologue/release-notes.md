@@ -48,12 +48,9 @@ Breaking changes will land here before they become a new major.
 
 ### Scaffold wiring ([#27](https://github.com/almasix-dev/almasix-orbit/issues/27))
 
-- `orbit:install` registers `OrbitPanelProvider` in `config/app.py` automatically
-- `orbit:panel` / `make:orbit-panel` wires `register_{id}_panel` into that provider (stubs alone never mounted routes)
-- Installation docs clarify **provider vs panel stub**
+- `orbit:install` writes the default panel as `app/orbit/{id}_panel.py` and a thin `OrbitPanelProvider` that discovers every `app/orbit/*_panel.py`
+- `orbit:panel` only adds another `*_panel.py` (auto-picked up on next boot)
+- Provider is registered in `config/app.py` automatically
+- Installation docs: panels live under `app/orbit`; the provider only registers them
 
-**Existing apps (immediate fix without waiting for the release):**
-
-1. Ensure `config/app.py` lists `"app.providers.orbit_panel_provider.OrbitPanelProvider"`.
-2. From `OrbitPanelProvider.boot`, call any `register_*_panel` helpers you generated, e.g. `register_app_panel(registry)`, **or** keep the inline `Panel.make(...).register(...)` from install.
-3. Restart `smith serve`, then open `/admin` (install default) and/or `/app` (if you wired the app panel).
+**Existing apps on 0.2.1:** move inline `Panel.make(...)` from the provider into `app/orbit/admin_panel.py` as `register_admin_panel`, switch the provider to `register_app_orbit_panels(registry)`, keep `OrbitPanelProvider` in `config/app.py`, restart.

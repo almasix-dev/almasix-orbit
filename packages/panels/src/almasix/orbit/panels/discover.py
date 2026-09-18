@@ -86,3 +86,53 @@ def _classes_from_module(
         seen.add(value)
         out.append(value)
     return out
+
+
+def register_app_orbit_panels(
+    registry: Any,
+    *,
+    package: str = "app.orbit",
+) -> list[Any]:
+    """Import ``{package}.*_panel`` modules and call each ``register_*_panel``.
+
+    Convention used by ``orbit:install`` / ``orbit:panel`` scaffolding:
+
+    - ``app/orbit/admin_panel.py`` → ``register_admin_panel(registry)``
+    - ``app/orbit/app_panel.py`` → ``register_app_panel(registry)``
+
+    Returns the list of panels returned by those registrars (may include ``None``).
+    """
+    import re
+
+    registered: list[Any] = []
+    try:
+        package_mod = importlib.import_module(package)
+    except ImportError:
+        return registered
+
+    paths = getattr(package_mod, "__path__", None)
+    if not paths:
+        return registered
+
+    prefix = package_mod.__name__ + "."
+    for modinfo in pkgutil.iter_modules(paths, prefix):
+        name = modinfo.name.rsplit(".", 1)[-1]
+        if not name.endswith("_panel") or name.startswith("_"):
+            continue
+        try:
+            module = importlib.import_module(modinfo.name)
+        except Exception:
+            continue
+        panel_id = name[: -len("_panel")]
+        fn_name = f"register_{panel_id}_panel"
+        fn = getattr(module, fn_name, None)
+        if not callable(fn):
+            # Fall back: any register_*_panel in the module
+            for attr, value in vars(module).items():
+                if re.fullmatch(r"register_\w+_panel", attr) and callable(value):
+                    fn = value
+                    break
+        if not callable(fn):
+            continue
+        registered.append(fn(registry))
+    return registered

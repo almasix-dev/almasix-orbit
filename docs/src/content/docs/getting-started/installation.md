@@ -18,10 +18,10 @@ pip install almasix-orbit
 smith orbit:install
 ```
 
-`orbit:install` publishes assets, writes `config/orbit.py`, scaffolds
-`app/providers/orbit_panel_provider.py`, and **adds that provider to
-`config/app.py`**. Panels only mount when that provider boots — a panel stub
-file alone does nothing.
+`orbit:install` publishes assets, writes `config/orbit.py`, scaffolds the
+default panel at `app/orbit/{id}_panel.py`, a thin `OrbitPanelProvider` that
+**discovers** every `app/orbit/*_panel.py`, and registers that provider in
+`config/app.py`.
 
 Scaffold more surfaces with Smith (canonical `make:orbit-*` names; `orbit:*` aliases work the same):
 
@@ -32,17 +32,43 @@ smith make:orbit-field MoneyInput             # alias: smith orbit:field …
 smith serve
 ```
 
-`make:orbit-panel` writes `app/orbit/{id}_panel.py` **and** wires
-`register_{id}_panel(...)` into `OrbitPanelProvider.boot`. Restart the server
-after scaffolding.
+`make:orbit-panel` only adds another `app/orbit/{id}_panel.py`. The provider
+picks it up automatically on the next boot — restart `smith serve`.
 
-## Provider vs panel stub
+## Provider vs panels in `app/orbit`
 
 | Piece | Role |
 |-------|------|
-| `OrbitPanelProvider` | App service provider. **Must** be listed in `config/app.py` `providers`. Its `boot` registers panels on `PanelRegistry`. |
-| `app/orbit/{id}_panel.py` | Optional helper that builds one panel (`register_{id}_panel`). Only runs if the provider calls it. |
+| `app/orbit/{id}_panel.py` | **Defines** a panel (`register_{id}_panel`). This is where brand, path, resources, etc. live. |
+| `OrbitPanelProvider` | Thin app provider. Calls `register_app_orbit_panels(...)` to load every `*_panel.py` under `app/orbit`. Must be listed in `config/app.py`. |
 | `OrbitServiceProvider` | Package entry-point (auto-discovered). Mounts whatever is already in the registry. |
+
+```python title="app/providers/orbit_panel_provider.py"
+from almasix.orbit import PanelRegistry
+from almasix.orbit.panels.discover import register_app_orbit_panels
+from almasix.providers import ServiceProvider
+
+
+class OrbitPanelProvider(ServiceProvider):
+    def boot(self) -> None:
+        register_app_orbit_panels(self.app.make(PanelRegistry))
+```
+
+```python title="app/orbit/admin_panel.py"
+from almasix.orbit import Panel, PanelRegistry
+
+
+def register_admin_panel(registry: PanelRegistry) -> Panel:
+    panel = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .navigation_layout("apps")
+        .login()
+    )
+    registry.register(panel)
+    return panel
+```
 
 Typical `config/app.py`:
 
@@ -53,7 +79,7 @@ Typical `config/app.py`:
 ],
 ```
 
-If `/admin` or `/app` 404s, check that list first, then restart `smith serve`.
+If `/admin` or `/app` 404s, check that list and that `app/orbit/*_panel.py` exists, then restart `smith serve`.
 
 Panels mount on a **path prefix** only — existing host routes (for example `/`) are left alone unless you intentionally set `.path("/")`.
 
