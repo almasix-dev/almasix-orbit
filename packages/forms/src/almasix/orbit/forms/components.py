@@ -393,7 +393,12 @@ class Field(Component):
         return (" " + " ".join(parts)) if parts else ""
 
     def _wire_binding(self, name: str) -> str:
-        return self.wire_model_attrs(name)
+        # Resource hosts store form state on ``data``; Conduit only accepts public
+        # properties, so bind as ``data.{path}`` (see FormDataMutations.set_property).
+        path = str(name or "")
+        if path and not path.startswith("data."):
+            path = f"data.{path}"
+        return self.wire_model_attrs(path)
 
     def _common_input_attrs(self, **ctx: Any) -> str:
         parts: list[str] = []

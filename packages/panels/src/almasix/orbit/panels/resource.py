@@ -37,6 +37,8 @@ class Resource:
     record_title_attribute: ClassVar[str] = "id"
     permission_prefix: ClassVar[str | None] = None
     content_max_width: ClassVar[str | None] = None
+    #: Max width for create/edit/view pages (list keeps panel / content_max_width).
+    form_content_max_width: ClassVar[str | None] = None
 
     @classmethod
     def get_slug(cls) -> str:

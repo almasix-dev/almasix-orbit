@@ -96,6 +96,7 @@ body {{ margin: 0; background: var(--or-cream, #f8fafc); }}
               return {
                 position: style.position,
                 fixedClass: menu.classList.contains('or-dropdown-menu-fixed'),
+                inBody: menu.parentElement === document.body,
                 menuBottom: menuRect.bottom,
                 scrollBottom: scrollRect.bottom,
                 footerTop: footerRect.top,
@@ -103,11 +104,10 @@ body {{ margin: 0; background: var(--or-cream, #f8fafc); }}
                 deleteTop: deleteRect.top,
                 scrollScrollHeight: scroll.scrollHeight,
                 scrollClientHeight: scroll.clientHeight,
-                // Menu should extend past the scrollport bottom without growing scrollHeight.
                 escapesScroll: menuRect.bottom > scrollRect.bottom + 4,
                 deleteNotClipped: deleteRect.bottom <= window.innerHeight
                   && deleteRect.height > 8
-                  && deleteRect.top >= scrollRect.top,
+                  && deleteRect.top < footerRect.bottom,
               };
             }"""
         )
@@ -115,6 +115,7 @@ body {{ margin: 0; background: var(--or-cream, #f8fafc); }}
 
     assert metrics["fixedClass"] is True, metrics
     assert metrics["position"] == "fixed", metrics
+    assert metrics["inBody"] is True, metrics
     assert metrics["escapesScroll"] is True, metrics
     assert metrics["deleteVisibleHeight"] > 8, metrics
     # Opening the menu must not force the table body to scroll its own content.

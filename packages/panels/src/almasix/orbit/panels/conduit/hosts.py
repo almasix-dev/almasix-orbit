@@ -6,10 +6,75 @@ state and ``wire:*`` actions — the Filament↔Livewire relationship for Orbit.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Iterable
 
 from almasix.conduit import Component, Conduit
 from almasix.orbit.support.conduit_attrs import conduit_attr
+
+
+class _DotDataPublic(set[str]):
+    """Public property names that also accept ``data`` / ``data.*`` form bindings."""
+
+    def __contains__(self, item: object) -> bool:
+        if isinstance(item, str) and (item == "data" or item.startswith("data.")):
+            return True
+        return super().__contains__(item)
+
+
+def _resource_records(resource: type[Any]) -> list[Any]:
+    getter = getattr(resource, "get_records", None)
+    if callable(getter):
+        return list(getter())
+    stored = getattr(resource, "records", None)
+    if isinstance(stored, list):
+        return list(stored)
+    return []
+
+
+def _save_resource_records(resource: type[Any], records: list[Any]) -> None:
+    if isinstance(getattr(resource, "records", None), list):
+        resource.records = list(records)
+
+
+def _record_key(record: Any) -> str:
+    if isinstance(record, dict):
+        return str(record.get("id", ""))
+    return str(getattr(record, "id", "") or "")
+
+
+def _find_record(records: Iterable[Any], record_id: str) -> Any | None:
+    rid = str(record_id or "")
+    if not rid:
+        return None
+    for record in records:
+        if _record_key(record) == rid:
+            return record
+    return None
+
+
+def _next_record_id(records: Iterable[Any]) -> int:
+    next_id = 1
+    for record in records:
+        try:
+            next_id = max(next_id, int(_record_key(record) or 0) + 1)
+        except (TypeError, ValueError):
+            pass
+    return next_id
+
+
+def _as_record_dict(record: Any) -> dict[str, Any]:
+    if isinstance(record, dict):
+        return dict(record)
+    if record is None:
+        return {}
+    out: dict[str, Any] = {}
+    for key in getattr(record, "__dict__", {}):
+        if not str(key).startswith("_"):
+            out[str(key)] = getattr(record, key, None)
+    rid = getattr(record, "id", None)
+    if rid is not None:
+        out.setdefault("id", rid)
+    return out
 
 
 class ConduitHost(Component):
@@ -429,6 +494,20 @@ class FormDataMutations:
 
     data: dict[str, Any]
 
+    @classmethod
+    def _public_property_names(cls) -> set[str]:
+        return _DotDataPublic(super()._public_property_names())
+
+    def set_property(self, name: str, value: Any) -> None:
+        if name == "data":
+            self.data = dict(value) if isinstance(value, dict) else {}
+            return
+        if name.startswith("data."):
+            self._form_path_set(name[5:], value)
+            self.data = dict(self.data or {})
+            return
+        super().set_property(name, value)
+
     def _form_path_get(self, path: str) -> Any:
         cur: Any = self.data
         for part in str(path or "").split("."):
@@ -436,6 +515,9 @@ class FormDataMutations:
                 continue
             if isinstance(cur, dict):
                 cur = cur.get(part)
+            elif isinstance(cur, list) and part.isdigit():
+                idx = int(part)
+                cur = cur[idx] if 0 <= idx < len(cur) else None
             else:
                 return None
         return cur
@@ -444,16 +526,43 @@ class FormDataMutations:
         parts = [p for p in str(path or "").split(".") if p]
         if not parts:
             return
+        if not isinstance(self.data, dict):
+            self.data = {}
         cur: Any = self.data
-        for part in parts[:-1]:
-            nxt = cur.get(part) if isinstance(cur, dict) else None
-            if not isinstance(nxt, dict):
-                nxt = {}
-                if isinstance(cur, dict):
+        for i, part in enumerate(parts[:-1]):
+            nxt_key = parts[i + 1]
+            want_list = nxt_key.isdigit()
+            if part.isdigit():
+                idx = int(part)
+                if not isinstance(cur, list):
+                    return
+                while len(cur) <= idx:
+                    cur.append([] if want_list else {})
+                if want_list and not isinstance(cur[idx], list):
+                    cur[idx] = []
+                if not want_list and not isinstance(cur[idx], dict):
+                    cur[idx] = {}
+                cur = cur[idx]
+                continue
+            if not isinstance(cur, dict):
+                return
+            nxt = cur.get(part)
+            if want_list:
+                if not isinstance(nxt, list):
+                    nxt = []
                     cur[part] = nxt
+            elif not isinstance(nxt, dict):
+                nxt = {}
+                cur[part] = nxt
             cur = nxt
-        if isinstance(cur, dict):
-            cur[parts[-1]] = value
+        last = parts[-1]
+        if last.isdigit() and isinstance(cur, list):
+            idx = int(last)
+            while len(cur) <= idx:
+                cur.append(None)
+            cur[idx] = value
+        elif isinstance(cur, dict):
+            cur[last] = value
 
     def addRepeaterItem(self, name: str) -> None:
         key = str(name or "")
@@ -548,8 +657,18 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
             self.data = dict(kwargs["data"])
 
     def create(self) -> None:
-        self.dispatch("orbit-record-created", data=dict(self.data))
-        self.created_id = str(self.data.get("id") or "new")
+        resource = self.get_resource()
+        records = _resource_records(resource)
+        next_id = _next_record_id(records)
+        payload = dict(self.data or {})
+        payload.pop("id", None)
+        row = {"id": next_id, **payload}
+        records = [*records, row]
+        _save_resource_records(resource, records)
+        self.created_id = str(next_id)
+        self.data = dict(row)
+        self.dispatch("orbit-record-created", data=dict(row))
+        self.redirect(resource.page_url("view", row))
 
     def mountAction(self, name: str, **kwargs: Any) -> None:
         self.dispatch("orbit-mount-action", name=name, **kwargs)
@@ -576,12 +695,65 @@ class EditRecordHost(FormDataMutations, OrbitPageHost):
         elif isinstance(kwargs.get("record"), dict):
             self.data = dict(kwargs["record"])
             self.record_id = str(self.data.get("id") or self.record_id)
+        elif self.record_id and not self.data:
+            found = _find_record(_resource_records(self.get_resource()), self.record_id)
+            if found is not None:
+                self.data = _as_record_dict(found)
 
     def save(self) -> None:
+        resource = self.get_resource()
+        rid = str(self.record_id or self.data.get("id") or "")
+        records = _resource_records(resource)
+        payload = dict(self.data or {})
+        if rid:
+            existing = _find_record(records, rid)
+            if isinstance(existing, dict) and "id" in existing:
+                payload["id"] = existing["id"]
+            else:
+                payload["id"] = int(rid) if rid.isdigit() else rid
+            out: list[Any] = []
+            replaced = False
+            for record in records:
+                if _record_key(record) != rid:
+                    out.append(record)
+                    continue
+                if isinstance(record, dict):
+                    out.append({**record, **payload, "id": record.get("id", payload.get("id"))})
+                else:
+                    for key, val in payload.items():
+                        if key == "id":
+                            continue
+                        try:
+                            setattr(record, key, val)
+                        except Exception:
+                            pass
+                    out.append(record)
+                replaced = True
+            if not replaced:
+                out.append(payload)
+            records = out
+        else:
+            next_id = _next_record_id(records)
+            payload["id"] = next_id
+            rid = str(next_id)
+            records = [*records, payload]
+        _save_resource_records(resource, records)
+        self.record_id = rid
+        self.data = dict(payload)
         self.dispatch("orbit-record-saved", record_id=self.record_id, data=dict(self.data))
+        self.redirect(resource.page_url("view", self.data))
 
-    def mountAction(self, name: str, **kwargs: Any) -> None:
-        self.dispatch("orbit-mount-action", name=name, **kwargs)
+    def mountAction(self, name: str, record_id: str | None = None, **kwargs: Any) -> None:
+        action_name = str(name or "")
+        rid = str(record_id or kwargs.get("recordId") or self.record_id or "")
+        if action_name in {"delete", "force_delete"} and rid:
+            resource = self.get_resource()
+            records = [r for r in _resource_records(resource) if _record_key(r) != rid]
+            _save_resource_records(resource, records)
+            self.dispatch("orbit-record-deleted", record_id=rid)
+            self.redirect(resource.page_url("index"))
+            return
+        self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
 
     def render(self) -> str:
         from almasix.orbit.panels.pages.resource_pages import EditRecord
@@ -593,7 +765,7 @@ class EditRecordHost(FormDataMutations, OrbitPageHost):
         record = dict(self.data)
         if self.record_id and "id" not in record:
             record["id"] = self.record_id
-        return Bound.render(record=record, state=dict(self.data))
+        return Bound.render(record=record, state=dict(self.data) if self.data else None)
 
 
 class ViewRecordHost(OrbitPageHost):
@@ -606,9 +778,22 @@ class ViewRecordHost(OrbitPageHost):
         if isinstance(kwargs.get("record"), dict):
             self.record = dict(kwargs["record"])
             self.record_id = str(self.record.get("id") or self.record_id)
+        elif self.record_id and not self.record:
+            found = _find_record(_resource_records(self.get_resource()), self.record_id)
+            if found is not None:
+                self.record = _as_record_dict(found)
 
-    def mountAction(self, name: str, **kwargs: Any) -> None:
-        self.dispatch("orbit-mount-action", name=name, **kwargs)
+    def mountAction(self, name: str, record_id: str | None = None, **kwargs: Any) -> None:
+        action_name = str(name or "")
+        rid = str(record_id or kwargs.get("recordId") or self.record_id or "")
+        if action_name in {"delete", "force_delete"} and rid:
+            resource = self.get_resource()
+            records = [r for r in _resource_records(resource) if _record_key(r) != rid]
+            _save_resource_records(resource, records)
+            self.dispatch("orbit-record-deleted", record_id=rid)
+            self.redirect(resource.page_url("index"))
+            return
+        self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
 
     def render(self) -> str:
         from almasix.orbit.panels.pages.resource_pages import ViewRecord

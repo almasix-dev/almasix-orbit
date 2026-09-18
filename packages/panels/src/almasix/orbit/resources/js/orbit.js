@@ -1,6 +1,17 @@
 (() => {
   window.orbitWire = (el) => {
-    const node = el?.closest?.("[wire\\:id], [conduit\\:id], [data-conduit-id]") || el;
+    let node =
+      el?.closest?.("[wire\\:id], [conduit\\:id], [data-conduit-id]") || null;
+    if (!node) {
+      const menu = el?.closest?.(".or-dropdown-menu, .or-columns-panel");
+      node = menu?._orbitHostEl || null;
+    }
+    if (!node && typeof document !== "undefined") {
+      node =
+        document.querySelector("[conduit\\:id], [data-conduit-id], [wire\\:id]") ||
+        null;
+    }
+    node = node || el;
     return (
       (typeof window !== "undefined" && window.Livewire && node?.id && window.Livewire.find?.(node.id)) ||
       node?.__conduit ||
@@ -167,35 +178,60 @@
     window.Alpine.data("orbitDropdown", () => ({
       menuOpen: false,
       init() {
-        this._menu =
-          this.$el?.querySelector?.(
-            ":scope > .or-dropdown-menu, :scope > .or-columns-panel, :scope > .or-filters-panel"
-          ) || null;
-        this._trigger =
-          this.$el?.querySelector?.(":scope > .or-btn, :scope > button") || null;
+        // Alpine rebinds `$el` to the event target inside @click handlers; keep the
+        // x-data root so portal/querySelector always run against the dropdown wrap.
+        this._rootEl = this.$el;
+        this._menuPlaceholder = null;
         this._onCloseOthers = (event) => {
           if (event?.detail?.except === "dropdown") {
             return;
           }
-          this.menuOpen = false;
+          this.closeMenu();
         };
         window.addEventListener("orbit:close-dropdowns", this._onCloseOthers);
-        this.$watch("menuOpen", (open) => {
-          if (open) {
-            this._positionMenu();
-          } else {
-            this._clearMenuPosition();
+        // Portaled menus leave the Alpine root, so @click.outside alone is not enough.
+        this._onDocPointer = (event) => {
+          if (!this.menuOpen) {
+            return;
           }
-        });
+          const target = event.target;
+          if (!(target instanceof Element)) {
+            return;
+          }
+          const root = this._dropdownRoot();
+          if (root?.contains(target) || this._menu?.contains(target)) {
+            return;
+          }
+          this.closeMenu();
+        };
+        document.addEventListener("pointerdown", this._onDocPointer, true);
       },
       destroy() {
-        this._clearMenuPosition();
+        this.closeMenu();
         if (this._onCloseOthers) {
           window.removeEventListener("orbit:close-dropdowns", this._onCloseOthers);
         }
+        if (this._onDocPointer) {
+          document.removeEventListener("pointerdown", this._onDocPointer, true);
+        }
+      },
+      _dropdownRoot() {
+        // Prefer Alpine's live `$root`. Cached `_rootEl` goes stale when Conduit
+        // morphs the table; `$el` is the event target inside @click handlers.
+        if (this.$root?.isConnected) {
+          return this.$root;
+        }
+        if (this._rootEl?.isConnected) {
+          return this._rootEl;
+        }
+        const el = this.$el;
+        if (el?.isConnected && el.hasAttribute?.("x-data")) {
+          return el;
+        }
+        return el?.closest?.("[data-dropdown], .or-dropdown, .or-table-columns") || el || null;
       },
       _selectionRoot() {
-        return this.$el?.closest?.(".or-table-wrap, .or-list-card") || null;
+        return this._dropdownRoot()?.closest?.(".or-table-wrap, .or-list-card") || null;
       },
       syncSelection() {
         const root = this._selectionRoot();
@@ -203,7 +239,10 @@
           return;
         }
         try {
-          const data = window.Alpine.$data(root);
+          const stack = root._x_dataStack || [];
+          const data =
+            stack.find((entry) => typeof entry?.syncHost === "function") ||
+            window.Alpine.$data(root);
           if (data && typeof data.syncHost === "function") {
             data.syncHost();
           }
@@ -211,40 +250,98 @@
           /* selection root may not be Alpine-bound yet */
         }
       },
-      _positionMenu() {
+      _resolveParts() {
+        const root = this._dropdownRoot();
+        if (root && root !== this._rootEl) {
+          this._rootEl = root;
+        }
+        // Prefer direct children; fall back after portal restore / nested markup.
+        const menu =
+          root?.querySelector?.(
+            ":scope > .or-dropdown-menu, :scope > .or-columns-panel"
+          ) || root?.querySelector?.(".or-dropdown-menu, .or-columns-panel");
+        // Keep a previously portaled menu reference if it's still live on <body>.
+        if (menu) {
+          this._menu = menu;
+        } else if (!this._menu?.isConnected) {
+          this._menu = null;
+        }
+        const trigger =
+          root?.querySelector?.(":scope > .or-btn, :scope > button") ||
+          root?.querySelector?.(":scope > .or-icon-btn, :scope > .or-columns-trigger") ||
+          root?.querySelector?.("button, .or-btn");
+        if (trigger) {
+          this._trigger = trigger;
+        } else if (!this._trigger?.isConnected) {
+          this._trigger = null;
+        }
+        return Boolean(this._menu && this._trigger);
+      },
+      _portalMenu() {
         const menu = this._menu;
-        const trigger = this._trigger;
-        if (!menu || !trigger) {
+        if (!menu || menu.parentElement === document.body) {
           return;
         }
-        const place = () => {
-          menu.classList.add("or-dropdown-menu-fixed");
-          const rect = trigger.getBoundingClientRect();
-          const preferEnd =
-            menu.classList.contains("or-dropdown-menu-end") ||
-            !!trigger.closest(".or-td-actions, .or-row-actions, .or-page-actions");
-          const mw = menu.offsetWidth || 192;
-          const mh = menu.offsetHeight || 0;
-          let top = rect.bottom + 6;
-          let left = preferEnd ? rect.right - mw : rect.left;
-          if (top + mh > window.innerHeight - 8 && rect.top - mh - 6 > 8) {
-            top = rect.top - mh - 6;
-          }
-          left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
-          menu.style.top = `${Math.round(top)}px`;
-          menu.style.left = `${Math.round(left)}px`;
-          menu.style.right = "auto";
-        };
-        // x-show applies display after this tick — measure once visible.
-        if (typeof this.$nextTick === "function") {
-          this.$nextTick(place);
-        } else {
-          requestAnimationFrame(place);
+        const hostEl =
+          menu.closest?.("[wire\\:id], [conduit\\:id], [data-conduit-id]") ||
+          this._dropdownRoot()?.closest?.(
+            "[wire\\:id], [conduit\\:id], [data-conduit-id]"
+          ) ||
+          null;
+        if (hostEl) {
+          menu._orbitHostEl = hostEl;
         }
+        this._menuPlaceholder = document.createComment("or-dropdown-portal");
+        menu.parentNode?.insertBefore(this._menuPlaceholder, menu);
+        document.body.appendChild(menu);
+      },
+      _restoreMenu() {
+        const menu = this._menu;
+        const placeholder = this._menuPlaceholder;
+        if (menu && placeholder?.parentNode) {
+          placeholder.parentNode.insertBefore(menu, placeholder);
+          placeholder.remove();
+        } else if (menu && menu.parentElement === document.body && this._rootEl?.isConnected) {
+          this._rootEl.appendChild(menu);
+        }
+        this._menuPlaceholder = null;
+      },
+      _positionMenu(retries = 0) {
+        if (!this.menuOpen || !this._resolveParts()) {
+          return;
+        }
+        const menu = this._menu;
+        const trigger = this._trigger;
+        // Wait until Alpine x-show has made the panel measurable.
+        if (getComputedStyle(menu).display === "none") {
+          if (retries < 20) {
+            requestAnimationFrame(() => this._positionMenu(retries + 1));
+          }
+          return;
+        }
+        this._portalMenu();
+        menu.classList.add("or-dropdown-menu-fixed");
+        menu.hidden = false;
+        menu.style.display = "flex";
+        const rect = trigger.getBoundingClientRect();
+        const preferEnd =
+          menu.classList.contains("or-dropdown-menu-end") ||
+          !!trigger.closest(".or-td-actions, .or-row-actions, .or-page-actions");
+        const mw = menu.offsetWidth || 192;
+        const mh = menu.offsetHeight || 0;
+        let top = rect.bottom + 6;
+        let left = preferEnd ? rect.right - mw : rect.left;
+        if (top + mh > window.innerHeight - 8 && rect.top - mh - 6 > 8) {
+          top = rect.top - mh - 6;
+        }
+        left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
+        menu.style.top = `${Math.round(top)}px`;
+        menu.style.left = `${Math.round(left)}px`;
+        menu.style.right = "auto";
         if (!this._onReposition) {
           this._onReposition = () => {
             if (this.menuOpen) {
-              place();
+              this._positionMenu();
             }
           };
           window.addEventListener("scroll", this._onReposition, true);
@@ -258,7 +355,9 @@
           menu.style.top = "";
           menu.style.left = "";
           menu.style.right = "";
+          menu.style.display = "";
         }
+        this._restoreMenu();
         if (this._onReposition) {
           window.removeEventListener("scroll", this._onReposition, true);
           window.removeEventListener("resize", this._onReposition);
@@ -268,18 +367,26 @@
       toggleMenu(event) {
         event?.preventDefault?.();
         event?.stopPropagation?.();
-        this.menuOpen = !this.menuOpen;
         if (this.menuOpen) {
-          window.dispatchEvent(
-            new CustomEvent("orbit:close-dropdowns", { detail: { except: "dropdown" } })
-          );
-          // Do not syncHost here: $set(selected) remorphs the Conduit root and
-          // used to un-hide Filters/bulk via stripped Alpine styles. Selection is
-          // pushed on bulk action click (capture) instead.
+          this.closeMenu();
+          return;
         }
+        this.menuOpen = true;
+        window.dispatchEvent(
+          new CustomEvent("orbit:close-dropdowns", { detail: { except: "dropdown" } })
+        );
+        // Position after x-show paints; rAF covers Conduit/Alpine timing.
+        requestAnimationFrame(() => this._positionMenu());
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => this._positionMenu())
+        );
       },
       closeMenu() {
+        if (!this.menuOpen && !this._menuPlaceholder) {
+          return;
+        }
         this.menuOpen = false;
+        this._clearMenuPosition();
       },
     }));
 
@@ -288,69 +395,95 @@
       total: 0,
       allResultsSelected: false,
       init() {
-        // Capture the x-data root once. Alpine's `$el` inside child `@click`
-        // handlers is the child node (e.g. Clear button), not the wrap.
+        // Alpine rebinds `$el` inside nested @click handlers; keep the wrap.
         this._rootEl = this.$el;
-        const initial = this._rootEl?.getAttribute?.("data-selected");
-        if (initial) {
-          try {
-            const parsed = JSON.parse(initial);
-            if (Array.isArray(parsed)) {
-              this.selected = parsed.map(String);
+        const boot = () => {
+          const root = this._root();
+          this._rootEl = root;
+          const initial = root?.getAttribute?.("data-selected");
+          if (initial) {
+            try {
+              const parsed = JSON.parse(initial);
+              if (Array.isArray(parsed)) {
+                this.selected = parsed.map(String);
+              }
+            } catch (_) {
+              /* ignore bad JSON */
             }
-          } catch (_) {
-            /* ignore bad JSON */
           }
-        }
-        const totalAttr = this._rootEl?.getAttribute?.("data-total");
-        if (totalAttr != null) {
-          this.total = Number(totalAttr) || 0;
-        }
-        if (this._rootEl?.getAttribute?.("data-select-all") === "true") {
-          this.allResultsSelected = true;
-        }
-        // Alpine @change/@click on thead checkboxes is unreliable (handler never
-        // fires alongside :checked). Bind select-all imperatively instead.
-        this._onSelectAllChange = (event) => {
-          const target = event.target;
-          if (!(target instanceof HTMLInputElement)) {
-            return;
+          const totalAttr = root?.getAttribute?.("data-total");
+          if (totalAttr != null) {
+            this.total = Number(totalAttr) || 0;
           }
-          if (!target.classList.contains("or-select-all")) {
-            return;
+          if (root?.getAttribute?.("data-select-all") === "true") {
+            this.allResultsSelected = true;
           }
-          this.toggleAll(target.checked);
+          if (this._onSelectAllChange && this._boundSelectRoot) {
+            this._boundSelectRoot.removeEventListener("change", this._onSelectAllChange);
+          }
+          this._onSelectAllChange = (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLInputElement)) {
+              return;
+            }
+            if (!target.classList.contains("or-select-all")) {
+              return;
+            }
+            this.toggleAll(target.checked);
+          };
+          this._boundSelectRoot = root;
+          root?.addEventListener("change", this._onSelectAllChange);
+          this._syncHeaderCheck();
+          if (this._onBulkActionClick && this._boundBulkRoot) {
+            this._boundBulkRoot.removeEventListener("click", this._onBulkActionClick, true);
+          }
+          // Sync to host immediately before a bulk action Conduit call (capture phase).
+          this._onBulkActionClick = (event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) {
+              return;
+            }
+            const inBulkUi =
+              target.closest(".or-table-bulk-trigger, .or-list-bulk-actions") ||
+              (target.closest(".or-dropdown-menu") &&
+                /delete_bulk|bulk/i.test(
+                  target.closest("[data-action]")?.getAttribute("data-action") || ""
+                ));
+            if (!inBulkUi) {
+              return;
+            }
+            if (target.closest("[wire\\:click], [conduit\\:click], [data-action]")) {
+              this.syncHost();
+            }
+          };
+          this._boundBulkRoot = document;
+          document.addEventListener("click", this._onBulkActionClick, true);
         };
-        this._rootEl.addEventListener("change", this._onSelectAllChange);
-        this._syncHeaderCheck();
-        // Sync to host immediately before a bulk action Conduit call (capture phase).
-        this._onBulkActionClick = (event) => {
-          const target = event.target;
-          if (!(target instanceof Element)) {
-            return;
-          }
-          const bulk = this._rootEl.querySelector(
-            ".or-table-bulk-trigger, .or-list-bulk-actions"
-          );
-          if (!bulk || !bulk.contains(target)) {
-            return;
-          }
-          if (target.closest("[wire\\:click], [conduit\\:click], [data-action]")) {
-            this.syncHost();
-          }
-        };
-        this._rootEl.addEventListener("click", this._onBulkActionClick, true);
+        boot();
+        this.$nextTick?.(() => boot());
       },
       destroy() {
-        if (this._onSelectAllChange && this._rootEl) {
-          this._rootEl.removeEventListener("change", this._onSelectAllChange);
+        if (this._onSelectAllChange && this._boundSelectRoot) {
+          this._boundSelectRoot.removeEventListener("change", this._onSelectAllChange);
         }
-        if (this._onBulkActionClick && this._rootEl) {
-          this._rootEl.removeEventListener("click", this._onBulkActionClick, true);
+        if (this._onBulkActionClick && this._boundBulkRoot) {
+          this._boundBulkRoot.removeEventListener("click", this._onBulkActionClick, true);
         }
       },
       _root() {
-        return this._rootEl || this.$el;
+        const live = this.$root || this.$el;
+        if (live?.classList?.contains("or-table-wrap")) {
+          return live;
+        }
+        if (this._rootEl?.isConnected && this._rootEl.classList?.contains("or-table-wrap")) {
+          return this._rootEl;
+        }
+        return (
+          live?.closest?.(".or-table-wrap") ||
+          this._rootEl?.closest?.(".or-table-wrap") ||
+          this._rootEl ||
+          live
+        );
       },
       _host() {
         const root = this._root()?.closest?.("[wire\\:id], [conduit\\:id], [data-conduit-id]");
@@ -562,6 +695,16 @@
           recordId: this.recordId,
           data: this.hasForm ? this._formData() : {},
         };
+        // Portaled bulk menus live on <body>; sync Alpine selection before delete_bulk.
+        try {
+          const wrap = document.querySelector(".or-table-wrap[x-data]");
+          const stack = wrap?._x_dataStack || [];
+          const sel =
+            stack.find((entry) => typeof entry?.syncHost === "function") || null;
+          sel?.syncHost?.();
+        } catch (_) {
+          /* ignore */
+        }
         const el = this.pendingEl;
         const wire = el ? window.orbitWire?.(el) : null;
         if (wire && typeof wire.mountAction === "function") {
