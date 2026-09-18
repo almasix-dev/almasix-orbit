@@ -18,10 +18,8 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Standard date field.
 
 ```python
-(
-    DatePicker.make('starts')
+DatePicker.make('starts')
     .label('Starts on')
-)
 ```
 
 ## Min and max dates
@@ -33,12 +31,10 @@ Standard date field.
 Restrict selectable range.
 
 ```python
-(
-    DatePicker.make('window')
+DatePicker.make('window')
     .label('Window')
     .min_date('2026-01-01')
     .max_date('2026-12-31')
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

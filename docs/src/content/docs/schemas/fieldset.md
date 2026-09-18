@@ -18,11 +18,9 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Billing address legend.
 
 ```python
-(
-    Fieldset.make('billing')
+Fieldset.make('billing')
     .label('Billing address')
     .schema([TextInput.make('line1'), TextInput.make('city')])
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

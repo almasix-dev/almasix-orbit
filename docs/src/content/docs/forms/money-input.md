@@ -18,11 +18,9 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Dollar prefix and USD metadata.
 
 ```python
-(
-    MoneyInput.make('price')
+MoneyInput.make('price')
     .label('Price')
     .currency('USD')
-)
 ```
 
 ## EUR
@@ -34,11 +32,9 @@ Dollar prefix and USD metadata.
 Euro prefix and EUR metadata.
 
 ```python
-(
-    MoneyInput.make('price')
+MoneyInput.make('price')
     .label('Price')
     .currency('EUR')
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

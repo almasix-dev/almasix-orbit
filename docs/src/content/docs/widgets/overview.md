@@ -60,10 +60,8 @@ Widget.make("w")
 ## On a panel
 
 ```python
-(
-    Panel.make("admin")
+Panel.make("admin")
     .widgets([StatsOverviewWidget, SignupsChart])
-)
 ```
 
 Widgets are stored on the panel for your dashboard page to pick up — wire them into `Page.render()` however you like.

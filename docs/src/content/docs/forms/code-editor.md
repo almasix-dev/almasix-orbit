@@ -18,11 +18,9 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Language-tagged monospace surface.
 
 ```python
-(
-    CodeEditor.make('config')
+CodeEditor.make('config')
     .label('Config')
     .language('json')
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

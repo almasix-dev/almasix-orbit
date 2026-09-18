@@ -18,10 +18,8 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Free-form tag entry.
 
 ```python
-(
-    TagsInput.make('tags')
+TagsInput.make('tags')
     .label('Tags')
-)
 ```
 
 ## With suggestions
@@ -33,12 +31,10 @@ Free-form tag entry.
 Datalist-backed autocomplete plus reorderable chips.
 
 ```python
-(
-    TagsInput.make('tags')
+TagsInput.make('tags')
     .label('Tags')
     .suggestions(['orbit', 'tables'])
     .reorderable()
-)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).
