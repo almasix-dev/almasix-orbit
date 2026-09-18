@@ -261,10 +261,18 @@ a.sl-link-button.primary:hover {
 	background: color-mix(in srgb, var(--sl-color-gray-2) 70%, transparent);
 }
 
-/* Code frames */
+/*
+ * Code frames — One Dark Pro + Ristretto-style warmth on both UI themes.
+ * Sepia / hue-rotate shifts Atom’s cool blue-gray tokens toward the warm
+ * brown–rose cast of Monokai Pro Filter Ristretto without vendoring that theme.
+ */
 .expressive-code {
-	--ec-frm-frameBoxShdCssVal: 0 12px 40px rgba(0, 0, 0, 0.22),
-		0 0 0 1px rgba(241, 81, 27, 0.14);
+	--ec-frm-frameBoxShdCssVal: 0 12px 40px rgba(44, 37, 37, 0.45),
+		0 0 0 1px rgba(241, 81, 27, 0.16);
+}
+
+.expressive-code .frame {
+	filter: sepia(0.28) saturate(1.2) hue-rotate(-16deg) brightness(0.98) contrast(1.03);
 }
 
 .expressive-code .frame {

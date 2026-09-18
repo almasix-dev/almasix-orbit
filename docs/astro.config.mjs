@@ -71,10 +71,11 @@ export default defineConfig({
 				ThemeSelect: './src/components/ThemeSelect.astro',
 			},
 			expressiveCode: {
-				// Vitesse pair tracks the Starlight UI theme — soft, high-legibility
-				// on both light and dark pages (better than a single dark-only theme).
-				themes: ['vitesse-dark', 'vitesse-light'],
-				useStarlightDarkModeSwitch: true,
+				// One Dark Pro for light + dark UI (matches Almasix/Conduit docs).
+				// A Ristretto-style CSS filter in custom.css warms the cool blue-gray
+				// toward Monokai Pro Filter Ristretto’s brown/rose cast.
+				themes: ['one-dark-pro'],
+				useStarlightDarkModeSwitch: false,
 				useStarlightUiThemeColors: false,
 				// Must stay true on Astro 7: inlining can break code-frame CSS.
 				emitExternalStylesheet: true,
@@ -83,8 +84,12 @@ export default defineConfig({
 					borderWidth: '1px',
 					codeFontFamily: "'JetBrains Mono', ui-monospace, monospace",
 					codeFontSize: '0.9rem',
+					// Warm charcoal closer to Ristretto’s #2c2525 than stock #282c34.
+					codeBackground: '#2c2525',
 					frames: {
-						shadowColor: 'rgba(0, 0, 0, 0.22)',
+						editorBackground: '#2c2525',
+						terminalBackground: '#2c2525',
+						shadowColor: 'rgba(44, 37, 37, 0.45)',
 					},
 				},
 			},
