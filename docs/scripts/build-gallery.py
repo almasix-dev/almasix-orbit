@@ -1115,8 +1115,8 @@ html, body {{
   color: var(--or-ink);
 }}
 body.dark {{
-  background: #0f0e0d;
-  color: #f3efe9;
+  background: #140f0d;
+  color: #faf7f5;
 }}
 .gallery-header {{
   max-width: 960px;
@@ -1151,9 +1151,9 @@ body.dark {{
   overflow: hidden;
 }}
 body.dark .or-shot {{
-  background: #1a1715;
-  border-color: #2e2926;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  background: #1c1613;
+  border-color: #3a302b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }}
 .or-shot-shell {{
   min-height: 420px;
