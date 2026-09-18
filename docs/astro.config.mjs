@@ -1,14 +1,37 @@
 // @ts-check
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
-import { ExpressiveCodeTheme } from 'astro-expressive-code';
 
 const base = '/';
-const kimbieDark = ExpressiveCodeTheme.fromJSONString(
-	readFileSync(fileURLToPath(new URL('./src/themes/kimbie-dark.json', import.meta.url)), 'utf8'),
+
+/** Section roots linked from the landing page → first real doc page. */
+const sectionRedirects = Object.fromEntries(
+	[
+		['forms', 'forms/overview'],
+		['tables', 'tables/overview'],
+		['tables/columns', 'tables/columns/overview'],
+		['tables/filters', 'tables/filters/overview'],
+		['schemas', 'schemas/overview'],
+		['resources', 'resources/overview'],
+		['actions', 'actions/overview'],
+		['infolists', 'infolists/overview'],
+		['notifications', 'notifications/overview'],
+		['widgets', 'widgets/overview'],
+		['query-builder', 'query-builder/overview'],
+		['support', 'support/overview'],
+		['navigation', 'navigation/overview'],
+		['users', 'users/overview'],
+		['testing', 'testing/overview'],
+		['panels', 'panels/configuration'],
+		['getting-started', 'getting-started/installation'],
+		['components', 'components/form'],
+		['prologue', 'prologue/versions'],
+	].flatMap(([from, to]) => [
+		[`/${from}`, `/${to}`],
+		[`/${from}/`, `/${to}/`],
+	]),
 );
 
 // https://astro.build/config
@@ -16,6 +39,7 @@ export default defineConfig({
 	site: 'https://orbit.almasix.com',
 	base,
 	devToolbar: { enabled: false },
+	redirects: sectionRedirects,
 	integrations: [
 		starlight({
 			title: 'Orbit',
@@ -47,10 +71,10 @@ export default defineConfig({
 				ThemeSelect: './src/components/ThemeSelect.astro',
 			},
 			expressiveCode: {
-				// Custom Kimbie Dark (not in current Shiki bundle) for code snippets
-				// — warmer than One Dark Pro, especially on light docs UI.
-				themes: [kimbieDark],
-				useStarlightDarkModeSwitch: false,
+				// Vitesse pair tracks the Starlight UI theme — soft, high-legibility
+				// on both light and dark pages (better than a single dark-only theme).
+				themes: ['vitesse-dark', 'vitesse-light'],
+				useStarlightDarkModeSwitch: true,
 				useStarlightUiThemeColors: false,
 				// Must stay true on Astro 7: inlining can break code-frame CSS.
 				emitExternalStylesheet: true,
@@ -60,7 +84,7 @@ export default defineConfig({
 					codeFontFamily: "'JetBrains Mono', ui-monospace, monospace",
 					codeFontSize: '0.9rem',
 					frames: {
-						shadowColor: 'rgba(0, 0, 0, 0.35)',
+						shadowColor: 'rgba(0, 0, 0, 0.22)',
 					},
 				},
 			},
