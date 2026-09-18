@@ -107,6 +107,10 @@ export default defineConfig({
 					},
 				},
 				{
+					tag: 'link',
+					attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+				},
+				{
 					tag: 'script',
 					content: readFileSync('./src/scripts/sidebar-accordion.js', 'utf8'),
 				},
@@ -132,11 +136,25 @@ export default defineConfig({
 				},
 				{
 					tag: 'meta',
-					attrs: { property: 'og:image:alt', content: 'Almasix Orbit — Almasix' },
+					attrs: {
+						property: 'og:image:alt',
+						content: 'Almasix Orbit — server-driven Python admin panels',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: { name: 'twitter:card', content: 'summary_large_image' },
 				},
 				{
 					tag: 'meta',
 					attrs: { name: 'twitter:image', content: 'https://orbit.almasix.com/og.png' },
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						name: 'twitter:image:alt',
+						content: 'Almasix Orbit — server-driven Python admin panels',
+					},
 				},
 				{
 					tag: 'meta',
@@ -145,8 +163,56 @@ export default defineConfig({
 				{
 					tag: 'script',
 					attrs: { type: 'application/ld+json' },
-					content:
-						'{"@context": "https://schema.org", "@graph": [{"@type": "WebSite", "@id": "https://orbit.almasix.com/#website", "url": "https://orbit.almasix.com/", "name": "Almasix Orbit", "description": "Server-driven admin UI for Almasix \\u2014 panels, resources, forms, and tables on Conduit + Alpine.", "publisher": {"@id": "https://almasix.com/#organization"}, "inLanguage": "en"}, {"@type": "SoftwareApplication", "@id": "https://orbit.almasix.com/#software", "name": "Almasix Orbit", "applicationCategory": "DeveloperApplication", "url": "https://orbit.almasix.com/", "isPartOf": {"@id": "https://almasix.com/#software"}, "publisher": {"@id": "https://almasix.com/#organization"}}]}',
+					content: JSON.stringify({
+						'@context': 'https://schema.org',
+						'@graph': [
+							{
+								'@type': 'Organization',
+								'@id': 'https://almasix.com/#organization',
+								name: 'Almasix',
+								url: 'https://almasix.com/',
+								logo: 'https://orbit.almasix.com/apple-touch-icon.png',
+							},
+							{
+								'@type': 'WebSite',
+								'@id': 'https://orbit.almasix.com/#website',
+								url: 'https://orbit.almasix.com/',
+								name: 'Almasix Orbit',
+								description:
+									'Server-driven admin UI for Almasix — panels, resources, forms, and tables on Conduit + Alpine.',
+								publisher: { '@id': 'https://almasix.com/#organization' },
+								inLanguage: 'en',
+							},
+							{
+								'@type': 'SoftwareApplication',
+								'@id': 'https://orbit.almasix.com/#software',
+								name: 'Almasix Orbit',
+								applicationCategory: 'DeveloperApplication',
+								operatingSystem: 'Any',
+								url: 'https://orbit.almasix.com/',
+								downloadUrl: 'https://pypi.org/project/almasix-orbit/',
+								isPartOf: { '@id': 'https://almasix.com/#software' },
+								publisher: { '@id': 'https://almasix.com/#organization' },
+								offers: {
+									'@type': 'Offer',
+									price: '0',
+									priceCurrency: 'USD',
+								},
+							},
+							{
+								'@type': 'TechArticle',
+								'@id': 'https://orbit.almasix.com/#docs',
+								headline: 'Almasix Orbit documentation',
+								description:
+									'Guides for Orbit panels, resources, forms, tables, actions, and schemas.',
+								url: 'https://orbit.almasix.com/',
+								inLanguage: 'en',
+								isPartOf: { '@id': 'https://orbit.almasix.com/#website' },
+								author: { '@id': 'https://almasix.com/#organization' },
+								publisher: { '@id': 'https://almasix.com/#organization' },
+							},
+						],
+					}),
 				},
 			],
 			sidebar: [
