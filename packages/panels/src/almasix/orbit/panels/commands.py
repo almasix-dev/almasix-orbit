@@ -39,6 +39,159 @@ def _resolve_name(command: Command, *args: Any, **kwargs: Any) -> str | None:
     return text or None
 
 
+_PROVIDER_DOTTED = "app.providers.orbit_panel_provider.OrbitPanelProvider"
+
+
+def _ensure_provider_in_app_config(app: Any) -> str:
+    """Insert OrbitPanelProvider into ``config/app.py`` providers when missing.
+
+    Returns a short status string for the CLI.
+    """
+    config_path = Path(app.path("config", "app.py"))
+    if not config_path.is_file():
+        return (
+            f"config/app.py not found — add {_PROVIDER_DOTTED!r} to app.providers manually"
+        )
+    text = config_path.read_text(encoding="utf-8")
+    if _PROVIDER_DOTTED in text:
+        return "OrbitPanelProvider already listed in config/app.py"
+    needle = '"providers": ['
+    alt = "'providers': ["
+    if needle in text:
+        text = text.replace(
+            needle,
+            f'{needle}\n        "{_PROVIDER_DOTTED}",',
+            1,
+        )
+    elif alt in text:
+        text = text.replace(
+            alt,
+            f"{alt}\n        '{_PROVIDER_DOTTED}',",
+            1,
+        )
+    else:
+        return (
+            f"could not patch config/app.py — add {_PROVIDER_DOTTED!r} to app.providers"
+        )
+    config_path.write_text(text, encoding="utf-8")
+    return f"registered OrbitPanelProvider in {config_path}"
+
+
+def _default_provider_source(*, panel_id: str, path: str) -> str:
+    return f'''"""Register Orbit panels (called during app boot)."""
+
+from __future__ import annotations
+
+from almasix.orbit import Panel, PanelRegistry
+from almasix.providers import ServiceProvider
+
+
+class OrbitPanelProvider(ServiceProvider):
+    def boot(self) -> None:
+        registry = self.app.make(PanelRegistry)
+        panel = (
+            Panel.make("{panel_id}")
+            .path("{path}")
+            .brand_name("Orbit")
+            .navigation_layout("apps")
+            .login()
+        )
+        registry.register(panel)
+'''
+
+
+def _wire_panel_stub_into_provider(app: Any, panel_id: str) -> str:
+    """Ensure ``OrbitPanelProvider.boot`` calls ``register_{panel_id}_panel``.
+
+    Returns a short status string for the CLI.
+    """
+    provider_path = Path(app.path("app", "providers", "orbit_panel_provider.py"))
+    import_line = f"from app.orbit.{panel_id}_panel import register_{panel_id}_panel"
+    call_line = f"        register_{panel_id}_panel(registry)"
+
+    if not provider_path.is_file():
+        provider_path.parent.mkdir(parents=True, exist_ok=True)
+        provider_path.write_text(
+            f'''"""Register Orbit panels (called during app boot)."""
+
+from __future__ import annotations
+
+from almasix.orbit import PanelRegistry
+from almasix.providers import ServiceProvider
+{import_line}
+
+
+class OrbitPanelProvider(ServiceProvider):
+    def boot(self) -> None:
+        registry = self.app.make(PanelRegistry)
+{call_line}
+''',
+            encoding="utf-8",
+        )
+        return f"wrote {provider_path} (calls register_{panel_id}_panel)"
+
+    text = provider_path.read_text(encoding="utf-8")
+    if f"register_{panel_id}_panel(" in text:
+        return f"provider already calls register_{panel_id}_panel"
+
+    if import_line not in text:
+        if "from almasix.providers import ServiceProvider\n" in text:
+            text = text.replace(
+                "from almasix.providers import ServiceProvider\n",
+                f"from almasix.providers import ServiceProvider\n{import_line}\n",
+                1,
+            )
+        else:
+            text = f"{import_line}\n{text}"
+
+    if "PanelRegistry" not in text:
+        if "from almasix.orbit import Panel\n" in text:
+            text = text.replace(
+                "from almasix.orbit import Panel\n",
+                "from almasix.orbit import Panel, PanelRegistry\n",
+                1,
+            )
+        elif "from almasix.orbit import Panel," in text:
+            text = text.replace(
+                "from almasix.orbit import Panel,",
+                "from almasix.orbit import Panel, PanelRegistry,",
+                1,
+            )
+        else:
+            text = f"from almasix.orbit import PanelRegistry\n{text}"
+
+    if "registry = self.app.make(PanelRegistry)" in text:
+        text = text.replace(
+            "registry = self.app.make(PanelRegistry)",
+            f"registry = self.app.make(PanelRegistry)\n{call_line}",
+            1,
+        )
+    elif "self.app.make(PanelRegistry).register(panel)" in text:
+        text = text.replace(
+            "self.app.make(PanelRegistry).register(panel)",
+            "registry = self.app.make(PanelRegistry)\n"
+            "        registry.register(panel)\n"
+            f"{call_line}",
+            1,
+        )
+    elif "def boot(self) -> None:" in text:
+        text = text.replace(
+            "def boot(self) -> None:",
+            "def boot(self) -> None:\n"
+            "        registry = self.app.make(PanelRegistry)\n"
+            f"{call_line}",
+            1,
+        )
+    else:
+        return (
+            f"could not patch {provider_path} — call register_{panel_id}_panel(registry) "
+            "from OrbitPanelProvider.boot"
+        )
+
+    provider_path.write_text(text, encoding="utf-8")
+    return f"wired register_{panel_id}_panel into {provider_path}"
+
+
 class OrbitInstallCommand(Command):
     signature = (
         "orbit:install"
@@ -94,36 +247,16 @@ ORBIT = {{
         else:
             provider_path.parent.mkdir(parents=True, exist_ok=True)
             provider_path.write_text(
-                f'''"""Register the default Orbit panel."""
-
-from __future__ import annotations
-
-from almasix.orbit import Panel, PanelRegistry
-from almasix.providers import ServiceProvider
-
-
-class OrbitPanelProvider(ServiceProvider):
-    def boot(self) -> None:
-        panel = (
-            Panel.make("{panel_id}")
-            .path("{path}")
-            .brand_name("Orbit")
-            .navigation_layout("apps")
-            .login()
-        )
-        self.app.make(PanelRegistry).register(panel)
-''',
+                _default_provider_source(panel_id=panel_id, path=path),
                 encoding="utf-8",
             )
             self.info(f"wrote {provider_path}")
-            self.warn(
-                "Register OrbitPanelProvider in config/app.py providers "
-                "(or your app's provider list) if it is not auto-discovered."
-            )
 
+        self.info(_ensure_provider_in_app_config(self.app))
         self.success(
-            f"Orbit installed. Next: smith orbit:resource Post --panel={panel_id} "
-            f"then open /{path}"
+            f"Orbit installed. Panels only mount when OrbitPanelProvider boots — "
+            f"it must be in config/app.py providers. Next: "
+            f"smith orbit:resource Post --panel={panel_id} then open /{path}"
         )
         return self.SUCCESS
 
@@ -134,7 +267,7 @@ class MakeOrbitPanelCommand(Command):
         " {--path= : URL path (defaults to panel id)}"
         " {--force : Overwrite}"
     )
-    description = "Create an Orbit panel registration stub"
+    description = "Create an Orbit panel registration stub and wire it into OrbitPanelProvider"
     aliases: ClassVar[tuple[str, ...]] = ("orbit:panel",)
     boots_application: ClassVar[bool] = True
 
@@ -177,7 +310,13 @@ def register_{panel_id}_panel(registry: PanelRegistry) -> Panel:
             encoding="utf-8",
         )
         self.info(f"panel → {out}")
-        self.success("orbit panel stub created")
+        self.info(_wire_panel_stub_into_provider(self.app, panel_id))
+        self.info(_ensure_provider_in_app_config(self.app))
+        self.success(
+            f"Panel {panel_id!r} stub created and wired. "
+            f"Restart the app and open /{path} "
+            f"(OrbitPanelProvider must be listed in config/app.py)."
+        )
         return self.SUCCESS
 
 

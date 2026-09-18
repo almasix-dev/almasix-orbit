@@ -18,16 +18,42 @@ pip install almasix-orbit
 smith orbit:install
 ```
 
-`orbit:install` publishes assets, writes `config/orbit.py`, and scaffolds an `OrbitPanelProvider` for your first panel (default path `/admin`).
+`orbit:install` publishes assets, writes `config/orbit.py`, scaffolds
+`app/providers/orbit_panel_provider.py`, and **adds that provider to
+`config/app.py`**. Panels only mount when that provider boots — a panel stub
+file alone does nothing.
 
 Scaffold more surfaces with Smith (canonical `make:orbit-*` names; `orbit:*` aliases work the same):
 
 ```bash title="terminal"
-smith make:orbit-panel admin --path=admin   # alias: smith orbit:panel …
+smith make:orbit-panel app --path=app   # alias: smith orbit:panel …
 smith make:orbit-resource Post --panel=admin  # alias: smith orbit:resource …
 smith make:orbit-field MoneyInput             # alias: smith orbit:field …
 smith serve
 ```
+
+`make:orbit-panel` writes `app/orbit/{id}_panel.py` **and** wires
+`register_{id}_panel(...)` into `OrbitPanelProvider.boot`. Restart the server
+after scaffolding.
+
+## Provider vs panel stub
+
+| Piece | Role |
+|-------|------|
+| `OrbitPanelProvider` | App service provider. **Must** be listed in `config/app.py` `providers`. Its `boot` registers panels on `PanelRegistry`. |
+| `app/orbit/{id}_panel.py` | Optional helper that builds one panel (`register_{id}_panel`). Only runs if the provider calls it. |
+| `OrbitServiceProvider` | Package entry-point (auto-discovered). Mounts whatever is already in the registry. |
+
+Typical `config/app.py`:
+
+```python title="config/app.py"
+"providers": [
+    "app.providers.app_service_provider.AppServiceProvider",
+    "app.providers.orbit_panel_provider.OrbitPanelProvider",
+],
+```
+
+If `/admin` or `/app` 404s, check that list first, then restart `smith serve`.
 
 Panels mount on a **path prefix** only — existing host routes (for example `/`) are left alone unless you intentionally set `.path("/")`.
 
@@ -39,7 +65,7 @@ from almasix.orbit.forms import Form, TextInput
 from almasix.orbit.tables import Table, TextColumn
 ```
 
-`OrbitServiceProvider` is discovered automatically through the `almasix.providers` entry-point group. Register the generated `OrbitPanelProvider` in `config/app.py` if your app does not auto-discover app providers.
+`OrbitServiceProvider` is discovered automatically through the `almasix.providers` entry-point group. `orbit:install` / `orbit:panel` also register `OrbitPanelProvider` in `config/app.py` when they can patch the file.
 
 Source: [`almasix-dev/almasix-orbit`](https://github.com/almasix-dev/almasix-orbit).
 
