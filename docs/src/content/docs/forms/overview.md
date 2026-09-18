@@ -9,10 +9,6 @@ Orbit forms mirror Filament’s fluent field API on Almasix: compose a `Form` (o
 
 Start with a field page such as [Text input](/forms/text-input/) for every variation screenshot, or compose several fields inside [Sections](/schemas/sections/), [Tabs](/schemas/tabs/), and [Wizards](/schemas/wizards/).
 
-![Orbit Forms overview (light)](/examples/light/forms/overview.png)
-
-![Orbit Forms overview (dark)](/examples/dark/forms/overview.png)
-
 ```python
 from almasix.orbit.forms import Form, TextInput, Select, Toggle
 from almasix.orbit.schemas import Section
@@ -31,6 +27,10 @@ form = (
     ])
 )
 ```
+
+![Orbit Forms overview (light)](/examples/light/forms/overview.png)
+
+![Orbit Forms overview (dark)](/examples/dark/forms/overview.png)
 
 ## Field catalog
 

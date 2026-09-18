@@ -7,13 +7,9 @@ description: OneTimeCodeInput optimizes for OTP and 2FA codes with autocomplete 
 
 OneTimeCodeInput optimizes for OTP and 2FA codes with autocomplete hints for password managers and SMS autofill.
 
-The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+Each variation below includes a short explanation, the fluent API to paste into your schema, and a screenshot of the rendered control.
 
 ## Basic OTP input
-
-![Orbit Basic OTP input (light)](/examples/light/forms/one-time-code-input/basic.png)
-
-![Orbit Basic OTP input (dark)](/examples/dark/forms/one-time-code-input/basic.png)
 
 Six-digit verification code.
 
@@ -21,5 +17,9 @@ Six-digit verification code.
 OneTimeCodeInput.make('code')
     .label('Verification code')
 ```
+
+![Orbit Basic OTP input (light)](/examples/light/forms/one-time-code-input/basic.png)
+
+![Orbit Basic OTP input (dark)](/examples/dark/forms/one-time-code-input/basic.png)
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

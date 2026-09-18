@@ -7,13 +7,9 @@ description: DateTimePicker combines calendar date and time in one datetime-loca
 
 DateTimePicker combines calendar date and time in one datetime-local control. Share min/max with DatePicker for scheduling windows.
 
-The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+Each variation below includes a short explanation, the fluent API to paste into your schema, and a screenshot of the rendered control.
 
 ## Basic date time
-
-![Orbit Basic date time (light)](/examples/light/forms/date-time-picker/basic.png)
-
-![Orbit Basic date time (dark)](/examples/dark/forms/date-time-picker/basic.png)
 
 Publish or schedule timestamps.
 
@@ -22,11 +18,11 @@ DateTimePicker.make('published_at')
     .label('Published at')
 ```
 
+![Orbit Basic date time (light)](/examples/light/forms/date-time-picker/basic.png)
+
+![Orbit Basic date time (dark)](/examples/dark/forms/date-time-picker/basic.png)
+
 ## Bounded range
-
-![Orbit Bounded range (light)](/examples/light/forms/date-time-picker/min-max.png)
-
-![Orbit Bounded range (dark)](/examples/dark/forms/date-time-picker/min-max.png)
 
 Limit selectable datetime window.
 
@@ -36,5 +32,9 @@ DateTimePicker.make('scheduled')
     .min_date('2026-01-01')
     .max_date('2026-12-31')
 ```
+
+![Orbit Bounded range (light)](/examples/light/forms/date-time-picker/min-max.png)
+
+![Orbit Bounded range (dark)](/examples/dark/forms/date-time-picker/min-max.png)
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).
