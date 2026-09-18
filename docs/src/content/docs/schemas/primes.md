@@ -13,8 +13,9 @@ UnorderedList.make().items(["One", "Two"])
 ```
 
 
+
 ## Preview
 
-![Text prime (light)](/examples/light/schemas/primes-text.png)
+![Orbit schemas/primes-all (light)](/examples/light/schemas/primes-all.png)
 
-![Text prime (dark)](/examples/dark/schemas/primes-text.png)
+![Orbit schemas/primes-all (dark)](/examples/dark/schemas/primes-all.png)

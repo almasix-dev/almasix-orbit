@@ -224,6 +224,7 @@ export default defineConfig({
 						{ label: 'Textarea', slug: 'forms/textarea' },
 						{ label: 'Key-value', slug: 'forms/key-value' },
 						{ label: 'Color picker', slug: 'forms/color-picker' },
+						{ label: 'Money input', slug: 'forms/money-input' },
 						{ label: 'Toggle buttons', slug: 'forms/toggle-buttons' },
 						{ label: 'Slider', slug: 'forms/slider' },
 						{ label: 'Code editor', slug: 'forms/code-editor' },

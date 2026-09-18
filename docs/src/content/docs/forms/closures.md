@@ -68,3 +68,9 @@ Select.make("status").options(lambda **_: fetch_statuses())
 - [Support closures](/support/closures/) — `evaluate` behaviour
 - [Standalone forms](/components/form/)
 - [Forms overview](/forms/overview/)
+
+## Preview
+
+![Orbit forms/overview (light)](/examples/light/forms/overview.png)
+
+![Orbit forms/overview (dark)](/examples/dark/forms/overview.png)

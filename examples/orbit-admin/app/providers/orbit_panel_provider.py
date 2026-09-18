@@ -8,6 +8,7 @@ from almasix.providers import ServiceProvider
 from app.orbit.resources.author_resource import AuthorResource
 from app.orbit.resources.editable_columns_resource import EditableColumnsResource
 from app.orbit.resources.grouped_posts_resource import GroupedPostsResource
+from app.orbit.resources.kitchen_sink_resource import KitchenSinkResource
 from app.orbit.resources.layout_columns_resource import LayoutColumnsResource
 from app.orbit.resources.media_columns_resource import MediaColumnsResource
 from app.orbit.resources.modal_tasks_resource import ModalTasksResource
@@ -38,6 +39,11 @@ class OrbitPanelProvider(ServiceProvider):
                 .sort(5)
             )
             .navigation_group(
+                NavigationGroup.make("Demos")
+                .icon("heroicon-o-beaker")
+                .sort(8)
+            )
+            .navigation_group(
                 NavigationGroup.make("System")
                 .icon("heroicon-o-cog-6-tooth")
                 .sort(10)
@@ -53,6 +59,7 @@ class OrbitPanelProvider(ServiceProvider):
                     LayoutColumnsResource,
                     GroupedPostsResource,
                     ModalTasksResource,
+                    KitchenSinkResource,
                 ]
             )
         )

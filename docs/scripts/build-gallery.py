@@ -14,20 +14,43 @@ from almasix.orbit.forms.components import (
     Block,
     Builder,
     Checkbox,
+    CheckboxList,
+    ColorPicker,
+    DatePicker,
+    DateTimePicker,
     FileUpload,
+    KeyValue,
+    MoneyInput,
+    MorphToSelect,
+    Radio,
     Repeater,
     RichEditor,
     Select,
+    TagsInput,
     TextInput,
     Textarea,
+    TimePicker,
     Toggle,
+    ToggleButtons,
+    ViewField,
 )
 from almasix.orbit.forms.form import Form
 from almasix.orbit.panels.auth import Login
 from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.resource import Resource
-from almasix.orbit.schemas.layouts import Callout, EmptyState, Flex, Section
-from almasix.orbit.schemas.primes import Text
+from almasix.orbit.schemas.layouts import (
+    Callout,
+    EmptyState,
+    Fieldset,
+    Flex,
+    Grid as SchemaGrid,
+    Group as SchemaGroup,
+    Section,
+    Split as SchemaSplit,
+    Tabs,
+    Wizard,
+)
+from almasix.orbit.schemas.primes import Icon, Image, Text, UnorderedList
 from almasix.orbit.tables.columns import (
     BooleanColumn,
     CheckboxColumn,
@@ -59,6 +82,19 @@ SHOTS: list[tuple[str, str]] = [
     ("forms/overview", "Forms overview"),
     ("forms/text-input", "Text input"),
     ("forms/select", "Select"),
+    ("forms/textarea", "Textarea"),
+    ("forms/checkbox-toggle", "Checkbox + toggle"),
+    ("forms/date-pickers", "Date pickers"),
+    ("forms/file-upload", "File upload"),
+    ("forms/radio-checkbox-list", "Radio + checkbox list"),
+    ("forms/tags-input", "Tags input"),
+    ("forms/color-money", "Color + money"),
+    ("forms/rich-editor", "Rich editor"),
+    ("forms/key-value", "Key-value"),
+    ("forms/repeater", "Repeater"),
+    ("forms/builder", "Builder"),
+    ("forms/toggle-buttons", "Toggle buttons"),
+    ("forms/morph-to-select", "Morph-to select"),
     ("tables/overview", "Tables overview"),
     ("tables/money", "Money / currency"),
     ("tables/text-features", "Text column features"),
@@ -76,6 +112,13 @@ SHOTS: list[tuple[str, str]] = [
     ("schemas/callout", "Callout"),
     ("schemas/empty-state", "Empty state"),
     ("schemas/primes-text", "Text prime"),
+    ("schemas/section", "Section"),
+    ("schemas/tabs", "Tabs"),
+    ("schemas/wizard", "Wizard"),
+    ("schemas/grid-flex", "Grid + flex"),
+    ("schemas/group-split", "Group + split"),
+    ("schemas/fieldset", "Fieldset"),
+    ("schemas/primes-all", "All primes"),
     ("panels/shell", "Panel shell"),
     ("users/login", "Login"),
 ]
@@ -202,6 +245,363 @@ def build() -> str:
         .searchable()
         .render("published")
     )
+    form_textarea = (
+        Textarea.make("bio")
+        .label("Bio")
+        .rows(4)
+        .helper_text("Brief summary for your profile.")
+        .placeholder("Tell us about yourself…")
+        .render("Editor at Orbit. Building tables without the SPA tax.")
+    )
+    form_checkbox_toggle = (
+        Form.make()
+        .schema(
+            [
+                Flex.make().from_breakpoint("md").schema(
+                    [
+                        Toggle.make("active").label("Active account"),
+                        Checkbox.make("newsletter").label("Email newsletter"),
+                    ]
+                ),
+            ]
+        )
+        .fill({"active": True, "newsletter": False})
+        .render()
+    )
+    form_date_pickers = (
+        Form.make()
+        .schema(
+            [
+                Flex.make().from_breakpoint("md").schema(
+                    [
+                        DatePicker.make("starts")
+                        .label("Starts on")
+                        .min_date("2026-01-01")
+                        .max_date("2026-12-31"),
+                        DateTimePicker.make("published_at").label("Published at"),
+                        TimePicker.make("remind_at").label("Remind at"),
+                    ]
+                ),
+            ]
+        )
+        .fill(
+            {
+                "starts": "2026-09-18",
+                "published_at": "2026-09-18T09:00",
+                "remind_at": "09:00",
+            }
+        )
+        .render()
+    )
+    form_file_upload = Form.make().schema(
+        [
+            Flex.make().from_breakpoint("md").schema(
+                [
+                    FileUpload.make("cover").image().label("Cover image"),
+                    FileUpload.make("avatar").avatar().label("Avatar"),
+                ]
+            ),
+        ]
+    ).render()
+    form_radio_checkbox_list = (
+        Form.make()
+        .schema(
+            [
+                Radio.make("plan")
+                .label("Plan")
+                .options(
+                    {
+                        "starter": "Starter",
+                        "pro": "Pro",
+                        "enterprise": "Enterprise",
+                    }
+                )
+                .descriptions(
+                    {
+                        "starter": "For side projects",
+                        "pro": "For growing teams",
+                        "enterprise": "Custom SLA",
+                    }
+                )
+                .options_columns(2),
+                CheckboxList.make("features")
+                .label("Features")
+                .options(
+                    {
+                        "api": "API access",
+                        "sso": "SSO",
+                        "audit": "Audit logs",
+                        "support": "Priority support",
+                    }
+                )
+                .descriptions({"sso": "SAML + OIDC", "audit": "90-day retention"})
+                .bulk_toggleable()
+                .options_columns(2),
+            ]
+        )
+        .fill({"plan": "pro", "features": ["api", "sso"]})
+        .render()
+    )
+    form_tags_input = (
+        TagsInput.make("tags")
+        .label("Tags")
+        .suggestions(["orbit", "tables", "forms", "panels"])
+        .reorderable()
+        .render(["orbit", "forms"])
+    )
+    form_color_money = (
+        Form.make()
+        .schema(
+            [
+                Flex.make().from_breakpoint("md").schema(
+                    [
+                        ColorPicker.make("brand").label("Brand color"),
+                        MoneyInput.make("price").label("Price").currency("EUR"),
+                    ]
+                ),
+            ]
+        )
+        .fill({"brand": "#286291", "price": 49.99})
+        .render()
+    )
+    form_rich_editor = (
+        RichEditor.make("body")
+        .label("Body")
+        .toolbar_buttons(["bold", "italic", "link", "heading"])
+        .render("<p>Hello from <strong>Orbit</strong>.</p>")
+    )
+    form_key_value = KeyValue.make("meta").label("Metadata").render(
+        {"version": "1.0", "env": "production"}
+    )
+    form_repeater = (
+        Repeater.make("items")
+        .label("Line items")
+        .schema(
+            [
+                TextInput.make("name").label("Name"),
+                TextInput.make("qty").label("Qty"),
+            ]
+        )
+        .table(["Name", "Qty"])
+        .reorderable()
+        .collapsible()
+        .cloneable()
+        .default_items(2)
+        .render([{"name": "Widget", "qty": "2"}, {"name": "Gadget", "qty": "1"}])
+    )
+    form_builder = (
+        Builder.make("content")
+        .label("Page blocks")
+        .blocks(
+            [
+                Block.make("hero")
+                .label("Hero")
+                .icon("heroicon-o-star")
+                .schema([TextInput.make("heading").label("Heading")]),
+                Block.make("text")
+                .label("Text")
+                .icon("heroicon-o-document-text")
+                .schema([Textarea.make("body").label("Body").rows(2)]),
+            ]
+        )
+        .block_picker_columns(2)
+        .render(
+            [
+                {"type": "hero", "heading": "Welcome to Orbit"},
+                {"type": "text", "body": "Ship admin UIs without the SPA tax."},
+            ]
+        )
+    )
+    form_toggle_buttons = (
+        ToggleButtons.make("visibility")
+        .label("Visibility")
+        .options({"public": "Public", "private": "Private", "draft": "Draft"})
+        .render("public")
+    )
+    form_morph_to_select = (
+        MorphToSelect.make("assignee")
+        .label("Assignee")
+        .searchable()
+        .types(
+            [
+                {
+                    "type": "user",
+                    "label": "User",
+                    "options": {"1": "Ada", "2": "Grace"},
+                },
+                {
+                    "type": "team",
+                    "label": "Team",
+                    "options": {"10": "Engineering", "11": "Design"},
+                },
+            ]
+        )
+        .render({"type": "user", "id": "1"})
+    )
+
+    schema_section = (
+        Form.make()
+        .schema(
+            [
+                Section.make("profile")
+                .heading("Profile")
+                .icon("heroicon-o-user")
+                .compact()
+                .schema([TextInput.make("name").label("Name")]),
+                Section.make("advanced")
+                .heading("Advanced")
+                .collapsible()
+                .collapsed()
+                .schema([Toggle.make("debug").label("Debug mode")]),
+                Section.make("notes")
+                .heading("Notes")
+                .aside()
+                .description("Optional context for reviewers")
+                .schema([Textarea.make("notes").label("Notes").rows(2)]),
+            ]
+        )
+        .fill({"name": "Ada", "debug": False, "notes": "Looks good."})
+        .render()
+    )
+    schema_tabs = (
+        Form.make()
+        .schema(
+            [
+                Tabs.make("main")
+                .tabs(
+                    {
+                        "label": "General",
+                        "icon": "heroicon-o-cog-6-tooth",
+                        "schema": [TextInput.make("title").label("Title")],
+                    },
+                    {
+                        "label": "SEO",
+                        "icon": "heroicon-o-magnifying-glass",
+                        "badge": "3",
+                        "schema": [TextInput.make("slug").label("Slug")],
+                    },
+                    {
+                        "label": "Media",
+                        "schema": [FileUpload.make("cover").image().label("Cover")],
+                    },
+                )
+                .active_tab(0)
+            ]
+        )
+        .fill({"title": "Launch Orbit", "slug": "launch-orbit"})
+        .render()
+    )
+    schema_wizard = (
+        Form.make()
+        .schema(
+            [
+                Wizard.make("onboard")
+                .steps(
+                    {
+                        "label": "Account",
+                        "description": "Your login details",
+                        "schema": [TextInput.make("email").email().label("Email")],
+                    },
+                    {
+                        "label": "Profile",
+                        "description": "How you appear in the app",
+                        "schema": [TextInput.make("name").label("Display name")],
+                    },
+                    {
+                        "label": "Review",
+                        "description": "Confirm before submitting",
+                        "schema": [
+                            ViewField.make("summary")
+                            .label("Summary")
+                            .content("<p>You are ready to launch.</p>")
+                        ],
+                    },
+                )
+                .skippable()
+                .start_step(0)
+            ]
+        )
+        .fill({"email": "ada@orbit.test", "name": "Ada"})
+        .render()
+    )
+    schema_grid_flex = (
+        Form.make()
+        .schema(
+            [
+                SchemaGrid.make()
+                .columns(2)
+                .schema(
+                    [
+                        TextInput.make("col_a").label("Column A"),
+                        TextInput.make("col_b").label("Column B"),
+                    ]
+                ),
+                Flex.make().from_breakpoint("md").schema(
+                    [
+                        TextInput.make("left").label("Left"),
+                        TextInput.make("right").label("Right"),
+                    ]
+                ),
+            ]
+        )
+        .fill({"col_a": "Alpha", "col_b": "Beta", "left": "Sidebar", "right": "Main"})
+        .render()
+    )
+    schema_group_split = (
+        Form.make()
+        .schema(
+            [
+                SchemaGroup.make()
+                .columns(2)
+                .schema(
+                    [
+                        TextInput.make("sku").label("SKU"),
+                        TextInput.make("qty").label("Quantity"),
+                    ]
+                ),
+                SchemaSplit.make().from_breakpoint("md").schema(
+                    [
+                        Textarea.make("notes").label("Notes").rows(2),
+                        FileUpload.make("attachment").label("Attachment"),
+                    ]
+                ),
+            ]
+        )
+        .fill({"sku": "ORB-1", "qty": "12", "notes": "Handle with care."})
+        .render()
+    )
+    schema_fieldset = (
+        Form.make()
+        .schema(
+            [
+                Fieldset.make("billing")
+                .label("Billing address")
+                .schema(
+                    [
+                        TextInput.make("line1").label("Line 1"),
+                        Flex.make().from_breakpoint("md").schema(
+                            [
+                                TextInput.make("city").label("City"),
+                                TextInput.make("postcode").label("Postcode"),
+                            ]
+                        ),
+                    ]
+                ),
+            ]
+        )
+        .fill({"line1": "42 Orbit Way", "city": "Nairobi", "postcode": "00100"})
+        .render()
+    )
+    schema_primes_all = Flex.make().from_breakpoint("md").schema(
+        [
+            Text.make().content("Published").badge().color("success"),
+            Icon.make().icon("heroicon-o-check").color("success").size("lg"),
+            Image.make()
+            .src("https://api.dicebear.com/9.x/shapes/svg?seed=orbit")
+            .image_size(48),
+            UnorderedList.make().items(["Tables", "Forms", "Panels"]).bullet_size("sm"),
+        ]
+    ).render()
 
     table = (
         Table.make()
@@ -544,6 +944,19 @@ def build() -> str:
         shot("forms/overview", "Forms overview", form_overview.render()),
         shot("forms/text-input", "Text input", text_input),
         shot("forms/select", "Select", select),
+        shot("forms/textarea", "Textarea", form_textarea),
+        shot("forms/checkbox-toggle", "Checkbox + toggle", form_checkbox_toggle),
+        shot("forms/date-pickers", "Date pickers", form_date_pickers),
+        shot("forms/file-upload", "File upload", form_file_upload),
+        shot("forms/radio-checkbox-list", "Radio + checkbox list", form_radio_checkbox_list),
+        shot("forms/tags-input", "Tags input", form_tags_input),
+        shot("forms/color-money", "Color + money", form_color_money),
+        shot("forms/rich-editor", "Rich editor", form_rich_editor),
+        shot("forms/key-value", "Key-value", form_key_value),
+        shot("forms/repeater", "Repeater", form_repeater),
+        shot("forms/builder", "Builder", form_builder),
+        shot("forms/toggle-buttons", "Toggle buttons", form_toggle_buttons),
+        shot("forms/morph-to-select", "Morph-to select", form_morph_to_select),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/money", "Money / currency", table_money.render()),
         shot("tables/text-features", "Text column features", table_text.render()),
@@ -573,6 +986,13 @@ def build() -> str:
             "Text prime",
             Text.make().content("Published").badge().color("success").render(),
         ),
+        shot("schemas/section", "Section", schema_section),
+        shot("schemas/tabs", "Tabs", schema_tabs),
+        shot("schemas/wizard", "Wizard", schema_wizard),
+        shot("schemas/grid-flex", "Grid + flex", schema_grid_flex),
+        shot("schemas/group-split", "Group + split", schema_group_split),
+        shot("schemas/fieldset", "Fieldset", schema_fieldset),
+        shot("schemas/primes-all", "All primes", schema_primes_all),
         shot("panels/shell", "Panel shell", shell),
         shot("users/login", "Login", Login.render()),
     ]

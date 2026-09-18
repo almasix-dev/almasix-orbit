@@ -424,7 +424,122 @@ class ListRecordsHost(OrbitPageHost):
         )
 
 
-class CreateRecordHost(OrbitPageHost):
+class FormDataMutations:
+    """Shared Conduit handlers for nested form fields (repeater / builder / key-value)."""
+
+    data: dict[str, Any]
+
+    def _form_path_get(self, path: str) -> Any:
+        cur: Any = self.data
+        for part in str(path or "").split("."):
+            if not part:
+                continue
+            if isinstance(cur, dict):
+                cur = cur.get(part)
+            else:
+                return None
+        return cur
+
+    def _form_path_set(self, path: str, value: Any) -> None:
+        parts = [p for p in str(path or "").split(".") if p]
+        if not parts:
+            return
+        cur: Any = self.data
+        for part in parts[:-1]:
+            nxt = cur.get(part) if isinstance(cur, dict) else None
+            if not isinstance(nxt, dict):
+                nxt = {}
+                if isinstance(cur, dict):
+                    cur[part] = nxt
+            cur = nxt
+        if isinstance(cur, dict):
+            cur[parts[-1]] = value
+
+    def addRepeaterItem(self, name: str) -> None:
+        key = str(name or "")
+        items = self._form_path_get(key)
+        if not isinstance(items, list):
+            items = []
+        items = [*items, {}]
+        self._form_path_set(key, items)
+
+    def removeRepeaterItem(self, name: str, index: int | str = 0) -> None:
+        key = str(name or "")
+        items = self._form_path_get(key)
+        if not isinstance(items, list):
+            return
+        try:
+            i = int(index)
+        except (TypeError, ValueError):
+            return
+        if 0 <= i < len(items):
+            items = list(items)
+            items.pop(i)
+            self._form_path_set(key, items)
+
+    def moveRepeaterItem(self, name: str, index: int | str = 0, delta: int | str = 0) -> None:
+        key = str(name or "")
+        items = self._form_path_get(key)
+        if not isinstance(items, list):
+            return
+        try:
+            i = int(index)
+            d = int(delta)
+        except (TypeError, ValueError):
+            return
+        j = i + d
+        if i < 0 or j < 0 or i >= len(items) or j >= len(items):
+            return
+        items = list(items)
+        items[i], items[j] = items[j], items[i]
+        self._form_path_set(key, items)
+
+    def cloneRepeaterItem(self, name: str, index: int | str = 0) -> None:
+        key = str(name or "")
+        items = self._form_path_get(key)
+        if not isinstance(items, list):
+            return
+        try:
+            i = int(index)
+        except (TypeError, ValueError):
+            return
+        if not (0 <= i < len(items)):
+            return
+        items = list(items)
+        clone = dict(items[i]) if isinstance(items[i], dict) else items[i]
+        items.insert(i + 1, clone)
+        self._form_path_set(key, items)
+
+    def addBuilderBlock(self, name: str, block_type: str = "") -> None:
+        key = str(name or "")
+        items = self._form_path_get(key)
+        if not isinstance(items, list):
+            items = []
+        items = [*items, {"type": str(block_type or "")}]
+        self._form_path_set(key, items)
+
+    def addKeyValueRow(self, name: str) -> None:
+        key = str(name or "")
+        data = self._form_path_get(key)
+        if not isinstance(data, dict):
+            data = {}
+        n = 1
+        while f"key{n}" in data:
+            n += 1
+        data = {**data, f"key{n}": ""}
+        self._form_path_set(key, data)
+
+    def mountTableSelect(self, name: str, **kwargs: Any) -> None:
+        self.dispatch("orbit-mount-table-select", name=str(name or ""), **kwargs)
+
+    def mountCreateOption(self, name: str, **kwargs: Any) -> None:
+        self.dispatch("orbit-mount-create-option", name=str(name or ""), **kwargs)
+
+    def mountEditOption(self, name: str, **kwargs: Any) -> None:
+        self.dispatch("orbit-mount-edit-option", name=str(name or ""), **kwargs)
+
+
+class CreateRecordHost(FormDataMutations, OrbitPageHost):
     data: dict[str, Any] = {}
     created_id: str | None = None
 
@@ -449,7 +564,7 @@ class CreateRecordHost(OrbitPageHost):
         return Bound.render(state=dict(self.data))
 
 
-class EditRecordHost(OrbitPageHost):
+class EditRecordHost(FormDataMutations, OrbitPageHost):
     record_id: str = ""
     data: dict[str, Any] = {}
 
@@ -508,7 +623,7 @@ class ViewRecordHost(OrbitPageHost):
         return Bound.render(record=data)
 
 
-class FormHost(ConduitHost):
+class FormHost(FormDataMutations, ConduitHost):
     """Standalone form host for custom pages."""
 
     data: dict[str, Any] = {}
@@ -521,6 +636,9 @@ class FormHost(ConduitHost):
 
     def save(self) -> None:
         self.dispatch("orbit-form-saved", data=dict(self.data))
+
+    def mountAction(self, name: str, **kwargs: Any) -> None:
+        self.dispatch("orbit-mount-action", name=name, **kwargs)
 
     def render(self) -> str:
         factory = type(self)._form_factory

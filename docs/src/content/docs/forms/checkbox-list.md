@@ -45,9 +45,9 @@ class PostResource(Resource):
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` — see [Form closures](/forms/closures/).
 
+
 ## Preview
 
-![Orbit form example (light)](/examples/light/forms/overview.png)
+![Orbit forms/radio-checkbox-list (light)](/examples/light/forms/radio-checkbox-list.png)
 
-![Orbit form example (dark)](/examples/dark/forms/overview.png)
-
+![Orbit forms/radio-checkbox-list (dark)](/examples/dark/forms/radio-checkbox-list.png)

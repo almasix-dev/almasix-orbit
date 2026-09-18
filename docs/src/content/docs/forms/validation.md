@@ -21,3 +21,8 @@ Register database hooks with `Form.unique_using(...)` / `Form.exists_using(...)`
 
 See the [Forms overview](/forms/overview/) for the full rule catalog. Field helpers: `.unique()`, `.exists()`, `.regex()`, `.between()`, `.validation_attribute()`, `.validation_messages({…})`.
 
+## Preview
+
+![Orbit forms/overview (light)](/examples/light/forms/overview.png)
+
+![Orbit forms/overview (dark)](/examples/dark/forms/overview.png)
