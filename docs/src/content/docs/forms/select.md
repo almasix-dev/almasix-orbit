@@ -18,7 +18,11 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Native dropdown with a static options map.
 
 ```python
-Select.make('status').label('Status').options({'draft': 'Draft', 'published': 'Published'})
+(
+    Select.make('status')
+    .label('Status')
+    .options({'draft': 'Draft', 'published': 'Published'})
+)
 ```
 
 ## Searchable select
@@ -30,7 +34,12 @@ Select.make('status').label('Status').options({'draft': 'Draft', 'published': 'P
 Filterable list — ideal for long option sets.
 
 ```python
-Select.make('status').label('Status').options({...}).searchable()
+(
+    Select.make('status')
+    .label('Status')
+    .options({...})
+    .searchable()
+)
 ```
 
 ## Multi select
@@ -42,7 +51,11 @@ Select.make('status').label('Status').options({...}).searchable()
 Multiple selection via MultiSelect.
 
 ```python
-MultiSelect.make('tags').label('Tags').options({'orbit': 'Orbit', 'forms': 'Forms'})
+(
+    MultiSelect.make('tags')
+    .label('Tags')
+    .options({'orbit': 'Orbit', 'forms': 'Forms'})
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

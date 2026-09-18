@@ -18,7 +18,10 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Generic attachment picker.
 
 ```python
-FileUpload.make('attachment').label('Attachment')
+(
+    FileUpload.make('attachment')
+    .label('Attachment')
+)
 ```
 
 ## Image upload
@@ -30,7 +33,11 @@ FileUpload.make('attachment').label('Attachment')
 Image MIME types with preview.
 
 ```python
-FileUpload.make('cover').image().label('Cover image')
+(
+    FileUpload.make('cover')
+    .image()
+    .label('Cover image')
+)
 ```
 
 ## Avatar upload
@@ -42,7 +49,11 @@ FileUpload.make('cover').image().label('Cover image')
 Circular avatar preset with image/* accept.
 
 ```python
-FileUpload.make('avatar').avatar().label('Avatar')
+(
+    FileUpload.make('avatar')
+    .avatar()
+    .label('Avatar')
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

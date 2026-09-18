@@ -18,7 +18,12 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 User or team assignee.
 
 ```python
-MorphToSelect.make('assignee').label('Assignee').searchable().types([{'type': 'user', 'label': 'User', 'options': {'1': 'Ada'}}])
+(
+    MorphToSelect.make('assignee')
+    .label('Assignee')
+    .searchable()
+    .types([{'type': 'user', 'label': 'User', 'options': {'1': 'Ada'}}])
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

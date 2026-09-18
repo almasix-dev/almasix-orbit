@@ -18,7 +18,11 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Heading plus nested schema.
 
 ```python
-Section.make('profile').heading('Profile').schema([TextInput.make('name').label('Name')])
+(
+    Section.make('profile')
+    .heading('Profile')
+    .schema([TextInput.make('name').label('Name')])
+)
 ```
 
 ## Collapsible section
@@ -30,7 +34,13 @@ Section.make('profile').heading('Profile').schema([TextInput.make('name').label(
 Advanced blocks collapsed by default.
 
 ```python
-Section.make('advanced').heading('Advanced').collapsible().collapsed().schema([Toggle.make('debug')])
+(
+    Section.make('advanced')
+    .heading('Advanced')
+    .collapsible()
+    .collapsed()
+    .schema([Toggle.make('debug')])
+)
 ```
 
 ## Compact section
@@ -42,7 +52,13 @@ Section.make('advanced').heading('Advanced').collapsible().collapsed().schema([T
 Tighter spacing with optional icon.
 
 ```python
-Section.make('profile').heading('Profile').compact().icon('heroicon-o-user').schema([...])
+(
+    Section.make('profile')
+    .heading('Profile')
+    .compact()
+    .icon('heroicon-o-user')
+    .schema([...])
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

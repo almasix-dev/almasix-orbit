@@ -18,7 +18,11 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Static HTML summary block.
 
 ```python
-ViewField.make('summary').label('Summary').content('<p>Published on <strong>18 Sep 2026</strong>.</p>')
+(
+    ViewField.make('summary')
+    .label('Summary')
+    .content('<p>Published on <strong>18 Sep 2026</strong>.</p>')
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

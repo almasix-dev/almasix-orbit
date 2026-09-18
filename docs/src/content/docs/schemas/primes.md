@@ -18,7 +18,12 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Badge-styled status text.
 
 ```python
-Text.make().content('Published').badge().color('success')
+(
+    Text.make()
+    .content('Published')
+    .badge()
+    .color('success')
+)
 ```
 
 ## Icon prime
@@ -30,7 +35,12 @@ Text.make().content('Published').badge().color('success')
 Heroicon with color and size.
 
 ```python
-Icon.make().icon('heroicon-o-check').color('success').size('lg')
+(
+    Icon.make()
+    .icon('heroicon-o-check')
+    .color('success')
+    .size('lg')
+)
 ```
 
 ## Image prime
@@ -42,7 +52,11 @@ Icon.make().icon('heroicon-o-check').color('success').size('lg')
 Avatar or thumbnail display.
 
 ```python
-Image.make().src('https://api.dicebear.com/9.x/shapes/svg?seed=orbit').image_size(48)
+(
+    Image.make()
+    .src('https://api.dicebear.com/9.x/shapes/svg?seed=orbit')
+    .image_size(48)
+)
 ```
 
 ## List prime
@@ -54,7 +68,11 @@ Image.make().src('https://api.dicebear.com/9.x/shapes/svg?seed=orbit').image_siz
 Bulleted unordered list.
 
 ```python
-UnorderedList.make().items(['Tables', 'Forms', 'Panels']).bullet_size('sm')
+(
+    UnorderedList.make()
+    .items(['Tables', 'Forms', 'Panels'])
+    .bullet_size('sm')
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

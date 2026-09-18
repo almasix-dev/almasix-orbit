@@ -18,7 +18,10 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Single boolean consent or feature flag.
 
 ```python
-Checkbox.make('terms').label('Accept terms and conditions')
+(
+    Checkbox.make('terms')
+    .label('Accept terms and conditions')
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

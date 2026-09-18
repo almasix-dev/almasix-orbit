@@ -46,7 +46,10 @@ When `permission` is set, Orbit reuses the same ability resolution as resources.
 ## Registering
 
 ```python
-Panel.make("admin").pages([DashboardPage, SettingsPage])
+(
+    Panel.make("admin")
+    .pages([DashboardPage, SettingsPage])
+)
 ```
 
 Pages show up in `panel.navigation_items()` alongside resources.

@@ -18,7 +18,11 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Notes and attachment columns.
 
 ```python
-Split.make().from_breakpoint('md').schema([Textarea.make('notes'), FileUpload.make('attachment')])
+(
+    Split.make()
+    .from_breakpoint('md')
+    .schema([Textarea.make('notes'), FileUpload.make('attachment')])
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

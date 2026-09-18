@@ -18,7 +18,12 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Simple stacked items with add/remove.
 
 ```python
-Repeater.make('items').label('Line items').schema([TextInput.make('name').label('Name')]).default_items(1)
+(
+    Repeater.make('items')
+    .label('Line items')
+    .schema([TextInput.make('name').label('Name')])
+    .default_items(1)
+)
 ```
 
 ## Cloneable and reorderable
@@ -30,7 +35,13 @@ Repeater.make('items').label('Line items').schema([TextInput.make('name').label(
 Duplicate rows and move up/down.
 
 ```python
-Repeater.make('items').cloneable().reorderable().collapsible().schema([...])
+(
+    Repeater.make('items')
+    .cloneable()
+    .reorderable()
+    .collapsible()
+    .schema([...])
+)
 ```
 
 ## Table layout
@@ -42,7 +53,11 @@ Repeater.make('items').cloneable().reorderable().collapsible().schema([...])
 Column headers for spreadsheet-like entry.
 
 ```python
-Repeater.make('items').table(['Name', 'Qty']).schema([TextInput.make('name'), TextInput.make('qty')])
+(
+    Repeater.make('items')
+    .table(['Name', 'Qty'])
+    .schema([TextInput.make('name'), TextInput.make('qty')])
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

@@ -18,7 +18,12 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 0–100 range control.
 
 ```python
-Slider.make('volume').label('Volume').min_value(0).max_value(100)
+(
+    Slider.make('volume')
+    .label('Volume')
+    .min_value(0)
+    .max_value(100)
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

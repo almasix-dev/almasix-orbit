@@ -18,7 +18,10 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 HH:MM time selection.
 
 ```python
-TimePicker.make('remind_at').label('Remind at')
+(
+    TimePicker.make('remind_at')
+    .label('Remind at')
+)
 ```
 
 ## Time window
@@ -30,7 +33,12 @@ TimePicker.make('remind_at').label('Remind at')
 Business-hours style constraints.
 
 ```python
-TimePicker.make('slot').label('Time slot').min_date('08:00').max_date('18:00')
+(
+    TimePicker.make('slot')
+    .label('Time slot')
+    .min_date('08:00')
+    .max_date('18:00')
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

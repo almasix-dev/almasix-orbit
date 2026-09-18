@@ -18,7 +18,11 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Account then profile steps.
 
 ```python
-Wizard.make('onboard').steps({'label': 'Account', 'schema': [...]}, {'label': 'Profile', 'schema': [...]}).start_step(0)
+(
+    Wizard.make('onboard')
+    .steps({'label': 'Account', 'schema': [...]}, {'label': 'Profile', 'schema': [...]})
+    .start_step(0)
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

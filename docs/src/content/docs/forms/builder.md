@@ -18,7 +18,11 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Hero and text blocks with picker.
 
 ```python
-Builder.make('content').label('Page blocks').blocks([Block.make('hero').label('Hero').schema([TextInput.make('heading')])])
+(
+    Builder.make('content')
+    .label('Page blocks')
+    .blocks([Block.make('hero').label('Hero').schema([TextInput.make('heading')])])
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

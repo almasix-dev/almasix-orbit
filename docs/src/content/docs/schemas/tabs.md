@@ -18,7 +18,11 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 General and SEO panels.
 
 ```python
-Tabs.make('main').tabs({'label': 'General', 'schema': [...]}, {'label': 'SEO', 'schema': [...]}).active_tab(0)
+(
+    Tabs.make('main')
+    .tabs({'label': 'General', 'schema': [...]}, {'label': 'SEO', 'schema': [...]})
+    .active_tab(0)
+)
 ```
 
 ## Tabs with badges
@@ -30,7 +34,10 @@ Tabs.make('main').tabs({'label': 'General', 'schema': [...]}, {'label': 'SEO', '
 Icons and numeric badges on tab labels.
 
 ```python
-Tabs.make('main').tabs({'label': 'SEO', 'icon': 'heroicon-o-magnifying-glass', 'badge': '3', 'schema': [...]})
+(
+    Tabs.make('main')
+    .tabs({'label': 'SEO', 'icon': 'heroicon-o-magnifying-glass', 'badge': '3', 'schema': [...]})
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

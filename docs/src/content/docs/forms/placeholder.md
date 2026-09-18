@@ -18,7 +18,10 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Non-input informational slot.
 
 ```python
-Placeholder.make('note').content('This slot is reserved for future fields.')
+(
+    Placeholder.make('note')
+    .content('This slot is reserved for future fields.')
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

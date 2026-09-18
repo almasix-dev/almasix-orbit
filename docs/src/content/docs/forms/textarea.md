@@ -18,7 +18,12 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Default multi-line field with placeholder and helper.
 
 ```python
-Textarea.make('bio').label('Bio').placeholder('Tell us about yourself…').helper_text('Brief summary.')
+(
+    Textarea.make('bio')
+    .label('Bio')
+    .placeholder('Tell us about yourself…')
+    .helper_text('Brief summary.')
+)
 ```
 
 ## Custom rows
@@ -30,7 +35,11 @@ Textarea.make('bio').label('Bio').placeholder('Tell us about yourself…').helpe
 Explicit row count for taller editing surfaces.
 
 ```python
-Textarea.make('notes').label('Notes').rows(6)
+(
+    Textarea.make('notes')
+    .label('Notes')
+    .rows(6)
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

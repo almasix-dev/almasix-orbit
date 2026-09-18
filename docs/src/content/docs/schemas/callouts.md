@@ -18,7 +18,12 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Neutral guidance.
 
 ```python
-Callout.make().info().label('Tip').description('Fill these fields before saving.')
+(
+    Callout.make()
+    .info()
+    .label('Tip')
+    .description('Fill these fields before saving.')
+)
 ```
 
 ## Danger callout
@@ -30,7 +35,12 @@ Callout.make().info().label('Tip').description('Fill these fields before saving.
 Destructive action warning.
 
 ```python
-Callout.make().danger().label('Danger').description('This action cannot be undone.')
+(
+    Callout.make()
+    .danger()
+    .label('Danger')
+    .description('This action cannot be undone.')
+)
 ```
 
 ## Success callout
@@ -42,7 +52,12 @@ Callout.make().danger().label('Danger').description('This action cannot be undon
 Confirmation feedback.
 
 ```python
-Callout.make().success().label('Saved').description('Your changes were published.')
+(
+    Callout.make()
+    .success()
+    .label('Saved')
+    .description('Your changes were published.')
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

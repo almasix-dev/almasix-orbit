@@ -18,7 +18,11 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Two-column field grid.
 
 ```python
-Grid.make().columns(2).schema([TextInput.make('col_a'), TextInput.make('col_b')])
+(
+    Grid.make()
+    .columns(2)
+    .schema([TextInput.make('col_a'), TextInput.make('col_b')])
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

@@ -18,7 +18,11 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Bold, italic, link, and heading tools.
 
 ```python
-RichEditor.make('body').label('Body').toolbar_buttons(['bold', 'italic', 'link', 'heading'])
+(
+    RichEditor.make('body')
+    .label('Body')
+    .toolbar_buttons(['bold', 'italic', 'link', 'heading'])
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

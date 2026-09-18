@@ -18,7 +18,11 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Multi-line markdown source.
 
 ```python
-MarkdownEditor.make('readme').label('README').rows(5)
+(
+    MarkdownEditor.make('readme')
+    .label('README')
+    .rows(5)
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

@@ -18,7 +18,10 @@ The screenshots below show how each variation renders in Orbit. Each section inc
 Publish or schedule timestamps.
 
 ```python
-DateTimePicker.make('published_at').label('Published at')
+(
+    DateTimePicker.make('published_at')
+    .label('Published at')
+)
 ```
 
 ## Bounded range
@@ -30,7 +33,12 @@ DateTimePicker.make('published_at').label('Published at')
 Limit selectable datetime window.
 
 ```python
-DateTimePicker.make('scheduled').label('Scheduled').min_date('2026-01-01').max_date('2026-12-31')
+(
+    DateTimePicker.make('scheduled')
+    .label('Scheduled')
+    .min_date('2026-01-01')
+    .max_date('2026-12-31')
+)
 ```
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

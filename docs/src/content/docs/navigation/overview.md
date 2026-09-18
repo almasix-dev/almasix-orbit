@@ -75,7 +75,11 @@ Pass a list to `.navigation_items([...])` to **append** custom items to the coll
 `NavigationGroup` is **optional**. Without it, roots still form from resource/page `navigation_group` strings (icon falls back to the first item). Register a group only when you want a shared icon or sort order for that label:
 
 ```python
-NavigationGroup.make("Content").icon("heroicon-o-document-text").sort(10)
+(
+    NavigationGroup.make("Content")
+    .icon("heroicon-o-document-text")
+    .sort(10)
+)
 ```
 
 ## Layouts
