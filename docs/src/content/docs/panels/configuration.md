@@ -5,43 +5,49 @@ description: Register an Orbit panel — brand, path, colors, resources, middlew
 
 A **panel** is the admin shell: brand, path, navigation, middleware, and the list of resources / pages / widgets it owns.
 
-```python
+## Where panels live
+
+After `orbit:install`, configure panels in `app/orbit/{id}_panel.py`. The app’s `OrbitPanelProvider` only discovers those files — it should not contain `Panel.make(...)`. Full layout and discovery rules: [Installation](/getting-started/installation/).
+
+```python title="app/orbit/admin_panel.py"
 from almasix.orbit import Panel, PanelRegistry, Plugin
 from almasix.orbit.panels.hooks import register_render_hook
 
-panel = (
-    Panel.make("admin")
-    .default()
-    .path("orbit")                 # or .path("") / .path("/") for the site root
-    # .domain("admin.example.com") # optional host binding
-    .brand_name("Acme Admin")
-    .brand_logo("/images/logo.svg")  # or asset("images/logo.svg") / "https://…"
-    .brand_logo_dark("/images/logo-dark.svg")  # optional; falls back to light
-    .brand_logo_height("2.25rem")
-    # .brand_logo_only()
-    # .brand_name_font_size("1.25rem")
-    .favicon("images/favicon.svg")
-    .font("Outfit")
-    .primary("#f1511b")  # or .primary("info") / .colors(primary="#…", danger="#…")
-    .content_max_width("screen-2xl")
-    .simple_page_max_content_width("md")  # login / register bare shell
-    .resources([PostResource, UserResource])
-    .widgets([StatsOverview])
-    # .middleware(["auth"])  # appends after default ["web"]
-    # .auth_middleware(["auth"])  # authenticated routes only
-    .login()                 # or .login(False) / .login(MyLogin)
-    # .signup()              # opt-in registration (+ link on the login page)
-    # .dashboard()           # on by default; .dashboard(False) or .dashboard(MyDashboard)
-    .auth_guard("web")
-    .dark_mode()
-    .theme_switcher()
-    .default_theme_mode("system")  # light | dark | system
-    .sidebar_collapsible()
-    # .home_url("/welcome")
-    # .breadcrumbs_enabled(False)
-)
 
-app.make(PanelRegistry).register(panel)
+def register_admin_panel(registry: PanelRegistry) -> Panel:
+    panel = (
+        Panel.make("admin")
+        .default()
+        .path("orbit")                 # or .path("") / .path("/") for the site root
+        # .domain("admin.example.com") # optional host binding
+        .brand_name("Acme Admin")
+        .brand_logo("/images/logo.svg")  # or asset("images/logo.svg") / "https://…"
+        .brand_logo_dark("/images/logo-dark.svg")  # optional; falls back to light
+        .brand_logo_height("2.25rem")
+        # .brand_logo_only()
+        # .brand_name_font_size("1.25rem")
+        .favicon("images/favicon.svg")
+        .font("Outfit")
+        .primary("#f1511b")  # or .primary("info") / .colors(primary="#…", danger="#…")
+        .content_max_width("screen-2xl")
+        .simple_page_max_content_width("md")  # login / register bare shell
+        .resources([PostResource, UserResource])
+        .widgets([StatsOverview])
+        # .middleware(["auth"])  # appends after default ["web"]
+        # .auth_middleware(["auth"])  # authenticated routes only
+        .login()                 # or .login(False) / .login(MyLogin)
+        # .signup()              # opt-in registration (+ link on the login page)
+        # .dashboard()           # on by default; .dashboard(False) or .dashboard(MyDashboard)
+        .auth_guard("web")
+        .dark_mode()
+        .theme_switcher()
+        .default_theme_mode("system")  # light | dark | system
+        .sidebar_collapsible()
+        # .home_url("/welcome")
+        # .breadcrumbs_enabled(False)
+    )
+    registry.register(panel)
+    return panel
 ```
 
 ## Identity
