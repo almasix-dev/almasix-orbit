@@ -7,13 +7,9 @@ description: RelationshipRepeater is a Repeater tuned for related models — sam
 
 RelationshipRepeater is a Repeater tuned for related models — same item chrome (add, remove, clone, reorder) with relationship metadata for hydrate/mutate hooks. Use it when nested rows map to hasMany / belongsToMany records rather than free-form JSON.
 
-The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+Each variation below includes a short explanation, the fluent API to paste into your schema, and a screenshot of the rendered control.
 
 ## Basic repeater
-
-![Orbit Basic repeater (light)](/examples/light/forms/repeater/basic.png)
-
-![Orbit Basic repeater (dark)](/examples/dark/forms/repeater/basic.png)
 
 Simple stacked items with add/remove.
 
@@ -24,11 +20,11 @@ Repeater.make('items')
     .default_items(1)
 ```
 
+![Orbit Basic repeater (light)](/examples/light/forms/repeater/basic.png)
+
+![Orbit Basic repeater (dark)](/examples/dark/forms/repeater/basic.png)
+
 ## Cloneable and reorderable
-
-![Orbit Cloneable and reorderable (light)](/examples/light/forms/repeater/cloneable-reorderable.png)
-
-![Orbit Cloneable and reorderable (dark)](/examples/dark/forms/repeater/cloneable-reorderable.png)
 
 Duplicate rows and move up/down.
 
@@ -39,5 +35,9 @@ Repeater.make('items')
     .collapsible()
     .schema([...])
 ```
+
+![Orbit Cloneable and reorderable (light)](/examples/light/forms/repeater/cloneable-reorderable.png)
+
+![Orbit Cloneable and reorderable (dark)](/examples/dark/forms/repeater/cloneable-reorderable.png)
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

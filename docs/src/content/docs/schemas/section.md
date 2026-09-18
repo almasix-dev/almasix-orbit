@@ -7,13 +7,9 @@ description: Section groups related fields under a heading with optional descrip
 
 Section groups related fields under a heading with optional description, icon, aside layout, and collapsible body. Compact mode tightens vertical rhythm for dense admin forms.
 
-The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+Each variation below includes a short explanation, the fluent API to paste into your schema, and a screenshot of the rendered control.
 
 ## Basic section
-
-![Orbit Basic section (light)](/examples/light/schemas/section/basic.png)
-
-![Orbit Basic section (dark)](/examples/dark/schemas/section/basic.png)
 
 Heading plus nested schema.
 
@@ -23,11 +19,11 @@ Section.make('profile')
     .schema([TextInput.make('name').label('Name')])
 ```
 
+![Orbit Basic section (light)](/examples/light/schemas/section/basic.png)
+
+![Orbit Basic section (dark)](/examples/dark/schemas/section/basic.png)
+
 ## Collapsible section
-
-![Orbit Collapsible section (light)](/examples/light/schemas/section/collapsible.png)
-
-![Orbit Collapsible section (dark)](/examples/dark/schemas/section/collapsible.png)
 
 Advanced blocks collapsed by default.
 
@@ -39,11 +35,11 @@ Section.make('advanced')
     .schema([Toggle.make('debug')])
 ```
 
+![Orbit Collapsible section (light)](/examples/light/schemas/section/collapsible.png)
+
+![Orbit Collapsible section (dark)](/examples/dark/schemas/section/collapsible.png)
+
 ## Compact section
-
-![Orbit Compact section (light)](/examples/light/schemas/section/compact.png)
-
-![Orbit Compact section (dark)](/examples/dark/schemas/section/compact.png)
 
 Tighter spacing with optional icon.
 
@@ -54,5 +50,9 @@ Section.make('profile')
     .icon('heroicon-o-user')
     .schema([...])
 ```
+
+![Orbit Compact section (light)](/examples/light/schemas/section/compact.png)
+
+![Orbit Compact section (dark)](/examples/dark/schemas/section/compact.png)
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

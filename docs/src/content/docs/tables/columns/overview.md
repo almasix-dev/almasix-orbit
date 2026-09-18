@@ -39,13 +39,13 @@ Table.make("inventory").columns([
 
 ### Money & numbers
 
-![Money (light)](/examples/light/tables/money.png)
-![Money (dark)](/examples/dark/tables/money.png)
-
 ```python
 TextColumn.make("amount").money("USD")
 TextColumn.make("cents").money("USD", divide_by=100).align_end()
 ```
+
+![Money (light)](/examples/light/tables/money.png)
+![Money (dark)](/examples/dark/tables/money.png)
 
 ### Icons & booleans
 

@@ -72,8 +72,6 @@ export default defineConfig({
 			},
 			expressiveCode: {
 				// One Dark Pro for light + dark UI (matches Almasix/Conduit docs).
-				// A Ristretto-style CSS filter in custom.css warms the cool blue-gray
-				// toward Monokai Pro Filter Ristretto’s brown/rose cast.
 				themes: ['one-dark-pro'],
 				useStarlightDarkModeSwitch: false,
 				useStarlightUiThemeColors: false,
@@ -84,12 +82,12 @@ export default defineConfig({
 					borderWidth: '1px',
 					codeFontFamily: "'JetBrains Mono', ui-monospace, monospace",
 					codeFontSize: '0.9rem',
-					// Warm charcoal closer to Ristretto’s #2c2525 than stock #282c34.
-					codeBackground: '#2c2525',
+					codeBackground: '#282c34',
+					codeForeground: '#abb2bf',
 					frames: {
-						editorBackground: '#2c2525',
-						terminalBackground: '#2c2525',
-						shadowColor: 'rgba(44, 37, 37, 0.45)',
+						shadowColor: 'rgba(0, 0, 0, 0.4)',
+						editorBackground: '#282c34',
+						terminalBackground: '#282c34',
 					},
 				},
 			},

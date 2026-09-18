@@ -7,10 +7,6 @@ description: Structure schemas with Grid, Flex, Group, Split, Fieldset, and rela
 
 Layout components from `almasix.orbit.schemas` nest inside any schema — forms, infolists, and custom pages. Prefer `Section` for titled panels, `Tabs` / `Wizard` for progressive disclosure, and `Grid` / `Flex` / `Group` / `Split` for alignment without extra chrome.
 
-![Orbit grid + flex (light)](/examples/light/schemas/grid-flex.png)
-
-![Orbit grid + flex (dark)](/examples/dark/schemas/grid-flex.png)
-
 ```python
 from almasix.orbit.schemas import Grid, Flex, Group, Split, Section, Fieldset
 from almasix.orbit.forms import TextInput
@@ -30,6 +26,10 @@ layout = Section.make("profile").heading("Profile").collapsible().schema([
     ]),
 ])
 ```
+
+![Orbit grid + flex (light)](/examples/light/schemas/grid-flex.png)
+
+![Orbit grid + flex (dark)](/examples/dark/schemas/grid-flex.png)
 
 ## Component map
 

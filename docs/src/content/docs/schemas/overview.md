@@ -7,10 +7,6 @@ description: Nest Orbit UI with Schema, layouts, callouts, empty states, and pri
 
 Schemas are the nesting fabric under forms (and anything else that wants a component tree). A `Schema` holds state, dehydrates fields, and renders children. Layouts (`Grid`, `Flex`, `Group`, `Split`, `Section`, `Tabs`, `Wizard`, `Fieldset`) organize fields; primes (`Text`, `Icon`, `Image`, `UnorderedList`) and callouts add non-field chrome.
 
-![Orbit schema section (light)](/examples/light/schemas/section/basic.png)
-
-![Orbit schema section (dark)](/examples/dark/schemas/section/basic.png)
-
 ```python
 from almasix.orbit.schemas import (
     Schema, Section, Flex, Callout,
@@ -30,6 +26,10 @@ schema = (
     ])
 )
 ```
+
+![Orbit schema section (light)](/examples/light/schemas/section/basic.png)
+
+![Orbit schema section (dark)](/examples/dark/schemas/section/basic.png)
 
 ## Layout gallery
 

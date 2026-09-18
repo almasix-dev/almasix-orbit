@@ -4,9 +4,9 @@
 Structure per page:
   ## Introduction  (rich prose)
   ## {Variant heading}
-     screenshot pair (light/dark — theme CSS hides the inactive one)
      blurb
      code fence
+     screenshot pair (light/dark — theme CSS hides the inactive one)
 """
 
 from __future__ import annotations
@@ -190,8 +190,8 @@ def render_page(slug: str, page: dict) -> str:
 
     if variants:
         parts.append(
-            "The screenshots below show how each variation renders in Orbit. "
-            "Each section includes the fluent API used to produce it."
+            "Each variation below includes a short explanation, the fluent API "
+            "to paste into your schema, and a screenshot of the rendered control."
         )
         parts.append("")
 
@@ -202,8 +202,7 @@ def render_page(slug: str, page: dict) -> str:
         code = variant.get("code") or ""
         parts.append(f"## {heading}")
         parts.append("")
-        # Preview first (Filament-style), then explanation + code
-        parts.append(preview_pair(shot_id, heading))
+        # Explanation + code first, then screenshot
         if blurb:
             parts.append(blurb)
             parts.append("")
@@ -213,6 +212,7 @@ def render_page(slug: str, page: dict) -> str:
             parts.append(fence)
             parts.append("```")
             parts.append("")
+        parts.append(preview_pair(shot_id, heading))
 
     parts.append(
         "Closures work on `.label()`, `.helper_text()`, `.placeholder()`, "

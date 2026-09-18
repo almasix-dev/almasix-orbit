@@ -7,13 +7,9 @@ description: TimePicker is a native time input for reminders, slots, and office 
 
 TimePicker is a native time input for reminders, slots, and office hours. Min/max attributes bound acceptable times.
 
-The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+Each variation below includes a short explanation, the fluent API to paste into your schema, and a screenshot of the rendered control.
 
 ## Basic time picker
-
-![Orbit Basic time picker (light)](/examples/light/forms/time-picker/basic.png)
-
-![Orbit Basic time picker (dark)](/examples/dark/forms/time-picker/basic.png)
 
 HH:MM time selection.
 
@@ -22,11 +18,11 @@ TimePicker.make('remind_at')
     .label('Remind at')
 ```
 
+![Orbit Basic time picker (light)](/examples/light/forms/time-picker/basic.png)
+
+![Orbit Basic time picker (dark)](/examples/dark/forms/time-picker/basic.png)
+
 ## Time window
-
-![Orbit Time window (light)](/examples/light/forms/time-picker/min-max.png)
-
-![Orbit Time window (dark)](/examples/dark/forms/time-picker/min-max.png)
 
 Business-hours style constraints.
 
@@ -36,5 +32,9 @@ TimePicker.make('slot')
     .min_date('08:00')
     .max_date('18:00')
 ```
+
+![Orbit Time window (light)](/examples/light/forms/time-picker/min-max.png)
+
+![Orbit Time window (dark)](/examples/dark/forms/time-picker/min-max.png)
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

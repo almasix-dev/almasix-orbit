@@ -61,15 +61,15 @@ TextColumn.make("cents").money("USD", divide_by=100).align_end()
 
 ## Text features
 
-![Text features (light)](/examples/light/tables/text-features.png)
-![Text features (dark)](/examples/dark/tables/text-features.png)
-
 ### Search, sort, toggle
 
 ```python
 TextColumn.make("title").searchable().sortable()
 TextColumn.make("internal_notes").toggleable(is_toggled_hidden_by_default=True)
 ```
+
+![Text features (light)](/examples/light/tables/text-features.png)
+![Text features (dark)](/examples/dark/tables/text-features.png)
 
 ### Badge & color
 

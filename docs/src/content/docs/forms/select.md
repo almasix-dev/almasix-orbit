@@ -7,13 +7,9 @@ description: Select fields render native or searchable dropdowns with static opt
 
 Select fields render native or searchable dropdowns with static options, grouped options, or relationship-backed search. Searchable selects add a filter input; MultiSelect extends Select with multiple selection. Options can carry descriptions when used with Radio or CheckboxList patterns.
 
-The screenshots below show how each variation renders in Orbit. Each section includes the fluent API used to produce it.
+Each variation below includes a short explanation, the fluent API to paste into your schema, and a screenshot of the rendered control.
 
 ## Basic select
-
-![Orbit Basic select (light)](/examples/light/forms/select/basic.png)
-
-![Orbit Basic select (dark)](/examples/dark/forms/select/basic.png)
 
 Native dropdown with a static options map.
 
@@ -23,11 +19,11 @@ Select.make('status')
     .options({'draft': 'Draft', 'published': 'Published'})
 ```
 
+![Orbit Basic select (light)](/examples/light/forms/select/basic.png)
+
+![Orbit Basic select (dark)](/examples/dark/forms/select/basic.png)
+
 ## Searchable select
-
-![Orbit Searchable select (light)](/examples/light/forms/select/searchable.png)
-
-![Orbit Searchable select (dark)](/examples/dark/forms/select/searchable.png)
 
 Filterable list — ideal for long option sets.
 
@@ -38,11 +34,11 @@ Select.make('status')
     .searchable()
 ```
 
+![Orbit Searchable select (light)](/examples/light/forms/select/searchable.png)
+
+![Orbit Searchable select (dark)](/examples/dark/forms/select/searchable.png)
+
 ## Multi select
-
-![Orbit Multi select (light)](/examples/light/forms/select/multiple.png)
-
-![Orbit Multi select (dark)](/examples/dark/forms/select/multiple.png)
 
 Multiple selection via MultiSelect.
 
@@ -51,5 +47,9 @@ MultiSelect.make('tags')
     .label('Tags')
     .options({'orbit': 'Orbit', 'forms': 'Forms'})
 ```
+
+![Orbit Multi select (light)](/examples/light/forms/select/multiple.png)
+
+![Orbit Multi select (dark)](/examples/dark/forms/select/multiple.png)
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

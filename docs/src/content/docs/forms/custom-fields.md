@@ -7,10 +7,6 @@ description: Build custom Orbit form fields by subclassing Field or composing Vi
 
 Most admin UIs never need a custom field — combine TextInput, Select, and layouts first. When you do, subclass `Field` and override `render()`, or drop arbitrary HTML into a `ViewField`. Custom fields still participate in `validate()` / `dehydrate()` when they expose a state path and rules.
 
-![Orbit money input (light)](/examples/light/forms/money-input/usd.png)
-
-![Orbit money input (dark)](/examples/dark/forms/money-input/usd.png)
-
 ```python
 from almasix.orbit.forms import Field
 
@@ -24,5 +20,9 @@ class Rating(Field):
             **ctx,
         )
 ```
+
+![Orbit money input (light)](/examples/light/forms/money-input/usd.png)
+
+![Orbit money input (dark)](/examples/dark/forms/money-input/usd.png)
 
 Prefer composing existing fields inside a `ViewField` or schema layout when you only need custom markup. See the orbit-admin `MoneyInput` demo and [Money input](/forms/money-input/) for a packaged currency field.

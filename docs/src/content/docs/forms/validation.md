@@ -7,10 +7,6 @@ description: Validate Orbit form fields with rule strings, callables, and condit
 
 Orbit validates with `form.validate(data)`, walking nested layouts (Section, Tabs, Wizard, Repeater schemas) and applying string rules plus callables. Errors return as `field → [messages]`. Database-backed `unique` / `exists` rules use checkers registered via `Form.unique_using(...)` and `Form.exists_using(...)`.
 
-![Orbit form overview (light)](/examples/light/forms/overview.png)
-
-![Orbit form overview (dark)](/examples/dark/forms/overview.png)
-
 ```python
 from almasix.orbit.forms import Form, TextInput
 
@@ -30,6 +26,10 @@ errors = form.validate({
     "role": "admin",
 })
 ```
+
+![Orbit form overview (light)](/examples/light/forms/overview.png)
+
+![Orbit form overview (dark)](/examples/dark/forms/overview.png)
 
 ## Common rules
 
