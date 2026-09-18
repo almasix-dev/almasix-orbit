@@ -8,7 +8,7 @@ from almasix.orbit.forms import Form, TextInput
 from almasix.orbit.panels.conduit.hosts import CreateRecordHost, EditRecordHost, ViewRecordHost
 from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.resource import Resource
-from almasix.orbit.tables import TextColumn, Table
+from almasix.orbit.tables import Table, TextColumn
 
 
 class _DemoResource(Resource):

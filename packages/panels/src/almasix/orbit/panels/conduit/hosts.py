@@ -6,7 +6,8 @@ state and ``wire:*`` actions — the Filament↔Livewire relationship for Orbit.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Iterable
+from collections.abc import Iterable
+from typing import Any, ClassVar
 
 from almasix.conduit import Component, Conduit
 from almasix.orbit.support.conduit_attrs import conduit_attr
