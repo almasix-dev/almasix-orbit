@@ -67,5 +67,5 @@ A straight inventory of what ships today. For narrative guides, start at [Quick 
 - Publishable `orbit-assets` tag
 
 :::note[Still cooking]
-`discover_*` path hooks and `smith make:orbit-resource` are API-shaped — register classes explicitly and scaffold by hand (or copy the quick start) until generators land.
+Some Filament surfaces (SPA mode, relation managers depth, etc.) are still landing. Resource scaffolding with `--generate` is available — see [Resources](/resources/overview/).
 :::

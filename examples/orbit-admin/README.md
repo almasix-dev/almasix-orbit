@@ -45,6 +45,16 @@ with sample rows. Posts are real ORM records — create / edit / delete persist 
 SQLite. Other demo resources (Authors, column galleries, etc.) stay seed-list
 immutable.
 
+**Resource `--generate` (local Orbit branch):** after migrate, try:
+
+```bash
+smith make:orbit-resource GeneratedPost --panel=app --model=Post --generate --force
+```
+
+**Demos → Generated posts** is that stub wired into the app panel (same `Post`
+model as Content → Posts) so you can compare auto-mapped form/table fields with
+the hand-tuned Posts resource.
+
 Fresh apps without a User model: `smith orbit:user --scaffold`, then migrate, then create.
 
 Local demos can still use a panel principal (no DB session) with `.default_user()` / `.user(OrbitUser…)`:

@@ -7,6 +7,7 @@ from almasix.orbit.panels.navigation import NavigationGroup
 from app.orbit.app.plugins import BrandingPlugin
 from app.orbit.app.resources.author_resource import AuthorResource
 from app.orbit.app.resources.editable_columns_resource import EditableColumnsResource
+from app.orbit.app.resources.generated_post_resource import GeneratedPostResource
 from app.orbit.app.resources.grouped_posts_resource import GroupedPostsResource
 from app.orbit.app.resources.kitchen_sink_resource import KitchenSinkResource
 from app.orbit.app.resources.layout_columns_resource import LayoutColumnsResource
@@ -78,6 +79,7 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
                 GroupedPostsResource,
                 ModalTasksResource,
                 KitchenSinkResource,
+                GeneratedPostResource,
             ]
         )
         .discover_panel_dirs()
