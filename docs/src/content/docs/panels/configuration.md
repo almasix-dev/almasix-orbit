@@ -25,7 +25,7 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
         .brand_logo_dark("/images/logo-dark.svg")  # optional; falls back to light
         .brand_logo_height("2.25rem")
         # .brand_logo_only()
-        # .brand_name_font_size("1.25rem")
+        # .brand_name_font_size("2rem")
         .favicon("images/favicon.svg")
         .font("Outfit")
         .primary("#f1511b")  # or .primary("info") / .colors(primary="#…", danger="#…")
@@ -66,7 +66,7 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
 | `.brand_logo_dark(...)` | light logo | Dark-mode logo; falls back to the light logo when unset |
 | `.brand_logo_height(...)` | `"2rem"` | CSS height (`--or-brand-logo-height`) |
 | `.brand_logo_only()` | `False` | Hide the brand name when a logo is set |
-| `.brand_name_font_size(...)` | `"1.05rem"` | Font size for the visible brand name (shell + login). Any CSS length |
+| `.brand_name_font_size(...)` | `"1.8rem"` | Font size for the visible brand name (shell + login). Any CSS length |
 | `.font(...)` | `"Outfit"` | Shell typography |
 | `.primary(...)` | `"#f1511b"` | Brand primary (hex or semantic token like `"info"`). Soft/deep accents derive automatically |
 | `.colors(**tokens)` | `primary="#f1511b"` | Merge semantic colors (`primary`, `danger`, `success`, `warning`, `info`, `gray`). Values may be hex or tokens |
