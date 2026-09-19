@@ -1835,8 +1835,8 @@ html.dark .or-login-logo-dark {
   right: 0;
   left: auto;
   z-index: 40;
-  width: 17rem;
-  max-width: min(17rem, 90vw);
+  width: 19rem;
+  max-width: min(19rem, 92vw);
   padding: 1rem;
   border: 1px solid var(--or-line);
   border-radius: 0.75rem;
@@ -1879,6 +1879,46 @@ html.dark .or-login-logo-dark {
   flex-direction: column;
   gap: 0.35rem;
   min-width: 0;
+}
+
+.or-table-filter-boolean {
+  gap: 0;
+}
+
+.or-filter-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--or-ink);
+}
+
+.or-filter-check-label .or-filter-label {
+  margin: 0;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.or-filter-group {
+  margin: 0;
+  padding: 0.65rem 0.75rem 0.75rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.or-filter-group-title {
+  padding: 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--or-muted);
 }
 
 .or-filters-panel .or-filter-label {

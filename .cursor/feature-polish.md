@@ -22,7 +22,23 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 14 | Tags column | `docs/src/content/docs/tables/columns/tags.md` | **closed** |
 | 15 | View column | `docs/src/content/docs/tables/columns/view.md` | **closed** |
 | 16 | Column group | `docs/src/content/docs/tables/columns/column-group.md` | **closed** |
-| 17+ | Remaining Orbit doc features | docs nav | queued |
+| 17 | Filters overview | `docs/src/content/docs/tables/filters/overview.md` | **closed** |
+| 18+ | Remaining Orbit doc features | docs nav | queued |
+
+## Filters overview — closed
+
+Filament 5 parity for `tables/filters/overview` (single Filters nav page).
+
+### Shipped
+
+- `Filter.toggle()`, checkbox default UI, `indicate` / `indicate_using`
+- `SelectFilter.multiple()`, `selectable_placeholder`
+- `TernaryFilter` labels / `nullable` / `queries`; working `FilterGroup`
+- Defaults, `persist_filters_in_session` (sessionStorage), `hidden_filter_indicators`, `deselect_all_records_when_filtered`
+
+### Deferred
+
+Eloquent `relationship` / searchable selects, full FiltersLayout modes, query-builder product polish (own docs).
 
 ## Column types autopilot — closed
 

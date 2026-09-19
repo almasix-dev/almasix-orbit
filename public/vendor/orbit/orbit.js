@@ -115,9 +115,11 @@
       defer: false,
       activeCount: 0,
       pending: {},
+      sessionKey: null,
       init() {
         const el = this.$el;
         this.defer = el?.hasAttribute?.("data-defer-filters") || false;
+        this.sessionKey = el?.getAttribute?.("data-filters-session") || null;
         const count = el?.getAttribute?.("data-active-count");
         if (count != null) {
           this.activeCount = Number(count) || 0;
@@ -133,6 +135,9 @@
             /* ignore */
           }
         }
+        if (this.sessionKey) {
+          this._restoreSession();
+        }
         this._onCloseOthers = (event) => {
           if (event?.detail?.except === "filters") {
             return;
@@ -144,6 +149,48 @@
       destroy() {
         if (this._onCloseOthers) {
           window.removeEventListener("orbit:close-dropdowns", this._onCloseOthers);
+        }
+      },
+      _storageKey() {
+        return this.sessionKey ? `orbit-table-filters:${this.sessionKey}` : null;
+      },
+      _restoreSession() {
+        const key = this._storageKey();
+        if (!key) {
+          return;
+        }
+        try {
+          const raw = sessionStorage.getItem(key);
+          if (!raw) {
+            return;
+          }
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== "object") {
+            return;
+          }
+          const wire = window.orbitWire?.(this.$el);
+          const current = wire?.table_filters;
+          const empty =
+            !current ||
+            (typeof current === "object" && Object.keys(current).length === 0);
+          if (empty && wire && typeof wire.applyTableFilters === "function") {
+            wire.applyTableFilters(parsed);
+            this.pending = { ...parsed };
+            this.activeCount = Object.keys(parsed).length;
+          }
+        } catch (_) {
+          /* ignore */
+        }
+      },
+      _persistSession(payload) {
+        const key = this._storageKey();
+        if (!key) {
+          return;
+        }
+        try {
+          sessionStorage.setItem(key, JSON.stringify(payload || {}));
+        } catch (_) {
+          /* ignore */
         }
       },
       toggleFilters(event) {
@@ -162,7 +209,10 @@
         const wire = window.orbitWire?.(this.$el);
         const payload = { ...this.pending };
         Object.keys(payload).forEach((key) => {
-          if (payload[key] === "" || payload[key] == null) {
+          if (payload[key] === "" || payload[key] == null || payload[key] === false) {
+            delete payload[key];
+          }
+          if (Array.isArray(payload[key]) && payload[key].length === 0) {
             delete payload[key];
           }
         });
@@ -171,6 +221,8 @@
         } else if (wire && typeof wire.$set === "function") {
           wire.$set("table_filters", payload);
         }
+        this._persistSession(payload);
+        this.activeCount = Object.keys(payload).length;
         this.filtersOpen = false;
       },
     }));

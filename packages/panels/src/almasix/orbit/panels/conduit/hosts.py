@@ -456,30 +456,41 @@ class ListRecordsHost(OrbitPageHost):
         if not key:
             return
         current = dict(self.table_filters or {})
-        if value in (None, ""):
+        if value in (None, "", False):
+            current.pop(key, None)
+        elif isinstance(value, list) and not value:
             current.pop(key, None)
         else:
             current[key] = value
         self.table_filters = current
         self.page = 1
-        self.select_all = False
+        if self._should_deselect_on_filter():
+            self.select_all = False
+            self.selected = []
 
     def applyTableFilters(self, filters: Any = None) -> None:
         """Commit deferred filter selections (optional full dict) and reset page."""
         if isinstance(filters, dict):
             cleaned: dict[str, Any] = {}
             for key, value in filters.items():
-                if value in (None, ""):
+                if value in (None, "", False):
+                    continue
+                if isinstance(value, list) and not value:
                     continue
                 cleaned[str(key)] = value
             self.table_filters = cleaned
         self.page = 1
-        self.select_all = False
+        if self._should_deselect_on_filter():
+            self.select_all = False
+            self.selected = []
 
     def resetTableFilters(self) -> None:
-        self.table_filters = {}
+        table = self.get_resource().get_table()
+        self.table_filters = dict(table.get_default_filter_state())
         self.page = 1
-        self.select_all = False
+        if self._should_deselect_on_filter():
+            self.select_all = False
+            self.selected = []
 
     def removeTableFilter(self, name: str) -> None:
         key = str(name or "")
@@ -489,7 +500,16 @@ class ListRecordsHost(OrbitPageHost):
         current.pop(key, None)
         self.table_filters = current
         self.page = 1
-        self.select_all = False
+        if self._should_deselect_on_filter():
+            self.select_all = False
+            self.selected = []
+
+    def _should_deselect_on_filter(self) -> bool:
+        try:
+            table = self.get_resource().get_table()
+            return table.should_deselect_all_records_when_filtered()
+        except Exception:
+            return True
 
     def setTableGroup(self, name: str = "") -> None:
         self.table_group = str(name or "")
@@ -580,6 +600,13 @@ class ListRecordsHost(OrbitPageHost):
         if sort:
             table.sort(sort, str(self.table_sort_direction or "asc"))
         filters = dict(self.table_filters or {})
+        defaults = table.get_default_filter_state()
+        if defaults:
+            merged = dict(defaults)
+            merged.update(filters)
+            filters = merged
+            if not self.table_filters:
+                self.table_filters = dict(defaults)
         if filters:
             table.filter_state(filters)
         return table
