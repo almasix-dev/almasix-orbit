@@ -28,7 +28,7 @@ jobs:
           pytest tests \
             --cov=almasix.orbit \
             --cov-report=term-missing \
-            --cov-fail-under=99
+            --cov-fail-under=99.5
 
   docs:
     runs-on: ubuntu-latest

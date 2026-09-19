@@ -150,16 +150,14 @@ def generate_schemas(
             pass
         else:
             field_line, field_imps = _form_field(col)
-            if field_line:
-                form_fields.append(field_line)
-                form_imports.update(field_imps)
+            form_fields.append(field_line)
+            form_imports.update(field_imps)
 
         if col.name in _SKIP_TABLE:
             continue
         col_line, col_imps = _table_column(col, model=model)
-        if col_line:
-            table_columns.append(col_line)
-            table_imports.update(col_imps)
+        table_columns.append(col_line)
+        table_imports.update(col_imps)
 
     if not form_fields and not columns:
         form_fields = ['TextInput.make("title").required().max_length(200)']
