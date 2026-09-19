@@ -489,7 +489,7 @@ class MakeOrbitResourceCommand(Command):
         form_imports = ", ".join(("Form", *schemas.form_imports))
         table_imports = ", ".join(("Table", *schemas.table_imports))
         nav_label = _pluralize_label(model_hint)
-        model_import_block = ("\n".join(extra_imports) + "\n") if extra_imports else ""
+        model_import_block = ("\n".join(extra_imports) + "\n\n") if extra_imports else "\n"
         form_body = format_list(schemas.form_fields)
         table_body = format_list(schemas.table_columns)
 
@@ -501,8 +501,7 @@ from __future__ import annotations
 from almasix.orbit import Resource
 from almasix.orbit.forms import {form_imports}
 from almasix.orbit.tables import {table_imports}
-{model_import_block}
-class {class_name}(Resource):
+{model_import_block}class {class_name}(Resource):
 {model_line}
     navigation_label = "{nav_label}"
     navigation_icon = "heroicon-o-rectangle-stack"
