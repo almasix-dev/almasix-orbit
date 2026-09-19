@@ -173,6 +173,8 @@ SHOTS: list[tuple[str, str]] = [
     ("tables/overview-heading", "Overview — heading"),
     ("tables/overview-reorder", "Overview — reorder"),
     ("tables/overview-striped", "Overview — striped rows"),
+    ("tables/columns-overview", "Columns overview — shared APIs"),
+    ("tables/columns-overview-manager", "Columns overview — column manager"),
     ("tables/money", "Money / currency"),
     ("tables/text-features", "Text column features"),
     ("tables/icon-boolean", "Icon + boolean"),
@@ -814,6 +816,96 @@ def build() -> str:
         .paginated(False)
     )
 
+    _cols_people = [
+        {
+            "id": 1,
+            "first_name": "Ada",
+            "last_name": "Lovelace",
+            "email": "ada@example.com",
+            "nickname": None,
+            "website": "https://almasix.com",
+        },
+        {
+            "id": 2,
+            "first_name": "Grace",
+            "last_name": "Hopper",
+            "email": "grace@example.com",
+            "nickname": "Amazing Grace",
+            "website": "https://docs.almasix.com",
+        },
+        {
+            "id": 3,
+            "first_name": "Katherine",
+            "last_name": "Johnson",
+            "email": "katherine@example.com",
+            "nickname": "",
+            "website": None,
+        },
+        {
+            "id": 4,
+            "first_name": "Margaret",
+            "last_name": "Hamilton",
+            "email": "margaret@example.com",
+            "nickname": None,
+            "website": "https://orbit.almasix.com",
+        },
+    ]
+
+    table_columns_overview = (
+        Table.make()
+        .heading("Columns overview")
+        .description("Shared Column APIs — state, placeholder, multi-key sort/search.")
+        .reorderable_columns()
+        .columns(
+            [
+                TextColumn.make("full_name")
+                .label("Full name")
+                .state(
+                    lambda record: f"{record.get('first_name', '')} {record.get('last_name', '')}".strip()
+                )
+                .sortable(["last_name", "first_name"])
+                .searchable(["first_name", "last_name", "email"])
+                .wrap_header()
+                .grow()
+                .header_tooltip("Sorted by last name, then first name"),
+                TextColumn.make("nickname").placeholder("No nickname").toggleable().width(140),
+                TextColumn.make("email").searchable().sortable().toggleable(),
+                TextColumn.make("website")
+                .label("Site")
+                .placeholder("—")
+                .url(lambda record, state, **_: state or "#")
+                .open_url_in_new_tab()
+                .toggleable(),
+            ]
+        )
+        .records(_cols_people)
+        .striped()
+        .paginated(False)
+        .default_sort("full_name")
+    )
+
+    table_columns_overview_manager = (
+        Table.make()
+        .reorderable_columns()
+        .columns(
+            [
+                TextColumn.make("full_name")
+                .label("Full name")
+                .state(
+                    lambda record: f"{record.get('first_name', '')} {record.get('last_name', '')}".strip()
+                )
+                .toggleable(),
+                TextColumn.make("email").toggleable(),
+                TextColumn.make("website")
+                .label("Site")
+                .toggleable(is_toggled_hidden_by_default=True),
+            ]
+        )
+        .records(_cols_people)
+        .striped()
+        .paginated(False)
+    )
+
     table_overview_pagination = (
         Table.make()
         .columns(
@@ -1253,6 +1345,16 @@ def build() -> str:
             "tables/overview-relationships",
             "Overview — relationship columns",
             table_overview_relationships.render(),
+        ),
+        shot(
+            "tables/columns-overview",
+            "Columns overview — shared APIs",
+            table_columns_overview.render(),
+        ),
+        shot(
+            "tables/columns-overview-manager",
+            "Columns overview — column manager",
+            table_columns_overview_manager.render(toggled_columns={"website": False}),
         ),
         shot(
             "tables/overview-pagination",

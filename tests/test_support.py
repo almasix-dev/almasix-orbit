@@ -73,6 +73,16 @@ def test_evaluate_and_callable_label() -> None:
     assert evaluate("static") == "static"
     assert evaluate(lambda **_: "dynamic") == "dynamic"
     assert evaluate(lambda record: record["n"], record={"n": "Ada"}) == "Ada"
+    # Extra utilities must not break single-parameter lambdas.
+    assert (
+        evaluate(
+            lambda record: record["n"],
+            record={"n": "Ada"},
+            has_bulk=True,
+            noise="x",
+        )
+        == "Ada"
+    )
     c = Component.make("x").label(lambda user=None: f"Hi {user}")
     assert c.get_label(user="Sam") == "Hi Sam"
     c2 = Component.make("y").helper_text(lambda **_: "help me").default(lambda **_: 42)

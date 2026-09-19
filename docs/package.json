@@ -18,6 +18,7 @@
     "sharp": "^0.35.3"
   },
   "devDependencies": {
+    "playwright": "^1.63.0",
     "wrangler": "^4.132.0"
   },
   "engines": {

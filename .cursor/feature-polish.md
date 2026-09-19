@@ -8,7 +8,47 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 |------:|---------|------|--------|
 | 1 | Panel Configuration | `docs/src/content/docs/panels/configuration.md` | **closed** |
 | 2 | Tables overview | `docs/src/content/docs/tables/overview.md` | **closed** |
-| 3+ | Remaining Orbit doc features | docs nav | queued |
+| 3 | Columns overview | `docs/src/content/docs/tables/columns/overview.md` | **closed** |
+| 4+ | Remaining Orbit doc features | docs nav | queued |
+
+## Columns overview — gap matrix vs Filament 5
+
+Reference: https://filamentphp.com/docs/5.x/tables/columns/overview
+
+### Done
+
+| Filament | Orbit |
+|----------|-------|
+| `state()` | `.state(value \| callable)` |
+| `default()` | `.default(...)` via `evaluate` / `get_default` |
+| `placeholder()` | `.placeholder(...)` |
+| `sortable` / array / `query` | `.sortable(True \| list \| query=)` |
+| `searchable` / array / `query` | `.searchable(True \| list \| query=)` |
+| `tooltip` / `headerTooltip` | `.tooltip()` / `.header_tooltip()` |
+| `wrapHeader` / `width` / `grow` / vertical align | `.wrap_header()` / `.width()` / `.grow()` / `.vertically_align_*()` |
+| `openUrlInNewTab` on column URL | `.open_url_in_new_tab()` |
+| `extraCellAttributes` / header attrs | `.extra_cell_attributes()` / `.extra_header_attributes()` + wired `extra_attributes` |
+| `hidden` / `visible` | honored in `_column_is_visible` |
+| `Column::configureUsing` | `Column.configure_using()` |
+| `reorderableColumns` | `.reorderable_columns()` + column-manager DnD |
+
+### Deferred (later tracks)
+
+| Filament | Reason |
+|----------|--------|
+| `counts` / `exists` / `avg` / `sum` / … | Eloquent relationship aggregates |
+| Individual column search (`isIndividual`) | Filters / search UX track |
+| Column-manager layout / defer Apply | Manager chrome polish |
+| Cell `.action(Action)` | Record/toolbar actions cover most UX |
+| Type-specific pages (Text, Icon, …) | Separate features |
+
+## Close checklist (Columns overview)
+
+- [x] Gap matrix accurate after implementation
+- [x] orbit-admin sample exercises overview APIs (`ColumnsOverviewResource`)
+- [x] Tests at 100% for touched Column/table surface
+- [x] Docs updated (`tables/columns/overview.md`)
+- [x] Status → **closed**
 
 ## Tables overview — gap matrix vs Filament 5
 
@@ -41,17 +81,8 @@ Reference: https://filamentphp.com/docs/5.x/tables/overview
 | Filament | Reason |
 |----------|--------|
 | Full DnD reorder UX in orbit.js | Chrome + callbacks shipped; drag polish later |
-| Column manager reorder (`reorderableColumns`) | Columns feature page |
 | Filters layout enums | Filters overview feature |
 | Scout-specific search | Covered by `.search_using()` |
-
-## Close checklist (Tables overview)
-
-- [x] Gap matrix accurate after implementation
-- [x] orbit-admin sample exercises overview APIs (`TablesOverviewResource`)
-- [x] Tests at 100% for touched Table/column surface
-- [x] Docs updated (`tables/overview.md`)
-- [x] Status → **closed**
 
 ## Panel Configuration — gap matrix vs Filament 5
 

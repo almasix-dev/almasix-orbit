@@ -175,6 +175,46 @@
       },
     }));
 
+    window.Alpine.data("orbitColumnReorder", () => ({
+      dragging: null,
+      onDragStart(event) {
+        const item = event.target?.closest?.("[data-column-name]");
+        if (!item) {
+          return;
+        }
+        this.dragging = item;
+        event.dataTransfer.effectAllowed = "move";
+        try {
+          event.dataTransfer.setData("text/plain", item.dataset.columnName || "");
+        } catch (_) {
+          /* ignore */
+        }
+      },
+      onDrop(event) {
+        const list = this.$el;
+        const target = event.target?.closest?.("[data-column-name]");
+        if (!list || !this.dragging || !target || this.dragging === target) {
+          this.dragging = null;
+          return;
+        }
+        const rect = target.getBoundingClientRect();
+        const before = event.clientY < rect.top + rect.height / 2;
+        if (before) {
+          list.insertBefore(this.dragging, target);
+        } else {
+          list.insertBefore(this.dragging, target.nextSibling);
+        }
+        this.dragging = null;
+        const order = Array.from(list.querySelectorAll("[data-column-name]")).map(
+          (el) => el.dataset.columnName,
+        );
+        const wire = typeof orbitWire === "function" ? orbitWire(list) : null;
+        if (wire && typeof wire.reorderColumns === "function") {
+          wire.reorderColumns(order);
+        }
+      },
+    }));
+
     window.Alpine.data("orbitDropdown", () => ({
       menuOpen: false,
       init() {
