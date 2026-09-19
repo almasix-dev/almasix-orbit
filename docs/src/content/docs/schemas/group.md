@@ -1,26 +1,78 @@
 ---
 title: Group
-description: Group fuses fields without fieldset chrome — Filament-style inline grouping with optional column grid.
+description: Fuse schema children without fieldset chrome — optional column grid, Filament-style inline grouping.
 ---
 
 ## Introduction
 
-Group fuses fields without fieldset chrome — Filament-style inline grouping with optional column grid.
+`Group` fuses child components without fieldset or section chrome. Use it when fields should sit together visually but you don’t want a legend or heading — Filament’s `Group` analogue. Optionally enable a column grid with `.columns(n)`.
 
-Each variation below includes a short explanation, the fluent API to paste into your schema, and a screenshot of the rendered control.
+```python title="app/orbit/schemas/group_basic.py"
+from almasix.orbit.schemas import Group
+from almasix.orbit.forms import TextInput
 
-## Basic group
-
-SKU and quantity on one row.
-
-```python
 Group.make()
     .columns(2)
-    .schema([TextInput.make('sku'), TextInput.make('qty')])
+    .schema([
+        TextInput.make("sku"),
+        TextInput.make("qty"),
+    ])
 ```
 
-![Orbit Basic group (light)](/examples/light/schemas/group/basic.png)
+![Basic group (light)](/examples/light/schemas/group/basic.png)
+![Basic group (dark)](/examples/dark/schemas/group/basic.png)
 
-![Orbit Basic group (dark)](/examples/dark/schemas/group/basic.png)
+## With columns
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).
+When `.columns(n)` is set, the group also applies `or-grid or-grid-cols-N` so children lay out like a lightweight [Grid](/schemas/grid/) — still without fieldset chrome:
+
+```python title="app/orbit/schemas/group_columns.py"
+Group.make().columns(3).schema([
+    TextInput.make("a"),
+    TextInput.make("b"),
+    TextInput.make("c"),
+])
+```
+
+## Without columns
+
+Omit `.columns(...)` to render children in a simple fused block (`or-schema-group` only):
+
+```python title="app/orbit/schemas/group_plain.py"
+Group.make().schema([
+    TextInput.make("prefix"),
+    TextInput.make("suffix"),
+])
+```
+
+## Nesting
+
+Groups nest cleanly inside sections, tabs, and splits — useful for SKU/qty clusters beside longer fields:
+
+```python title="app/orbit/schemas/group_nested.py"
+from almasix.orbit.schemas import Section, Group, Split
+from almasix.orbit.forms import TextInput, Textarea
+
+Section.make("inventory").heading("Inventory").schema([
+    Split.make().from_("md").schema([
+        Group.make().columns(2).schema([
+            TextInput.make("sku"),
+            TextInput.make("qty"),
+        ]),
+        Textarea.make("notes"),
+    ]),
+])
+```
+
+![Group + split (light)](/examples/light/schemas/group-split.png)
+![Group + split (dark)](/examples/dark/schemas/group-split.png)
+
+## API reference
+
+| Method | Role |
+|--------|------|
+| `.columns` | Optional grid column count |
+| `.schema` | Child components |
+| `.dense` / `.gap` / `.defer_loading` | Shared layout helpers |
+
+For labeled chrome prefer [Fieldset](/schemas/fieldset/) or [Section](/schemas/sections/). Side-by-side panes that stack: [Split](/schemas/split/).

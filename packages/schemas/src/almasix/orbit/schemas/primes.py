@@ -28,6 +28,7 @@ class Text(Component):
         self._weight: Weight = "normal"
         self._tooltip: str | None = None
         self._icon: str | None = None
+        self._font_family: str | None = None
 
     def content(self, value: str | Callable[..., str]) -> Self:
         self._content = value
@@ -55,6 +56,10 @@ class Text(Component):
 
     def weight(self, value: Weight) -> Self:
         self._weight = value
+        return self
+
+    def font_family(self, value: str) -> Self:
+        self._font_family = value
         return self
 
     def tooltip(self, value: str) -> Self:
@@ -85,9 +90,10 @@ class Text(Component):
         badge_cls = " or-badge" if self._badge else ""
         tip = f' title="{e(self._tooltip)}"' if self._tooltip else ""
         ic = render_icon(self._icon) if self._icon else ""
+        style = f' style="font-family:{e(self._font_family)}"' if self._font_family else ""
         return (
             f'<span class="or-prime or-prime-text or-size-{self._size} or-weight-{self._weight}'
-            f'{badge_cls}{color_cls}"{tip}>{ic}{body}</span>'
+            f'{badge_cls}{color_cls}"{tip}{style}>{ic}{body}</span>'
         )
 
 
@@ -156,6 +162,15 @@ class Image(Component):
     def alignment(self, value: Literal["start", "center", "end"]) -> Self:
         self._alignment = value
         return self
+
+    def align_start(self) -> Self:
+        return self.alignment("start")
+
+    def align_center(self) -> Self:
+        return self.alignment("center")
+
+    def align_end(self) -> Self:
+        return self.alignment("end")
 
     def tooltip(self, value: str) -> Self:
         self._tooltip = value

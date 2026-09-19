@@ -195,6 +195,7 @@ class Section(Layout):
         self._aside = False
         self._icon: str | None = None
         self._persist_collapsed = False
+        self._secondary = False
 
     def heading(self, text: str) -> Self:
         self._heading = text
@@ -220,6 +221,11 @@ class Section(Layout):
         self._aside = condition
         return self
 
+    def secondary(self, condition: bool = True) -> Self:
+        """Muted / secondary section chrome (Filament ``secondary``)."""
+        self._secondary = condition
+        return self
+
     def icon(self, name: str) -> Self:
         self._icon = name
         return self
@@ -239,6 +245,8 @@ class Section(Layout):
             classes += " or-section-compact"
         if self._aside:
             classes += " or-section-aside"
+        if self._secondary:
+            classes += " or-section-secondary"
         persist = (
             f' data-persist-collapsed="{e(self.get_name() or "section")}"'
             if self._persist_collapsed
@@ -345,12 +353,23 @@ class Tabs(Layout):
 
 
 class Fieldset(Layout):
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._contained = True
+
+    def contained(self, condition: bool = True) -> Self:
+        """When False, drop card chrome and render a bare fieldset (Filament ``contained``)."""
+        self._contained = condition
+        return self
+
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
             return ""
         legend = e(self.get_label())
+        contained = "" if self._contained else " or-fieldset-bare"
         return (
-            f'<fieldset class="or-fieldset"><legend class="or-fieldset-legend">{legend}</legend>'
+            f'<fieldset class="or-fieldset{contained}">'
+            f'<legend class="or-fieldset-legend">{legend}</legend>'
             f"{self.render_children(state, **ctx)}</fieldset>"
         )
 

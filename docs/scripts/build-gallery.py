@@ -10,8 +10,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from gallery_variants import build_form_variants, build_schema_variants
-
 from almasix.orbit.actions.action import CreateAction, DeleteBulkAction, EditAction
 from almasix.orbit.forms.components import (
     Block,
@@ -30,8 +28,8 @@ from almasix.orbit.forms.components import (
     RichEditor,
     Select,
     TagsInput,
-    TextInput,
     Textarea,
+    TextInput,
     TimePicker,
     Toggle,
     ToggleButtons,
@@ -46,14 +44,21 @@ from almasix.orbit.schemas.layouts import (
     EmptyState,
     Fieldset,
     Flex,
-    Grid as SchemaGrid,
-    Group as SchemaGroup,
     Section,
-    Split as SchemaSplit,
     Tabs,
     Wizard,
 )
+from almasix.orbit.schemas.layouts import (
+    Grid as SchemaGrid,
+)
+from almasix.orbit.schemas.layouts import (
+    Group as SchemaGroup,
+)
+from almasix.orbit.schemas.layouts import (
+    Split as SchemaSplit,
+)
 from almasix.orbit.schemas.primes import Icon, Image, Text, UnorderedList
+from almasix.orbit.schemas.schema import Schema
 from almasix.orbit.support.html import e
 from almasix.orbit.tables.columns import (
     BadgeColumn,
@@ -70,11 +75,19 @@ from almasix.orbit.tables.columns import (
     ToggleColumn,
     ViewColumn,
 )
-from almasix.orbit.tables.filters import Filter, FilterGroup, SelectFilter, TernaryFilter, TrashedFilter
+from almasix.orbit.tables.filters import (
+    Filter,
+    FilterGroup,
+    SelectFilter,
+    TernaryFilter,
+    TrashedFilter,
+)
 from almasix.orbit.tables.grouping import Group
-from almasix.orbit.tables.layout import Grid, Panel as LayoutPanel, Split, Stack, View
+from almasix.orbit.tables.layout import Grid, Split, Stack, View
+from almasix.orbit.tables.layout import Panel as LayoutPanel
 from almasix.orbit.tables.summaries import Average, Count, Sum
 from almasix.orbit.tables.table import Table
+from gallery_variants import build_form_variants, build_schema_variants
 
 ROOT = Path(__file__).resolve().parents[1]
 CSS = (ROOT.parent / "packages/panels/src/almasix/orbit/resources/css/orbit.css").read_text(
@@ -204,6 +217,7 @@ SHOTS: list[tuple[str, str]] = [
     ("tables/grouping", "Grouped rows"),
     ("tables/actions", "Row actions"),
     ("tables/empty", "Empty state"),
+    ("schemas/overview", "Schemas overview"),
     ("schemas/callout", "Callout"),
     ("schemas/empty-state", "Empty state"),
     ("schemas/primes-text", "Text prime"),
@@ -600,6 +614,45 @@ def build() -> str:
             ]
         )
         .fill({"name": "Ada", "debug": False, "notes": "Looks good."})
+        .render()
+    )
+    schema_overview = (
+        Schema.make("profile")
+        .operation("edit")
+        .schema(
+            [
+                Callout.make("tip")
+                .info()
+                .label("Tip")
+                .description("Schemas nest layouts, fields, and primes."),
+                SchemaGrid.make()
+                .columns(2)
+                .schema(
+                    [
+                        Section.make("details")
+                        .heading("Details")
+                        .icon("heroicon-o-user")
+                        .schema(
+                            [
+                                TextInput.make("name").label("Name").required(),
+                                TextInput.make("email").email().label("Email"),
+                            ]
+                        ),
+                        Section.make("notes")
+                        .heading("Notes")
+                        .secondary()
+                        .schema([Textarea.make("bio").label("Bio").rows(3)]),
+                    ]
+                ),
+            ]
+        )
+        .fill(
+            {
+                "name": "Ada Lovelace",
+                "email": "ada@orbit.test",
+                "bio": "Mathematician and first programmer.",
+            }
+        )
         .render()
     )
     schema_tabs = (
@@ -1851,6 +1904,7 @@ def build() -> str:
             "Text prime",
             Text.make().content("Published").badge().color("success").render(),
         ),
+        shot("schemas/overview", "Schemas overview", schema_overview),
         shot("schemas/section", "Section", schema_section),
         shot("schemas/tabs", "Tabs", schema_tabs),
         shot("schemas/wizard", "Wizard", schema_wizard),

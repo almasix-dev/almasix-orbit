@@ -1,10 +1,9 @@
-
 """Schema container — Filament 5 schemas package analogue."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Any, Self
+from collections.abc import Callable, Sequence
+from typing import Any, ClassVar, Self
 
 from almasix.orbit.schemas.layouts import child_render_state
 from almasix.orbit.support.component import Component
@@ -16,6 +15,22 @@ class Schema(Component):
         self._components: list[Component] = []
         self._state: dict[str, Any] = {}
         self._columns: int = 1
+        self._operation: str | None = None
+        self._defer_loading = False
+
+    _configure_using: ClassVar[list[Callable[[Schema], None]]] = []
+
+    @classmethod
+    def configure_using(cls, callback: Callable[[Schema], None]) -> None:
+        """Register a default configurator (Filament ``Schema::configureUsing``)."""
+        cls._configure_using.append(callback)
+
+    @classmethod
+    def make(cls, name: str | None = None) -> Self:
+        instance = cls() if name is None else cls(name)
+        for callback in cls._configure_using:
+            callback(instance)
+        return instance
 
     def components(self, components: Sequence[Component]) -> Self:
         self._components = list(components)
@@ -29,6 +44,19 @@ class Schema(Component):
 
     def columns(self, count: int) -> Self:
         self._columns = count
+        return self
+
+    def operation(self, value: str) -> Self:
+        """Set create / edit / view context for dependent visibility (Filament ``operation``)."""
+        self._operation = value
+        return self
+
+    def get_operation(self) -> str | None:
+        return self._operation
+
+    def defer_loading(self, condition: bool = True) -> Self:
+        """Mark the schema for deferred client load (``data-defer`` chrome)."""
+        self._defer_loading = condition
         return self
 
     def state(self, data: dict[str, Any]) -> Self:
@@ -77,15 +105,28 @@ class Schema(Component):
     def to_dict(self) -> dict[str, Any]:
         base = super().to_dict()
         base["columns"] = self._columns
+        base["operation"] = self._operation
+        base["defer_loading"] = self._defer_loading
         base["components"] = [c.to_dict() for c in self._components]
         return base
 
     def render(self, state: Any = None, **ctx: Any) -> str:
         data = state if isinstance(state, dict) else self._state
+        render_ctx = {**ctx}
+        if self._operation is not None and "operation" not in render_ctx:
+            render_ctx["operation"] = self._operation
         parts = [
-            c.render(child_render_state(c, data if isinstance(data, dict) else None), **ctx)
+            c.render(
+                child_render_state(c, data if isinstance(data, dict) else None),
+                **render_ctx,
+            )
             for c in self._components
-            if c.is_visible(**ctx)
+            if c.is_visible(**render_ctx)
         ]
         cols = self._columns
-        return f'<div class="or-schema or-schema-cols-{cols}">' + "".join(parts) + "</div>"
+        defer = ' data-defer="true"' if self._defer_loading else ""
+        return (
+            f'<div class="or-schema or-schema-cols-{cols}"{defer}>'
+            + "".join(parts)
+            + "</div>"
+        )

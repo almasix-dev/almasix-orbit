@@ -1,57 +1,86 @@
 ---
-title: Callout
-description: Callout surfaces info, success, warning, or danger messages inside a form — tips before save, destructive confirmations, or success banners.
+title: Callouts
+description: Surface info, success, warning, or danger messages inside a schema — tips, confirmations, and footer actions.
 ---
 
 ## Introduction
 
-Callout surfaces info, success, warning, or danger messages inside a form — tips before save, destructive confirmations, or success banners.
+`Callout` surfaces status messages inside a form or page schema — tips before save, destructive confirmations, or success banners. Status helpers set both the semantic role and default icon / color.
 
-Each variation below includes a short explanation, the fluent API to paste into your schema, and a screenshot of the rendered control.
+```python title="app/orbit/schemas/callout_info.py"
+from almasix.orbit.schemas import Callout
 
-## Info callout
-
-Neutral guidance.
-
-```python
 Callout.make()
     .info()
-    .label('Tip')
-    .description('Fill these fields before saving.')
+    .label("Tip")
+    .description("Fill these fields before saving.")
 ```
 
-![Orbit Info callout (light)](/examples/light/schemas/callout/info.png)
+![Info callout (light)](/examples/light/schemas/callout/info.png)
+![Info callout (dark)](/examples/dark/schemas/callout/info.png)
 
-![Orbit Info callout (dark)](/examples/dark/schemas/callout/info.png)
+## Status helpers
 
-## Danger callout
+```python title="app/orbit/schemas/callout_status.py"
+Callout.make().info().label("Tip").description("…")
+Callout.make().success().label("Saved").description("…")
+Callout.make().warning().label("Check").description("…")
+Callout.make().danger().label("Danger").description("…")
+# or: .status("info" | "success" | "warning" | "danger")
+```
 
-Destructive action warning.
+![Danger callout (light)](/examples/light/schemas/callout/danger.png)
+![Danger callout (dark)](/examples/dark/schemas/callout/danger.png)
 
-```python
+![Success callout (light)](/examples/light/schemas/callout/success.png)
+![Success callout (dark)](/examples/dark/schemas/callout/success.png)
+
+![Callout (light)](/examples/light/schemas/callout.png)
+![Callout (dark)](/examples/dark/schemas/callout.png)
+
+## Icons and colors
+
+Override the default status icon / color when needed:
+
+```python title="app/orbit/schemas/callout_icon.py"
+Callout.make()
+    .warning()
+    .label("Storage")
+    .description("Disk is 90% full.")
+    .icon("heroicon-o-server-stack")
+    .icon_color("danger")
+    .color("warning")
+```
+
+## Footer actions
+
+Attach action buttons under the callout body:
+
+```python title="app/orbit/schemas/callout_footer.py"
+from almasix.orbit.actions import Action
+from almasix.orbit.schemas import Callout
+
 Callout.make()
     .danger()
-    .label('Danger')
-    .description('This action cannot be undone.')
+    .label("Delete project")
+    .description("This action cannot be undone.")
+    .footer_actions([
+        Action.make("confirm").label("Delete").color("danger"),
+    ])
+    .footer_actions_alignment("end")
 ```
 
-![Orbit Danger callout (light)](/examples/light/schemas/callout/danger.png)
+You can also nest schema children via `.schema([...])` inside the callout body.
 
-![Orbit Danger callout (dark)](/examples/dark/schemas/callout/danger.png)
+## API reference
 
-## Success callout
-
-Confirmation feedback.
-
-```python
-Callout.make()
-    .success()
-    .label('Saved')
-    .description('Your changes were published.')
-```
-
-![Orbit Success callout (light)](/examples/light/schemas/callout/success.png)
-
-![Orbit Success callout (dark)](/examples/dark/schemas/callout/success.png)
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).
+| Method | Role |
+|--------|------|
+| `.info` / `.success` / `.warning` / `.danger` | Status helpers |
+| `.status` | Explicit status string |
+| `.label` | Title text |
+| `.description` | Supporting copy |
+| `.icon` / `.icon_color` / `.color` | Visual overrides |
+| `.footer_actions` | Action components in the footer |
+| `.footer_actions_alignment` | e.g. `start` / `end` |
+| `.schema` | Nested body components |
