@@ -110,9 +110,10 @@ def load_columns(model: type[Any], *, connection: str | None = None) -> tuple[li
         return [], f"Table [{table}] does not exist yet (or has no columns)."
 
     casts = {}
-    if hasattr(model, "class_casts"):
+    getter = getattr(model, "class_casts", None)
+    if callable(getter):
         try:
-            casts = dict(model.class_casts() or {})
+            casts = dict(getter() or {})
         except Exception:  # noqa: BLE001
             casts = {}
 
@@ -142,12 +143,10 @@ def generate_schemas(
     table_imports: set[str] = set()
 
     for col in columns:
+        # Skip PK / reserved form fields; also honor custom timestamp attribute names.
         if col.name == pk or col.name in _SKIP_FORM:
             pass
-        elif _is_timestamp(col, model) and col.name in (
-            getattr(model, "created_at", "created_at") if model else "created_at",
-            getattr(model, "updated_at", "updated_at") if model else "updated_at",
-        ):
+        elif _is_timestamp(col, model):
             pass
         else:
             field_line, field_imps = _form_field(col)
@@ -157,9 +156,6 @@ def generate_schemas(
 
         if col.name in _SKIP_TABLE:
             continue
-        if col.name in (getattr(model, "hidden", ()) if model else ()):
-            if col.name in ("password", "remember_token"):
-                continue
         col_line, col_imps = _table_column(col, model=model)
         if col_line:
             table_columns.append(col_line)
@@ -246,8 +242,9 @@ def _kind(col: ColumnSpec) -> str:
         t in type_u for t in ("FLOAT", "DOUBLE", "DECIMAL", "NUMERIC", "REAL")
     ):
         return "numeric"
-    if cast in ("int", "integer") or any(
-        t in type_u for t in ("INT", "BIGINT", "SMALLINT", "TINYINT", "SERIAL")
+    if cast in ("int", "integer") or (
+        any(t in type_u for t in ("INT", "BIGINT", "SMALLINT", "TINYINT", "SERIAL"))
+        and not name.endswith("_id")
     ):
         return "integer"
     if _TEXT_HINT.search(type_u) and "VARCHAR" not in type_u:
