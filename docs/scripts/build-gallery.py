@@ -163,6 +163,14 @@ SHOTS: list[tuple[str, str]] = [
     ("forms/view-field/basic", "View field — basic"),
     ("forms/slider/basic", "Slider — basic"),
     ("tables/overview", "Tables overview"),
+    ("tables/overview-columns", "Overview — columns"),
+    ("tables/overview-searchable", "Overview — searchable"),
+    ("tables/overview-sortable", "Overview — sortable"),
+    ("tables/overview-relationships", "Overview — relationship columns"),
+    ("tables/overview-pagination", "Overview — pagination"),
+    ("tables/overview-heading", "Overview — heading"),
+    ("tables/overview-reorder", "Overview — reorder"),
+    ("tables/overview-striped", "Overview — striped rows"),
     ("tables/money", "Money / currency"),
     ("tables/text-features", "Text column features"),
     ("tables/icon-boolean", "Icon + boolean"),
@@ -690,26 +698,166 @@ def build() -> str:
         ]
     ).render()
 
+    _overview_posts = [
+        {"id": 1, "title": "Launch Orbit", "status": "published", "amount": 1200, "author": {"name": "Ada Lovelace"}, "featured": True, "sort": 1},
+        {"id": 2, "title": "Conduit hosts", "status": "draft", "amount": 340, "author": {"name": "Grace Hopper"}, "featured": False, "sort": 2},
+        {"id": 3, "title": "Mobile tables", "status": "review", "amount": 880, "author": {"name": "Katherine Johnson"}, "featured": True, "sort": 3},
+        {"id": 4, "title": "Panel chrome", "status": "published", "amount": 560, "author": {"name": "Ada Lovelace"}, "featured": False, "sort": 4},
+        {"id": 5, "title": "Form fields", "status": "published", "amount": 210, "author": {"name": "Margaret Hamilton"}, "featured": True, "sort": 5},
+        {"id": 6, "title": "Action modals", "status": "draft", "amount": 95, "author": {"name": "Grace Hopper"}, "featured": False, "sort": 6},
+        {"id": 7, "title": "Global search", "status": "review", "amount": 430, "author": {"name": "Dorothy Vaughan"}, "featured": False, "sort": 7},
+        {"id": 8, "title": "Theme tokens", "status": "published", "amount": 175, "author": {"name": "Katherine Johnson"}, "featured": True, "sort": 8},
+        {"id": 9, "title": "Empty states", "status": "draft", "amount": 60, "author": {"name": "Ada Lovelace"}, "featured": False, "sort": 9},
+        {"id": 10, "title": "Bulk delete", "status": "published", "amount": 720, "author": {"name": "Margaret Hamilton"}, "featured": True, "sort": 10},
+        {"id": 11, "title": "Query builder", "status": "review", "amount": 310, "author": {"name": "Dorothy Vaughan"}, "featured": False, "sort": 11},
+        {"id": 12, "title": "Infolist entries", "status": "published", "amount": 450, "author": {"name": "Grace Hopper"}, "featured": True, "sort": 12},
+    ]
+
     table = (
         Table.make()
+        .heading("Posts")
+        .description("Searchable, sortable, and actionable records.")
         .columns(
             [
                 TextColumn.make("title").label("Title").searchable().sortable(),
+                TextColumn.make("author.name").label("Author").sortable(),
                 TextColumn.make("status").label("Status").badge().sortable(),
                 TextColumn.make("amount").label("Amount").money("USD").align_end().sortable(),
             ]
         )
-        .records(
-            [
-                {"id": 1, "title": "Launch Orbit", "status": "published", "amount": 1200},
-                {"id": 2, "title": "Conduit hosts", "status": "draft", "amount": 340},
-                {"id": 3, "title": "Mobile tables", "status": "review", "amount": 880},
-            ]
-        )
+        .records(_overview_posts)
         .striped()
         .actions([EditAction.make().url(lambda record, **_: f"/edit/{record['id']}")])
         .header_actions([CreateAction.make().url("/create")])
         .paginate(page=1, per_page=10)
+        .extreme_pagination_links()
+    )
+
+    table_overview_columns = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title"),
+                TextColumn.make("slug"),
+                IconColumn.make("featured").boolean().label("Featured"),
+            ]
+        )
+        .records(
+            [
+                {"title": "Launch Orbit", "slug": "launch-orbit", "featured": True},
+                {"title": "Conduit hosts", "slug": "conduit-hosts", "featured": False},
+                {"title": "Mobile tables", "slug": "mobile-tables", "featured": True},
+                {"title": "Panel chrome", "slug": "panel-chrome", "featured": False},
+                {"title": "Form fields", "slug": "form-fields", "featured": True},
+            ]
+        )
+        .striped()
+        .paginated(False)
+    )
+
+    table_overview_searchable = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title").searchable().sortable(),
+                TextColumn.make("status").badge(),
+            ]
+        )
+        .records(_overview_posts)
+        .search("Orbit")
+        .header_actions([CreateAction.make().url("/create")])
+        .paginate(page=1, per_page=10)
+    )
+
+    table_overview_sortable = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title").sortable(),
+                TextColumn.make("amount").money("USD").align_end().sortable(),
+            ]
+        )
+        .records(_overview_posts[:8])
+        .sort("amount", "desc")
+        .striped()
+        .paginate(page=1, per_page=10)
+    )
+
+    table_overview_relationships = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title").searchable(),
+                TextColumn.make("author.name").label("Author"),
+                TextColumn.make("status").badge(),
+            ]
+        )
+        .records(_overview_posts[:6])
+        .striped()
+        .paginated(False)
+    )
+
+    table_overview_pagination = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title"),
+                TextColumn.make("status").badge(),
+            ]
+        )
+        .records(_overview_posts)
+        .paginated([5, 10, 25, "all"])
+        .default_pagination_page_option(5)
+        .extreme_pagination_links()
+        .paginate(page=1, per_page=5)
+        .striped()
+    )
+
+    table_overview_heading = (
+        Table.make()
+        .heading("Clients")
+        .description("Manage your clients here.")
+        .columns(
+            [
+                TextColumn.make("title").label("Name"),
+                TextColumn.make("status").badge(),
+            ]
+        )
+        .records(_overview_posts[:5])
+        .header_actions([CreateAction.make().url("/create")])
+        .striped()
+        .paginated(False)
+    )
+
+    table_overview_reorder = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title"),
+                TextColumn.make("sort").label("Order"),
+            ]
+        )
+        .records(_overview_posts[:5])
+        .reorderable("sort")
+        .striped()
+        .paginated(False)
+    )
+
+    table_overview_striped = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title"),
+                TextColumn.make("status").badge(),
+                TextColumn.make("amount").money("USD").align_end(),
+            ]
+        )
+        .records(_overview_posts[:6])
+        .striped()
+        .record_classes(
+            lambda record: "or-row-draft" if record.get("status") == "draft" else None
+        )
+        .paginated(False)
     )
 
     table_money = (
@@ -1056,6 +1204,42 @@ def build() -> str:
             for sid, (label, html) in schema_variants.items()
         ),
         shot("tables/overview", "Tables overview", table.render()),
+        shot("tables/overview-columns", "Overview — columns", table_overview_columns.render()),
+        shot(
+            "tables/overview-searchable",
+            "Overview — searchable",
+            table_overview_searchable.render(),
+        ),
+        shot(
+            "tables/overview-sortable",
+            "Overview — sortable",
+            table_overview_sortable.render(),
+        ),
+        shot(
+            "tables/overview-relationships",
+            "Overview — relationship columns",
+            table_overview_relationships.render(),
+        ),
+        shot(
+            "tables/overview-pagination",
+            "Overview — pagination",
+            table_overview_pagination.render(),
+        ),
+        shot(
+            "tables/overview-heading",
+            "Overview — heading",
+            table_overview_heading.render(),
+        ),
+        shot(
+            "tables/overview-reorder",
+            "Overview — reorder",
+            table_overview_reorder.render(),
+        ),
+        shot(
+            "tables/overview-striped",
+            "Overview — striped rows",
+            table_overview_striped.render(),
+        ),
         shot("tables/money", "Money / currency", table_money.render()),
         shot("tables/text-features", "Text column features", table_text.render()),
         shot("tables/icon-boolean", "Icon + boolean", table_icons.render()),
