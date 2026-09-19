@@ -67,12 +67,14 @@ export default defineConfig({
 				Header: './src/components/Header.astro',
 				Hero: './src/components/Hero.astro',
 				PageFrame: './src/components/PageFrame.astro',
+				Pagination: './src/components/Pagination.astro',
 				SiteTitle: './src/components/SiteTitle.astro',
 				ThemeSelect: './src/components/ThemeSelect.astro',
+				TwoColumnContent: './src/components/TwoColumnContent.astro',
 			},
 			expressiveCode: {
-				// One Dark Pro for light + dark UI (matches Almasix/Conduit docs).
-				themes: ['one-dark-pro'],
+				// Filament docs (Mintlify): Shiki gruvbox-dark-hard — dark blocks on cream.
+				themes: ['gruvbox-dark-hard'],
 				useStarlightDarkModeSwitch: false,
 				useStarlightUiThemeColors: false,
 				// Must stay true on Astro 7: inlining can break code-frame CSS.
@@ -82,12 +84,12 @@ export default defineConfig({
 					borderWidth: '1px',
 					codeFontFamily: "'JetBrains Mono', ui-monospace, monospace",
 					codeFontSize: '0.9rem',
-					codeBackground: '#282c34',
-					codeForeground: '#abb2bf',
+					codeBackground: '#1d2021',
+					codeForeground: '#ebdbb2',
 					frames: {
-						shadowColor: 'rgba(0, 0, 0, 0.4)',
-						editorBackground: '#282c34',
-						terminalBackground: '#282c34',
+						shadowColor: 'rgba(0, 0, 0, 0.35)',
+						editorBackground: '#1d2021',
+						terminalBackground: '#1d2021',
 					},
 				},
 			},
