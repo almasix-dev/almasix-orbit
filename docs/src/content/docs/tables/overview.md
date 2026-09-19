@@ -155,6 +155,10 @@ When bulk actions are present, each row gets a checkbox and a selection bar appe
 
 Tables are paginated by default (per-page options **5 / 10 / 25 / 50**). Users change page size and move between pages from the footer chrome.
 
+![Pagination (light)](/examples/light/tables/overview-pagination.png)
+
+![Pagination (dark)](/examples/dark/tables/overview-pagination.png)
+
 ### Customizing pagination options
 
 Pass options to `.paginated([...])`. Include `"all"` to offer a full list (use carefully on large datasets):
@@ -202,9 +206,11 @@ table.query_string_identifier("users")
 table.paginated(False)
 ```
 
-![Pagination (light)](/examples/light/tables/overview-pagination.png)
+The footer chrome (result range, per-page select, and page links) is omitted and every record is shown.
 
-![Pagination (dark)](/examples/dark/tables/overview-pagination.png)
+![Pagination disabled (light)](/examples/light/tables/overview-pagination-disabled.png)
+
+![Pagination disabled (dark)](/examples/dark/tables/overview-pagination-disabled.png)
 
 Persist the user’s per-page choice with `.persist_records_per_page_in_session()` (or `.persist_in_session()` for search, sort, filters, columns, and per-page together).
 

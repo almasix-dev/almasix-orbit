@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from almasix.orbit.actions import Action, DeleteBulkAction
+from almasix.orbit.actions import Action, CreateAction, DeleteBulkAction
 from almasix.orbit.tables import PaginationMode, Table, TextColumn
 from almasix.orbit.tables.columns import dot_get
 
@@ -322,8 +322,28 @@ def test_heading_description_only_variants() -> None:
     assert "Only description" in only_desc.render()
     assert only_desc._render_table_heading() == (
         '<div class="or-table-header">'
-        '<p class="or-table-description">Only description</p></div>'
+        '<div class="or-table-header-text">'
+        '<p class="or-table-description">Only description</p></div></div>'
     )
+
+
+def test_header_actions_render_right_aligned_in_table_header() -> None:
+    html = (
+        Table.make("posts")
+        .heading("Clients")
+        .description("Manage your clients here.")
+        .columns([TextColumn.make("title")])
+        .records([{"id": 1, "title": "A"}])
+        .header_actions([CreateAction.make().url("/create")])
+        .paginated(False)
+        .render()
+    )
+    assert "or-table-header-actions" in html
+    assert "or-list-toolbar-actions" not in html
+    header_i = html.find("or-table-header")
+    actions_i = html.find("or-table-header-actions")
+    assert 0 <= header_i < actions_i
+    assert "Create" in html[actions_i : actions_i + 400]
 
 
 def test_default_sort_does_not_override_active_sort() -> None:

@@ -1428,11 +1428,6 @@ class Table(Component):
                     f'{_conduit_click("toggleReordering")}>{e(label)}</button>'
                 )
             toolbar_end += f'<div class="or-table-reorder-trigger">{reorder_btn}</div>'
-        if self._header_actions and not skip_header_actions:
-            toolbar_end += (
-                f'<div class="or-list-toolbar-actions">'
-                f'{self._render_actions(self._header_actions, None, **ctx)}</div>'
-            )
         groups_chooser = ""
         if self._groups:
             active_name = self._active_group_name or (
@@ -1540,7 +1535,10 @@ class Table(Component):
                 selection_attr += ' data-select-all="true"'
         pagination = self._render_pagination_chrome(**ctx)
 
-        heading_html = self._render_table_heading(**ctx)
+        heading_html = self._render_table_heading(
+            skip_header_actions=skip_header_actions,
+            **ctx,
+        )
         wrap_attrs = grid_attr + selection_attr
         if self._poll:
             wrap_attrs += f' data-poll="{e(self._poll)}"'
@@ -1581,11 +1579,25 @@ class Table(Component):
         if self._header_html is not None:
             view = self._header_html
             return str(evaluate(view, **ctx) if callable(view) else view)
-        parts: list[str] = []
+        skip_header_actions = bool(ctx.get("skip_header_actions", False))
+        text_parts: list[str] = []
         if self._heading:
-            parts.append(f'<h2 class="or-table-heading">{e(self._heading)}</h2>')
+            text_parts.append(f'<h2 class="or-table-heading">{e(self._heading)}</h2>')
         if self._description:
-            parts.append(f'<p class="or-table-description">{e(self._description)}</p>')
-        if not parts:
+            text_parts.append(
+                f'<p class="or-table-description">{e(self._description)}</p>'
+            )
+        actions_html = ""
+        if self._header_actions and not skip_header_actions:
+            actions_html = (
+                f'<div class="or-table-header-actions">'
+                f"{self._render_actions(self._header_actions, None, **ctx)}</div>"
+            )
+        if not text_parts and not actions_html:
             return ""
-        return f'<div class="or-table-header">{"".join(parts)}</div>'
+        text_html = (
+            f'<div class="or-table-header-text">{"".join(text_parts)}</div>'
+            if text_parts
+            else ""
+        )
+        return f'<div class="or-table-header">{text_html}{actions_html}</div>'

@@ -18,6 +18,7 @@ const IDS = [
   "tables/overview-sortable",
   "tables/overview-relationships",
   "tables/overview-pagination",
+  "tables/overview-pagination-disabled",
   "tables/overview-heading",
   "tables/overview-reorder",
   "tables/overview-striped",
@@ -44,7 +45,7 @@ async function main() {
     executablePath: process.env.ORBIT_CHROMIUM || "/usr/bin/chromium",
   });
   const page = await browser.newPage({
-    viewport: { width: 1280, height: 900 },
+    viewport: { width: 1680, height: 1050 },
     deviceScaleFactor: 2,
   });
   await page.goto(pathToFileURL(gallery).href, { waitUntil: "domcontentloaded" });

@@ -7,11 +7,12 @@ Shot IDs use ``{section}/{name}`` and become files under
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from gallery_variants import build_form_variants, build_schema_variants
 
-from almasix.orbit.actions.action import CreateAction, EditAction
+from almasix.orbit.actions.action import CreateAction, DeleteBulkAction, EditAction
 from almasix.orbit.forms.components import (
     Block,
     Builder,
@@ -168,6 +169,7 @@ SHOTS: list[tuple[str, str]] = [
     ("tables/overview-sortable", "Overview — sortable"),
     ("tables/overview-relationships", "Overview — relationship columns"),
     ("tables/overview-pagination", "Overview — pagination"),
+    ("tables/overview-pagination-disabled", "Overview — pagination disabled"),
     ("tables/overview-heading", "Overview — heading"),
     ("tables/overview-reorder", "Overview — reorder"),
     ("tables/overview-striped", "Overview — striped rows"),
@@ -240,6 +242,21 @@ def shot(shot_id: str, label: str, html: str) -> str:
         f'<p class="gallery-label">{label} <code>{shot_id}</code></p>'
         f'<div class="or-shot" data-shot="{shot_id}">{html}</div>'
         f"</section>"
+    )
+
+
+def static_selection_chrome(html: str, *, count_label: str = "1 record selected") -> str:
+    """Gallery has no Alpine — reveal the selection bar for static screenshots."""
+    html = html.replace(
+        'role="status" aria-live="polite" x-show="selectionCount > 0" x-cloak>',
+        'role="status" aria-live="polite">',
+        1,
+    )
+    return re.sub(
+        r'<span class="or-ta-selection-label"[^>]*></span>',
+        f'<span class="or-ta-selection-label">{count_label}</span>',
+        html,
+        count=1,
     )
 
 
@@ -813,6 +830,19 @@ def build() -> str:
         .striped()
     )
 
+    table_overview_pagination_disabled = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title"),
+                TextColumn.make("status").badge(),
+            ]
+        )
+        .records(_overview_posts[:6])
+        .paginated(False)
+        .striped()
+    )
+
     table_overview_heading = (
         Table.make()
         .heading("Clients")
@@ -1148,7 +1178,11 @@ def build() -> str:
         )
         .actions_as_dropdown(False)
         .header_actions([CreateAction.make().url("/create")])
+        .bulk_actions([DeleteBulkAction.make()])
         .striped()
+    )
+    table_actions_html = static_selection_chrome(
+        table_actions.render(selected=["1"]),
     )
 
     table_empty = (
@@ -1226,6 +1260,11 @@ def build() -> str:
             table_overview_pagination.render(),
         ),
         shot(
+            "tables/overview-pagination-disabled",
+            "Overview — pagination disabled",
+            table_overview_pagination_disabled.render(),
+        ),
+        shot(
             "tables/overview-heading",
             "Overview — heading",
             table_overview_heading.render(),
@@ -1251,7 +1290,7 @@ def build() -> str:
         shot("tables/filters", "Filters chrome", table_filters.render()),
         shot("tables/summaries", "Summaries", table_summaries.render()),
         shot("tables/grouping", "Grouped rows", table_grouping.render()),
-        shot("tables/actions", "Row actions", table_actions.render()),
+        shot("tables/actions", "Row / bulk actions", table_actions_html),
         shot("tables/empty", "Empty state", table_empty.render()),
         shot(
             "schemas/callout",
@@ -1303,7 +1342,7 @@ body.dark {{
   color: #faf7f5;
 }}
 .gallery-header {{
-  max-width: 960px;
+  max-width: 1480px;
   margin: 0 auto;
   padding: 2rem 1.5rem 0.5rem;
 }}
@@ -1311,7 +1350,7 @@ body.dark {{
 .gallery-header p {{ margin: 0; color: var(--or-muted); font-size: 0.95rem; }}
 .gallery-header code {{ font-size: 0.85em; }}
 .gallery-section {{
-  max-width: 960px;
+  max-width: 1480px;
   margin: 0 auto;
   padding: 1.25rem 1.5rem 2rem;
 }}

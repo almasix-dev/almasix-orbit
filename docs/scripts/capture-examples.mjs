@@ -30,7 +30,7 @@ async function main() {
     executablePath: process.env.ORBIT_CHROMIUM || "/usr/bin/chromium",
   });
   const page = await browser.newPage({
-    viewport: { width: 1280, height: 900 },
+    viewport: { width: 1680, height: 1050 },
     deviceScaleFactor: 2,
   });
   const url = pathToFileURL(gallery).href;
