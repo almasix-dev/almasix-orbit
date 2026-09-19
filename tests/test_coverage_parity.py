@@ -73,6 +73,17 @@ def test_evaluate_positional_and_fallback_paths() -> None:
     assert evaluate(weird, 1, a=2) is weird
     assert evaluate(weird) is weird
 
+    # Builtins / C callables may reject inspect.signature — still evaluate.
+    assert evaluate(len, [1, 2, 3]) == 3
+
+    import inspect
+    from unittest.mock import patch
+
+    with patch("almasix.orbit.support.evaluate.inspect.signature", side_effect=ValueError("nope")):
+        assert evaluate(lambda **kw: kw.get("record"), record="ok", noise=1) == "ok"
+    with patch("almasix.orbit.support.evaluate.inspect.signature", side_effect=TypeError("nope")):
+        assert evaluate(lambda **kw: kw.get("a"), a=2) == 2
+
 
 def test_component_hint_helpers() -> None:
     bare = Component.make("x")

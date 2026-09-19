@@ -25,12 +25,23 @@ def test_state_default_placeholder_and_tooltip() -> None:
     )
     assert col.resolve_state({"nickname": None}) == "fallback"
     assert col.resolve_state({"nickname": "Ada"}) == "Ada"
-    empty = col.state(None).default(None).placeholder("Empty")
+    # Render context must not break `lambda record: …` (unexpected kwargs).
+    cell = col.state(
+        lambda record: f"{record.get('first_name', '')} {record.get('last_name', '')}".strip()
+    ).render_cell(
+        {"first_name": "Ada", "last_name": "Lovelace"},
+        has_bulk=True,
+        toggled_columns={},
+    )
+    assert "Ada Lovelace" in cell
+    assert "<function" not in cell
+    empty = TextColumn.make("nickname").placeholder("Empty")
     cell = empty.render_cell({"nickname": None})
     assert "or-cell-placeholder" in cell
     assert "Empty" in cell
-    assert 'title="cell tip"' in col.render_cell({"nickname": "x"})
-    table = Table.make().columns([col]).records([{"nickname": "x"}])
+    tip_col = TextColumn.make("nickname").tooltip("cell tip").header_tooltip("header tip")
+    assert 'title="cell tip"' in tip_col.render_cell({"nickname": "x"})
+    table = Table.make().columns([tip_col]).records([{"nickname": "x"}])
     html = table.render()
     assert 'title="header tip"' in html
 
