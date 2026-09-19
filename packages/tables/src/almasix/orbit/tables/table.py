@@ -13,11 +13,15 @@ from almasix.orbit.support.evaluate import evaluate
 from almasix.orbit.support.html import e
 from almasix.orbit.tables.columns import Column, ColumnGroup, dot_get
 from almasix.orbit.tables.enums import PaginationMode
-from almasix.orbit.tables.filters import Filter
+from almasix.orbit.tables.filters import Filter, FilterGroup, flatten_filters
 from almasix.orbit.tables.grouping import Group
 from almasix.orbit.tables.layout import LayoutComponent
 
 ColumnLike = Column | ColumnGroup | LayoutComponent
+
+
+def _filter_value_on(value: Any) -> bool:
+    return value not in (None, "", False, 0, "0", "false", "no", [])
 
 
 def _conduit_click(expression: str) -> str:
@@ -61,7 +65,7 @@ class Table(Component):
     def __init__(self, name: str | None = "table") -> None:
         super().__init__(name)
         self._columns: list[ColumnLike] = []
-        self._filters: list[Filter] = []
+        self._filters: list[Filter | FilterGroup] = []
         self._filter_state: dict[str, Any] = {}
         self._actions: list[Action] = []
         self._bulk_actions: list[Action] = []
@@ -87,6 +91,8 @@ class Table(Component):
         self._persist_filters_in_session = False
         self._filters_session_key: str | None = None
         self._defer_filters = False
+        self._hidden_filter_indicators = False
+        self._deselect_all_records_when_filtered = True
         self._query_builder: Any | None = None
         self._stacked_on_mobile: bool = True
         self._layout: str = "table"
@@ -150,13 +156,29 @@ class Table(Component):
         self._columns.extend(list(columns))
         return self
 
-    def filters(self, filters: Sequence[Filter]) -> Self:
+    def filters(self, filters: Sequence[Filter | FilterGroup]) -> Self:
         self._filters = list(filters)
         return self
+
+    def flat_filters(self) -> list[Filter]:
+        return flatten_filters(self._filters)
 
     def filter_state(self, state: dict[str, Any]) -> Self:
         self._filter_state = dict(state)
         return self
+
+    def get_default_filter_state(self, **ctx: Any) -> dict[str, Any]:
+        """Seed values from each filter's ``.default()`` (Filament ``default``)."""
+        out: dict[str, Any] = {}
+        for f in self.flat_filters():
+            name = f.get_name() or ""
+            if not name or getattr(f, "_default", None) is None:
+                continue
+            default = f.get_default(**ctx)
+            if default in (None, ""):
+                continue
+            out[name] = default
+        return out
 
     def persist_filters_in_session(
         self,
@@ -172,6 +194,17 @@ class Table(Component):
     def defer_filters(self, condition: bool = True) -> Self:
         self._defer_filters = condition
         return self
+
+    def hidden_filter_indicators(self, condition: bool = True) -> Self:
+        self._hidden_filter_indicators = condition
+        return self
+
+    def deselect_all_records_when_filtered(self, condition: bool = True) -> Self:
+        self._deselect_all_records_when_filtered = condition
+        return self
+
+    def should_deselect_all_records_when_filtered(self) -> bool:
+        return bool(self._deselect_all_records_when_filtered)
 
     def query_builder(self, builder: Any) -> Self:
         """Attach a QueryBuilder (or compatible) rendered in the filter chrome."""
@@ -367,8 +400,9 @@ class Table(Component):
 
     def _filtered_records(self) -> list[Any]:
         records = list(self._records)
-        if self._filter_state and self._filters:
-            for f in self._filters:
+        flat = self.flat_filters()
+        if self._filter_state and flat:
+            for f in flat:
                 key = f.get_name() or ""
                 if key in self._filter_state:
                     records = f.apply(records, self._filter_state[key])
@@ -705,6 +739,101 @@ class Table(Component):
                     return str(child_label)
         return col.get_name() or ""
 
+    def _render_filter_control(self, f: Filter, **ctx: Any) -> str:
+        """Render one filter field (select, multi-select, checkbox, or toggle)."""
+        name = f.get_name() or ""
+        name_e = e(name)
+        label = e(f.get_label(**ctx) or name)
+        current = self._filter_state.get(name)
+
+        if f.is_boolean_filter():
+            checked = " checked" if _filter_value_on(current) else ""
+            css = "or-toggle" if f.is_toggle() else "or-checkbox"
+            input_type = "checkbox"
+            if self._defer_filters:
+                change = (
+                    ' @change="pending[\''
+                    + name.replace("'", "\\'")
+                    + '\'] = $event.target.checked ? true : null"'
+                )
+            else:
+                change = _alpine_wire_call(
+                    "setTableFilter('"
+                    + name.replace("'", "\\'")
+                    + "', $event.target.checked ? true : '')"
+                )
+            return (
+                f'<div class="or-table-filter or-table-filter-boolean" data-filter="{name_e}">'
+                f'<label class="or-filter-check-label">'
+                f'<input type="{input_type}" class="{css} or-filter-check" name="filters.{name_e}"'
+                f' data-filter-name="{name_e}"{checked}{change} />'
+                f'<span class="or-filter-label">{label}</span></label></div>'
+            )
+
+        opts = f.get_options(**ctx)
+        selected = "" if current in (None, "") else current
+        multiple = bool(getattr(f, "is_multiple", lambda: False)())
+        placeholder_ok = bool(getattr(f, "has_selectable_placeholder", lambda: True)())
+        blank = ""
+        if placeholder_ok and not multiple and "" not in {str(k) for k in opts}:
+            blank = '<option value="">All</option>'
+        selected_set: set[str] = set()
+        if multiple and isinstance(selected, (list, tuple, set)):
+            selected_set = {str(v) for v in selected}
+        elif selected not in (None, ""):
+            selected_set = {str(selected)}
+        options_html = blank + "".join(
+            f'<option value="{e(k)}"'
+            f'{" selected" if str(k) in selected_set else ""}>{e(v)}</option>'
+            for k, v in opts.items()
+        )
+        multi_attr = " multiple" if multiple else ""
+        if self._defer_filters:
+            if multiple:
+                change = (
+                    ' @change="pending[\''
+                    + name.replace("'", "\\'")
+                    + '\'] = Array.from($event.target.selectedOptions).map(o => o.value)"'
+                )
+            else:
+                change = (
+                    ' @change="pending[\''
+                    + name.replace("'", "\\'")
+                    + '\'] = $event.target.value"'
+                )
+        else:
+            if multiple:
+                change = _alpine_wire_call(
+                    "setTableFilter('"
+                    + name.replace("'", "\\'")
+                    + "', Array.from($event.target.selectedOptions).map(o => o.value))"
+                )
+            else:
+                change = _alpine_wire_call(
+                    "setTableFilter('" + name.replace("'", "\\'") + "', $event.target.value)"
+                )
+        return (
+            f'<div class="or-table-filter" data-filter="{name_e}">'
+            f'<label class="or-filter-label">{label}</label>'
+            f'<select class="or-select or-filter-select" name="filters.{name_e}"'
+            f' data-filter-name="{name_e}"{multi_attr}{change}>{options_html}</select></div>'
+        )
+
+    def _render_filter_items(self, items: Sequence[Filter | FilterGroup], **ctx: Any) -> str:
+        parts: list[str] = []
+        for item in items:
+            if isinstance(item, FilterGroup):
+                title = e(item.get_label(**ctx) or item.get_name() or "Filters")
+                inner = self._render_filter_items(item.get_filters(), **ctx)
+                parts.append(
+                    f'<fieldset class="or-filter-group" data-filter-group="{e(item.get_name() or "")}">'
+                    f'<legend class="or-filter-group-title">{title}</legend>'
+                    f"{inner}</fieldset>"
+                )
+            else:
+                parts.append(self._render_filter_control(item, **ctx))
+        return "".join(parts)
+
     def _render_filter_chrome(self, **ctx: Any) -> str:
         if not self._filters and self._query_builder is None:
             return ""
@@ -716,49 +845,20 @@ class Table(Component):
             attrs.append(f'data-filters-session="{e(key)}"')
         if self._defer_filters:
             attrs.append('data-defer-filters="true"')
+        flat = self.flat_filters()
         active_count = sum(
             1
-            for f in self._filters
+            for f in flat
             if (f.get_name() or "")
-            and self._filter_state.get(f.get_name() or "") not in (None, "", [])
+            and self._filter_state.get(f.get_name() or "") not in (None, "", [], False)
         )
         attrs.append(f'data-active-count="{active_count}"')
         attrs.append(f'data-pending="{e(json.dumps(dict(self._filter_state)))}"')
         attr_s = (" " + " ".join(attrs)) if attrs else ""
-        parts: list[str] = []
-        for f in self._filters:
-            name = f.get_name() or ""
-            name_e = e(name)
-            label = e(f.get_label(**ctx) or name)
-            opts = f.get_options(**ctx)
-            current = self._filter_state.get(name)
-            selected = "" if current in (None, "") else str(current)
-            blank = '<option value="">All</option>' if "" not in {str(k) for k in opts} else ""
-            options_html = blank + "".join(
-                f'<option value="{e(k)}"'
-                f'{" selected" if selected and str(k) == selected else ""}>{e(v)}</option>'
-                for k, v in opts.items()
-            )
-            if self._defer_filters:
-                change = (
-                    ' @change="pending[\''
-                    + name.replace("'", "\\'")
-                    + '\'] = $event.target.value"'
-                )
-            else:
-                change = _alpine_wire_call(
-                    "setTableFilter('" + name.replace("'", "\\'") + "', $event.target.value)"
-                )
-            parts.append(
-                f'<div class="or-table-filter" data-filter="{name_e}">'
-                f'<label class="or-filter-label">{label}</label>'
-                f'<select class="or-select or-filter-select" name="filters.{name_e}"'
-                f' data-filter-name="{name_e}"{change}>{options_html}</select></div>'
-            )
+        parts_html = self._render_filter_items(self._filters, **ctx)
         qb_html = ""
         if self._query_builder is not None and hasattr(self._query_builder, "render"):
             qb_html = self._query_builder.render(**ctx)
-        # Filament-style panel: Filters + Reset header; Apply filters when deferred.
         reset_btn = (
             f'<button type="button" class="or-link-btn or-link-danger or-filters-reset"'
             f'{_conduit_click("resetTableFilters")} @click="closeFilters()">Reset</button>'
@@ -786,23 +886,24 @@ class Table(Component):
             f'role="dialog" aria-label="Filters">'
             f'<div class="or-filters-panel-header">'
             f'<h3 class="or-filters-panel-title">Filters</h3>{reset_btn}</div>'
-            f'<div class="or-table-filters-row">{"".join(parts)}</div>'
+            f'<div class="or-table-filters-row">{parts_html}</div>'
             f"{qb_html}{footer}</div></div>"
         )
 
     def _render_filter_indicators(self, **ctx: Any) -> str:
+        if self._hidden_filter_indicators:
+            return ""
         chips: list[str] = []
-        for f in self._filters:
-            if not getattr(f, "_indicate", True):
-                continue
+        for f in self.flat_filters():
             name = f.get_name() or ""
             if not name:
                 continue
             value = self._filter_state.get(name)
-            if value in (None, "", []):
+            if value in (None, "", [], False):
                 continue
-            opts = f.get_options(**ctx)
-            display = opts.get(value, opts.get(str(value), value))
+            display = f.resolve_indicator(value, **ctx)
+            if display in (None, ""):
+                continue
             label = f.get_label(**ctx) or name
             click = _conduit_click("removeTableFilter('" + name + "')")
             chips.append(
@@ -1273,7 +1374,7 @@ class Table(Component):
     def to_dict(self) -> dict[str, Any]:
         return {
             "columns": [c.to_dict() for c in self.flat_columns()],
-            "filters": [f.to_dict() for f in self._filters],
+            "filters": [f.to_dict() for f in self.flat_filters()],
             "actions": [a.to_dict() for a in self._actions],
             "bulk_actions": [a.to_dict() for a in self._bulk_actions],
             "total": self.get_total(),
@@ -1282,6 +1383,8 @@ class Table(Component):
             "groups_only": self._groups_only,
             "persist_filters": self._persist_filters_in_session,
             "defer_filters": self._defer_filters,
+            "hidden_filter_indicators": self._hidden_filter_indicators,
+            "deselect_all_records_when_filtered": self._deselect_all_records_when_filtered,
             "content_grid": self._content_grid,
             "stacked_on_mobile": self._stacked_on_mobile,
             "layout": self._layout,

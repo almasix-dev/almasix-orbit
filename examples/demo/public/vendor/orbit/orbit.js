@@ -115,9 +115,11 @@
       defer: false,
       activeCount: 0,
       pending: {},
+      sessionKey: null,
       init() {
         const el = this.$el;
         this.defer = el?.hasAttribute?.("data-defer-filters") || false;
+        this.sessionKey = el?.getAttribute?.("data-filters-session") || null;
         const count = el?.getAttribute?.("data-active-count");
         if (count != null) {
           this.activeCount = Number(count) || 0;
@@ -133,6 +135,9 @@
             /* ignore */
           }
         }
+        if (this.sessionKey) {
+          this._restoreSession();
+        }
         this._onCloseOthers = (event) => {
           if (event?.detail?.except === "filters") {
             return;
@@ -144,6 +149,48 @@
       destroy() {
         if (this._onCloseOthers) {
           window.removeEventListener("orbit:close-dropdowns", this._onCloseOthers);
+        }
+      },
+      _storageKey() {
+        return this.sessionKey ? `orbit-table-filters:${this.sessionKey}` : null;
+      },
+      _restoreSession() {
+        const key = this._storageKey();
+        if (!key) {
+          return;
+        }
+        try {
+          const raw = sessionStorage.getItem(key);
+          if (!raw) {
+            return;
+          }
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== "object") {
+            return;
+          }
+          const wire = window.orbitWire?.(this.$el);
+          const current = wire?.table_filters;
+          const empty =
+            !current ||
+            (typeof current === "object" && Object.keys(current).length === 0);
+          if (empty && wire && typeof wire.applyTableFilters === "function") {
+            wire.applyTableFilters(parsed);
+            this.pending = { ...parsed };
+            this.activeCount = Object.keys(parsed).length;
+          }
+        } catch (_) {
+          /* ignore */
+        }
+      },
+      _persistSession(payload) {
+        const key = this._storageKey();
+        if (!key) {
+          return;
+        }
+        try {
+          sessionStorage.setItem(key, JSON.stringify(payload || {}));
+        } catch (_) {
+          /* ignore */
         }
       },
       toggleFilters(event) {
@@ -162,7 +209,10 @@
         const wire = window.orbitWire?.(this.$el);
         const payload = { ...this.pending };
         Object.keys(payload).forEach((key) => {
-          if (payload[key] === "" || payload[key] == null) {
+          if (payload[key] === "" || payload[key] == null || payload[key] === false) {
+            delete payload[key];
+          }
+          if (Array.isArray(payload[key]) && payload[key].length === 0) {
             delete payload[key];
           }
         });
@@ -171,7 +221,49 @@
         } else if (wire && typeof wire.$set === "function") {
           wire.$set("table_filters", payload);
         }
+        this._persistSession(payload);
+        this.activeCount = Object.keys(payload).length;
         this.filtersOpen = false;
+      },
+    }));
+
+    window.Alpine.data("orbitColumnReorder", () => ({
+      dragging: null,
+      onDragStart(event) {
+        const item = event.target?.closest?.("[data-column-name]");
+        if (!item) {
+          return;
+        }
+        this.dragging = item;
+        event.dataTransfer.effectAllowed = "move";
+        try {
+          event.dataTransfer.setData("text/plain", item.dataset.columnName || "");
+        } catch (_) {
+          /* ignore */
+        }
+      },
+      onDrop(event) {
+        const list = this.$el;
+        const target = event.target?.closest?.("[data-column-name]");
+        if (!list || !this.dragging || !target || this.dragging === target) {
+          this.dragging = null;
+          return;
+        }
+        const rect = target.getBoundingClientRect();
+        const before = event.clientY < rect.top + rect.height / 2;
+        if (before) {
+          list.insertBefore(this.dragging, target);
+        } else {
+          list.insertBefore(this.dragging, target.nextSibling);
+        }
+        this.dragging = null;
+        const order = Array.from(list.querySelectorAll("[data-column-name]")).map(
+          (el) => el.dataset.columnName,
+        );
+        const wire = typeof orbitWire === "function" ? orbitWire(list) : null;
+        if (wire && typeof wire.reorderColumns === "function") {
+          wire.reorderColumns(order);
+        }
       },
     }));
 
@@ -1014,6 +1106,50 @@
       document.addEventListener("DOMContentLoaded", bootCollapsedTooltips);
     } else {
       bootCollapsedTooltips();
+    }
+  }
+
+  // Copy-message toast for `.copyable().copyMessage(...)` columns. The Alpine
+  // `@click.stop` on `.or-copy-btn` already writes to the clipboard; this just
+  // surfaces an optional confirmation toast next to the button.
+  const bootCopyToast = () => {
+    if (typeof document === "undefined") return;
+    let toast = document.getElementById("or-copy-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "or-copy-toast";
+      toast.className = "or-copy-toast";
+      toast.setAttribute("role", "status");
+      document.body.appendChild(toast);
+    }
+    let hideTimer = null;
+    document.addEventListener(
+      "click",
+      (event) => {
+        const btn = event.target?.closest?.(".or-copy-btn");
+        if (!btn) return;
+        const wrap = btn.closest("[data-copy]");
+        const message = wrap?.getAttribute("data-copy-message");
+        if (!message) return;
+        const duration = Number(wrap.getAttribute("data-copy-message-duration")) || 2000;
+        toast.textContent = message;
+        const rect = btn.getBoundingClientRect();
+        toast.style.top = `${Math.round(rect.top - 36)}px`;
+        toast.style.left = `${Math.round(rect.left)}px`;
+        toast.classList.add("is-visible");
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => {
+          toast.classList.remove("is-visible");
+        }, duration);
+      },
+      true,
+    );
+  };
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bootCopyToast);
+    } else {
+      bootCopyToast();
     }
   }
 

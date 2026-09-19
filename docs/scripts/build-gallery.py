@@ -70,7 +70,7 @@ from almasix.orbit.tables.columns import (
     ToggleColumn,
     ViewColumn,
 )
-from almasix.orbit.tables.filters import SelectFilter
+from almasix.orbit.tables.filters import Filter, FilterGroup, SelectFilter, TernaryFilter, TrashedFilter
 from almasix.orbit.tables.grouping import Group
 from almasix.orbit.tables.layout import Grid, Panel as LayoutPanel, Split, Stack, View
 from almasix.orbit.tables.summaries import Average, Count, Sum
@@ -198,6 +198,8 @@ SHOTS: list[tuple[str, str]] = [
     ("tables/column-group", "Column group"),
     ("tables/layout", "Cell layouts"),
     ("tables/filters", "Filters chrome"),
+    ("tables/filters-deferred", "Filters deferred"),
+    ("tables/filters-ternary", "Filters ternary + trashed"),
     ("tables/summaries", "Summaries"),
     ("tables/grouping", "Grouped rows"),
     ("tables/actions", "Row actions"),
@@ -273,6 +275,15 @@ def static_selection_chrome(html: str, *, count_label: str = "1 record selected"
         f'<span class="or-ta-selection-label">{count_label}</span>',
         html,
         count=1,
+    )
+
+
+def static_filters_open(html: str) -> str:
+    """Gallery has no Alpine — reveal the filters panel for screenshots."""
+    return html.replace(
+        'class="or-filters-panel" x-show="filtersOpen" x-cloak',
+        'class="or-filters-panel"',
+        1,
     )
 
 
@@ -1539,19 +1550,76 @@ def build() -> str:
         )
         .filters(
             [
-                SelectFilter.make("status")
-                .label("Status")
-                .options({"draft": "Draft", "published": "Published"})
+                FilterGroup.make("visibility")
+                .label("Visibility")
+                .filters(
+                    [
+                        SelectFilter.make("status")
+                        .label("Status")
+                        .options({"draft": "Draft", "published": "Published"}),
+                        Filter.make("featured")
+                        .label("Featured")
+                        .toggle()
+                        .query(lambda q, value: [r for r in q if r.get("featured")]),
+                    ]
+                ),
             ]
         )
-        .filter_state({"status": "published"})
+        .filter_state({"status": "published", "featured": True})
         .records(
             [
-                {"title": "Published one", "status": "published"},
-                {"title": "Drafty", "status": "draft"},
+                {"title": "Published one", "status": "published", "featured": True},
+                {"title": "Drafty", "status": "draft", "featured": False},
             ]
         )
         .header_actions([CreateAction.make().url("/create")])
+    )
+
+    table_filters_deferred = (
+        Table.make()
+        .columns([TextColumn.make("title").searchable(), TextColumn.make("status")])
+        .filters(
+            [
+                SelectFilter.make("status").options(
+                    {"draft": "Draft", "published": "Published"}
+                )
+            ]
+        )
+        .defer_filters()
+        .filter_state({"status": "draft"})
+        .records(
+            [
+                {"title": "Draft note", "status": "draft"},
+                {"title": "Live post", "status": "published"},
+            ]
+        )
+    )
+
+    table_filters_ternary = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title"),
+                TextColumn.make("featured").badge(),
+            ]
+        )
+        .filters(
+            [
+                TernaryFilter.make("featured")
+                .label("Featured")
+                .true_label("Featured")
+                .false_label("Not featured")
+                .placeholder("Any"),
+                TrashedFilter.make(),
+            ]
+        )
+        .filter_state({"featured": "1"})
+        .records(
+            [
+                {"title": "Pinned", "featured": True, "deleted_at": None},
+                {"title": "Archived", "featured": False, "deleted_at": "2024-01-01"},
+            ]
+        )
     )
 
     table_summaries = (
@@ -1749,7 +1817,21 @@ def build() -> str:
         shot("tables/view-column", "View column", table_view_column.render()),
         shot("tables/column-group", "Column group", table_group_cols.render()),
         shot("tables/layout", "Cell layouts", table_layout.render()),
-        shot("tables/filters", "Filters chrome", table_filters.render()),
+        shot(
+            "tables/filters",
+            "Filters chrome",
+            static_filters_open(table_filters.render()),
+        ),
+        shot(
+            "tables/filters-deferred",
+            "Filters deferred",
+            static_filters_open(table_filters_deferred.render()),
+        ),
+        shot(
+            "tables/filters-ternary",
+            "Filters ternary + trashed",
+            static_filters_open(table_filters_ternary.render()),
+        ),
         shot("tables/summaries", "Summaries", table_summaries.render()),
         shot("tables/grouping", "Grouped rows", table_grouping.render()),
         shot("tables/actions", "Row / bulk actions", table_actions_html),

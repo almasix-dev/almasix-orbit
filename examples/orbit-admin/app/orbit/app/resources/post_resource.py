@@ -7,7 +7,7 @@ from typing import Any
 from almasix.orbit import Resource
 from almasix.orbit.forms import Form, Select, TextInput, Textarea
 from almasix.orbit.panels.pages import Tab
-from almasix.orbit.tables import Average, Count, SelectFilter, Sum, Table, TextColumn
+from almasix.orbit.tables import Average, Count, Filter, FilterGroup, SelectFilter, Sum, Table, TextColumn
 
 from app.models.post import Post
 
@@ -88,17 +88,38 @@ class PostResource(Resource):
             )
             .filters(
                 [
-                    SelectFilter.make("status")
-                    .label("Status")
-                    .options(
-                        {
-                            "draft": "Draft",
-                            "review": "Review",
-                            "published": "Published",
-                        }
+                    FilterGroup.make("visibility")
+                    .label("Visibility")
+                    .filters(
+                        [
+                            SelectFilter.make("status")
+                            .label("Status")
+                            .options(
+                                {
+                                    "draft": "Draft",
+                                    "review": "Review",
+                                    "published": "Published",
+                                }
+                            ),
+                            Filter.make("has_body")
+                            .label("Has body")
+                            .toggle()
+                            .query(
+                                lambda q, value: [
+                                    r
+                                    for r in q
+                                    if (
+                                        r.get("body")
+                                        if isinstance(r, dict)
+                                        else getattr(r, "body", None)
+                                    )
+                                ]
+                            ),
+                        ]
                     ),
                 ]
             )
             .defer_filters()
+            .persist_filters_in_session()
             .stacked_on_mobile()
         )

@@ -22,6 +22,7 @@ from almasix.orbit.tables.filters import (
     SelectFilter,
     TernaryFilter,
     TrashedFilter,
+    flatten_filters,
 )
 from almasix.orbit.tables.grouping import Group, GroupBucket
 from almasix.orbit.tables.layout import Grid, LayoutComponent, Panel, Split, Stack, View
@@ -51,6 +52,7 @@ __all__ = [
     "TrashedFilter",
     "QueryBuilderFilter",
     "FilterGroup",
+    "flatten_filters",
     "Summarizer",
     "Sum",
     "Average",
