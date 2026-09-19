@@ -1057,6 +1057,50 @@
     }
   }
 
+  // Copy-message toast for `.copyable().copyMessage(...)` columns. The Alpine
+  // `@click.stop` on `.or-copy-btn` already writes to the clipboard; this just
+  // surfaces an optional confirmation toast next to the button.
+  const bootCopyToast = () => {
+    if (typeof document === "undefined") return;
+    let toast = document.getElementById("or-copy-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "or-copy-toast";
+      toast.className = "or-copy-toast";
+      toast.setAttribute("role", "status");
+      document.body.appendChild(toast);
+    }
+    let hideTimer = null;
+    document.addEventListener(
+      "click",
+      (event) => {
+        const btn = event.target?.closest?.(".or-copy-btn");
+        if (!btn) return;
+        const wrap = btn.closest("[data-copy]");
+        const message = wrap?.getAttribute("data-copy-message");
+        if (!message) return;
+        const duration = Number(wrap.getAttribute("data-copy-message-duration")) || 2000;
+        toast.textContent = message;
+        const rect = btn.getBoundingClientRect();
+        toast.style.top = `${Math.round(rect.top - 36)}px`;
+        toast.style.left = `${Math.round(rect.left)}px`;
+        toast.classList.add("is-visible");
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => {
+          toast.classList.remove("is-visible");
+        }, duration);
+      },
+      true,
+    );
+  };
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bootCopyToast);
+    } else {
+      bootCopyToast();
+    }
+  }
+
   // Collapsible table group headers (Filament-style).
   if (typeof document !== "undefined") {
     document.addEventListener("click", (event) => {

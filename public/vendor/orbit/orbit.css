@@ -811,6 +811,7 @@ html:not([data-theme-preference]) .or-theme-icon-system {
   color: #fff;
   font-size: 0.7rem;
   font-weight: 700;
+  box-shadow: 0 0 0 var(--or-avatar-ring, 0px) var(--or-card);
 }
 
 .or-user-name {
@@ -2481,6 +2482,13 @@ html.dark .or-login-logo-dark {
   cursor: pointer;
 }
 
+/* Native controls — match panel primary (not browser default blue) */
+.or-checkbox,
+.or-toggle,
+.or-radio {
+  accent-color: var(--or-primary);
+}
+
 .or-td-actions {
   text-align: right;
 }
@@ -2550,6 +2558,18 @@ html.dark .or-login-logo-dark {
   font-weight: 600;
   background: var(--or-paper-deep);
   color: var(--or-ink-soft);
+}
+
+.or-badge-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.or-badge-more {
+  background: color-mix(in srgb, var(--or-muted) 18%, var(--or-card));
+  color: var(--or-muted);
 }
 
 .or-empty-state {
@@ -2915,6 +2935,25 @@ html.dark .or-login-logo-dark {
   color: var(--or-ink);
 }
 
+.or-copy-toast {
+  position: fixed;
+  z-index: 1000;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.4rem;
+  background: var(--or-ink);
+  color: var(--or-card);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  box-shadow: var(--or-shadow-card);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.or-copy-toast.is-visible {
+  opacity: 1;
+}
+
 .or-cell-wrap {
   white-space: normal;
   overflow-wrap: anywhere;
@@ -2937,6 +2976,13 @@ html.dark .or-login-logo-dark {
   font-weight: 300;
 }
 
+.or-cell-text:has(.or-cell-description),
+.or-badge:has(.or-cell-description) {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .or-cell-description {
   display: block;
   margin-top: 0.15rem;
@@ -2945,10 +2991,44 @@ html.dark .or-login-logo-dark {
   font-weight: 500;
 }
 
+.or-cell-description-above {
+  margin-top: 0;
+  margin-bottom: 0.15rem;
+}
+
+/* —— Text column size / font / line-clamp —— */
+.or-text-size-xs { font-size: 0.75rem; }
+.or-text-size-sm { font-size: 0.875rem; }
+.or-text-size-md { font-size: 1rem; }
+.or-text-size-lg { font-size: 1.125rem; }
+.or-text-size-xl { font-size: 1.25rem; }
+.or-text-size-2xl { font-size: 1.5rem; }
+
+.or-font-family-sans { font-family: var(--or-font); }
+.or-font-family-serif { font-family: ui-serif, Georgia, serif; }
+.or-font-family-mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
+
+.or-line-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.or-line-clamp-1 { -webkit-line-clamp: 1; }
+.or-line-clamp-2 { -webkit-line-clamp: 2; }
+.or-line-clamp-3 { -webkit-line-clamp: 3; }
+.or-line-clamp-4 { -webkit-line-clamp: 4; }
+.or-line-clamp-5 { -webkit-line-clamp: 5; }
+.or-line-clamp-6 { -webkit-line-clamp: 6; }
+
 .or-cell-icon {
   display: inline-flex;
   margin-right: 0.35rem;
   vertical-align: middle;
+}
+
+.or-cell-icon-after {
+  margin-right: 0;
+  margin-left: 0.35rem;
 }
 
 .or-cell-icon svg,
@@ -2995,8 +3075,8 @@ html.dark .or-login-logo-dark {
 }
 
 .or-avatar-stacked {
-  margin-inline-end: -0.45rem;
-  box-shadow: 0 0 0 2px var(--or-card);
+  margin-inline-end: calc(-1 * var(--or-avatar-overlap, 0.45rem));
+  box-shadow: 0 0 0 var(--or-avatar-ring, 2px) var(--or-card);
 }
 
 .or-avatar-more {
@@ -3269,6 +3349,32 @@ html.dark .or-login-logo-dark {
   color: var(--or-info);
 }
 .or-color-gray {
+  color: var(--or-gray);
+}
+
+/* Colored badges — tinted wash + ink (Filament-style chips) */
+.or-badge.or-color-primary {
+  background: color-mix(in srgb, var(--or-primary) 14%, transparent);
+  color: var(--or-primary-deep);
+}
+.or-badge.or-color-danger {
+  background: color-mix(in srgb, var(--or-danger) 14%, transparent);
+  color: var(--or-danger);
+}
+.or-badge.or-color-success {
+  background: color-mix(in srgb, var(--or-success) 14%, transparent);
+  color: var(--or-success);
+}
+.or-badge.or-color-warning {
+  background: color-mix(in srgb, var(--or-warning) 16%, transparent);
+  color: color-mix(in srgb, var(--or-warning) 72%, black);
+}
+.or-badge.or-color-info {
+  background: color-mix(in srgb, var(--or-info) 14%, transparent);
+  color: var(--or-info);
+}
+.or-badge.or-color-gray {
+  background: color-mix(in srgb, var(--or-gray) 14%, transparent);
   color: var(--or-gray);
 }
 

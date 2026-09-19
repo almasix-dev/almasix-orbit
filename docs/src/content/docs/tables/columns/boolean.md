@@ -1,69 +1,83 @@
 ---
 title: Boolean column
-description: BooleanColumn and IconColumn.boolean — check/X icons, plus TextColumn.boolean() for Yes/No text.
+description: BooleanColumn and IconColumn.boolean() render check/X icons; TextColumn.boolean() renders Yes/No text.
 ---
 
-Boolean values can render as icons or as Yes/No text.
+Boolean state can render as icons or as text — pick whichever fits the table.
 
-`BooleanColumn` is the Filament-shaped alias for `IconColumn` with `.boolean()` already applied — check and X icons with success and danger colors.
-
-## Standalone example
+`BooleanColumn` is the Filament-shaped alias for [`IconColumn`](/tables/columns/icon/) with `.boolean()` already applied — a check icon (`success`) when truthy, an X icon (`danger`) when falsy:
 
 ```python
-from almasix.orbit.tables import Table, TextColumn, BooleanColumn, IconColumn
+from almasix.orbit.tables import BooleanColumn
 
-table = (
-    Table.make("features")
-    .columns([
-        TextColumn.make("name").searchable(),
-        # Icon check / X (BooleanColumn ≡ IconColumn.boolean)
-        BooleanColumn.make("enabled"),
-        IconColumn.make("verified").boolean()
-            .true_icon("heroicon-o-check-circle")
-            .false_icon("heroicon-o-x-circle"),
-        # Plain Yes / No text
-        TextColumn.make("featured").boolean(),
-    ])
-    .records(records)
-)
+BooleanColumn.make("enabled")
 ```
 
-## In a Resource example
+## `BooleanColumn` vs. `IconColumn.boolean()` vs. `TextColumn.boolean()`
 
-```python
-from almasix.orbit import Resource
-from almasix.orbit.tables import Table, BooleanColumn, IconColumn, TextColumn
-
-class FeatureResource(Resource):
-    @classmethod
-    def table(cls, table: Table) -> Table:
-        return table.columns([
-            TextColumn.make("name").searchable().sortable(),
-            BooleanColumn.make("enabled").sortable().align_center(),
-            IconColumn.make("public").boolean().color(
-                lambda state=None, **_: "success" if state else "gray"
-            ),
-            TextColumn.make("beta").boolean().label("Beta?"),
-        ])
-```
-
-### Which to use
+All three read the same underlying state; they differ only in what renders:
 
 | API | Renders |
 |-----|---------|
 | `BooleanColumn.make(...)` | Check / X icons |
-| `IconColumn.make(...).boolean()` | Same icons (customize with `.true_icon` / `.false_icon`) |
+| `IconColumn.make(...).boolean()` | Same icons — customize with [`.true_icon()` / `.false_icon()`](/tables/columns/icon/#customizing-the-boolean-icons) |
 | `TextColumn.make(...).boolean()` | `"Yes"` / `"No"` text |
+
+```python
+from almasix.orbit.tables import BooleanColumn, IconColumn, TextColumn
+
+BooleanColumn.make("enabled")
+IconColumn.make("verified").boolean().true_icon("heroicon-o-check")
+TextColumn.make("featured").boolean()
+```
+
+## Customizing the icons and colors
+
+Because `BooleanColumn` *is* an `IconColumn`, every [icon column](/tables/columns/icon/#boolean-icons) helper works on it directly:
+
+```python
+BooleanColumn.make("verified")
+    .true_icon("heroicon-o-check")
+    .false_icon("heroicon-o-x-mark")
+    .true_color("info")
+    .false_color("gray")
+```
+
+## Full example
+
+```python
+from almasix.orbit.tables import Table, TextColumn, BooleanColumn, IconColumn
+
+Table.make("features").columns([
+    TextColumn.make("name").searchable(),
+    BooleanColumn.make("enabled").sortable().align_center(),
+    IconColumn.make("verified")
+        .boolean()
+        .true_icon("heroicon-o-check")
+        .false_icon("heroicon-o-x-mark")
+        .align_center(),
+    TextColumn.make("beta").boolean().label("Beta?"),
+]).records([
+    {"id": 1, "name": "Dark mode", "enabled": True, "verified": True, "beta": False},
+    {"id": 2, "name": "AI summaries", "enabled": False, "verified": False, "beta": True},
+])
+```
 
 ## Key methods
 
-- `.boolean()` — switch icon (or text) mode on
-- `.true_icon(...)` / `.false_icon(...)` — Heroicon names (IconColumn)
-- `.size(...)` — icon size class
-- `.color(str | callable)` — override default success/danger
-- `.sortable()` / `.align_center()`
+| Method | Effect |
+|--------|--------|
+| `.boolean()` | Switch icon (or text, on `TextColumn`) mode on |
+| `.true_icon(...)` / `.false_icon(...)` | Heroicon names (`IconColumn` / `BooleanColumn`) |
+| `.true_color(...)` / `.false_color(...)` | Override the default success / danger colors |
+| `.size(...)` | Icon size class |
+| `.color(str \| callable)` | Explicit color — wins over true/false color |
+| `.sortable()` / `.align_center()` | Inherited [shared helpers](/tables/columns/overview/) |
 
 ## Preview
 
-![Icon boolean (light)](/examples/light/tables/icon-boolean.png)
-![Icon boolean (dark)](/examples/dark/tables/icon-boolean.png)
+![Boolean column (light)](/examples/light/tables/boolean-column.png)
+![Boolean column (dark)](/examples/dark/tables/boolean-column.png)
+
+![Icon / boolean (light)](/examples/light/tables/icon-boolean.png)
+![Icon / boolean (dark)](/examples/dark/tables/icon-boolean.png)

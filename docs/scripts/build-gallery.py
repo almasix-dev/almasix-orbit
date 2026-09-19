@@ -54,7 +54,9 @@ from almasix.orbit.schemas.layouts import (
     Wizard,
 )
 from almasix.orbit.schemas.primes import Icon, Image, Text, UnorderedList
+from almasix.orbit.support.html import e
 from almasix.orbit.tables.columns import (
+    BadgeColumn,
     BooleanColumn,
     CheckboxColumn,
     ColorColumn,
@@ -177,10 +179,22 @@ SHOTS: list[tuple[str, str]] = [
     ("tables/columns-overview-manager", "Columns overview — column manager"),
     ("tables/money", "Money / currency"),
     ("tables/text-features", "Text column features"),
+    ("tables/text-formatting", "Text — color, size, weight, font"),
+    ("tables/text-icons", "Text — icons"),
     ("tables/icon-boolean", "Icon + boolean"),
+    ("tables/icon-colors", "Icon — colors + sizes"),
     ("tables/image-color", "Image + color"),
+    ("tables/image-stacked", "Image — stacked"),
     ("tables/editable", "Editable columns"),
+    ("tables/select-column", "Select column"),
+    ("tables/toggle-column", "Toggle column"),
+    ("tables/text-input-column", "Text input column"),
+    ("tables/checkbox-column", "Checkbox column"),
+    ("tables/badge-column", "Badge column"),
+    ("tables/boolean-column", "Boolean column"),
+    ("tables/tags-column", "Tags column"),
     ("tables/tags-view", "Tags + view"),
+    ("tables/view-column", "View column"),
     ("tables/column-group", "Column group"),
     ("tables/layout", "Cell layouts"),
     ("tables/filters", "Filters chrome"),
@@ -1033,6 +1047,85 @@ def build() -> str:
         )
     )
 
+    table_text_formatting = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("status").label("Status").color("primary"),
+                TextColumn.make("priority")
+                .label("Priority")
+                .color(lambda state=None, **_: "danger" if state == "urgent" else "gray"),
+                TextColumn.make("heading").label("Heading").size("lg"),
+                TextColumn.make("name").label("Name").weight("bold"),
+                TextColumn.make("reference").label("Reference").font_family("mono"),
+            ]
+        )
+        .records(
+            [
+                {
+                    "status": "Published",
+                    "priority": "urgent",
+                    "heading": "Launch week",
+                    "name": "Ada Lovelace",
+                    "reference": "ORB-1042",
+                },
+                {
+                    "status": "Draft",
+                    "priority": "normal",
+                    "heading": "Follow-up",
+                    "name": "Grace Hopper",
+                    "reference": "ORB-1043",
+                },
+            ]
+        )
+    )
+
+    table_text_icons = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("name").label("Name").icon("heroicon-o-users"),
+                TextColumn.make("role")
+                .label("Role (icon after)")
+                .icon("heroicon-o-cog-6-tooth")
+                .icon_position("after"),
+                TextColumn.make("priority")
+                .label("Priority (icon color)")
+                .icon("heroicon-o-bell")
+                .icon_color("primary"),
+            ]
+        )
+        .records(
+            [
+                {"name": "Ada Lovelace", "role": "Admin", "priority": "High"},
+                {"name": "Grace Hopper", "role": "Editor", "priority": "Normal"},
+            ]
+        )
+    )
+
+    table_badge_column = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("subject").label("Subject").searchable(),
+                BadgeColumn.make("status")
+                .sortable()
+                .color(
+                    lambda state=None, **_: {"open": "warning", "closed": "success"}.get(
+                        state, "gray"
+                    )
+                ),
+                BadgeColumn.make("priority").color("primary"),
+            ]
+        )
+        .records(
+            [
+                {"id": 1, "subject": "Payments down", "status": "open", "priority": "urgent"},
+                {"id": 2, "subject": "Typo on homepage", "status": "closed", "priority": "low"},
+            ]
+        )
+    )
+
     table_icons = (
         Table.make()
         .columns(
@@ -1046,6 +1139,75 @@ def build() -> str:
             [
                 {"name": "Ada", "icon": "heroicon-o-check", "active": True},
                 {"name": "Grace", "icon": "heroicon-o-plus", "active": False},
+            ]
+        )
+    )
+
+    table_icon_colors = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title").label("Alert"),
+                # IconColumn's non-boolean mode renders the resolved state itself as the
+                # icon name, so the icon lives directly in the record data here.
+                IconColumn.make("severity")
+                .label("Severity")
+                .color(
+                    lambda state=None, **_: {
+                        "heroicon-o-information-circle": "info",
+                        "heroicon-o-bell": "warning",
+                        "heroicon-o-x-mark": "danger",
+                    }.get(state, "gray")
+                ),
+                IconColumn.make("severity_lg").label("Large").color("danger").size("lg"),
+            ]
+        )
+        .records(
+            [
+                {
+                    "title": "Disk usage high",
+                    "severity": "heroicon-o-x-mark",
+                    "severity_lg": "heroicon-o-bell",
+                },
+                {
+                    "title": "Deploy finished",
+                    "severity": "heroicon-o-information-circle",
+                    "severity_lg": "heroicon-o-check",
+                },
+                {
+                    "title": "Latency rising",
+                    "severity": "heroicon-o-bell",
+                    "severity_lg": "heroicon-o-bell",
+                },
+            ]
+        )
+    )
+
+    table_boolean_column = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("name").searchable(),
+                BooleanColumn.make("enabled").label("Enabled").sortable().align_center(),
+                IconColumn.make("verified")
+                .label("Verified")
+                .boolean()
+                .true_color("info")
+                .false_color("gray")
+                .align_center(),
+                TextColumn.make("beta").label("Beta?").boolean(),
+            ]
+        )
+        .records(
+            [
+                {"id": 1, "name": "Dark mode", "enabled": True, "verified": True, "beta": False},
+                {
+                    "id": 2,
+                    "name": "AI summaries",
+                    "enabled": False,
+                    "verified": False,
+                    "beta": True,
+                },
             ]
         )
     )
@@ -1081,6 +1243,124 @@ def build() -> str:
                     ],
                     "color": "#286291",
                 },
+            ]
+        )
+    )
+
+    table_image_stacked = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("name").weight("bold"),
+                ImageColumn.make("teammate_urls")
+                .label("Teammates")
+                .stacked()
+                .limit(3)
+                .circular()
+                .size(28)
+                .ring(2)
+                .overlap("0.6rem"),
+            ]
+        )
+        .records(
+            [
+                {
+                    "id": 1,
+                    "name": "Ada Lovelace",
+                    "teammate_urls": [
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=a",
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=b",
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=c",
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=d",
+                    ],
+                },
+                {
+                    "id": 2,
+                    "name": "Grace Hopper",
+                    "teammate_urls": [
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=e",
+                        "https://api.dicebear.com/9.x/shapes/svg?seed=f",
+                    ],
+                },
+            ]
+        )
+    )
+
+    table_select_column = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title").searchable().sortable(),
+                SelectColumn.make("status")
+                .label("Status")
+                .options({"draft": "Draft", "review": "Review", "published": "Published"})
+                .selectable_placeholder(False),
+            ]
+        )
+        .records(
+            [
+                {"id": 1, "title": "Launch Orbit", "status": "draft"},
+                {"id": 2, "title": "Conduit hosts", "status": "published"},
+            ]
+        )
+    )
+
+    table_toggle_column = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("name").searchable(),
+                ToggleColumn.make("enabled").label("On").align_center(),
+                ToggleColumn.make("public")
+                .align_center()
+                .disabled(lambda record=None, **_: record.get("locked")),
+            ]
+        )
+        .records(
+            [
+                {"id": 1, "name": "Dark mode", "enabled": True, "public": True, "locked": False},
+                {"id": 2, "name": "Beta banner", "enabled": False, "public": False, "locked": True},
+            ]
+        )
+    )
+
+    table_text_input_column = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("product").searchable(),
+                TextInputColumn.make("sku").label("SKU"),
+                TextInputColumn.make("price")
+                .label("Price")
+                .type("number")
+                .input_mode("decimal")
+                .step("0.01")
+                .prefix("$"),
+            ]
+        )
+        .records(
+            [
+                {"id": 1, "product": "Widget", "sku": "ORB-1", "price": "19.99"},
+                {"id": 2, "product": "Gadget", "sku": "ORB-2", "price": "42.00"},
+            ]
+        )
+    )
+
+    table_checkbox_column = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title").searchable(),
+                CheckboxColumn.make("approved").label("OK").align_center(),
+                CheckboxColumn.make("featured")
+                .align_center()
+                .disabled(lambda record=None, **_: not record.get("approved")),
+            ]
+        )
+        .records(
+            [
+                {"id": 1, "title": "Great write-up", "approved": True, "featured": False},
+                {"id": 2, "title": "Needs edits", "approved": False, "featured": False},
             ]
         )
     )
@@ -1132,6 +1412,66 @@ def build() -> str:
             [
                 {"title": "Shell", "tags": ["nav", "chrome"], "note": "Sticky topbar"},
                 {"title": "Tables", "tags": "list,ux", "note": "Filament vibes"},
+            ]
+        )
+    )
+
+    table_tags_column = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("title").searchable().sortable().weight("bold"),
+                TagsColumn.make("tags").color("primary").limit(3),
+                TagsColumn.make("topics").separator(";"),
+            ]
+        )
+        .records(
+            [
+                {
+                    "id": 1,
+                    "title": "Orbit tables",
+                    "tags": ["docs", "ui", "tables", "polish"],
+                    "topics": "python;html",
+                },
+                {"id": 2, "title": "Conduit hosts", "tags": ["live"], "topics": "conduit"},
+            ]
+        )
+    )
+
+    table_view_column = (
+        Table.make()
+        .columns(
+            [
+                TextColumn.make("company").searchable().sortable(),
+                ViewColumn.make("contact").content(
+                    lambda record=None, **_: (
+                        f'<strong>{e(record.get("name", ""))}</strong><br />'
+                        f'<a href="mailto:{e(record.get("email", ""))}">'
+                        f'{e(record.get("email", ""))}</a>'
+                    ),
+                ),
+                ViewColumn.make("progress")
+                .label("Progress")
+                .content(lambda state=None, **_: f"{int(state or 0)}%")
+                .url(lambda record=None, **_: f"/projects/{record['id']}"),
+            ]
+        )
+        .records(
+            [
+                {
+                    "id": 1,
+                    "company": "Acme",
+                    "name": "Ada Lovelace",
+                    "email": "ada@acme.test",
+                    "progress": 80,
+                },
+                {
+                    "id": 2,
+                    "company": "Orbit Labs",
+                    "name": "Grace Hopper",
+                    "email": "grace@orbitlabs.test",
+                    "progress": 45,
+                },
             ]
         )
     )
@@ -1383,10 +1723,30 @@ def build() -> str:
         ),
         shot("tables/money", "Money / currency", table_money.render()),
         shot("tables/text-features", "Text column features", table_text.render()),
+        shot(
+            "tables/text-formatting",
+            "Text — color, size, weight, font",
+            table_text_formatting.render(),
+        ),
+        shot("tables/text-icons", "Text — icons", table_text_icons.render()),
         shot("tables/icon-boolean", "Icon + boolean", table_icons.render()),
+        shot("tables/icon-colors", "Icon — colors + sizes", table_icon_colors.render()),
         shot("tables/image-color", "Image + color", table_media.render()),
+        shot("tables/image-stacked", "Image — stacked", table_image_stacked.render()),
         shot("tables/editable", "Editable columns", table_editable.render()),
+        shot("tables/select-column", "Select column", table_select_column.render()),
+        shot("tables/toggle-column", "Toggle column", table_toggle_column.render()),
+        shot(
+            "tables/text-input-column",
+            "Text input column",
+            table_text_input_column.render(),
+        ),
+        shot("tables/checkbox-column", "Checkbox column", table_checkbox_column.render()),
+        shot("tables/badge-column", "Badge column", table_badge_column.render()),
+        shot("tables/boolean-column", "Boolean column", table_boolean_column.render()),
+        shot("tables/tags-column", "Tags column", table_tags_column.render()),
         shot("tables/tags-view", "Tags + view", table_tags.render()),
+        shot("tables/view-column", "View column", table_view_column.render()),
         shot("tables/column-group", "Column group", table_group_cols.render()),
         shot("tables/layout", "Cell layouts", table_layout.render()),
         shot("tables/filters", "Filters chrome", table_filters.render()),

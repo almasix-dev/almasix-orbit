@@ -33,19 +33,21 @@ class LayoutColumnsResource(Resource):
             "id": 1,
             "title": "Orbit shell",
             "subtitle": "Sidebar + topbar",
-            "tags": ["shell", "nav"],
+            "tags": ["shell", "nav", "chrome", "topbar"],
             "meta_a": "A",
             "meta_b": "B",
             "note": "Custom view cell",
+            "progress": 80,
         },
         {
             "id": 2,
             "title": "Table chrome",
             "subtitle": "Filters + columns",
-            "tags": "tables,ux",
+            "tags": "tables;ux",
             "meta_a": "X",
             "meta_b": "Y",
             "note": "Another view",
+            "progress": 45,
         },
     ]
 
@@ -69,7 +71,7 @@ class LayoutColumnsResource(Resource):
                                 TextColumn.make("subtitle").color("gray"),
                             ]
                         ),
-                        TagsColumn.make("tags"),
+                        TagsColumn.make("tags").separator(";").limit(3).color("primary"),
                     ]
                 ).label("Content"),
                 ColumnGroup.make(
@@ -78,7 +80,7 @@ class LayoutColumnsResource(Resource):
                         TextColumn.make("meta_a").label("A"),
                         TextColumn.make("meta_b").label("B"),
                     ],
-                ),
+                ).align_end().wrap_header(),
                 Panel.make([TextColumn.make("note")]).label("Panel"),
                 Grid.make(
                     [
@@ -91,8 +93,10 @@ class LayoutColumnsResource(Resource):
                 View.make([TextColumn.make("subtitle")])
                 .content('<div class="or-layout-view-demo">{children}</div>')
                 .label("Layout view"),
-                ViewColumn.make("note")
-                .content(lambda state=None, **_: f'<em class="or-view-column">{state}</em>')
-                .label("View col"),
+                ViewColumn.make("progress")
+                .content(lambda state=None, **_: f'<em class="or-view-column">{int(state or 0)}%</em>')
+                .url(lambda record=None, **_: f"/projects/{record.get('id')}")
+                .open_url_in_new_tab()
+                .label("Progress"),
             ]
         )
