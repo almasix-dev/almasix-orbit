@@ -9,67 +9,47 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 1 | Panel Configuration | `docs/src/content/docs/panels/configuration.md` | **closed** |
 | 2 | Tables overview | `docs/src/content/docs/tables/overview.md` | **closed** |
 | 3 | Columns overview | `docs/src/content/docs/tables/columns/overview.md` | **closed** |
-| 4 | Text column | `docs/src/content/docs/tables/columns/text.md` | **closed** |
-| 5 | Icon column | `docs/src/content/docs/tables/columns/icon.md` | **closed** |
-| 6 | Image column | `docs/src/content/docs/tables/columns/image.md` | **closed** |
-| 7 | Color column | `docs/src/content/docs/tables/columns/color.md` | **closed** |
-| 8 | Select column | `docs/src/content/docs/tables/columns/select.md` | **closed** |
-| 9 | Toggle column | `docs/src/content/docs/tables/columns/toggle.md` | **closed** |
-| 10 | Text input column | `docs/src/content/docs/tables/columns/text-input.md` | **closed** |
-| 11 | Checkbox column | `docs/src/content/docs/tables/columns/checkbox.md` | **closed** |
-| 12 | Badge column | `docs/src/content/docs/tables/columns/badge.md` | **closed** |
-| 13 | Boolean column | `docs/src/content/docs/tables/columns/boolean.md` | **closed** |
-| 14 | Tags column | `docs/src/content/docs/tables/columns/tags.md` | **closed** |
-| 15 | View column | `docs/src/content/docs/tables/columns/view.md` | **closed** |
-| 16 | Column group | `docs/src/content/docs/tables/columns/column-group.md` | **closed** |
+| 4–16 | Column types | `docs/src/content/docs/tables/columns/*` | **closed** |
 | 17 | Filters overview | `docs/src/content/docs/tables/filters/overview.md` | **closed** |
-| 18+ | Remaining Orbit doc features | docs nav | queued |
+| 18 | Schemas overview | `docs/src/content/docs/schemas/overview.md` | **closed** |
+| 19 | Layouts | `docs/src/content/docs/schemas/layouts.md` | **closed** |
+| 20 | Grid | `docs/src/content/docs/schemas/grid.md` | **closed** |
+| 21 | Flex | `docs/src/content/docs/schemas/flex.md` | **closed** |
+| 22 | Group | `docs/src/content/docs/schemas/group.md` | **closed** |
+| 23 | Split | `docs/src/content/docs/schemas/split.md` | **closed** |
+| 24 | Fieldset | `docs/src/content/docs/schemas/fieldset.md` | **closed** |
+| 25 | Sections | `docs/src/content/docs/schemas/sections.md` | **closed** |
+| 26 | Tabs | `docs/src/content/docs/schemas/tabs.md` | **closed** |
+| 27 | Wizards | `docs/src/content/docs/schemas/wizards.md` | **closed** |
+| 28 | Callouts | `docs/src/content/docs/schemas/callouts.md` | **closed** |
+| 29 | Empty states | `docs/src/content/docs/schemas/empty-states.md` | **closed** |
+| 30 | Primes | `docs/src/content/docs/schemas/primes.md` | **closed** |
+| 31+ | Remaining Orbit doc features | docs nav | queued |
 
-## Filters overview — closed
+## Schemas autopilot — closed
 
-Filament 5 parity for `tables/filters/overview` (single Filters nav page).
+Filament 5 parity for every page under Schemas.
 
-### Shipped
+### Overview APIs
 
-- `Filter.toggle()`, checkbox default UI, `indicate` / `indicate_using`
-- `SelectFilter.multiple()`, `selectable_placeholder`
-- `TernaryFilter` labels / `nullable` / `queries`; working `FilterGroup`
-- Defaults, `persist_filters_in_session` (sessionStorage), `hidden_filter_indicators`, `deselect_all_records_when_filtered`
+`Schema.operation` / `get_operation`, `defer_loading`, `configure_using`, state/fill/dehydrate, columns.
 
-### Deferred
+### Layout / prime highlights
 
-Eloquent `relationship` / searchable selects, full FiltersLayout modes, query-builder product polish (own docs).
-
-## Column types autopilot — closed
-
-Filament 5 parity pass for every page under Columns (excluding overview, closed earlier).
-
-### Shared / Text
-
-`icon_position`, `icon_color`, `size`, `font_family`, `limit(end=)`, `words`, `line_clamp`, `description(position=)`, `separator`, `bulleted`, `time`, `since`, `copy_message` / `copy_message_duration`, `money(decimal_places=)`, callable `badge`, editable `before_state_updated` / `after_state_updated`.
-
-### Per type
-
-| Type | Highlights |
-|------|------------|
-| Icon | `true_color` / `false_color`; `.icon()` callback for non-boolean |
-| Image | `alt`, `square`, `image_width`/`height`, `ring`, `overlap`, `extra_img_attributes` |
-| Color | copy message attrs |
-| Select | `selectable_placeholder`, `disable_option_when`, lifecycle hooks |
-| Toggle / Checkbox | lifecycle hooks |
-| Text input | `type`, `input_mode`, `step`, `prefix`, `suffix`, hooks |
-| Tags | `separator`, `limit` (+N), color |
-| View | URL wrap |
-| Column group | `align_*`, `wrap_header` |
+| Surface | Highlights |
+|---------|------------|
+| Fieldset | `contained(False)` bare fieldset |
+| Section | `secondary`, aside, persist_collapsed (docs) |
+| Text prime | `font_family` |
+| Image prime | `align_start` / `align_center` / `align_end` |
 
 ### Deferred
 
-Eloquent relationship aggregates, storage disks, native JS selects / searchable options, Laravel policy auto-checks.
+Breakpoint column maps on Grid, full Filament container-query grid system, custom schema components page, Livewire-only defer viewport loading.
 
 ### Close checklist
 
-- [x] Gap matrices implemented for all column type pages
-- [x] Docs rewritten Filament-depth; screenshots match snippets
-- [x] orbit-admin samples updated
+- [x] Gap matrices implemented for schemas pages
+- [x] Docs rewritten Filament-depth; screenshots updated
 - [x] Tests at 100% coverage
-- [x] Status → **closed** for types 4–16
+- [x] Status → **closed** for 18–30

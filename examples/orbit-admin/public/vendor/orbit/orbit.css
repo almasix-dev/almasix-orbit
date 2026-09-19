@@ -2655,6 +2655,27 @@ html.dark .or-login-logo-dark {
   background: color-mix(in srgb, var(--or-card) 88%, var(--or-shell));
 }
 
+.or-section-secondary {
+  background: color-mix(in srgb, var(--or-shell) 55%, var(--or-card));
+  border-color: color-mix(in srgb, var(--or-line) 80%, transparent);
+}
+
+.or-section-secondary .or-section-header {
+  background: transparent;
+}
+
+.or-fieldset-bare {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.or-fieldset-bare .or-fieldset-legend {
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
 .or-section-icon {
   display: inline-flex;
   margin-right: 0.4rem;

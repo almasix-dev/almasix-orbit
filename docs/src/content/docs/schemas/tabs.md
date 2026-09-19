@@ -1,39 +1,81 @@
 ---
 title: Tabs
-description: Tabs split a form into horizontal panels — each tab owns its own schema.
+description: Split a schema into horizontal panels — icons, badges, active tab, and optional persist.
 ---
 
 ## Introduction
 
-Tabs split a form into horizontal panels — each tab owns its own schema. Icons and badges help surface counts or status without leaving the page.
+`Tabs` splits a form or infolist into horizontal panels. Each tab owns its own nested schema. Icons and badges surface counts or status without leaving the page.
 
-Each variation below includes a short explanation, the fluent API to paste into your schema, and a screenshot of the rendered control.
+```python title="app/orbit/schemas/tabs_basic.py"
+from almasix.orbit.schemas import Tabs
+from almasix.orbit.forms import TextInput, Textarea
 
-## Basic tabs
-
-General and SEO panels.
-
-```python
-Tabs.make('main')
-    .tabs({'label': 'General', 'schema': [...]}, {'label': 'SEO', 'schema': [...]})
+Tabs.make("main")
+    .tabs(
+        {"label": "General", "schema": [TextInput.make("title")]},
+        {"label": "SEO", "schema": [Textarea.make("meta_description")]},
+    )
     .active_tab(0)
 ```
 
-![Orbit Basic tabs (light)](/examples/light/schemas/tabs/basic.png)
+![Basic tabs (light)](/examples/light/schemas/tabs/basic.png)
+![Basic tabs (dark)](/examples/dark/schemas/tabs/basic.png)
 
-![Orbit Basic tabs (dark)](/examples/dark/schemas/tabs/basic.png)
+## Defining tabs
 
-## Tabs with badges
+`.tabs(...)` accepts either dicts or `(label, components)` tuples:
 
-Icons and numeric badges on tab labels.
+```python title="app/orbit/schemas/tabs_defs.py"
+Tabs.make("main").tabs(
+    ("Account", [TextInput.make("email")]),
+    ("Profile", [TextInput.make("display_name")]),
+)
 
-```python
-Tabs.make('main')
-    .tabs({'label': 'SEO', 'icon': 'heroicon-o-magnifying-glass', 'badge': '3', 'schema': [...]})
+Tabs.make("main").tabs(
+    {
+        "label": "SEO",
+        "icon": "heroicon-o-magnifying-glass",
+        "badge": "3",
+        "schema": [TextInput.make("slug")],
+    },
+)
 ```
 
-![Orbit Tabs with badges (light)](/examples/light/schemas/tabs/with-badges.png)
+Dict keys: `label` (or `id`), `schema` / `components`, optional `icon`, optional `badge` (string or callable).
 
-![Orbit Tabs with badges (dark)](/examples/dark/schemas/tabs/with-badges.png)
+## Icons and badges
 
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).
+```python title="app/orbit/schemas/tabs_badges.py"
+Tabs.make("main")
+    .tabs({
+        "label": "SEO",
+        "icon": "heroicon-o-magnifying-glass",
+        "badge": "3",
+        "schema": [...],
+    })
+```
+
+![Tabs with badges (light)](/examples/light/schemas/tabs/with-badges.png)
+![Tabs with badges (dark)](/examples/dark/schemas/tabs/with-badges.png)
+
+![Tabs overview (light)](/examples/light/schemas/tabs.png)
+![Tabs overview (dark)](/examples/dark/schemas/tabs.png)
+
+## Active tab and persist
+
+```python title="app/orbit/schemas/tabs_persist.py"
+Tabs.make("settings")
+    .tabs(...)
+    .active_tab(1)       # zero-based initial tab
+    .persist_tab()       # data-persist-tab for the host
+```
+
+## API reference
+
+| Method | Role |
+|--------|------|
+| `.tabs` | One or more tab defs (dict or `(label, schema)` tuple) |
+| `.active_tab` | Zero-based initially selected tab |
+| `.persist_tab` | Persist the active tab in the host |
+| `.schema` | Extra children outside tab defs (rare) |
