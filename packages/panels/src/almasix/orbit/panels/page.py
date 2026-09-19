@@ -12,6 +12,8 @@ class Page:
     navigation_label: ClassVar[str | None] = None
     navigation_group: ClassVar[str | None] = None
     navigation_subgroup: ClassVar[str | None] = None
+    #: Alias for :attr:`navigation_subgroup` (second-level nav category).
+    navigation_sub_category: ClassVar[str | None] = None
     navigation_sort: ClassVar[int] = 0
     slug: ClassVar[str | None] = None
     title: ClassVar[str | None] = None

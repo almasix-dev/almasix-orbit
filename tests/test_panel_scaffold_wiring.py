@@ -90,10 +90,14 @@ def test_make_orbit_resource_respects_panel(tmp_path: Path) -> None:
     assert install.handle() == 0
 
     cmd = MakeOrbitResourceCommand(app)
-    cmd._arguments = {"name": "Post"}
+    cmd._arguments = {"name": "Artist"}
     cmd._options = {"panel": "admin", "force": True}
     assert cmd.handle() == 0
-    assert (tmp_path / "app" / "orbit" / "admin" / "resources" / "post_resource.py").is_file()
+    out = tmp_path / "app" / "orbit" / "admin" / "resources" / "artist_resource.py"
+    assert out.is_file()
+    text = out.read_text(encoding="utf-8")
+    assert 'navigation_label = "Artists"' in text
+    assert "navigation_group" not in text
 
 
 def test_make_orbit_page_and_widget(tmp_path: Path) -> None:

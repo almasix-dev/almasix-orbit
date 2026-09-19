@@ -507,3 +507,55 @@ def test_top_navigation_shows_groups_as_dropdowns() -> None:
     shell = panel.render_shell("<p>Hi</p>", active_path="/orbit/posts")
     assert "or-topnav-dropdown" in shell
     assert ">Content<" in shell or "Content" in shell
+
+
+def test_navigation_subgroup_sidebar_accordion_and_apps_dropdown() -> None:
+    from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem, NavigationSubgroup
+
+    panel = (
+        Panel.make("admin")
+        .path("orbit")
+        .resources([PostResource])
+        .navigation_groups([NavigationGroup.make("Content").icon("heroicon-o-folder").sort(0)])
+        .navigation_subgroups(
+            [
+                NavigationSubgroup.make("Writing")
+                .parent("Content")
+                .icon("heroicon-o-pencil")
+                .sort(1)
+            ]
+        )
+        .navigation_items(
+            [
+                NavigationItem.make("drafts")
+                .label("Drafts")
+                .url("/orbit/drafts")
+                .group("Content")
+                .sub_category("Writing")
+                .sort(2),
+                NavigationItem.make("reports")
+                .label("Reports")
+                .url("/orbit/reports")
+                .group("Content")
+                .sort(10),
+            ]
+        )
+        .sidebar_navigation()
+    )
+    items = panel._collect_navigation_items()
+    assert any(i.get("subgroup") == "Writing" for i in items if i["label"] == "Drafts")
+    shell = panel.render_shell("<p>Hi</p>", active_path="/orbit/drafts")
+    assert "or-nav-accordion" in shell
+    assert "Writing" in shell
+    assert "Drafts" in shell
+    assert "Reports" in shell
+
+    apps = panel.navigation_layout("apps")
+    ctx = apps.menu_layout_context(active_path="/orbit/drafts")
+    writing = next(i for i in ctx.menu_secondary if i.label == "Writing")
+    assert writing.children
+    assert any(c.label == "Drafts" for c in writing.children)
+    assert any(i.label == "Reports" and not i.children for i in ctx.menu_secondary)
+    apps_shell = apps.render_shell("<p>Hi</p>", active_path="/orbit/drafts")
+    assert "or-topnav-dropdown" in apps_shell
+    assert "Writing" in apps_shell

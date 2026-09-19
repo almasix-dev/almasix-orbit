@@ -9,6 +9,11 @@ header switcher.
 
 ## Unreleased (`main`)
 
+### Scaffold & navigation polish ([#42](https://github.com/almasix-dev/almasix-orbit/issues/42))
+
+- `make:orbit-resource` uses a plural navigation label (Artist → Artists) and no longer sets a default `Content` group
+- `NavigationSubgroup` / `navigation_subgroup` (alias `navigation_sub_category` / `.sub_category()`): apps top-bar dropdowns, sidebar accordions, panel `.navigation_subgroup(s)()` registration with icon/sort/parent
+
 ### Interactive panel scaffolding ([#39](https://github.com/almasix-dev/almasix-orbit/issues/39))
 
 - `make:orbit-resource|page|widget` prompt for a panel when several `app/orbit/{id}/panel.py` packages exist (skip with `--panel=…`; non-interactive defaults to `admin` or the first id)

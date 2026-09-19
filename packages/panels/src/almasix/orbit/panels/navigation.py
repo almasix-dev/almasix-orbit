@@ -49,6 +49,10 @@ class NavigationItem(Component):
         self._subgroup = name
         return self
 
+    def sub_category(self, name: str | None) -> Self:
+        """Alias for :meth:`subgroup` (second-level nav category)."""
+        return self.subgroup(name)
+
     def sort(self, value: int) -> Self:
         self._sort = value
         return self
@@ -86,6 +90,37 @@ class NavigationGroup(Component):
     def items(self, items: Sequence[NavigationItem]) -> Self:
         self._items = list(items)
         return self
+
+
+class NavigationSubgroup(Component):
+    """Second-level nav category metadata (icon / sort / parent group).
+
+    Used under a :class:`NavigationGroup` for sidebar accordions and topbar
+    dropdowns (``apps`` layout secondary items).
+    """
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._parent: str | None = None
+        self._icon: str | None = None
+        self._sort: int = 0
+
+    def parent(self, group: str | None) -> Self:
+        """Parent navigation group label (``None`` = ungrouped root)."""
+        self._parent = (str(group).strip() or None) if group is not None else None
+        return self
+
+    def icon(self, name: str) -> Self:
+        self._icon = name
+        return self
+
+    def sort(self, value: int) -> Self:
+        self._sort = value
+        return self
+
+
+def _subgroup_meta_key(parent: str | None, name: str) -> tuple[str | None, str]:
+    return (parent, name)
 
 
 @dataclass
@@ -140,15 +175,18 @@ def build_menu_secondary(
     items: list[dict[str, Any]],
     *,
     active_url: str | None = None,
+    subgroup_meta: dict[tuple[str | None, str], NavigationSubgroup] | None = None,
+    parent_group: str | None = None,
 ) -> list[MenuSecondaryItem]:
     """Build top-bar secondary items; subgroups collapse into dropdowns."""
     sorted_items = sorted(items, key=_sort_key)
     entries: list[tuple[int, MenuSecondaryItem]] = []
     subgroups: dict[str, list[dict[str, Any]]] = {}
     subgroup_order: list[str] = []
+    meta = subgroup_meta or {}
 
     for item in sorted_items:
-        subgroup = (item.get("subgroup") or "").strip() or None
+        subgroup = (item.get("subgroup") or item.get("sub_category") or "").strip() or None
         active = bool(active_url and item.get("url") == active_url)
         if not subgroup:
             entries.append(
@@ -179,12 +217,19 @@ def build_menu_secondary(
             )
             for m in sorted(members, key=_sort_key)
         ]
-        # Prefer an explicit shared icon; otherwise first member's icon.
-        icons = [m.get("icon") for m in members if m.get("icon")]
-        group_icon = icons[0] if icons and len(set(icons)) == 1 else (icons[0] if icons else None)
+        registered = meta.get(_subgroup_meta_key(parent_group, name))
+        group_icon = registered._icon if registered is not None else None
+        if not group_icon:
+            icons = [m.get("icon") for m in members if m.get("icon")]
+            group_icon = icons[0] if icons and len(set(icons)) == 1 else (icons[0] if icons else None)
+        sort_val = (
+            registered._sort
+            if registered is not None
+            else min(int(m.get("sort") or 0) for m in members)
+        )
         entries.append(
             (
-                min(int(m.get("sort") or 0) for m in members),
+                sort_val,
                 MenuSecondaryItem(
                     label=name,
                     href=children[0].href if children else None,
@@ -216,6 +261,7 @@ def build_menu_layout(
     items: list[dict[str, Any]],
     *,
     group_meta: dict[str, NavigationGroup] | None = None,
+    subgroup_meta: dict[tuple[str | None, str], NavigationSubgroup] | None = None,
     active_path: str | None = None,
     layout: NavLayout = "sidebar_topbar",
     panel_path: str = "/",
@@ -223,7 +269,12 @@ def build_menu_layout(
     """Shamar-style: sidebar roots = groups; topbar = active group's items."""
     layout = normalize_nav_layout(layout)  # type: ignore[assignment]
     meta = group_meta or {}
+    sub_meta = subgroup_meta or {}
     flat = [dict(i) for i in items]
+    for item in flat:
+        # Normalize alias key onto ``subgroup``
+        if not item.get("subgroup") and item.get("sub_category"):
+            item["subgroup"] = item.get("sub_category")
     grouped = group_items(flat)
 
     # Resolve active item by longest matching URL prefix
@@ -282,6 +333,8 @@ def build_menu_layout(
     secondary = build_menu_secondary(
         list(secondary_source or []),
         active_url=str(active_item.get("url")) if active_item else None,
+        subgroup_meta=sub_meta,
+        parent_group=active_root.group if active_root else None,
     )
 
     if layout == "sidebar":
@@ -289,6 +342,7 @@ def build_menu_layout(
         secondary = []
     elif layout == "top":
         # Top chrome: each navigation group is a dropdown; ungrouped items stay links.
+        # Subgroups are ordered together inside the group dropdown (flat children).
         roots = []
         active_url = str(active_item.get("url")) if active_item else None
         secondary_items: list[MenuSecondaryItem] = []
@@ -297,7 +351,14 @@ def build_menu_layout(
             if not members:
                 continue
             if key is None:
-                secondary_items.extend(build_menu_secondary(members, active_url=active_url))
+                secondary_items.extend(
+                    build_menu_secondary(
+                        members,
+                        active_url=active_url,
+                        subgroup_meta=sub_meta,
+                        parent_group=None,
+                    )
+                )
                 continue
             children = [
                 MenuSecondaryChild(
@@ -306,7 +367,13 @@ def build_menu_layout(
                     active=bool(active_url and m.get("url") == active_url),
                     icon=m.get("icon"),
                 )
-                for m in sorted(members, key=_sort_key)
+                for m in sorted(
+                    members,
+                    key=lambda m: (
+                        str(m.get("subgroup") or m.get("sub_category") or ""),
+                        *_sort_key(m),
+                    ),
+                )
             ]
             group_icon = meta[key]._icon if key in meta else None
             if not group_icon:

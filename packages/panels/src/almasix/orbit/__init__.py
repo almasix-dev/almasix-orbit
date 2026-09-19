@@ -4,7 +4,7 @@ __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
 from almasix.orbit.panels.auth import Login, Register
 from almasix.orbit.panels.hooks import PANEL_HOOKS, Plugin, register_render_hook
-from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem
+from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem, NavigationSubgroup
 from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.pages.dashboard import Dashboard
 from almasix.orbit.panels.panel import Panel, PanelRegistry
@@ -26,6 +26,7 @@ __all__ = [
     "RelationManager",
     "NavigationItem",
     "NavigationGroup",
+    "NavigationSubgroup",
     "OrbitUser",
     "UserMenuItem",
     "PanelNotification",
