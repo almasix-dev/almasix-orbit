@@ -49,16 +49,16 @@
 	--sl-color-accent: #f1511b;
 	--sl-color-accent-high: #9a2c0a;
 
-	/* Inverted ladder: white=ink, black=paper */
+	/* Filament-warm cream paper (#FFF1E3) + warmer gray ladder */
 	--sl-color-white: #1a1412;
 	--sl-color-gray-1: #2a221e;
 	--sl-color-gray-2: #433832;
 	--sl-color-gray-3: #5c4f48;
 	--sl-color-gray-4: #8f7f76;
-	--sl-color-gray-5: #c9bbb2;
-	--sl-color-gray-6: #f0e9e4;
-	--sl-color-gray-7: #faf7f5;
-	--sl-color-black: #faf7f5;
+	--sl-color-gray-5: #d4c4b4;
+	--sl-color-gray-6: #f5e6d6;
+	--sl-color-gray-7: #fff1e3;
+	--sl-color-black: #fff1e3;
 
 	--sl-color-bg-nav: var(--sl-color-gray-7);
 	--sl-color-bg-sidebar: var(--sl-color-black);
@@ -67,8 +67,8 @@
 	--sl-color-hairline-shade: var(--sl-color-gray-6);
 }
 
-/* Atmosphere — subtle, never overrides text contrast */
-body {
+/* Soft atmosphere on dark only — cream light stays clean */
+:root:not([data-theme='light']) body {
 	background-image:
 		radial-gradient(1100px 520px at 8% -12%, var(--almasix-glow), transparent 55%),
 		radial-gradient(800px 420px at 100% 0%, rgba(241, 81, 27, 0.08), transparent 50%);
@@ -261,16 +261,22 @@ a.sl-link-button.primary:hover {
 	background: color-mix(in srgb, var(--sl-color-gray-2) 70%, transparent);
 }
 
-/* One Dark Pro code frames — tiny Ristretto warmth only */
+/* Gruvbox-dark-hard code frames (Filament docs parity) */
 .expressive-code {
-	--ec-frm-frameBoxShdCssVal: 0 12px 40px rgba(0, 0, 0, 0.35),
-		0 0 0 1px rgba(241, 81, 27, 0.18);
+	--ec-frm-frameBoxShdCssVal: 0 12px 36px rgba(0, 0, 0, 0.28),
+		0 0 0 1px rgba(29, 32, 33, 0.55);
 }
 
 .expressive-code .frame {
-	filter: sepia(0.05) saturate(1.03) hue-rotate(-3deg);
 	border-radius: 0.85rem !important;
 	overflow: hidden;
+}
+
+/* Nested sidebar groups — only top-level group labels stay bold */
+.sidebar-content .top-level ul details > summary .group-label .large {
+	font-weight: 400;
+	font-size: inherit;
+	color: var(--sl-color-gray-2);
 }
 
 .expressive-code pre {
