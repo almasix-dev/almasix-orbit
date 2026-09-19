@@ -1,4 +1,4 @@
-"""Text column gallery."""
+"""Text column gallery — Filament-parity TextColumn helpers."""
 
 from __future__ import annotations
 
@@ -21,20 +21,30 @@ class TextColumnsResource(Resource):
         {
             "id": 1,
             "name": "Orbit",
+            "role": "admin kit",
             "status": "published",
             "amount": 1200,
             "published_at": "2026-03-01",
+            "last_seen_at": "2026-09-18T09:40:00",
+            "score": 98.5,
             "blurb": "Ship **admin** UIs *fast*.",
             "notes": "Copy me",
+            "reference": "ORB-1001",
+            "tags": "docs,ui,tables",
         },
         {
             "id": 2,
             "name": "Conduit",
+            "role": "live morph",
             "status": "draft",
             "amount": 340,
             "published_at": "2026-04-12",
+            "last_seen_at": "2026-09-10T14:05:00",
+            "score": 76.25,
             "blurb": "Live morph without the SPA tax.",
             "notes": "Hello",
+            "reference": "ORB-1002",
+            "tags": "conduit,live",
         },
     ]
 
@@ -54,11 +64,26 @@ class TextColumnsResource(Resource):
                 .searchable()
                 .weight("bold")
                 .icon("heroicon-o-check")
-                .description(lambda record=None, **_: (record or {}).get("status", "")),
-                TextColumn.make("status").badge(),
+                .icon_color("primary")
+                .description(lambda record=None, **_: (record or {}).get("role", "")),
+                TextColumn.make("status")
+                .badge()
+                .icon_position("after")
+                .icon("heroicon-o-chevron-down")
+                .color(
+                    lambda state=None, **_: {"published": "success", "draft": "gray"}.get(
+                        state, "gray"
+                    )
+                ),
                 TextColumn.make("amount").money("USD").align_end(),
                 TextColumn.make("published_at").date("%b %d, %Y"),
-                TextColumn.make("blurb").markdown().wrap(),
-                TextColumn.make("notes").copyable(),
+                TextColumn.make("last_seen_at").since(),
+                TextColumn.make("score").numeric(decimal_places=1).align_end(),
+                TextColumn.make("tags").separator(",").badge().color("info"),
+                TextColumn.make("blurb").markdown().wrap().line_clamp(2),
+                TextColumn.make("reference").copyable().copy_message("Reference copied").font_family(
+                    "mono"
+                ),
+                TextColumn.make("notes").words(3).size("sm"),
             ]
         )

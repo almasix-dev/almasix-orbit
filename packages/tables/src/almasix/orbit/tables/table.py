@@ -1328,8 +1328,11 @@ class Table(Component):
                 if not visible_children:
                     continue
                 span = len(visible_children)
+                group_align = col.get_alignment()
+                group_align_c = f" or-align-{group_align}" if group_align != "start" else ""
+                group_wrap_c = " or-th-wrap" if col._wrap_header else ""
                 header_cells.append(
-                    f'<th class="or-th or-th-group" colspan="{span}">'
+                    f'<th class="or-th or-th-group{group_align_c}{group_wrap_c}" colspan="{span}">'
                     f"{e(col.get_label(**ctx))}</th>"
                 )
                 for child in visible_children:

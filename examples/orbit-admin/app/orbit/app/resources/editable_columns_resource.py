@@ -1,4 +1,4 @@
-"""Editable Select / Toggle / TextInput / Checkbox columns."""
+"""Editable Select / Toggle / TextInput / Checkbox columns — Filament-parity editable APIs."""
 
 from __future__ import annotations
 
@@ -16,6 +16,11 @@ from almasix.orbit.tables import (
 )
 
 
+def _log_status_change(record: Any = None, state: Any = None, old: Any = None, **_: Any) -> None:
+    if isinstance(record, dict):
+        record["history"] = f"{old} → {state}"
+
+
 class EditableColumnsResource(Resource):
     model = type("EditableDemo", (), {})
     slug = "editable-columns"
@@ -23,6 +28,7 @@ class EditableColumnsResource(Resource):
     navigation_group = "Columns"
     navigation_icon = "heroicon-o-pencil-square"
     navigation_sort = 3
+    records_mutable = True
 
     records: ClassVar[list[dict[str, Any]]] = [
         {
@@ -30,16 +36,22 @@ class EditableColumnsResource(Resource):
             "title": "Filters polish",
             "status": "review",
             "priority": "high",
+            "price": "42.00",
             "done": False,
             "featured": True,
+            "locked": False,
+            "history": "—",
         },
         {
             "id": 2,
             "title": "Summaries",
             "status": "published",
             "priority": "med",
+            "price": "19.99",
             "done": True,
             "featured": False,
+            "locked": True,
+            "history": "—",
         },
     ]
 
@@ -56,14 +68,26 @@ class EditableColumnsResource(Resource):
         return table.columns(
             [
                 TextInputColumn.make("title").label("Title"),
-                SelectColumn.make("status").options(
-                    {"draft": "Draft", "review": "Review", "published": "Published"}
-                ),
-                SelectColumn.make("priority").options(
-                    {"low": "Low", "med": "Med", "high": "High"}
+                TextInputColumn.make("price")
+                .label("Price")
+                .type("number")
+                .input_mode("decimal")
+                .step("0.01")
+                .prefix("$"),
+                SelectColumn.make("status")
+                .options({"draft": "Draft", "review": "Review", "published": "Published"})
+                .selectable_placeholder(False)
+                .before_state_updated(_log_status_change),
+                SelectColumn.make("priority")
+                .options({"low": "Low", "med": "Med", "high": "High"})
+                .disable_option_when(
+                    lambda value=None, record=None, **_: value == "high"
+                    and (record or {}).get("locked")
                 ),
                 ToggleColumn.make("featured").label("Featured"),
-                CheckboxColumn.make("done").label("Done"),
-                TextColumn.make("id").label("ID"),
+                CheckboxColumn.make("done")
+                .label("Done")
+                .disabled(lambda record=None, **_: (record or {}).get("locked")),
+                TextColumn.make("history").label("History").placeholder("—"),
             ]
         )

@@ -607,27 +607,52 @@ class ListRecordsHost(OrbitPageHost):
         if isinstance(getattr(resource, "records", None), list):
             resource.records = list(self.records)
 
+    def _table_column_for(self, name: str) -> Any:
+        """Find ``name`` among the resource table's flat columns, or ``None``."""
+        try:
+            table = self.get_resource().get_table()
+        except Exception:  # pragma: no cover - defensive, unbound/misconfigured host
+            return None
+        for candidate in table.flat_columns():
+            if (candidate.get_name() or "") == name:
+                return candidate
+        return None
+
     def update_column_state(self, record_id: str, column: str, value: Any = None) -> None:
-        """Persist an inline editable column value onto the matching record."""
+        """Persist an inline editable column value, running before/after hooks."""
         rid = str(record_id or "")
         col = str(column or "")
         if not rid or not col:
             return
+        table_column = self._table_column_for(col)
+        before = table_column.get_before_state_updated() if table_column is not None else None
+        after = table_column.get_after_state_updated() if table_column is not None else None
         out: list[Any] = []
         for r in self.records:
             if self._record_key(r) != rid:
                 out.append(r)
                 continue
+            old_value = r.get(col) if isinstance(r, dict) else getattr(r, col, None)
+            if before is not None:
+                from almasix.orbit.support.evaluate import evaluate
+
+                evaluate(before, record=r, state=value, old=old_value, column=table_column)
             if isinstance(r, dict):
                 row = dict(r)
                 row[col] = value
                 out.append(row)
+                new_record: Any = row
             else:
                 try:
                     setattr(r, col, value)
                 except Exception:
                     pass
                 out.append(r)
+                new_record = r
+            if after is not None:
+                from almasix.orbit.support.evaluate import evaluate
+
+                evaluate(after, record=new_record, state=value, old=old_value, column=table_column)
         self.records = out
         self._sync_resource_records()
 

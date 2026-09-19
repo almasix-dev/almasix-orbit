@@ -1,37 +1,77 @@
 ---
 title: Select column
-description: SelectColumn — inline dropdown editors with data-orbit-column-edit and update_column_state.
+description: SelectColumn — inline dropdown editors with option control and update_column_state persistence.
 ---
 
-`SelectColumn` puts a `<select>` in the cell so operators can change the value without opening a form.
-
-Editable columns (`SelectColumn`, `TextInputColumn`, `ToggleColumn`, `CheckboxColumn`) emit `data-orbit-column-edit`. On resource list hosts, `orbit.js` calls `ListRecordsHost.update_column_state(record_id, column, value)` to persist the change.
+`SelectColumn` puts an inline `<select>` in the cell so operators can change a value without opening the record's edit form:
 
 ```python
-SelectColumn, TextInputColumn, ToggleColumn, CheckboxColumn
-# persist via ListRecordsHost.update_column_state / orbit.js
+from almasix.orbit.tables import SelectColumn
+
+SelectColumn.make("status").options({
+    "draft": "Draft",
+    "review": "Review",
+    "published": "Published",
+})
 ```
 
-## Standalone example
+`SelectColumn` is one of Orbit's editable columns, alongside [`ToggleColumn`](/tables/columns/toggle/), [`TextInputColumn`](/tables/columns/text-input/), and [`CheckboxColumn`](/tables/columns/checkbox/). All four render `data-orbit-column-edit="…"` on the input, and `orbit.js` calls `ListRecordsHost.update_column_state(record_id, column, value)` to persist the change once an operator interacts with it.
+
+## Setting the options
+
+Pass a value → label dict, or a callback that returns one — useful when the choices depend on the row:
 
 ```python
-from almasix.orbit.tables import Table, TextColumn, SelectColumn
-
-table = (
-    Table.make("posts")
-    .columns([
-        TextColumn.make("title").searchable(),
-        SelectColumn.make("status").options({
-            "draft": "Draft",
-            "review": "Review",
-            "published": "Published",
-        }),
-    ])
-    .records(records)
+SelectColumn.make("status").options(
+    lambda record=None, **_: {"draft": "Draft", "review": "Review"}
+    if record.get("locked")
+    else {"draft": "Draft", "review": "Review", "published": "Published"},
 )
 ```
 
-Rendered markup includes the hooks Orbit needs:
+## Disabling the placeholder option
+
+By default a blank placeholder option is selectable, so operators can clear the value. Disable it with `.selectable_placeholder(False)` when a value is always required:
+
+```python
+SelectColumn.make("status").options({...}).selectable_placeholder(False)
+```
+
+## Disabling individual options
+
+`.disable_option_when()` disables specific `<option>` entries instead of the whole column — the callback receives `value`, `label`, and `record`:
+
+```python
+SelectColumn.make("status")
+    .options({"draft": "Draft", "review": "Review", "published": "Published"})
+    .disable_option_when(
+        lambda value=None, record=None, **_: value == "published" and record.get("locked"),
+    )
+```
+
+## Disabling the column
+
+Lock the whole cell for specific rows with `.disabled()`:
+
+```python
+SelectColumn.make("status").options({...}).disabled(
+    lambda record=None, **_: record.get("locked"),
+)
+```
+
+## Reacting to updates
+
+Run code before and/or after a value is persisted using `.before_state_updated()` / `.after_state_updated()` — both receive `(record, state, old)`:
+
+```python
+SelectColumn.make("status").options({...}).after_state_updated(
+    lambda record=None, state=None, old=None, **_: notify_status_change(record, old, state),
+)
+```
+
+## How persistence works
+
+Rendered markup includes the hooks Orbit needs to wire up the edit:
 
 ```html
 <select class="or-select or-select-inline"
@@ -42,41 +82,41 @@ Rendered markup includes the hooks Orbit needs:
 </select>
 ```
 
-## In a Resource example
+On a resource's `ListRecordsHost`, `update_column_state` writes the new value onto the in-memory record (and runs any `before_state_updated` / `after_state_updated` hooks you registered) — override it if you need to persist elsewhere.
+
+## Full example
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.tables import Table, SelectColumn, TextColumn
+from almasix.orbit.tables import Table, TextColumn, SelectColumn
 
-class PostResource(Resource):
-    @classmethod
-    def table(cls, table: Table) -> Table:
-        return table.columns([
-            TextColumn.make("title").searchable().sortable(),
-            SelectColumn.make("status")
-                .label("Status")
-                .options(lambda record=None, **_: {
-                    "draft": "Draft",
-                    "review": "Review",
-                    "published": "Published",
-                }),
-        ])
+Table.make("posts").columns([
+    TextColumn.make("title").searchable().sortable(),
+    SelectColumn.make("status")
+        .label("Status")
+        .options({"draft": "Draft", "review": "Review", "published": "Published"})
+        .selectable_placeholder(False),
+]).records([
+    {"id": 1, "title": "Launch Orbit", "status": "draft"},
+    {"id": 2, "title": "Conduit hosts", "status": "published"},
+])
 ```
-
-Options can be a dict or a callable that receives `record` / `state` — useful when choices depend on the row.
-
-### Persistence
-
-On `ListRecordsHost`, override or rely on `update_column_state` to write the attribute back to your store. Client-side, `orbit.js` listens for change events on `[data-orbit-column-edit]` and posts through Conduit when a live wire is present.
 
 ## Key methods
 
-- `.options(dict | callable)` — value → label map
-- `.disabled(bool | callable)` — lock specific rows
-- `.label(...)` / `.sortable()` / `.align_start()`
-- Markup: `data-orbit-column-edit="select"`, `data-record-id`, `data-column`
+| Method | Effect |
+|--------|--------|
+| `.options(dict \| callable)` | Value → label map |
+| `.selectable_placeholder(bool)` | Allow / block the blank option |
+| `.disable_option_when(callback)` | Disable individual `<option>` entries |
+| `.disabled(bool \| callable)` | Lock the whole cell for a row |
+| `.before_state_updated(callback)` / `.after_state_updated(callback)` | Hooks around persistence |
+| `.label(...)` / `.sortable()` / `.align_start()` | Inherited [shared helpers](/tables/columns/overview/) |
+| Markup | `data-orbit-column-edit="select"`, `data-record-id`, `data-column` |
 
 ## Preview
 
-![Editable select (light)](/examples/light/tables/editable.png)
-![Editable select (dark)](/examples/dark/tables/editable.png)
+![Select column (light)](/examples/light/tables/select-column.png)
+![Select column (dark)](/examples/dark/tables/select-column.png)
+
+![Editable columns (light)](/examples/light/tables/editable.png)
+![Editable columns (dark)](/examples/dark/tables/editable.png)

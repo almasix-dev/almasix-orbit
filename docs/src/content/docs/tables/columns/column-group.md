@@ -1,35 +1,20 @@
 ---
 title: Column group
-description: ColumnGroup — dual headers that group related columns under one label.
+description: ColumnGroup — a shared header above related columns, with its own alignment and header wrapping.
 ---
 
-`ColumnGroup` draws a parent header across child columns. Use it when related fields should share one label, such as shipping address fields or payment totals.
-
-Filament-shaped constructor: `ColumnGroup.make('Label', [cols])` (or `.make([cols]).label(...)`).
-
-## Standalone example
+`ColumnGroup` draws one header above a set of child columns — use it when related fields should share a label, like shipping address fields or payment totals:
 
 ```python
-from almasix.orbit.tables import Table, TextColumn, ColumnGroup
+from almasix.orbit.tables import ColumnGroup, TextColumn
 
-table = (
-    Table.make("orders")
-    .columns([
-        TextColumn.make("id").label("#").sortable(),
-        ColumnGroup.make("Customer", [
-            TextColumn.make("customer_name").searchable(),
-            TextColumn.make("email").copyable(),
-        ]),
-        ColumnGroup.make("Totals", [
-            TextColumn.make("amount").money("USD").align_end(),
-            TextColumn.make("tax").money("USD", divide_by=100).align_end(),
-        ]),
-    ])
-    .records(records)
-)
+ColumnGroup.make("Customer", [
+    TextColumn.make("customer_name").searchable(),
+    TextColumn.make("email").copyable(),
+])
 ```
 
-Alternate shape:
+The constructor mirrors Filament's shape — `ColumnGroup.make('Label', [columns])`. An alternate shape is also available when you'd rather set the label afterwards:
 
 ```python
 ColumnGroup.make([
@@ -38,38 +23,69 @@ ColumnGroup.make([
 ]).label("Location")
 ```
 
-## In a Resource example
+Child columns keep every helper they'd normally have — sorting, searching, money, badges, and editable inputs all still work exactly as if the column weren't grouped. The group only adds a second header row above them.
+
+## Customizing the group header alignment
+
+The group's header can be aligned independently of its children:
 
 ```python
-from almasix.orbit import Resource
-from almasix.orbit.tables import Table, TextColumn, ColumnGroup
-
-class OrderResource(Resource):
-    @classmethod
-    def table(cls, table: Table) -> Table:
-        return table.columns([
-            TextColumn.make("number").searchable().sortable(),
-            ColumnGroup.make("Shipping", [
-                TextColumn.make("ship_name"),
-                TextColumn.make("ship_city"),
-                TextColumn.make("ship_country"),
-            ]),
-            ColumnGroup.make("Payment", [
-                TextColumn.make("amount").money("USD").align_end().sortable(),
-                TextColumn.make("status").badge().color("success"),
-            ]),
-        ])
+ColumnGroup.make("Totals", [...]).align_end()
 ```
 
-Child columns keep their own sort, search, and formatting helpers. The group only provides the dual header.
+## Wrapping the group header
+
+If the group's label is long, allow it to wrap instead of clipping:
+
+```python
+ColumnGroup.make("Shipping details", [...]).wrap_header()
+```
+
+## Full example
+
+```python
+from almasix.orbit.tables import Table, TextColumn, ColumnGroup
+
+Table.make("orders").columns([
+    TextColumn.make("number").label("#").sortable(),
+    ColumnGroup.make("Customer", [
+        TextColumn.make("customer_name").searchable(),
+        TextColumn.make("email").copyable(),
+    ]),
+    ColumnGroup.make("Totals", [
+        TextColumn.make("amount").money("USD").align_end().sortable(),
+        TextColumn.make("status").badge().color("success"),
+    ]).align_end(),
+]).records([
+    {
+        "id": 1,
+        "number": "#1042",
+        "customer_name": "Ada Lovelace",
+        "email": "ada@example.com",
+        "amount": 4899,
+        "status": "paid",
+    },
+    {
+        "id": 2,
+        "number": "#1043",
+        "customer_name": "Grace Hopper",
+        "email": "grace@example.com",
+        "amount": 1200,
+        "status": "due",
+    },
+])
+```
 
 ## Key methods
 
-- `ColumnGroup.make(label, [columns])` — labeled constructor
-- `ColumnGroup.make([columns]).label(...)` — alternate shape
-- `.columns([...])` — set / replace children
-- `.get_columns()` — inspect children
-- Children: any `Column` (including money, badges, editable)
+| Method | Effect |
+|--------|--------|
+| `ColumnGroup.make(label, [columns])` | Labeled constructor |
+| `ColumnGroup.make([columns]).label(...)` | Alternate shape |
+| `.columns([...])` / `.get_columns()` | Set / inspect children |
+| `.align_start()` / `.align_center()` / `.align_end()` | Group header alignment |
+| `.wrap_header()` | Allow the group label to wrap |
+| Children | Any [`Column`](/tables/columns/overview/) — including money, badges, and editable columns |
 
 ## Preview
 

@@ -9,112 +9,51 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 1 | Panel Configuration | `docs/src/content/docs/panels/configuration.md` | **closed** |
 | 2 | Tables overview | `docs/src/content/docs/tables/overview.md` | **closed** |
 | 3 | Columns overview | `docs/src/content/docs/tables/columns/overview.md` | **closed** |
-| 4+ | Remaining Orbit doc features | docs nav | queued |
+| 4 | Text column | `docs/src/content/docs/tables/columns/text.md` | **closed** |
+| 5 | Icon column | `docs/src/content/docs/tables/columns/icon.md` | **closed** |
+| 6 | Image column | `docs/src/content/docs/tables/columns/image.md` | **closed** |
+| 7 | Color column | `docs/src/content/docs/tables/columns/color.md` | **closed** |
+| 8 | Select column | `docs/src/content/docs/tables/columns/select.md` | **closed** |
+| 9 | Toggle column | `docs/src/content/docs/tables/columns/toggle.md` | **closed** |
+| 10 | Text input column | `docs/src/content/docs/tables/columns/text-input.md` | **closed** |
+| 11 | Checkbox column | `docs/src/content/docs/tables/columns/checkbox.md` | **closed** |
+| 12 | Badge column | `docs/src/content/docs/tables/columns/badge.md` | **closed** |
+| 13 | Boolean column | `docs/src/content/docs/tables/columns/boolean.md` | **closed** |
+| 14 | Tags column | `docs/src/content/docs/tables/columns/tags.md` | **closed** |
+| 15 | View column | `docs/src/content/docs/tables/columns/view.md` | **closed** |
+| 16 | Column group | `docs/src/content/docs/tables/columns/column-group.md` | **closed** |
+| 17+ | Remaining Orbit doc features | docs nav | queued |
 
-## Columns overview — gap matrix vs Filament 5
+## Column types autopilot — closed
 
-Reference: https://filamentphp.com/docs/5.x/tables/columns/overview
+Filament 5 parity pass for every page under Columns (excluding overview, closed earlier).
 
-### Done
+### Shared / Text
 
-| Filament | Orbit |
-|----------|-------|
-| `state()` | `.state(value \| callable)` |
-| `default()` | `.default(...)` via `evaluate` / `get_default` |
-| `placeholder()` | `.placeholder(...)` |
-| `sortable` / array / `query` | `.sortable(True \| list \| query=)` |
-| `searchable` / array / `query` | `.searchable(True \| list \| query=)` |
-| `tooltip` / `headerTooltip` | `.tooltip()` / `.header_tooltip()` |
-| `wrapHeader` / `width` / `grow` / vertical align | `.wrap_header()` / `.width()` / `.grow()` / `.vertically_align_*()` |
-| `openUrlInNewTab` on column URL | `.open_url_in_new_tab()` |
-| `extraCellAttributes` / header attrs | `.extra_cell_attributes()` / `.extra_header_attributes()` + wired `extra_attributes` |
-| `hidden` / `visible` | honored in `_column_is_visible` |
-| `Column::configureUsing` | `Column.configure_using()` |
-| `reorderableColumns` | `.reorderable_columns()` + column-manager DnD |
+`icon_position`, `icon_color`, `size`, `font_family`, `limit(end=)`, `words`, `line_clamp`, `description(position=)`, `separator`, `bulleted`, `time`, `since`, `copy_message` / `copy_message_duration`, `money(decimal_places=)`, callable `badge`, editable `before_state_updated` / `after_state_updated`.
 
-### Deferred (later tracks)
+### Per type
 
-| Filament | Reason |
-|----------|--------|
-| `counts` / `exists` / `avg` / `sum` / … | Eloquent relationship aggregates |
-| Individual column search (`isIndividual`) | Filters / search UX track |
-| Column-manager layout / defer Apply | Manager chrome polish |
-| Cell `.action(Action)` | Record/toolbar actions cover most UX |
-| Type-specific pages (Text, Icon, …) | Separate features |
+| Type | Highlights |
+|------|------------|
+| Icon | `true_color` / `false_color`; `.icon()` callback for non-boolean |
+| Image | `alt`, `square`, `image_width`/`height`, `ring`, `overlap`, `extra_img_attributes` |
+| Color | copy message attrs |
+| Select | `selectable_placeholder`, `disable_option_when`, lifecycle hooks |
+| Toggle / Checkbox | lifecycle hooks |
+| Text input | `type`, `input_mode`, `step`, `prefix`, `suffix`, hooks |
+| Tags | `separator`, `limit` (+N), color |
+| View | URL wrap |
+| Column group | `align_*`, `wrap_header` |
 
-## Close checklist (Columns overview)
+### Deferred
 
-- [x] Gap matrix accurate after implementation
-- [x] orbit-admin sample exercises overview APIs (`ColumnsOverviewResource`)
-- [x] Tests at 100% for touched Column/table surface
-- [x] Docs updated (`tables/columns/overview.md`)
-- [x] Status → **closed**
+Eloquent relationship aggregates, storage disks, native JS selects / searchable options, Laravel policy auto-checks.
 
-## Tables overview — gap matrix vs Filament 5
+### Close checklist
 
-Reference: https://filamentphp.com/docs/5.x/tables/overview
-
-### Done
-
-| Filament | Orbit |
-|----------|-------|
-| `columns` / `pushColumns` | `.columns()` / `.push_columns()` |
-| Dot relationship columns | `Column.resolve_state` via `dot_get` |
-| `searchable` / `sortable` (columns) | present |
-| Table `searchable` / `searchUsing` | `.searchable()` / `.search_using()` |
-| `defaultSort` | `.default_sort()` |
-| Filters + `deferFilters` | present |
-| `recordActions` / `toolbarActions` | `.record_actions()` / `.toolbar_actions()` (+ existing names) |
-| Pagination options / disable / extreme / modes | `.paginated()`, `.extreme_pagination_links()`, `.pagination_mode(PaginationMode)` |
-| `queryStringIdentifier` / persist per-page | present |
-| `recordUrl` / open in new tab | `.record_url()` / `.open_record_url_in_new_tab()` |
-| `reorderable` + hooks | `.reorderable()`, `.apply_reorder()`, host `toggleReordering` |
-| Heading / description / header | `.heading()` / `.description()` / `.header()` |
-| `poll` / `deferLoading` | `.poll()` / `.defer_loading()` |
-| `persistInSession` (+ individuals) | `.persist_in_session()` etc. |
-| `striped` / `recordClasses` | present |
-| Empty state icon / custom view | `.empty_state_icon()` / `.empty_state()` |
-| `configureUsing` | `Table.configure_using()` |
-
-### Deferred (later tracks)
-
-| Filament | Reason |
-|----------|--------|
-| Full DnD reorder UX in orbit.js | Chrome + callbacks shipped; drag polish later |
-| Filters layout enums | Filters overview feature |
-| Scout-specific search | Covered by `.search_using()` |
-
-## Panel Configuration — gap matrix vs Filament 5
-
-Reference: https://filamentphp.com/docs/5.x/panel-configuration (+ styling/auth configured on the panel).
-
-### Done
-
-| Area | Orbit API |
-|------|-----------|
-| Identity | `Panel.make(id)`, `.path()`, `.default()`, `.domain()`, `.home_url()`, `.favicon()` |
-| Multi-panel | `PanelRegistry.register` / `.get` / `.all` / `.default` / `.get_default` |
-| Brand | `.brand_name`, `.brand_logo`, `.brand_logo_dark`, `.brand_logo_only`, `.brand_name_font_size`, `.brand_logo_height` |
-| Theme colors / font | `.font`, `.primary`, `.colors`, `.content_max_width`, `.simple_page_max_content_width` |
-| Dark mode | `.dark_mode()`, `.theme_switcher()`, `.default_theme_mode()` |
-| Contents | `.resources` / `.pages` / `.widgets`, `.discover_*`, `.load_discovered` |
-| Auth pages | `.login` / `.signup` / `.dashboard` / `.auth_guard` |
-| Middleware | `.middleware(..., replace=)`, `.auth_middleware(...)` |
-| Nav chrome (basics) | `.navigation_layout`, `.apps_navigation`, `.sidebar_navigation`, `.top_navigation`, `.sidebar_collapsible`, groups/items, `.breadcrumbs_enabled` |
-| Plugins / hooks | `.plugin` / `.plugins` (callable or `Plugin`), `.boot_using`, `.render_hook`, `.run_plugins` |
-| Shell | `.render_shell`, breadcrumbs |
-
-### Deferred (later features)
-
-| Filament | Reason |
-|----------|--------|
-| `spa()` / prefetch / URL exceptions | SPA feature track |
-| `unsavedChangesAlerts()` | Forms/actions UX track |
-| `databaseTransactions()` | Actions/resources track |
-| `assets([...])` | Asset pipeline track |
-| `strictAuthorization()` | Auth/policies track |
-| Error notification customization | Notifications track |
-| `broadcasting(false)` | Realtime track |
-| Multi-tenancy / MFA / clusters / global search depth | Separate doc tracks |
-| `subNavigationPosition` | Navigation feature |
-| Vite theme / custom Livewire chrome | Styling / host adapters |
+- [x] Gap matrices implemented for all column type pages
+- [x] Docs rewritten Filament-depth; screenshots match snippets
+- [x] orbit-admin samples updated
+- [x] Tests at 100% coverage
+- [x] Status → **closed** for types 4–16
