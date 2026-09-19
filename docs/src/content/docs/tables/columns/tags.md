@@ -26,7 +26,7 @@ TagsColumn.make("topics").separator(";")
 All chips in the column share one color, chosen the same way as [`TextColumn.color()`](/tables/columns/text/#customizing-the-color):
 
 ```python
-TagsColumn.make("tags").color("info")
+TagsColumn.make("tags").color("primary")
 ```
 
 ## Limiting the number of tags shown
@@ -44,7 +44,7 @@ from almasix.orbit.tables import Table, TextColumn, TagsColumn
 
 Table.make("articles").columns([
     TextColumn.make("title").searchable().sortable().weight("bold"),
-    TagsColumn.make("tags").color("info").limit(3),
+    TagsColumn.make("tags").color("primary").limit(3),
     TagsColumn.make("topics").separator(";"),  # also accepts "python;html" strings
 ]).records([
     {

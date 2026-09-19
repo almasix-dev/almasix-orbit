@@ -2482,6 +2482,13 @@ html.dark .or-login-logo-dark {
   cursor: pointer;
 }
 
+/* Native controls — match panel primary (not browser default blue) */
+.or-checkbox,
+.or-toggle,
+.or-radio {
+  accent-color: var(--or-primary);
+}
+
 .or-td-actions {
   text-align: right;
 }
@@ -3342,6 +3349,32 @@ html.dark .or-login-logo-dark {
   color: var(--or-info);
 }
 .or-color-gray {
+  color: var(--or-gray);
+}
+
+/* Colored badges — tinted wash + ink (Filament-style chips) */
+.or-badge.or-color-primary {
+  background: color-mix(in srgb, var(--or-primary) 14%, transparent);
+  color: var(--or-primary-deep);
+}
+.or-badge.or-color-danger {
+  background: color-mix(in srgb, var(--or-danger) 14%, transparent);
+  color: var(--or-danger);
+}
+.or-badge.or-color-success {
+  background: color-mix(in srgb, var(--or-success) 14%, transparent);
+  color: var(--or-success);
+}
+.or-badge.or-color-warning {
+  background: color-mix(in srgb, var(--or-warning) 16%, transparent);
+  color: color-mix(in srgb, var(--or-warning) 72%, black);
+}
+.or-badge.or-color-info {
+  background: color-mix(in srgb, var(--or-info) 14%, transparent);
+  color: var(--or-info);
+}
+.or-badge.or-color-gray {
+  background: color-mix(in srgb, var(--or-gray) 14%, transparent);
   color: var(--or-gray);
 }
 

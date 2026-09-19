@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.theme_colors import (
     DEFAULT_PRIMARY,
@@ -53,10 +56,23 @@ def test_panel_colors_injects_danger() -> None:
 
 
 def test_css_derives_primary_soft_deep() -> None:
-    from pathlib import Path
-
     css = Path("packages/panels/src/almasix/orbit/resources/css/orbit.css").read_text(
         encoding="utf-8"
     )
     assert "--or-primary-soft: color-mix(in srgb, var(--or-primary)" in css
     assert "--or-primary-deep: color-mix(in srgb, var(--or-primary)" in css
+
+
+def test_css_native_controls_use_primary_accent() -> None:
+    css = Path("packages/panels/src/almasix/orbit/resources/css/orbit.css").read_text(
+        encoding="utf-8"
+    )
+    for selector in (".or-checkbox", ".or-toggle", ".or-radio", ".or-row-check"):
+        assert selector in css
+    # Accent block for form/table native controls
+    assert re.search(
+        r"\.or-checkbox,\s*\n\s*\.or-toggle,\s*\n\s*\.or-radio\s*\{[^}]*accent-color:\s*var\(--or-primary\)",
+        css,
+    )
+    assert ".or-badge.or-color-primary" in css
+    assert "background: color-mix(in srgb, var(--or-primary)" in css

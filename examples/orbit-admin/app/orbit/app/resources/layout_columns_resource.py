@@ -71,7 +71,7 @@ class LayoutColumnsResource(Resource):
                                 TextColumn.make("subtitle").color("gray"),
                             ]
                         ),
-                        TagsColumn.make("tags").separator(";").limit(3).color("info"),
+                        TagsColumn.make("tags").separator(";").limit(3).color("primary"),
                     ]
                 ).label("Content"),
                 ColumnGroup.make(

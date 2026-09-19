@@ -1421,7 +1421,7 @@ def build() -> str:
         .columns(
             [
                 TextColumn.make("title").searchable().sortable().weight("bold"),
-                TagsColumn.make("tags").color("info").limit(3),
+                TagsColumn.make("tags").color("primary").limit(3),
                 TagsColumn.make("topics").separator(";"),
             ]
         )

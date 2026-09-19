@@ -203,7 +203,7 @@ TextColumn.make("tags").separator(",").bulleted()
 Combine `.separator()` with [`.badge()`](#displaying-as-a-badge) to turn a CSV string or list into a cluster of badges, right inside `TextColumn`:
 
 ```python
-TextColumn.make("tags").separator(",").badge().color("info")
+TextColumn.make("tags").separator(",").badge().color("primary")
 ```
 
 ## Customizing the text size
