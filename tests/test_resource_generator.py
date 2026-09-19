@@ -6,7 +6,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from almasix.orbit.panels.commands import MakeOrbitResourceCommand
 from almasix.orbit.panels.resource_generator import (
     ColumnSpec,

@@ -193,7 +193,6 @@ def default_title_schemas() -> GeneratedSchemas:
 
 def empty_schemas(*, comment: str | None = None) -> GeneratedSchemas:
     """Empty form/table bodies (Filament fallback when generation yields nothing)."""
-    tip = f"  # {comment}\n" if comment else ""
     return GeneratedSchemas(
         form_fields=[],
         table_columns=[],
