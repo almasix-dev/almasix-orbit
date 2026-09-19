@@ -252,8 +252,14 @@ class ListRecords(ResourcePage):
             page = max(1, int(ctx.get("page") or 1))
         except (TypeError, ValueError):
             page = 1
+        raw_per = ctx.get("per_page")
         try:
-            per_page = max(1, int(ctx.get("per_page") or 10))
+            if raw_per in (None, ""):
+                per_page = 10
+            else:
+                per_page = int(raw_per)
+                if per_page < 0:
+                    per_page = 10
         except (TypeError, ValueError):
             per_page = 10
         filters = ctx.get("table_filters")

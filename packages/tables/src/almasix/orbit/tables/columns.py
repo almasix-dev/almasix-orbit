@@ -42,6 +42,19 @@ def _copyable_wrap(inner: str, copy_text: str) -> str:
     )
 
 
+def dot_get(record: Any, path: str) -> Any:
+    """Resolve ``author.name`` / nested dict keys on a record."""
+    current: Any = record
+    for part in str(path).split("."):
+        if current is None:
+            return None
+        if isinstance(current, dict):
+            current = current.get(part)
+        else:
+            current = getattr(current, part, None)
+    return current
+
+
 class Column(Component):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
@@ -269,10 +282,9 @@ class Column(Component):
 
     def resolve_state(self, record: Any) -> Any:
         name = self.get_name() or ""
-        if isinstance(record, dict):
-            value = record.get(name)
-        else:
-            value = getattr(record, name, None)
+        value = dot_get(record, name) if name else None
+        if value is None and self._default is not None:
+            value = self._default
         if self._format_state:
             value = self._format_state(value)
         if self._limit is not None and isinstance(value, str) and len(value) > self._limit:

@@ -9,7 +9,11 @@ header switcher.
 
 ## Unreleased (`main`)
 
-_Nothing yet — see **0.3.1** below for the latest release._
+### Tables overview parity ([Filament 5.x](https://filamentphp.com/docs/5.x/tables/overview))
+
+- Dot-notation relationship columns, `push_columns`, `default_sort`, `record_actions` / `toolbar_actions`
+- Pagination: `paginated([...])`, `PaginationMode`, extreme links, query-string id, per-page `"all"`
+- Heading/description/header, poll, defer loading, reorder chrome, `record_classes`, session persist helpers, `Table.configure_using`
 
 ## 0.3.1
 

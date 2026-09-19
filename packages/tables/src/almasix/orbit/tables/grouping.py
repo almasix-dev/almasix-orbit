@@ -91,15 +91,9 @@ class Group(Component):
         return self
 
     def _dot_get(self, record: Any, path: str) -> Any:
-        current = record
-        for part in path.split("."):
-            if current is None:
-                return None
-            if isinstance(current, dict):
-                current = current.get(part)
-            else:
-                current = getattr(current, part, None)
-        return current
+        from almasix.orbit.tables.columns import dot_get
+
+        return dot_get(record, path)
 
     def key_from_record(self, record: Any) -> Any:
         return self.get_key_from_record(record)

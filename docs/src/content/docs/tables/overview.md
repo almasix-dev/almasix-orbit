@@ -7,37 +7,41 @@ Tables render searchable, sortable, filterable, and actionable HTML from records
 
 ```python
 from almasix.orbit.tables import (
-    Table, TextColumn, SelectColumn, SelectFilter, Sum, Group,
+    Table, TextColumn, SelectColumn, SelectFilter, Sum, Group, PaginationMode,
 )
-from almasix.orbit.actions import CreateAction, EditAction, DeleteAction
+from almasix.orbit.actions import CreateAction, EditAction, DeleteAction, DeleteBulkAction
 
 table = (
     Table.make("posts")
+    .heading("Posts")
+    .description("Manage your posts.")
     .columns([
         TextColumn.make("title").searchable().sortable(),
+        TextColumn.make("author.name").label("Author"),
         TextColumn.make("status").badge().color("primary"),
         TextColumn.make("amount").money("USD").align_end().summarize(Sum.make()),
-        SelectColumn.make("priority").options({
-            "low": "Low",
-            "high": "High",
-        }),
     ])
+    .push_columns([
+        TextColumn.make("updated_at").date_time().toggleable(is_toggled_hidden_by_default=True),
+    ])
+    .default_sort("title")
     .filters([
         SelectFilter.make("status").options({
             "draft": "Draft",
             "published": "Published",
         }),
     ])
+    .record_actions([EditAction.make(), DeleteAction.make()])
+    .toolbar_actions([DeleteBulkAction.make()])
+    .header_actions([CreateAction.make()])
+    .paginated([10, 25, 50, "all"])
+    .default_pagination_page_option(25)
+    .extreme_pagination_links()
     .records(posts)
-    .search("orbit")
-    .sort("title", "asc")
-    .paginate(page=1, per_page=15)
     .striped()
-    .default_group(Group.make("status").collapsible())
     .empty_state_heading("No posts yet")
     .empty_state_description("Create your first post to get going.")
-    .header_actions([CreateAction.make()])
-    .actions([EditAction.make(), DeleteAction.make()])
+    .empty_state_icon("heroicon-o-document-text")
 )
 ```
 
@@ -65,18 +69,19 @@ table = (
 | `.records([...])` | In-memory list (dicts or objects) |
 | `.query(any)` | Stores a query object for your app layer |
 
-`get_records()` / `get_total()` operate on the in-memory list: search uses **searchable** columns, sort uses the column name as a key or attribute, then pagination slices the result. Use `.query()` (or the [query builder](/query-builder/overview/)) when the database should filter, sort, and paginate.
+`get_records()` / `get_total()` operate on the in-memory list: search uses **searchable** columns (or a table-level `.search_using()` callback), sort uses the column name as a key, attribute, or **dot path**, then pagination slices the result. Use `.query()` (or the [query builder](/query-builder/overview/)) when the database should filter, sort, and paginate.
+
+### Relationship columns (dot notation)
 
 ```python
-Table.make("orders")
-    .columns([TextColumn.make("sku").searchable().sortable()])
-    .records([
-    {"id": 1, "sku": "ORB-01", "amount": 1200},
-    {"id": 2, "sku": "ORB-02", "amount": 450},
-])
-    .search("ORB")
-    .sort("sku", "asc")
-    .paginate(page=1, per_page=25)
+TextColumn.make("author.name")  # nested dict key or object attribute
+```
+
+### `push_columns` and `default_sort`
+
+```python
+table.columns([...]).push_columns([TextColumn.make("slug")])
+table.default_sort("created_at", "desc")
 ```
 
 ## Columns inventory
@@ -100,8 +105,6 @@ Column types live under `almasix.orbit.tables`. Start with [TextColumn](/tables/
 
 ### Money
 
-Currency formatting is available on text columns and summarizers:
-
 ```python
 TextColumn.make("amount").money("USD")
 TextColumn.make("cents").money("USD", divide_by=100).align_end()
@@ -117,7 +120,6 @@ TextColumn.make("cents").money("USD", divide_by=100).align_end()
 ```python
 from almasix.orbit.tables import SelectColumn, TextInputColumn, ToggleColumn, CheckboxColumn
 
-# Persist via ListRecordsHost.update_column_state / orbit.js
 SelectColumn.make("status").options({"draft": "Draft", "published": "Published"})
 TextInputColumn.make("sku")
 ToggleColumn.make("featured")
@@ -126,6 +128,62 @@ CheckboxColumn.make("approved")
 
 ![Editable columns (light)](/examples/light/tables/editable.png)
 ![Editable columns (dark)](/examples/dark/tables/editable.png)
+
+## Pagination
+
+```python
+from almasix.orbit.tables import PaginationMode
+
+table.paginated([10, 25, 50, "all"])           # or .paginated(False) to disable
+table.default_pagination_page_option(25)
+table.extreme_pagination_links()                 # « » first/last controls
+table.pagination_mode(PaginationMode.SIMPLE)     # prev/next only (also CURSOR)
+table.query_string_identifier("users")           # avoid clashing `page` params
+table.persist_records_per_page_in_session()
+```
+
+## Record URLs & row classes
+
+```python
+table.record_url(lambda record: f"/posts/{record['id']}")
+table.open_record_url_in_new_tab()
+table.record_classes(lambda record: "is-draft" if record["status"] == "draft" else None)
+```
+
+## Reordering
+
+```python
+table.reorderable("sort")                        # column storing order
+table.paginated_while_reordering()               # keep pages while dragging
+table.before_reordering(lambda order: ...)
+table.after_reordering(lambda order: ...)
+# Host: ListRecordsHost.toggleReordering() / table.apply_reorder(ids)
+```
+
+## Heading, poll, defer loading
+
+```python
+table.heading("Clients").description("Manage your clients here.")
+table.header("<div>…</div>")   # full custom header HTML
+table.poll("10s")
+table.defer_loading()
+```
+
+## Session persistence
+
+```python
+table.persist_in_session()                 # filters + search + sort + columns + per-page
+table.persist_in_session(False)            # turn all off
+# or individually: persist_filters_in_session / persist_search_in_session / …
+```
+
+## Global defaults
+
+```python
+from almasix.orbit.tables import Table
+
+Table.configure_using(lambda t: t.paginated([10, 25, 50]).striped())
+```
 
 ## Filters
 
@@ -145,12 +203,12 @@ table.filters([
 
 ## Actions
 
-Three slots:
+Filament v5 names work as aliases:
 
 ```python
-table.actions([...])         # per row (⋮ dropdown when crowded)
-table.bulk_actions([...])    # selected rows
-table.header_actions([...])  # top of the table
+table.record_actions([...])   # alias of .actions([...]) — per row
+table.toolbar_actions([...])  # alias of .bulk_actions([...])
+table.header_actions([...])   # top of the table
 ```
 
 Danger-colored actions confirm by default. Details live on [table actions](/tables/actions/) and [panel actions](/panels/actions/).
@@ -185,7 +243,10 @@ When there are no rows:
 ```python
 table.empty_state_heading("Nothing here")
 table.empty_state_description("Try clearing filters, or create a record.")
+table.empty_state_icon("heroicon-o-inbox")
 table.empty_state_actions([CreateAction.make()])
+# or fully custom:
+table.empty_state("<div class='…'>…</div>")
 ```
 
 ![Empty state (light)](/examples/light/tables/empty.png)
@@ -199,3 +260,5 @@ data = table.to_dict()
 ```
 
 Markup uses `.or-*` classes so published Orbit CSS can style it. Prefer a [Resource](/resources/listing-records/) for CRUD wiring; use a [standalone table](/components/table/) when embedding a list in a custom page or Conduit host.
+
+Live sample: **Tables overview** in `examples/orbit-admin` (`TablesOverviewResource`).

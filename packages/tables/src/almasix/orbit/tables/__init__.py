@@ -14,6 +14,7 @@ from almasix.orbit.tables.columns import (
     ToggleColumn,
     ViewColumn,
 )
+from almasix.orbit.tables.enums import PaginationMode
 from almasix.orbit.tables.filters import (
     Filter,
     FilterGroup,
@@ -29,6 +30,7 @@ from almasix.orbit.tables.table import Table
 
 __all__ = [
     "Table",
+    "PaginationMode",
     "Column",
     "TextColumn",
     "BadgeColumn",
