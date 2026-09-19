@@ -280,6 +280,58 @@ def test_search_select_options_and_model_fallback() -> None:
     assert isinstance(html, str)
 
 
+def test_select_option_label_branch_edges() -> None:
+    from almasix.orbit.forms import Select
+
+    # Existing relationship with search_columns + custom title — skip overwrite branches
+    sel = (
+        Select.make("a")
+        .relationship("artist", "name", search_columns=["name"])
+        .option_label("{name} - {country}")
+    )
+    rel = sel.get_relationship()
+    assert rel is not None
+    assert rel["search_columns"] == ["name"]
+    assert rel["title_attribute"] == "name"
+    assert rel["option_label"] == "{name} - {country}"
+
+    # get_option_label on existing relationship
+    sel.get_option_label_from_record_using(lambda r: "lab")
+    assert callable(sel.get_relationship()["get_option_label"])
+
+    # owner model: resource without get_model, and get_model failing without model attr
+    class OnlyModel:
+        model = object
+
+    class RaisingNoModel:
+        @classmethod
+        def get_model(cls) -> type:
+            raise RuntimeError("x")
+
+    assert Select.make("x")._owner_model(resource=OnlyModel) is object
+    assert Select.make("x")._owner_model(resource=RaisingNoModel) is None
+    assert Select.make("x").resolve_relationship_options() == {}
+
+
+def test_select_render_rel_search_columns_without_name() -> None:
+    from almasix.orbit.forms import Select
+
+    sel = Select.make("x")
+    sel._relationship = {
+        "name": None,
+        "title_attribute": "id",
+        "model": None,
+        "option_label": None,
+        "search_columns": ["name"],
+        "preload": True,
+        "modify_query": None,
+        "get_option_label": None,
+    }
+    html = sel.searchable().render(None)
+    assert "data-search-columns" in html
+    assert "data-preload" in html
+
+
 def test_edit_record_model_fallback() -> None:
     class Host(EditRecordHost):
         panel_id = "admin"
@@ -308,3 +360,277 @@ def test_edit_record_model_fallback() -> None:
     host = Host()
     html = host.render()
     assert isinstance(html, str)
+
+
+def test_option_label_sets_title_from_placeholders() -> None:
+    from almasix.orbit.forms import Select
+
+    sel = Select.make("a").relationship("artist", "id").option_label("{name} ({country})")
+    rel = sel.get_relationship()
+    assert rel is not None
+    assert rel["title_attribute"] == "name"
+    assert rel["search_columns"] == ["name", "country"]
+    assert rel["option_label"] == "{name} ({country})"
+
+
+def test_create_edit_record_page_model_exception_without_ctx() -> None:
+    from almasix.orbit.forms import Form
+    from almasix.orbit.panels.pages.resource_pages import CreateRecord, EditRecord
+
+    class Broken(Resource):
+        records_mutable = True
+
+        @classmethod
+        def get_model(cls) -> type:
+            raise RuntimeError("no model")
+
+        model = None
+
+        @classmethod
+        def get_form(cls) -> object:
+            return Form.make("f")
+
+        @classmethod
+        def get_slug(cls) -> str:
+            return "broken"
+
+        @classmethod
+        def get_navigation_label(cls) -> str:
+            return "Broken"
+
+    class BoundCreate(CreateRecord):
+        resource = Broken
+
+    class BoundEdit(EditRecord):
+        resource = Broken
+
+    assert "Create" in BoundCreate.render(state={})
+    assert "or-page-edit" in BoundEdit.render(record={"id": "1"}, state={"title": "t"})
+
+
+def test_prompt_name_and_list_panel_edges(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from almasix.framework.application import Application
+    from almasix.orbit.panels.commands import (
+        MakeOrbitPageCommand,
+        MakeOrbitWidgetCommand,
+        _ensure_provider_in_app_config,
+        _list_panel_ids,
+        _panel_id_option,
+        _prompt_name,
+    )
+
+    class FakeCmd:
+        INVALID = 2
+        FAILURE = 1
+        SUCCESS = 0
+        app = None
+
+        def ask(self, *_a: object, **_k: object) -> str:
+            return "  Settings  "
+
+        def error(self, *_a: object, **_k: object) -> None:
+            return None
+
+        def option(self, name: str) -> object:
+            return None
+
+    monkeypatch.setattr("almasix.console.prompts.types.is_interactive", lambda: True)
+    assert _prompt_name(FakeCmd(), label="Page name") == "Settings"  # type: ignore[arg-type]
+
+    class EmptyAsk(FakeCmd):
+        def ask(self, *_a: object, **_k: object) -> str:
+            return "   "
+
+    assert _prompt_name(EmptyAsk(), label="Page name") is None  # type: ignore[arg-type]
+
+    monkeypatch.setattr("almasix.console.prompts.types.is_interactive", lambda: False)
+    assert _prompt_name(FakeCmd(), label="Page name") is None  # type: ignore[arg-type]
+
+    empty = Application(tmp_path / "no_orbit")
+    assert _list_panel_ids(empty) == []
+
+    orbit = tmp_path / "app" / "orbit"
+    orbit.mkdir(parents=True)
+    (orbit / "shared").mkdir()
+    (orbit / "_skip").mkdir()
+    (orbit / "notes.txt").write_text("x", encoding="utf-8")
+    (orbit / "ops").mkdir()
+    (orbit / "ops" / "panel.py").write_text("x=1\n", encoding="utf-8")
+    (orbit / "ghost").mkdir()  # dir without panel.py
+    app = Application(tmp_path)
+    assert _list_panel_ids(app) == ["ops"]
+
+    cmd = MakeOrbitPageCommand(app)
+    assert _panel_id_option(cmd, panel="shop") == "shop"
+
+    # provider config edges
+    bare = Application(tmp_path / "bare")
+    assert "not found" in _ensure_provider_in_app_config(bare)
+
+    cfg_dir = tmp_path / "cfg"
+    (cfg_dir / "config").mkdir(parents=True)
+    (cfg_dir / "config" / "app.py").write_text("config = {}\n", encoding="utf-8")
+    assert "could not patch" in _ensure_provider_in_app_config(Application(cfg_dir))
+
+    sq = tmp_path / "sq"
+    (sq / "config").mkdir(parents=True)
+    (sq / "config" / "app.py").write_text("config = {'providers': []}\n", encoding="utf-8")
+    assert "registered" in _ensure_provider_in_app_config(Application(sq))
+    assert "OrbitPanelProvider" in (sq / "config" / "app.py").read_text(encoding="utf-8")
+
+    # page/widget: missing name, Page/Widget suffix, app None, exists without force
+    page = MakeOrbitPageCommand()
+    page._arguments = {}
+    page._options = {}
+    monkeypatch.setattr("almasix.console.prompts.types.is_interactive", lambda: False)
+    assert page.handle() == page.INVALID
+
+    page2 = MakeOrbitPageCommand()
+    page2._arguments = {"name": "SettingsPage"}
+    page2._options = {"panel": "admin"}
+    assert page2.handle() == page2.SUCCESS
+
+    widget = MakeOrbitWidgetCommand()
+    widget._arguments = {}
+    widget._options = {}
+    assert widget.handle() == widget.INVALID
+
+    widget2 = MakeOrbitWidgetCommand()
+    widget2._arguments = {"name": "StatsWidget"}
+    widget2._options = {"panel": "admin"}
+    assert widget2.handle() == widget2.SUCCESS
+
+    pages_dir = orbit / "ops" / "pages"
+    pages_dir.mkdir(parents=True)
+    (pages_dir / "__init__.py").write_text("", encoding="utf-8")
+    existing = pages_dir / "settings_page.py"
+    existing.write_text("x=1\n", encoding="utf-8")
+    page3 = MakeOrbitPageCommand(app)
+    page3._arguments = {"name": "Settings"}
+    page3._options = {"panel": "ops", "force": False}
+    assert page3.handle() == page3.FAILURE
+
+    widgets_dir = orbit / "ops" / "widgets"
+    widgets_dir.mkdir(parents=True)
+    (widgets_dir / "__init__.py").write_text("", encoding="utf-8")
+    (widgets_dir / "stats_widget.py").write_text("x=1\n", encoding="utf-8")
+    widget3 = MakeOrbitWidgetCommand(app)
+    widget3._arguments = {"name": "Stats"}
+    widget3._options = {"panel": "ops", "force": False}
+    assert widget3.handle() == widget3.FAILURE
+
+
+def test_resource_model_without_generate_prompt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from almasix.orbit.panels.commands import MakeOrbitResourceCommand
+
+    app_root = tmp_path
+    (app_root / "app" / "orbit" / "admin").mkdir(parents=True)
+    (app_root / "app" / "orbit" / "admin" / "panel.py").write_text("x=1\n", encoding="utf-8")
+
+    class FakeApp:
+        def path(self, *parts: str) -> str:
+            return str(app_root.joinpath(*parts))
+
+    monkeypatch.setattr(
+        "almasix.orbit.panels.resource_generator.resolve_model",
+        lambda name: type(
+            "Post",
+            (),
+            {
+                "__module__": "app.models.post",
+                "__name__": "Post",
+                "get_table": classmethod(lambda cls: "posts"),
+            },
+        ),
+    )
+    cmd = MakeOrbitResourceCommand(FakeApp())
+    monkeypatch.setattr(cmd, "_should_prompt_generate", lambda: False)
+    cmd._arguments = {"name": "Post"}
+    cmd._options = {"panel": "admin", "force": True}
+    assert cmd.handle() == 0
+
+
+def test_wire_discovery_non_callable_and_empty_registrar(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from almasix.orbit.panels.discover import _wire_default_discovery
+
+    class NoWire:
+        _discover_resources_in: list[str] = []
+        _discover_pages_in: list[str] = []
+        _discover_widgets_in: list[str] = []
+        discover_panel_dirs = "not-callable"
+
+    _wire_default_discovery(NoWire(), package="app.orbit", panel_id="x")  # type: ignore[arg-type]
+
+    root = tmp_path / "app" / "orbit"
+    root.mkdir(parents=True)
+    (root / "__init__.py").write_text("", encoding="utf-8")
+    empty = root / "empty"
+    empty.mkdir()
+    (empty / "__init__.py").write_text("", encoding="utf-8")
+    (empty / "panel.py").write_text("x = 1\n", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    sys.path.insert(0, str(tmp_path))
+    for key in list(sys.modules):
+        if key == "app" or key.startswith("app."):
+            del sys.modules[key]
+    try:
+        panels = register_app_orbit_panels(PanelRegistry())
+        assert all(p is None or getattr(p, "id", None) != "empty" for p in panels)
+    finally:
+        sys.path.remove(str(tmp_path))
+
+
+def test_legacy_registrar_none_without_callable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "app" / "orbit"
+    root.mkdir(parents=True)
+    (root / "__init__.py").write_text("", encoding="utf-8")
+    (root / "ghost_panel.py").write_text("x = 1\n", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    sys.path.insert(0, str(tmp_path))
+    for key in list(sys.modules):
+        if key == "app" or key.startswith("app."):
+            del sys.modules[key]
+    try:
+        with pytest.warns(DeprecationWarning):
+            panels = register_app_orbit_panels(PanelRegistry())
+        assert panels == [] or all(
+            p is None or getattr(p, "id", None) != "ghost" for p in panels
+        )
+    finally:
+        sys.path.remove(str(tmp_path))
+
+
+def test_navigation_subgroup_empty_name_skipped() -> None:
+    from almasix.orbit.panels.navigation import NavigationSubgroup
+
+    panel = Panel.make("admin").navigation_subgroup(NavigationSubgroup.make())
+    assert panel._nav_subgroups == {}
+
+
+def test_mount_panel_dedupes_overlapping_auth_middleware() -> None:
+    from almasix.orbit.panels.routing import mount_panel
+
+    class Router:
+        def __init__(self) -> None:
+            self.routes: list[object] = []
+
+        def add(self, *args: object, **kwargs: object) -> None:
+            self.routes.append((args, kwargs))
+
+    panel = (
+        Panel.make("admin")
+        .path("admin")
+        .middleware(["web"])
+        .auth_middleware(["web"])
+        .login()
+    )
+    mount_panel(Router(), panel)
+    assert panel.get_auth_middleware() == ["web"]

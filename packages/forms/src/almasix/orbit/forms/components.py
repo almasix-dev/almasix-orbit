@@ -354,7 +354,7 @@ class Field(Component):
                 "modify_query": None,
                 "get_option_label": callback,
             }
-        elif isinstance(self._relationship, dict):
+        else:
             self._relationship["get_option_label"] = callback
         return self
 
@@ -377,7 +377,7 @@ class Field(Component):
                 "modify_query": None,
                 "get_option_label": None,
             }
-        elif isinstance(self._relationship, dict):
+        else:
             self._relationship["option_label"] = template
             if not self._relationship.get("search_columns") and placeholders:
                 self._relationship["search_columns"] = placeholders
@@ -822,8 +822,6 @@ class Select(Field):
 
         if self._options_limit is not None:
             return int(self._options_limit)
-        if self.get_relationship() is not None:
-            return DEFAULT_OPTIONS_LIMIT
         return DEFAULT_OPTIONS_LIMIT
 
     def _owner_model(self, **ctx: Any) -> type[Any] | None:
