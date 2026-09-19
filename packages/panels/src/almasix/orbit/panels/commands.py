@@ -39,7 +39,73 @@ def _resolve_name(command: Command, *args: Any, **kwargs: Any) -> str | None:
     return text or None
 
 
+def _prompt_name(command: Command, *, label: str) -> str | None:
+    """Ask for a class name when the argument is missing and a TTY is available."""
+    from almasix.console.prompts.types import is_interactive
+
+    if not is_interactive():
+        return None
+    answered = str(command.ask(label, required=True) or "").strip()
+    return answered or None
+
+
+_RESERVED_ORBIT_DIRS = frozenset(
+    {"shared", "fields", "plugins", "resources", "pages", "widgets", "themes"}
+)
+
 _PROVIDER_DOTTED = "app.providers.orbit_panel_provider.OrbitPanelProvider"
+
+
+def _list_panel_ids(app: Any) -> list[str]:
+    """Panel ids under ``app/orbit/{id}/panel.py`` (skips reserved packages)."""
+    root = Path(app.path("app", "orbit"))
+    if not root.is_dir():
+        return []
+    found: list[str] = []
+    for child in sorted(root.iterdir()):
+        if not child.is_dir() or child.name.startswith("_"):
+            continue
+        if child.name in _RESERVED_ORBIT_DIRS:
+            continue
+        if (child / "panel.py").is_file():
+            found.append(child.name)
+    return found
+
+
+def _normalize_panel_id(raw: str) -> str:
+    text = str(raw or "").strip().replace("-", "_").replace("/", "_").lower()
+    return text
+
+
+def _panel_id_option(command: Command, **kwargs: Any) -> str:
+    """Resolve target panel id.
+
+    Prefer an explicit ``--panel`` / kwarg. Otherwise discover colocated panels:
+    one → use it; several → interactive ``choice`` (or ``admin`` / first when
+    non-interactive); none → ``admin``.
+    """
+    raw = kwargs.get("panel")
+    if raw is None:
+        raw = command.option("panel")
+    explicit = _normalize_panel_id(str(raw) if raw is not None else "")
+    if explicit:
+        return explicit
+
+    ids: list[str] = []
+    if command.app is not None:
+        ids = _list_panel_ids(command.app)
+
+    if len(ids) == 1:
+        return ids[0]
+    if len(ids) > 1:
+        from almasix.console.prompts.types import is_interactive
+
+        default = "admin" if "admin" in ids else ids[0]
+        if is_interactive():
+            chosen = command.choice("Which panel should this belong to?", ids, default)
+            return _normalize_panel_id(str(chosen)) or default
+        return default
+    return "admin"
 
 
 def _ensure_provider_in_app_config(app: Any) -> str:
@@ -195,14 +261,6 @@ def _ensure_thin_provider(app: Any, *, force: bool = False) -> str:
     return f"wrote {provider_path}"
 
 
-def _panel_id_option(command: Command, **kwargs: Any) -> str:
-    raw = kwargs.get("panel")
-    if raw is None:
-        raw = command.option("panel")
-    text = str(raw or "admin").strip().replace("-", "_").replace("/", "_").lower()
-    return text or "admin"
-
-
 class OrbitInstallCommand(Command):
     signature = (
         "orbit:install"
@@ -319,8 +377,8 @@ class MakeOrbitPanelCommand(Command):
 
 class MakeOrbitResourceCommand(Command):
     signature = (
-        "make:orbit-resource {name : Resource class name (e.g. Post or Blog/Post)}"
-        " {--panel=admin : Panel id (writes under that panel's resources dir)}"
+        "make:orbit-resource {name? : Resource class name (e.g. Post or Blog/Post)}"
+        " {--panel= : Panel id (prompted when multiple panels exist)}"
         " {--force : Overwrite}"
     )
     description = "Create a new Orbit resource class under a panel package"
@@ -328,7 +386,9 @@ class MakeOrbitResourceCommand(Command):
     boots_application: ClassVar[bool] = True
 
     def handle(self, *args: Any, **kwargs: Any) -> int:
-        raw = _resolve_name(self, *args, **kwargs)
+        raw = _resolve_name(self, *args, **kwargs) or _prompt_name(
+            self, label="Resource name (e.g. Post)"
+        )
         if not raw:
             self.error("name is required")
             return self.INVALID
@@ -393,8 +453,8 @@ class {class_name}(Resource):
 
 class MakeOrbitPageCommand(Command):
     signature = (
-        "make:orbit-page {name : Page class name (e.g. Settings)}"
-        " {--panel=admin : Panel id}"
+        "make:orbit-page {name? : Page class name (e.g. Settings)}"
+        " {--panel= : Panel id (prompted when multiple panels exist)}"
         " {--force : Overwrite}"
     )
     description = "Create a custom Orbit page under a panel package"
@@ -402,7 +462,9 @@ class MakeOrbitPageCommand(Command):
     boots_application: ClassVar[bool] = True
 
     def handle(self, *args: Any, **kwargs: Any) -> int:
-        raw = _resolve_name(self, *args, **kwargs)
+        raw = _resolve_name(self, *args, **kwargs) or _prompt_name(
+            self, label="Page name (e.g. Settings)"
+        )
         if not raw:
             self.error("name is required")
             return self.INVALID
@@ -444,8 +506,8 @@ class {class_name}(Page):
 
 class MakeOrbitWidgetCommand(Command):
     signature = (
-        "make:orbit-widget {name : Widget class name (e.g. StatsOverview)}"
-        " {--panel=admin : Panel id}"
+        "make:orbit-widget {name? : Widget class name (e.g. StatsOverview)}"
+        " {--panel= : Panel id (prompted when multiple panels exist)}"
         " {--force : Overwrite}"
     )
     description = "Create an Orbit widget under a panel package"
@@ -453,7 +515,9 @@ class MakeOrbitWidgetCommand(Command):
     boots_application: ClassVar[bool] = True
 
     def handle(self, *args: Any, **kwargs: Any) -> int:
-        raw = _resolve_name(self, *args, **kwargs)
+        raw = _resolve_name(self, *args, **kwargs) or _prompt_name(
+            self, label="Widget name (e.g. StatsOverview)"
+        )
         if not raw:
             self.error("name is required")
             return self.INVALID
@@ -497,7 +561,7 @@ class {class_name}(Widget):
 
 class MakeOrbitFieldCommand(Command):
     signature = (
-        "make:orbit-field {name : Field class name (e.g. MoneyInput)}"
+        "make:orbit-field {name? : Field class name (e.g. MoneyInput)}"
         " {--force : Overwrite}"
     )
     description = "Create a custom Orbit form Field under app/orbit/shared/fields"
@@ -505,7 +569,9 @@ class MakeOrbitFieldCommand(Command):
     boots_application: ClassVar[bool] = True
 
     def handle(self, *args: Any, **kwargs: Any) -> int:
-        raw = _resolve_name(self, *args, **kwargs)
+        raw = _resolve_name(self, *args, **kwargs) or _prompt_name(
+            self, label="Field name (e.g. MoneyInput)"
+        )
         if not raw:
             self.error("name is required")
             return self.INVALID
