@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Orbit documentation
+  - name: Orbit docs
     url: https://orbit.almasix.com/
-    about: Guides, API notes, and upgrade paths for Almasix Orbit.
+    about: Read the docs before filing — many answers are already there.
   - name: Discussions
     url: https://github.com/almasix-dev/almasix-orbit/discussions
-    about: Questions, show-and-tell, and open-ended conversation (not bug trackers).
+    about: Questions and open chat (not the bug tracker).
   - name: Almasix org
     url: https://github.com/almasix-dev
-    about: Other first-party packages (Conduit, Permission, framework docs, …).
+    about: Other first-party packages.
