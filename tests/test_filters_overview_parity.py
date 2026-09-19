@@ -312,6 +312,103 @@ def test_filter_edge_branches() -> None:
     assert QueryBuilderFilter.make().query(lambda q, v: q).apply(rows, 1) == rows
 
 
+def test_ci_coverage_gaps_hosts_and_chrome() -> None:
+    """Hit remaining hosts/table filter branches for the 100% coverage gate."""
+
+    class _Posts(Resource):
+        model = type("Post", (), {})
+        navigation_label = "Posts"
+        slug = "posts"
+        records = [
+            {"id": 1, "title": "A", "status": "draft", "featured": True},
+            {"id": 2, "title": "B", "status": "published", "featured": False},
+        ]
+
+        @classmethod
+        def get_records(cls):
+            return list(cls.records)
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return (
+                table.columns([TextColumn.make("title")])
+                .filters(
+                    [
+                        SelectFilter.make("status")
+                        .options({"draft": "Draft", "published": "Published"})
+                        .default("published")
+                        .multiple(),
+                        Filter.make("featured")
+                        .label("Featured")
+                        .toggle()
+                        .query(lambda q, value: [r for r in q if r.get("featured")]),
+                        SelectFilter.make("ghost")
+                        .options({"x": "X"})
+                        .indicate_using(lambda **_: None)
+                        .default(lambda **_: ""),
+                    ]
+                )
+                .deselect_all_records_when_filtered(False)
+                .defer_filters()
+            )
+
+    panel = Panel.make("admin").path("admin").resources([_Posts]).login(False)
+    host_cls = ListRecordsHost.bind(panel=panel, resource=_Posts)
+    host = host_cls(selected=["1"], select_all=True, table_filters={"status": ["published"]})
+    host.mount()
+    # defaults merge without overwriting existing table_filters
+    host._filtered_table()
+    assert host.table_filters.get("status") == ["published"]
+    # empty list / False clear paths without deselection
+    host.setTableFilter("status", [])
+    assert "status" not in host.table_filters
+    assert host.selected == ["1"]
+    host.setTableFilter("", "x")  # no-op empty name
+    host.applyTableFilters({"status": [], "featured": False, "ok": "1"})
+    assert host.table_filters == {"ok": "1"}
+    host.resetTableFilters()
+    assert host.table_filters.get("status") == "published"
+    host.removeTableFilter("status")
+    host.removeTableFilter("")
+    # exception path in _should_deselect_on_filter
+    host2 = host_cls()
+    host2.get_resource = lambda: (_ for _ in ()).throw(RuntimeError("boom"))  # type: ignore[method-assign]
+    assert host2._should_deselect_on_filter() is True
+
+    # deferred boolean + deferred multiple chrome + silent indicator
+    html = (
+        Table.make()
+        .columns([TextColumn.make("title")])
+        .filters(
+            [
+                Filter.make("featured").toggle().query(lambda q, v: q),
+                SelectFilter.make("status")
+                .multiple()
+                .options({"draft": "Draft", "published": "Published"}),
+                SelectFilter.make("ghost")
+                .options({"x": "X"})
+                .indicate_using(lambda **_: ""),
+                Filter.make(None).query(lambda q, v: q),
+            ]
+        )
+        .defer_filters()
+        .filter_state({"featured": True, "status": ["draft"], "ghost": "x"})
+        .records(_Posts.records)
+        .render()
+    )
+    assert "data-defer-filters" in html
+    assert "pending['featured']" in html
+    assert "selectedOptions" in html
+    # ghost chip suppressed by indicate_using
+    assert "Remove ghost filter" not in html
+    assert (
+        Table.make()
+        .filters([SelectFilter.make("s").options({"a": "A"}).default(lambda **_: None)])
+        .get_default_filter_state()
+        == {}
+    )
+
+
 def test_deselect_clears_selection_when_enabled() -> None:
     class _Posts(Resource):
         model = type("Post", (), {})
