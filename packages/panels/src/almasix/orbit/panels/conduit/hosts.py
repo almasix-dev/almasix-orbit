@@ -338,6 +338,7 @@ class ListRecordsHost(OrbitPageHost):
     table_filters: dict[str, Any] = {}
     table_group: str = ""
     toggled_columns: dict[str, bool] = {}
+    column_order: list[str] = []
     reordering: bool = False
 
     def mount(self, **kwargs: Any) -> Any:
@@ -526,6 +527,26 @@ class ListRecordsHost(OrbitPageHost):
 
     def resetToggledColumns(self) -> None:
         self.toggled_columns = {}
+
+    def reorderColumns(self, order: Any = None) -> None:
+        """Persist column manager order (list of column names)."""
+        if order is None:
+            self.column_order = []
+            return
+        if isinstance(order, str):
+            import json
+
+            try:
+                order = json.loads(order)
+            except json.JSONDecodeError:
+                order = [p.strip() for p in order.split(",") if p.strip()]
+        if isinstance(order, (list, tuple)):
+            self.column_order = [str(n) for n in order if str(n)]
+        else:
+            self.column_order = []
+
+    def resetColumnOrder(self) -> None:
+        self.column_order = []
 
     def _filtered_table(self) -> Any:
         """Build the resource table with the same search/sort/filters as the index."""
@@ -748,6 +769,7 @@ class ListRecordsHost(OrbitPageHost):
             select_all=bool(self.select_all),
             table_group=self.table_group or None,
             toggled_columns=self._column_visibility_state(),
+            column_order=list(self.column_order or []),
             reordering=bool(self.reordering),
         )
 

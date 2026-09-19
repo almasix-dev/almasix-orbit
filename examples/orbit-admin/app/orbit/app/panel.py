@@ -6,6 +6,7 @@ from almasix.orbit import Panel, PanelRegistry
 from almasix.orbit.panels.navigation import NavigationGroup
 from app.orbit.app.plugins import BrandingPlugin
 from app.orbit.app.resources.author_resource import AuthorResource
+from app.orbit.app.resources.columns_overview_resource import ColumnsOverviewResource
 from app.orbit.app.resources.editable_columns_resource import EditableColumnsResource
 from app.orbit.app.resources.generated_post_resource import GeneratedPostResource
 from app.orbit.app.resources.grouped_posts_resource import GroupedPostsResource
@@ -71,6 +72,7 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
         .resources(
             [
                 TablesOverviewResource,
+                ColumnsOverviewResource,
                 PostResource,
                 AuthorResource,
                 SettingsResource,

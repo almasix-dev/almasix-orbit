@@ -95,6 +95,8 @@ class Table(Component):
         self._summaries_all = True
         self._actions_as_dropdown = True
         self._toggled_columns: dict[str, bool] | None = None
+        self._column_order: list[str] | None = None
+        self._reorderable_columns = False
         self._active_group_name: str | None = None
         self._default_sort: str | None = None
         self._default_sort_direction: str = "asc"
@@ -278,6 +280,16 @@ class Table(Component):
         self._toggled_columns = None if state is None else dict(state)
         return self
 
+    def column_order(self, order: Sequence[str] | None) -> Self:
+        """Explicit display order by column name (Filament column manager reorder)."""
+        self._column_order = None if order is None else [str(n) for n in order]
+        return self
+
+    def reorderable_columns(self, condition: bool = True) -> Self:
+        """Allow reordering columns in the column manager (Filament ``reorderableColumns``)."""
+        self._reorderable_columns = condition
+        return self
+
     def active_group(self, name: str | None) -> Self:
         self._active_group_name = name
         return self
@@ -293,12 +305,42 @@ class Table(Component):
                         out.append(child)
             elif isinstance(col, Column):
                 out.append(col)
-        return out
+        return self._order_columns(out)
+
+    def _order_columns(self, columns: list[Column]) -> list[Column]:
+        if not self._column_order:
+            return columns
+        rank = {name: i for i, name in enumerate(self._column_order)}
+
+        def _key(col: Column) -> tuple[int, int]:
+            name = col.get_name() or ""
+            if name in rank:
+                return (0, rank[name])
+            return (1, 0)
+
+        return sorted(columns, key=_key)
+
+    def _ordered_top_level(self) -> list[ColumnLike]:
+        if not self._column_order:
+            return list(self._columns)
+        rank = {name: i for i, name in enumerate(self._column_order)}
+
+        def _key(col: ColumnLike) -> tuple[int, int]:
+            if isinstance(col, Column) and col.get_name() in rank:
+                return (0, rank[col.get_name() or ""])
+            if isinstance(col, ColumnGroup):
+                for child in col.get_columns():
+                    name = child.get_name() or ""
+                    if name in rank:
+                        return (0, rank[name])
+            return (1, 0)
+
+        return sorted(self._columns, key=_key)
 
     def display_columns(self) -> list[Column | LayoutComponent]:
         """Top-level column entries used for header/body cell counts (layouts = 1 cell)."""
         out: list[Column | LayoutComponent] = []
-        for col in self._columns:
+        for col in self._ordered_top_level():
             if isinstance(col, ColumnGroup):
                 for child in col.get_columns():
                     if self._column_is_visible(child):
@@ -311,6 +353,8 @@ class Table(Component):
         return out
 
     def _column_is_visible(self, col: Column) -> bool:
+        if not col.is_visible():
+            return False
         name = col.get_name() or ""
         if self._toggled_columns is not None and name in self._toggled_columns:
             return bool(self._toggled_columns[name])
@@ -342,17 +386,33 @@ class Table(Component):
         sort_dir = self._sort_direction if self._sort else self._default_sort_direction
         if sort_col:
             reverse = sort_dir == "desc"
+            direction = "desc" if reverse else "asc"
             col_map = {c.get_name(): c for c in self.flat_columns() if c.get_name()}
             column = col_map.get(sort_col)
+            if column is not None and column._sort_query is not None:
+                from almasix.orbit.support.evaluate import evaluate
 
-            def _sort_key(record: Any) -> Any:
-                if column is not None:
-                    value = column.resolve_state(record)
-                else:
-                    value = self._record_value(record, sort_col)
-                return "" if value is None else value
+                try:
+                    records = list(
+                        evaluate(
+                            column._sort_query,
+                            records=records,
+                            direction=direction,
+                        )
+                    )
+                except TypeError:
+                    try:
+                        records = list(column._sort_query(records, direction))
+                    except TypeError:
+                        records = list(column._sort_query(records, direction=direction))
+            else:
 
-            records = sorted(records, key=_sort_key, reverse=reverse)
+                def _sort_key(record: Any) -> Any:
+                    if column is not None:
+                        return column.get_sort_key(record)
+                    return self._record_value(record, sort_col)
+
+                records = sorted(records, key=_sort_key, reverse=reverse)
         return records
 
     def get_records(self) -> list[Any]:
@@ -604,8 +664,7 @@ class Table(Component):
         for col in self.flat_columns():
             if not col.is_searchable():
                 continue
-            val = col.resolve_state(record)
-            if val is not None and term in str(val).lower():
+            if col.matches_search(record, term):
                 return True
         return False
 
@@ -788,7 +847,9 @@ class Table(Component):
         )
 
     def _render_sort_header(self, col: Column, **ctx: Any) -> str:
+        from almasix.orbit.support.evaluate import evaluate
         from almasix.orbit.support.icons import icon as render_icon
+        from almasix.orbit.tables.columns import _attrs_to_html
 
         label = e(col.get_label(**ctx) or self._header_label(col, **ctx))
         name = col.get_name() or ""
@@ -799,11 +860,30 @@ class Table(Component):
             bp += f" or-visible-from-{col._visible_from}"
         if col._hidden_from:
             bp += f" or-hidden-from-{col._hidden_from}"
+        wrap_c = " or-th-wrap" if col._wrap_header else ""
+        grow_c = " or-col-grow" if col._grow else ""
+        header_attrs = {
+            k: evaluate(v, **ctx) for k, v in col._extra_header_attributes.items()
+        }
+        tip = col.get_header_tooltip(**ctx)
+        if tip:
+            header_attrs["title"] = tip
+        style_parts: list[str] = []
+        width = col._width_style()
+        if width:
+            style_parts.append(width)
+        if "style" in header_attrs and header_attrs["style"]:
+            style_parts.append(str(header_attrs.pop("style")))
+        if style_parts:
+            header_attrs["style"] = ";".join(style_parts)
+        extra = _attrs_to_html(header_attrs)
         if not col.is_sortable() or not name:
-            return f'<th class="or-th{align_c}{bp}">{label}</th>'
+            return (
+                f'<th class="or-th{align_c}{bp}{wrap_c}{grow_c}"{extra}>{label}</th>'
+            )
         active = self._sort == name
         direction = str(self._sort_direction or "asc").lower()
-        classes = f"or-th or-th-sortable{align_c}{bp}"
+        classes = f"or-th or-th-sortable{align_c}{bp}{wrap_c}{grow_c}"
         aria_sort = "none"
         # Filament: idle + desc → chevron-down; active asc → chevron-up.
         if active and direction == "asc":
@@ -818,7 +898,7 @@ class Table(Component):
         click = _conduit_click(f"sortBy('{name}')")
         return (
             f'<th class="{classes}" data-sortable="true" data-sort-column="{e(name)}" '
-            f'aria-sort="{aria_sort}">'
+            f'aria-sort="{aria_sort}"{extra}>'
             f'<button type="button" class="or-th-sort-btn"{click}>'
             f'<span class="or-th-sort-label">{label}</span>'
             f'<span class="{icon_cls}" aria-hidden="true">{caret}</span></button></th>'
@@ -831,6 +911,7 @@ class Table(Component):
         from almasix.orbit.support.icons import icon as render_icon
 
         items: list[str] = []
+        reorderable = self._reorderable_columns
         for col in toggleable:
             name = col.get_name() or ""
             label = e(col.get_label(**ctx) or name)
@@ -840,15 +921,27 @@ class Table(Component):
             change = _alpine_wire_call(
                 f"toggleColumn('{name}', $event.target.checked)"
             )
-            items.append(
-                f'<label class="or-columns-item">'
-                f'<input type="checkbox" class="or-columns-check"{checked}{change} />'
-                f"<span>{label}</span></label>"
-            )
+            if reorderable:
+                items.append(
+                    f'<label class="or-columns-item or-columns-item-draggable" '
+                    f'draggable="true" data-column-name="{e(name)}" '
+                    f'@dragstart="onDragStart($event)" @dragover.prevent '
+                    f'@drop.prevent="onDrop($event)">'
+                    f'<span class="or-columns-drag" aria-hidden="true">⋮⋮</span>'
+                    f'<input type="checkbox" class="or-columns-check"{checked}{change} />'
+                    f"<span>{label}</span></label>"
+                )
+            else:
+                items.append(
+                    f'<label class="or-columns-item">'
+                    f'<input type="checkbox" class="or-columns-check"{checked}{change} />'
+                    f"<span>{label}</span></label>"
+                )
         reset = (
             f'<button type="button" class="or-link-btn or-link-danger"'
             f'{_conduit_click("resetToggledColumns")} @click="closeMenu()">Reset</button>'
         )
+        list_attrs = ' x-data="orbitColumnReorder"' if reorderable else ""
         view_cols = render_icon("heroicon-o-view-columns", size=20)
         return (
             f'<div class="or-table-columns" x-data="orbitDropdown" @click.outside="closeMenu()">'
@@ -859,7 +952,7 @@ class Table(Component):
             f'role="dialog" aria-label="Toggle columns" x-show="menuOpen" x-cloak>'
             f'<div class="or-columns-panel-header">'
             f'<h3 class="or-columns-panel-title">Columns</h3>{reset}</div>'
-            f'<div class="or-columns-list">{"".join(items)}</div></div></div>'
+            f'<div class="or-columns-list"{list_attrs}>{"".join(items)}</div></div></div>'
         )
 
     def _render_pagination_chrome(self, **ctx: Any) -> str:
@@ -1200,6 +1293,9 @@ class Table(Component):
         toggled = ctx.get("toggled_columns")
         if isinstance(toggled, dict):
             self.toggled_columns(toggled)
+        order = ctx.get("column_order")
+        if isinstance(order, (list, tuple)):
+            self.column_order(order)
         table_group = ctx.get("table_group")
         if table_group is not None:
             self.active_group(str(table_group) if table_group else None)
@@ -1214,7 +1310,9 @@ class Table(Component):
 
         header_cells: list[str] = []
         sub_header_cells: list[str] = []
-        has_column_groups = any(isinstance(c, ColumnGroup) for c in self._columns)
+        has_column_groups = any(
+            isinstance(c, ColumnGroup) for c in self._ordered_top_level()
+        )
         if has_bulk:
             bulk_th = (
                 '<th class="or-th or-th-select"'
@@ -1224,7 +1322,7 @@ class Table(Component):
                 'aria-label="Select all on page" /></th>'
             )
             header_cells.append(bulk_th)
-        for col in self._columns:
+        for col in self._ordered_top_level():
             if isinstance(col, ColumnGroup):
                 visible_children = [c for c in col.get_columns() if self._column_is_visible(c)]
                 if not visible_children:

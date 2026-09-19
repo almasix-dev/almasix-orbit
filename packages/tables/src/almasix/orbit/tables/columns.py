@@ -55,11 +55,41 @@ def dot_get(record: Any, path: str) -> Any:
     return current
 
 
+def _attrs_to_html(attrs: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for key, value in attrs.items():
+        if value is True:
+            parts.append(e(str(key)))
+        elif value is False or value is None:
+            continue
+        else:
+            parts.append(f'{e(str(key))}="{e(value)}"')
+    return (" " + " ".join(parts)) if parts else ""
+
+
 class Column(Component):
+    _configure_using: list[Callable[[Column], None]] = []
+
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._sortable = False
         self._searchable = False
+        self._sort_columns: list[str] | None = None
+        self._sort_query: Callable[..., Any] | None = None
+        self._search_columns: list[str] | None = None
+        self._search_query: Callable[..., Any] | None = None
+        self._state: Any = None
+        self._has_custom_state = False
+        self._placeholder: str | Callable[..., str] | None = None
+        self._tooltip: str | Callable[..., str] | None = None
+        self._header_tooltip: str | Callable[..., str] | None = None
+        self._wrap_header = False
+        self._width: str | int | None = None
+        self._grow = False
+        self._vertical_alignment: str = "start"
+        self._open_url_in_new_tab = False
+        self._extra_cell_attributes: dict[str, Any] = {}
+        self._extra_header_attributes: dict[str, Any] = {}
         self._toggleable = True
         self._toggled_hidden_by_default = False
         self._format_state: Callable[[Any], Any] | None = None
@@ -86,6 +116,18 @@ class Column(Component):
         self._alignment: str = "start"
         self._icon: str | Callable[..., str] | None = None
 
+    @classmethod
+    def configure_using(cls, callback: Callable[[Column], None]) -> None:
+        """Register a default configurator (Filament ``Column::configureUsing``)."""
+        cls._configure_using.append(callback)
+
+    @classmethod
+    def make(cls, name: str | None = None) -> Self:
+        instance = cls() if name is None else cls(name)
+        for callback in cls._configure_using:
+            callback(instance)
+        return instance
+
     def alignment(self, value: str) -> Self:
         """Cell/header alignment: ``start``, ``center``, or ``end`` (Filament parity)."""
         self._alignment = value
@@ -103,12 +145,110 @@ class Column(Component):
     def get_alignment(self) -> str:
         return self._alignment or "start"
 
-    def sortable(self, condition: bool = True) -> Self:
-        self._sortable = condition
+    def vertically_align(self, value: str) -> Self:
+        """Vertical alignment: ``start``, ``center``, or ``end``."""
+        self._vertical_alignment = value
         return self
 
-    def searchable(self, condition: bool = True) -> Self:
-        self._searchable = condition
+    def vertically_align_start(self) -> Self:
+        return self.vertically_align("start")
+
+    def vertically_align_center(self) -> Self:
+        return self.vertically_align("center")
+
+    def vertically_align_end(self) -> Self:
+        return self.vertically_align("end")
+
+    def get_vertical_alignment(self) -> str:
+        return self._vertical_alignment or "start"
+
+    def state(self, value: Any) -> Self:
+        """Override cell state (static or callable)."""
+        self._state = value
+        self._has_custom_state = True
+        return self
+
+    def placeholder(self, text: str | Callable[..., str]) -> Self:
+        """Display text when state is empty (not treated as real state)."""
+        self._placeholder = text
+        return self
+
+    def tooltip(self, text: str | Callable[..., str]) -> Self:
+        self._tooltip = text
+        return self
+
+    def header_tooltip(self, text: str | Callable[..., str]) -> Self:
+        self._header_tooltip = text
+        return self
+
+    def wrap_header(self, condition: bool = True) -> Self:
+        self._wrap_header = condition
+        return self
+
+    def width(self, value: str | int) -> Self:
+        self._width = value
+        return self
+
+    def grow(self, condition: bool = True) -> Self:
+        self._grow = condition
+        return self
+
+    def open_url_in_new_tab(self, condition: bool = True) -> Self:
+        self._open_url_in_new_tab = condition
+        return self
+
+    def extra_cell_attributes(self, attrs: dict[str, Any]) -> Self:
+        self._extra_cell_attributes.update(attrs)
+        return self
+
+    def extra_header_attributes(self, attrs: dict[str, Any]) -> Self:
+        self._extra_header_attributes.update(attrs)
+        return self
+
+    def sortable(
+        self,
+        condition: bool | Sequence[str] = True,
+        *,
+        query: Callable[..., Any] | None = None,
+    ) -> Self:
+        """Enable sorting. Pass attribute keys or ``query(records, direction)``."""
+        if query is not None:
+            self._sortable = True
+            self._sort_query = query
+            self._sort_columns = None
+            return self
+        if isinstance(condition, (list, tuple)):
+            self._sortable = True
+            self._sort_columns = [str(c) for c in condition]
+            self._sort_query = None
+            return self
+        self._sortable = bool(condition)
+        if not self._sortable:
+            self._sort_columns = None
+            self._sort_query = None
+        return self
+
+    def searchable(
+        self,
+        condition: bool | Sequence[str] = True,
+        *,
+        query: Callable[..., Any] | None = None,
+    ) -> Self:
+        """Enable search. Pass attribute keys or ``query(record, search) -> bool``."""
+        if query is not None:
+            self._searchable = True
+            self._search_query = query
+            self._search_columns = None
+            return self
+        if isinstance(condition, (list, tuple)):
+            self._searchable = True
+            self._search_columns = [str(c) for c in condition]
+            self._search_query = None
+            return self
+        self._searchable = bool(condition)
+        if not self._searchable:
+            self._search_columns = None
+            self._search_query = None
         return self
 
     def toggleable(
@@ -131,6 +271,38 @@ class Column(Component):
     def format_state_using(self, callback: Callable[[Any], Any]) -> Self:
         self._format_state = callback
         return self
+
+    def get_sort_key(self, record: Any) -> Any:
+        """Value(s) used when sorting this column (without a custom query)."""
+        if self._sort_columns:
+            return tuple(
+                "" if (v := dot_get(record, key)) is None else v
+                for key in self._sort_columns
+            )
+        value = self.resolve_state(record)
+        return "" if value is None else value
+
+    def matches_search(self, record: Any, term: str) -> bool:
+        """Whether this column matches ``term`` (already lowercased)."""
+        from almasix.orbit.support.evaluate import evaluate
+
+        if self._search_query is not None:
+            result = evaluate(self._search_query, record=record, search=term)
+            if isinstance(result, bool):
+                return result
+            try:
+                return bool(self._search_query(record, term))
+            except TypeError:
+                return bool(result)
+        keys = self._search_columns
+        if keys:
+            for key in keys:
+                val = dot_get(record, key)
+                if val is not None and term in str(val).lower():
+                    return True
+            return False
+        val = self.resolve_state(record)
+        return val is not None and term in str(val).lower()
 
     def badge(self, condition: bool = True) -> Self:
         self._badge = condition
@@ -275,21 +447,57 @@ class Column(Component):
         return str(value)
 
     def is_sortable(self) -> bool:
-        return self._sortable
+        return bool(self._sortable)
 
     def is_searchable(self) -> bool:
-        return self._searchable
+        return bool(self._searchable)
 
-    def resolve_state(self, record: Any) -> Any:
-        name = self.get_name() or ""
-        value = dot_get(record, name) if name else None
+    def resolve_state(self, record: Any, **ctx: Any) -> Any:
+        from almasix.orbit.support.evaluate import evaluate
+
+        if self._has_custom_state:
+            value = evaluate(self._state, record=record, **ctx)
+        else:
+            name = self.get_name() or ""
+            value = dot_get(record, name) if name else None
         if value is None and self._default is not None:
-            value = self._default
+            value = self.get_default(record=record, **ctx)
         if self._format_state:
             value = self._format_state(value)
         if self._limit is not None and isinstance(value, str) and len(value) > self._limit:
             value = value[: self._limit] + "…"
         return value
+
+    def _resolved_placeholder(self, record: Any, **ctx: Any) -> str | None:
+        if self._placeholder is None:
+            return None
+        from almasix.orbit.support.evaluate import evaluate
+
+        result = evaluate(self._placeholder, record=record, **ctx)
+        return None if result is None else str(result)
+
+    def _resolved_tooltip(self, record: Any, value: Any, **ctx: Any) -> str | None:
+        if self._tooltip is None:
+            return None
+        from almasix.orbit.support.evaluate import evaluate
+
+        result = evaluate(self._tooltip, record=record, state=value, **ctx)
+        return None if result is None else str(result)
+
+    def get_header_tooltip(self, **ctx: Any) -> str | None:
+        if self._header_tooltip is None:
+            return None
+        from almasix.orbit.support.evaluate import evaluate
+
+        result = evaluate(self._header_tooltip, **ctx)
+        return None if result is None else str(result)
+
+    def _width_style(self) -> str:
+        if self._width is None:
+            return ""
+        if isinstance(self._width, int) or str(self._width).isdigit():
+            return f"width:{int(self._width)}px"
+        return f"width:{self._width}"
 
     def _td_classes(self, extra: str = "") -> str:
         classes = ["or-td"]
@@ -300,9 +508,34 @@ class Column(Component):
         align = self.get_alignment()
         if align and align != "start":
             classes.append(f"or-align-{align}")
+        valign = self.get_vertical_alignment()
+        if valign and valign != "start":
+            classes.append(f"or-v-align-{valign}")
+        if self._grow:
+            classes.append("or-col-grow")
         if extra:
             classes.append(extra.strip())
         return " ".join(classes)
+
+    def _td_open_tag(self, record: Any, value: Any, **ctx: Any) -> str:
+        from almasix.orbit.support.evaluate import evaluate
+
+        attrs = {
+            **self.get_extra_attributes(record=record, state=value, **ctx),
+            **{
+                k: evaluate(v, record=record, state=value, **ctx)
+                for k, v in self._extra_cell_attributes.items()
+            },
+        }
+        style_parts: list[str] = []
+        width = self._width_style()
+        if width:
+            style_parts.append(width)
+        if "style" in attrs and attrs["style"]:
+            style_parts.append(str(attrs.pop("style")))
+        if style_parts:
+            attrs["style"] = ";".join(style_parts)
+        return f'<td class="{self._td_classes()}"{_attrs_to_html(attrs)}>'
 
     def _resolve_color(self, record: Any, value: Any, **ctx: Any) -> str | None:
         color = self._color
@@ -313,8 +546,18 @@ class Column(Component):
         return str(color) if color else None
 
     def render_cell(self, record: Any, **ctx: Any) -> str:
-        value = self.resolve_state(record)
-        if self._boolean:
+        value = self.resolve_state(record, **ctx)
+        using_placeholder = False
+        if value is None or value == "":
+            placeholder = self._resolved_placeholder(record, state=value, **ctx)
+            if placeholder is not None:
+                text = placeholder
+                using_placeholder = True
+            elif self._boolean:
+                text = "No"
+            else:
+                text = ""
+        elif self._boolean:
             text = "Yes" if value else "No"
         elif (
             self._money_currency is not None
@@ -324,25 +567,32 @@ class Column(Component):
         ):
             text = self._format_display_value(value)
         else:
-            text = "" if value is None else str(value)
+            text = str(value)
         css = "or-badge" if self._badge else "or-cell-text"
-        color = self._resolve_color(record, value, **ctx)
+        if using_placeholder:
+            css += " or-cell-placeholder"
+        color = None if using_placeholder else self._resolve_color(record, value, **ctx)
         color_c = f" or-color-{color}" if color else ""
         weight_c = f" or-font-{e(self._weight)}" if self._weight else ""
         wrap_c = " or-cell-wrap" if self._wrap else ""
         desc = self.get_description(record=record, state=value, **ctx)
-        desc_attr = f' title="{e(desc)}" data-description="{e(desc)}"' if desc else ""
+        tip = self._resolved_tooltip(record, value, **ctx)
+        title_parts = [p for p in (tip, desc) if p]
+        title_attr = f' title="{e(title_parts[0])}"' if title_parts else ""
+        desc_attr = f' data-description="{e(desc)}"' if desc else ""
         desc_html = (
             f'<span class="or-cell-description">{e(desc)}</span>' if desc else ""
         )
-        if self._html:
+        if using_placeholder:
+            body = e(text)
+        elif self._html:
             body = str(text)
         elif self._markdown:
             body = _simple_markdown(text)
         else:
             body = e(text).replace("\n", "<br />") if self._list_bullet else e(text)
         icon_html = ""
-        if self._icon is not None:
+        if self._icon is not None and not using_placeholder:
             from almasix.orbit.support.evaluate import evaluate
             from almasix.orbit.support.icons import icon as render_icon
 
@@ -350,19 +600,20 @@ class Column(Component):
             if icon_name:
                 icon_html = f'<span class="or-cell-icon">{render_icon(str(icon_name))}</span>'
         inner = (
-            f'<span class="{css}{color_c}{weight_c}{wrap_c}"{desc_attr}>'
+            f'<span class="{css}{color_c}{weight_c}{wrap_c}"{title_attr}{desc_attr}>'
             f"{icon_html}{body}{desc_html}</span>"
         )
-        if self._copyable and text:
+        if self._copyable and text and not using_placeholder:
             inner = _copyable_wrap(inner, text)
         href = None
-        if self._url is not None:
+        if self._url is not None and not using_placeholder:
             from almasix.orbit.support.evaluate import evaluate
 
             href = evaluate(self._url, record=record, state=value, **ctx)
         if href:
-            inner = f'<a class="or-cell-link" href="{e(href)}">{inner}</a>'
-        return f'<td class="{self._td_classes()}">{inner}</td>'
+            target = ' target="_blank" rel="noopener noreferrer"' if self._open_url_in_new_tab else ""
+            inner = f'<a class="or-cell-link" href="{e(href)}"{target}>{inner}</a>'
+        return f"{self._td_open_tag(record, value, **ctx)}{inner}</td>"
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -377,6 +628,9 @@ class Column(Component):
                 "money_currency": self._money_currency,
                 "date_format": self._date_format,
                 "alignment": self._alignment,
+                "wrap_header": self._wrap_header,
+                "grow": self._grow,
+                "width": self._width,
             }
         )
         return d

@@ -3203,6 +3203,28 @@ html.dark .or-login-logo-dark {
   text-align: right;
 }
 
+.or-v-align-center {
+  vertical-align: middle;
+}
+
+.or-v-align-end {
+  vertical-align: bottom;
+}
+
+.or-col-grow {
+  width: 100%;
+}
+
+.or-th-wrap .or-th-sort-label,
+.or-th-wrap {
+  white-space: normal;
+}
+
+.or-cell-placeholder {
+  color: var(--or-muted);
+  font-style: italic;
+}
+
 .or-prime-img {
   border-radius: 0.5rem;
   max-width: 100%;
@@ -3542,6 +3564,21 @@ html.dark .or-login-logo-dark {
   padding: 0.3rem 0.2rem;
   font-size: 0.8125rem;
   cursor: pointer;
+}
+
+.or-columns-item-draggable {
+  cursor: grab;
+}
+
+.or-columns-item-draggable:active {
+  cursor: grabbing;
+}
+
+.or-columns-drag {
+  color: var(--or-muted);
+  font-size: 0.7rem;
+  letter-spacing: -0.15em;
+  user-select: none;
 }
 
 .or-columns-check {

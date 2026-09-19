@@ -1,9 +1,9 @@
 ---
 title: Columns overview
-description: Catalog of every Orbit table column type — text, money, icons, images, editable cells, and groups.
+description: Shared Orbit table column APIs — state, sort, search, tooltips, toggleable columns, and the type catalog.
 ---
 
-Columns define how each field is displayed or edited in a table. Choose a type, then chain fluent helpers as needed.
+Columns define how each field is displayed or edited in a table. Choose a type, then chain fluent helpers on the shared `Column` base.
 
 ```python
 from almasix.orbit.tables import Table, TextColumn, BadgeColumn, ImageColumn
@@ -16,8 +16,10 @@ Table.make("inventory").columns([
 ])
 ```
 
-![Column catalog (light)](/examples/light/tables/overview.png)
-![Column catalog (dark)](/examples/dark/tables/overview.png)
+![Columns overview (light)](/examples/light/tables/columns-overview.png)
+![Columns overview (dark)](/examples/dark/tables/columns-overview.png)
+
+Live sample: **Columns overview** in `examples/orbit-admin` (`ColumnsOverviewResource`).
 
 ## Catalog
 
@@ -75,13 +77,134 @@ SelectColumn, TextInputColumn, ToggleColumn, CheckboxColumn
 ![Column group (light)](/examples/light/tables/column-group.png)
 ![Column group (dark)](/examples/dark/tables/column-group.png)
 
-## Shared helpers
+## Column content (state)
 
-Most columns inherit from `Column`, so these are available across types:
+By default the column name is an attribute path on each record (including dotted keys like `author.name`).
 
-- `.label(...)` / `.sortable()` / `.searchable()` / `.toggleable(...)`
-- `.align_start()` / `.align_center()` / `.align_end()`
-- `.format_state_using(callback)` / `.color(str | callable)`
-- `.visible_from(...)` / `.hidden_from(...)` / `.summarize(...)`
+### Custom state
+
+```python
+TextColumn.make("full_name").state(
+    lambda record: f"{record['first_name']} {record['last_name']}"
+)
+```
+
+### Default vs placeholder
+
+`.default(...)` fills empty state and is treated as real state (images/colors still render).
+`.placeholder(...)` only shows muted display text when the state is empty.
+
+```python
+TextColumn.make("nickname").default("—")
+TextColumn.make("nickname").placeholder("No nickname")
+```
+
+### Format without changing state
+
+```python
+TextColumn.make("slug").format_state_using(lambda value: value.upper())
+```
+
+## Label
+
+```python
+TextColumn.make("name").label("Full name")
+```
+
+## Sorting
+
+```python
+TextColumn.make("name").sortable()
+TextColumn.make("full_name").sortable(["last_name", "first_name"])
+TextColumn.make("full_name").sortable(
+    query=lambda records, direction: sorted(
+        records,
+        key=lambda r: (r["last_name"], r["first_name"]),
+        reverse=direction == "desc",
+    )
+)
+```
+
+Table-level defaults: `.default_sort("name", "desc")` (see [Tables overview](/tables/overview/)).
+
+## Searching
+
+```python
+TextColumn.make("name").searchable()
+TextColumn.make("full_name").searchable(["first_name", "last_name", "email"])
+TextColumn.make("name").searchable(
+    query=lambda record, search: search in str(record.get("email", "")).lower()
+)
+```
+
+Enable the search field with any searchable column, or `.searchable()` on the table.
+
+## Tooltips
+
+```python
+TextColumn.make("email").tooltip("Click to copy")
+TextColumn.make("email").header_tooltip("Primary contact")
+```
+
+## Alignment, width, and wrapping
+
+```python
+TextColumn.make("amount").align_end().vertically_align_center()
+TextColumn.make("title").wrap_header().grow().width(240)
+```
+
+## Links
+
+```python
+TextColumn.make("website").url(lambda record, state, **_: state).open_url_in_new_tab()
+```
+
+## Visibility
+
+```python
+TextColumn.make("internal").hidden()
+TextColumn.make("notes").visible(False)
+TextColumn.make("email").visible_from("md").hidden_from("xl")
+```
+
+## Toggleable columns & column manager
+
+```python
+TextColumn.make("email").toggleable()
+TextColumn.make("website").toggleable(is_toggled_hidden_by_default=True)
+
+Table.make().reorderable_columns().columns([...])
+```
+
+![Column manager (light)](/examples/light/tables/columns-overview-manager.png)
+![Column manager (dark)](/examples/dark/tables/columns-overview-manager.png)
+
+Users toggle visibility in the columns dropdown. With `.reorderable_columns()`, they can also drag to reorder; the host persists order via `reorderColumns`.
+
+## Extra HTML attributes
+
+```python
+TextColumn.make("status").extra_attributes({"data-tour": "status"})
+TextColumn.make("status").extra_cell_attributes({"class": "or-status-cell"})
+TextColumn.make("status").extra_header_attributes({"data-head": "status"})
+```
+
+## Global configuration
+
+```python
+from almasix.orbit.tables import Column, TextColumn
+
+Column.configure_using(lambda column: column.align_start())
+```
+
+## Shared helpers (quick list)
+
+- `.label(...)` / `.state(...)` / `.default(...)` / `.placeholder(...)`
+- `.sortable(...)` / `.searchable(...)` / `.toggleable(...)`
+- `.align_start()` / `.align_center()` / `.align_end()` / `.vertically_align_*()`
+- `.tooltip(...)` / `.header_tooltip(...)` / `.wrap_header()` / `.width(...)` / `.grow()`
+- `.format_state_using(...)` / `.url(...)` / `.open_url_in_new_tab()`
+- `.color(...)` / `.visible_from(...)` / `.hidden_from(...)` / `.summarize(...)`
+- `.extra_attributes(...)` / `.extra_cell_attributes(...)` / `.extra_header_attributes(...)`
 
 Layout wrappers (`Split`, `Stack`, `Panel`, …) nest columns inside one cell — see [Layout](/tables/layout/).
