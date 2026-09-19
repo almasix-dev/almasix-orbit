@@ -76,7 +76,6 @@ def test_evaluate_positional_and_fallback_paths() -> None:
     # Builtins / C callables may reject inspect.signature — still evaluate.
     assert evaluate(len, [1, 2, 3]) == 3
 
-    import inspect
     from unittest.mock import patch
 
     with patch("almasix.orbit.support.evaluate.inspect.signature", side_effect=ValueError("nope")):
