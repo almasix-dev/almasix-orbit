@@ -14,8 +14,11 @@ from almasix.orbit.panels.hooks import register_render_hook, render_hook
 from almasix.orbit.panels.navigation import (
     NavigationGroup,
     NavigationItem,
+    NavigationSubgroup,
     NavLayout,
     build_menu_layout,
+    build_menu_secondary,
+    group_items,
     normalize_nav_layout,
 )
 from almasix.orbit.panels.page import Page
@@ -48,6 +51,13 @@ def _resolve_page_option(value: PageOption, *, default_cls: type[Page]) -> type[
     if isinstance(value, type) and issubclass(value, Page):
         return value
     return default_cls
+
+
+def _nav_subgroup_of(obj: Any) -> str | None:
+    """Resolve ``navigation_subgroup`` or ``navigation_sub_category`` alias."""
+    return getattr(obj, "navigation_subgroup", None) or getattr(
+        obj, "navigation_sub_category", None
+    )
 
 
 class Panel:
@@ -90,6 +100,7 @@ class Panel:
         self._theme_stylesheets: list[str] = []
         self._custom_nav_items: list[NavigationItem] = []
         self._nav_groups: dict[str, NavigationGroup] = {}
+        self._nav_subgroups: dict[tuple[str | None, str], NavigationSubgroup] = {}
         self._navigation_layout: NavLayout = "apps"
         self._user_menu_items: list[dict[str, str]] = []
         self._notifications_enabled = True
@@ -454,6 +465,19 @@ class Panel:
             self._custom_nav_items.append(item)
         return self
 
+    def navigation_subgroups(self, subgroups: Sequence[NavigationSubgroup]) -> Self:
+        for subgroup in subgroups:
+            self.navigation_subgroup(subgroup)
+        return self
+
+    def navigation_subgroup(self, subgroup: NavigationSubgroup) -> Self:
+        """Register second-level nav category metadata (icon/sort/parent group)."""
+        name = subgroup.get_name() or subgroup.get_label()
+        if name:
+            parent = getattr(subgroup, "_parent", None)
+            self._nav_subgroups[(parent, str(name))] = subgroup
+        return self
+
     def discover_resources(self, *paths: str) -> Self:
         self._discover_resources_in.extend(str(p) for p in paths)
         return self
@@ -613,7 +637,7 @@ class Panel:
                     "label": dash.get_navigation_label(),
                     "icon": getattr(dash, "navigation_icon", "heroicon-o-home"),
                     "group": getattr(dash, "navigation_group", None),
-                    "subgroup": getattr(dash, "navigation_subgroup", None),
+                    "subgroup": _nav_subgroup_of(dash),
                     "url": self.url(),
                     "sort": getattr(dash, "navigation_sort", -100),
                 }
@@ -627,7 +651,7 @@ class Panel:
                     )(),
                     "icon": getattr(res, "navigation_icon", "heroicon-o-users"),
                     "group": getattr(res, "navigation_group", None),
-                    "subgroup": getattr(res, "navigation_subgroup", None),
+                    "subgroup": _nav_subgroup_of(res),
                     "url": self.url(
                         getattr(res, "get_slug", lambda r=res: r.__name__.lower())()
                     ),
@@ -643,7 +667,7 @@ class Panel:
                         "label": page.get_navigation_label(),
                         "icon": getattr(page, "navigation_icon", "heroicon-o-home"),
                         "group": getattr(page, "navigation_group", None),
-                        "subgroup": getattr(page, "navigation_subgroup", None),
+                        "subgroup": _nav_subgroup_of(page),
                         "url": self.url(),
                         "sort": getattr(page, "navigation_sort", -100),
                     }
@@ -657,7 +681,7 @@ class Panel:
                     )(),
                     "icon": getattr(page, "navigation_icon", "heroicon-o-home"),
                     "group": getattr(page, "navigation_group", None),
-                    "subgroup": getattr(page, "navigation_subgroup", None),
+                    "subgroup": _nav_subgroup_of(page),
                     "url": self.url(
                         getattr(page, "get_slug", lambda p=page: p.__name__.lower())()
                     ),
@@ -685,6 +709,7 @@ class Panel:
         return build_menu_layout(
             self._collect_navigation_items(),
             group_meta=meta,
+            subgroup_meta=dict(self._nav_subgroups),
             active_path=active_path,
             layout=normalize_nav_layout(self._navigation_layout),
             panel_path=self._path,
@@ -1003,6 +1028,81 @@ class Panel:
             f"{ic}<span>{tip}</span></a>"
         )
 
+    def _nav_accordion(self, label: str, icon: str | None, children_html: str, *, open: bool) -> str:
+        tip = e(label)
+        ic = render_icon(icon) if icon else ""
+        chev = render_icon("heroicon-o-chevron-down", size=14, css_class="or-icon or-nav-accordion-chevron")
+        open_js = "true" if open else "false"
+        active_cls = " is-active" if open else ""
+        return (
+            f'<div class="or-nav-accordion{active_cls}" '
+            f'x-data="{{ open: {open_js} }}" data-tooltip="{tip}">'
+            f'<button type="button" class="or-nav-accordion-trigger" '
+            f'@click="open = !open" :aria-expanded="open.toString()">'
+            f"{ic}<span>{tip}</span>{chev}</button>"
+            f'<div class="or-nav-accordion-panel" x-show="open" x-cloak>{children_html}</div>'
+            f"</div>"
+        )
+
+    def _render_flat_nav_tree(self, items: list[dict[str, Any]]) -> str:
+        """Sidebar tree: group labels + optional subgroup accordions + links."""
+        grouped = group_items(list(items))
+        named = [g for g in grouped if g is not None]
+        named.sort(
+            key=lambda g: (
+                self._nav_groups[g]._sort
+                if g in self._nav_groups
+                else min(int(m.get("sort") or 0) for m in grouped[g]),
+                g or "",
+            )
+        )
+        ordered: list[str | None] = named + ([None] if None in grouped else [])
+        parts: list[str] = []
+        for key in ordered:
+            members = grouped.get(key) or []
+            if not members:
+                continue
+            if key:
+                parts.append(self._nav_group(str(key)))
+            secondary = build_menu_secondary(
+                members,
+                active_url=next(
+                    (str(m["url"]) for m in members if m.get("active")),
+                    None,
+                ),
+                subgroup_meta=self._nav_subgroups,
+                parent_group=key,
+            )
+            for entry in secondary:
+                if entry.children:
+                    children = "".join(
+                        self._nav_link(
+                            c.href,
+                            c.label,
+                            c.icon,
+                            active=c.active,
+                        )
+                        for c in entry.children
+                    )
+                    parts.append(
+                        self._nav_accordion(
+                            entry.label,
+                            entry.icon,
+                            children,
+                            open=entry.active or any(c.active for c in entry.children),
+                        )
+                    )
+                else:
+                    parts.append(
+                        self._nav_link(
+                            entry.href or "#",
+                            entry.label,
+                            entry.icon,
+                            active=entry.active,
+                        )
+                    )
+        return "".join(parts)
+
     def _render_sidebar(self, ctx: Any, collapsible: bool, *, user: Any = None) -> str:
         layout = normalize_nav_layout(ctx.layout)
         if layout == "top":
@@ -1015,45 +1115,13 @@ class Panel:
             ]
             nav = "".join(links)
         else:
-            links = []
-            current_group = object()
-            for item in ctx.flat_items:
-                group = item.get("group")
-                if group != current_group:
-                    current_group = group
-                    if group:
-                        links.append(self._nav_group(str(group)))
-                links.append(
-                    self._nav_link(
-                        item["url"],
-                        item["label"],
-                        item.get("icon"),
-                        active=bool(item.get("url") and item.get("active")),
-                    )
-                )
-            nav = "".join(links)
+            nav = self._render_flat_nav_tree(list(ctx.flat_items))
 
         mobile_nav = ""
         if layout == "sidebar_topbar":
-            mobile_parts: list[str] = []
-            current_group = object()
-            for item in ctx.flat_items:
-                group = item.get("group")
-                if group != current_group:
-                    current_group = group
-                    if group:
-                        mobile_parts.append(self._nav_group(str(group)))
-                mobile_parts.append(
-                    self._nav_link(
-                        item["url"],
-                        item["label"],
-                        item.get("icon"),
-                        active=bool(item.get("url") and item.get("active")),
-                    )
-                )
             mobile_nav = (
                 f'<nav class="or-sidebar-nav or-nav-mobile" aria-label="Mobile navigation">'
-                f'{"".join(mobile_parts)}</nav>'
+                f"{self._render_flat_nav_tree(list(ctx.flat_items))}</nav>"
             )
 
         footer = ""

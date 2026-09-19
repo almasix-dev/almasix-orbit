@@ -17,6 +17,23 @@ def _studly(name: str) -> str:
     return "".join(p[:1].upper() + p[1:] for p in last.replace("-", "_").split("_") if p)
 
 
+def _pluralize_label(word: str) -> str:
+    """Simple English plural for navigation labels (Artist → Artists)."""
+    text = str(word or "").strip()
+    if not text:
+        return text
+    lower = text.lower()
+    if lower.endswith(("s", "x", "z", "ch", "sh")):
+        return text + "es"
+    if lower.endswith("y") and len(text) > 1 and text[-2].lower() not in "aeiou":
+        return text[:-1] + ("IES" if text[-1].isupper() else "ies")
+    if text.isupper():
+        return text + "S"
+    if text[-1].isupper():
+        return text + "S"
+    return text + "s"
+
+
 def _snake(name: str) -> str:
     studly = _studly(name)
     out: list[str] = []
@@ -412,6 +429,7 @@ class MakeOrbitResourceCommand(Command):
             self.error(f"{out} already exists")
             return self.FAILURE
         model_hint = class_name.removesuffix("Resource")
+        nav_label = _pluralize_label(model_hint)
         out.write_text(
             f'''"""Orbit resource: {class_name}."""
 
@@ -424,8 +442,7 @@ from almasix.orbit.tables import Table, TextColumn
 
 class {class_name}(Resource):
     # model = {model_hint}
-    navigation_label = "{model_hint}"
-    navigation_group = "Content"
+    navigation_label = "{nav_label}"
     navigation_icon = "heroicon-o-rectangle-stack"
 
     @classmethod
