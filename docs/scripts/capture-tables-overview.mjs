@@ -1,6 +1,6 @@
 /**
- * Capture gallery shots → docs/public/examples/{light|dark}/{section}/{name}.png
- * Usage: node docs/scripts/capture-examples.mjs
+ * Capture only tables overview-related gallery shots (light + dark).
+ * Usage: node docs/scripts/capture-tables-overview.mjs
  */
 import { chromium } from "playwright";
 import { mkdir, access } from "node:fs/promises";
@@ -10,6 +10,22 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const gallery = path.join(__dirname, "../public/examples/gallery.html");
 const examplesRoot = path.join(__dirname, "../public/examples");
+
+const IDS = [
+  "tables/overview",
+  "tables/overview-columns",
+  "tables/overview-searchable",
+  "tables/overview-sortable",
+  "tables/overview-relationships",
+  "tables/overview-pagination",
+  "tables/overview-pagination-disabled",
+  "tables/overview-heading",
+  "tables/overview-reorder",
+  "tables/overview-striped",
+  "tables/filters",
+  "tables/actions",
+  "tables/empty",
+];
 
 async function exists(p) {
   try {
@@ -25,7 +41,6 @@ async function main() {
     console.error("Missing gallery.html — run: python docs/scripts/build-gallery.py");
     process.exit(1);
   }
-
   const browser = await chromium.launch({
     executablePath: process.env.ORBIT_CHROMIUM || "/usr/bin/chromium",
   });
@@ -33,10 +48,8 @@ async function main() {
     viewport: { width: 1680, height: 1050 },
     deviceScaleFactor: 2,
   });
-  const url = pathToFileURL(gallery).href;
-
+  await page.goto(pathToFileURL(gallery).href, { waitUntil: "domcontentloaded" });
   for (const theme of ["light", "dark"]) {
-    await page.goto(url, { waitUntil: "domcontentloaded" });
     await page.evaluate((t) => {
       document.documentElement.setAttribute("data-theme", t);
       document.body.classList.toggle("dark", t === "dark");
@@ -45,21 +58,18 @@ async function main() {
         .forEach((el) => el.remove());
     }, theme);
     await page.waitForTimeout(100);
-
-    const shots = page.locator("[data-shot]");
-    const count = await shots.count();
-    if (!count) {
-      throw new Error("No [data-shot] frames found in gallery");
-    }
-    for (let i = 0; i < count; i++) {
-      const loc = shots.nth(i);
-      const shotId = (await loc.getAttribute("data-shot")) || `shot-${i}`;
-      const outDir = path.join(examplesRoot, theme, path.dirname(shotId));
+    for (const id of IDS) {
+      const loc = page.locator(`[data-shot="${id}"]`);
+      if ((await loc.count()) === 0) {
+        console.warn("missing shot", id);
+        continue;
+      }
+      const outDir = path.join(examplesRoot, theme, path.dirname(id));
       await mkdir(outDir, { recursive: true });
-      const outPath = path.join(examplesRoot, theme, `${shotId}.png`);
+      const outPath = path.join(examplesRoot, theme, `${id}.png`);
       await loc.scrollIntoViewIfNeeded();
       await loc.screenshot({ path: outPath, animations: "disabled" });
-      console.log(`wrote ${theme}/${shotId}.png`);
+      console.log(`wrote ${theme}/${id}.png`);
     }
   }
   await browser.close();

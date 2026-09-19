@@ -425,7 +425,7 @@ html.or-lightbox-open {
 	gap: 0.65rem;
 	justify-items: center;
 	align-content: center;
-	max-width: min(96vw, 1400px);
+	max-width: min(96vw, 1680px);
 	max-height: 96vh;
 }
 
@@ -433,7 +433,7 @@ html.or-lightbox-open {
 	display: block;
 	width: auto;
 	height: auto;
-	max-width: min(96vw, 1400px);
+	max-width: min(96vw, 1680px);
 	max-height: calc(100vh - 5.5rem);
 	object-fit: contain;
 	border-radius: 0.75rem;

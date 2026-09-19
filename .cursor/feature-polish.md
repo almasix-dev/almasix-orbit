@@ -7,7 +7,51 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | Order | Feature | Docs | Status |
 |------:|---------|------|--------|
 | 1 | Panel Configuration | `docs/src/content/docs/panels/configuration.md` | **closed** |
-| 2+ | Remaining Orbit doc features | docs nav | queued (pick next when starting) |
+| 2 | Tables overview | `docs/src/content/docs/tables/overview.md` | **closed** |
+| 3+ | Remaining Orbit doc features | docs nav | queued |
+
+## Tables overview — gap matrix vs Filament 5
+
+Reference: https://filamentphp.com/docs/5.x/tables/overview
+
+### Done
+
+| Filament | Orbit |
+|----------|-------|
+| `columns` / `pushColumns` | `.columns()` / `.push_columns()` |
+| Dot relationship columns | `Column.resolve_state` via `dot_get` |
+| `searchable` / `sortable` (columns) | present |
+| Table `searchable` / `searchUsing` | `.searchable()` / `.search_using()` |
+| `defaultSort` | `.default_sort()` |
+| Filters + `deferFilters` | present |
+| `recordActions` / `toolbarActions` | `.record_actions()` / `.toolbar_actions()` (+ existing names) |
+| Pagination options / disable / extreme / modes | `.paginated()`, `.extreme_pagination_links()`, `.pagination_mode(PaginationMode)` |
+| `queryStringIdentifier` / persist per-page | present |
+| `recordUrl` / open in new tab | `.record_url()` / `.open_record_url_in_new_tab()` |
+| `reorderable` + hooks | `.reorderable()`, `.apply_reorder()`, host `toggleReordering` |
+| Heading / description / header | `.heading()` / `.description()` / `.header()` |
+| `poll` / `deferLoading` | `.poll()` / `.defer_loading()` |
+| `persistInSession` (+ individuals) | `.persist_in_session()` etc. |
+| `striped` / `recordClasses` | present |
+| Empty state icon / custom view | `.empty_state_icon()` / `.empty_state()` |
+| `configureUsing` | `Table.configure_using()` |
+
+### Deferred (later tracks)
+
+| Filament | Reason |
+|----------|--------|
+| Full DnD reorder UX in orbit.js | Chrome + callbacks shipped; drag polish later |
+| Column manager reorder (`reorderableColumns`) | Columns feature page |
+| Filters layout enums | Filters overview feature |
+| Scout-specific search | Covered by `.search_using()` |
+
+## Close checklist (Tables overview)
+
+- [x] Gap matrix accurate after implementation
+- [x] orbit-admin sample exercises overview APIs (`TablesOverviewResource`)
+- [x] Tests at 100% for touched Table/column surface
+- [x] Docs updated (`tables/overview.md`)
+- [x] Status → **closed**
 
 ## Panel Configuration — gap matrix vs Filament 5
 
@@ -43,11 +87,3 @@ Reference: https://filamentphp.com/docs/5.x/panel-configuration (+ styling/auth 
 | Multi-tenancy / MFA / clusters / global search depth | Separate doc tracks |
 | `subNavigationPosition` | Navigation feature |
 | Vite theme / custom Livewire chrome | Styling / host adapters |
-
-## Close checklist (Panel Configuration)
-
-- [x] Gap matrix accurate after implementation
-- [x] orbit-admin sample exercises Panel Configuration
-- [x] Tests at 100% for Panel configuration surface (`panel.py`)
-- [x] Docs + screenshots updated
-- [x] Status → **closed**

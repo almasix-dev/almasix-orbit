@@ -15,6 +15,7 @@ from app.orbit.app.resources.media_columns_resource import MediaColumnsResource
 from app.orbit.app.resources.modal_tasks_resource import ModalTasksResource
 from app.orbit.app.resources.post_resource import PostResource
 from app.orbit.app.resources.settings_resource import SettingsResource
+from app.orbit.app.resources.tables_overview_resource import TablesOverviewResource
 from app.orbit.app.resources.text_columns_resource import TextColumnsResource
 
 
@@ -69,6 +70,7 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
         )
         .resources(
             [
+                TablesOverviewResource,
                 PostResource,
                 AuthorResource,
                 SettingsResource,

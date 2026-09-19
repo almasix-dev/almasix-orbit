@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Sequence
-from typing import Any, Self
+from typing import Any, ClassVar, Self
 
 from almasix.orbit.actions.action import Action
 from almasix.orbit.support.component import Component
 from almasix.orbit.support.conduit_attrs import conduit_attr
+from almasix.orbit.support.evaluate import evaluate
 from almasix.orbit.support.html import e
-from almasix.orbit.tables.columns import Column, ColumnGroup
+from almasix.orbit.tables.columns import Column, ColumnGroup, dot_get
+from almasix.orbit.tables.enums import PaginationMode
 from almasix.orbit.tables.filters import Filter
 from almasix.orbit.tables.grouping import Group
 from almasix.orbit.tables.layout import LayoutComponent
@@ -94,9 +96,56 @@ class Table(Component):
         self._actions_as_dropdown = True
         self._toggled_columns: dict[str, bool] | None = None
         self._active_group_name: str | None = None
+        self._default_sort: str | None = None
+        self._default_sort_direction: str = "asc"
+        self._pagination_page_options: list[int | str] = [5, 10, 25, 50]
+        self._extreme_pagination_links = False
+        self._pagination_mode: PaginationMode = PaginationMode.DEFAULT
+        self._persist_records_per_page_in_session = False
+        self._persist_search_in_session = False
+        self._persist_sort_in_session = False
+        self._persist_columns_in_session = True
+        self._query_string_identifier: str | None = None
+        self._open_record_url_in_new_tab = False
+        self._reorderable_column: str | None = None
+        self._reorderable_enabled = False
+        self._reorderable_direction: str = "asc"
+        self._paginated_while_reordering = False
+        self._before_reordering: Callable[..., None] | None = None
+        self._after_reordering: Callable[..., None] | None = None
+        self._reorder_records_trigger: Callable[..., Any] | None = None
+        self._heading: str | None = None
+        self._description: str | None = None
+        self._header_html: Callable[..., str] | str | None = None
+        self._poll: str | None = None
+        self._defer_loading = False
+        self._table_searchable = False
+        self._search_using: Callable[..., Any] | None = None
+        self._record_classes: Callable[..., Any] | str | list[str] | None = None
+        self._empty_state_icon: str | None = None
+        self._empty_state_view: Callable[..., str] | str | None = None
+
+    _configure_using: ClassVar[list[Callable[[Table], None]]] = []
+
+    @classmethod
+    def configure_using(cls, callback: Callable[[Table], None]) -> None:
+        """Register a default configurator (Filament ``Table::configureUsing``)."""
+        cls._configure_using.append(callback)
+
+    @classmethod
+    def make(cls, name: str | None = "table") -> Self:
+        instance = cls() if name is None else cls(name)
+        for callback in cls._configure_using:
+            callback(instance)
+        return instance
 
     def columns(self, columns: Sequence[ColumnLike]) -> Self:
         self._columns = list(columns)
+        return self
+
+    def push_columns(self, columns: Sequence[ColumnLike]) -> Self:
+        """Append columns without replacing the existing configuration."""
+        self._columns.extend(list(columns))
         return self
 
     def filters(self, filters: Sequence[Filter]) -> Self:
@@ -131,6 +180,10 @@ class Table(Component):
         self._actions = list(actions)
         return self
 
+    def record_actions(self, actions: Sequence[Action]) -> Self:
+        """Filament v5 alias for :meth:`actions` (per-row actions)."""
+        return self.actions(actions)
+
     def actions_as_dropdown(self, condition: bool = True) -> Self:
         """When True (default), wrap flat row actions in a ⋮ dropdown."""
         self._actions_as_dropdown = condition
@@ -139,6 +192,10 @@ class Table(Component):
     def bulk_actions(self, actions: Sequence[Action]) -> Self:
         self._bulk_actions = list(actions)
         return self
+
+    def toolbar_actions(self, actions: Sequence[Action]) -> Self:
+        """Filament v5 alias — toolbar bulk selection actions."""
+        return self.bulk_actions(actions)
 
     def header_actions(self, actions: Sequence[Action]) -> Self:
         self._header_actions = list(actions)
@@ -154,6 +211,10 @@ class Table(Component):
 
     def record_url(self, url: Callable[..., str] | str) -> Self:
         self._record_url = url
+        return self
+
+    def open_record_url_in_new_tab(self, condition: bool = True) -> Self:
+        self._open_record_url_in_new_tab = condition
         return self
 
     def default_group(self, group: Group | str | None) -> Self:
@@ -270,19 +331,36 @@ class Table(Component):
         if self._query_builder is not None and hasattr(self._query_builder, "apply"):
             records = self._query_builder.apply(records)
         if self._search:
-            records = [r for r in records if self._record_matches_search(r)]
-        if self._sort:
-            reverse = self._sort_direction == "desc"
-            records = sorted(
-                records,
-                key=lambda r: self._record_value(r, self._sort),
-                reverse=reverse,
-            )
+            if self._search_using is not None:
+                try:
+                    records = list(self._search_using(records, self._search))
+                except TypeError:
+                    records = list(self._search_using(records, search=self._search))
+            else:
+                records = [r for r in records if self._record_matches_search(r)]
+        sort_col = self._sort or self._default_sort
+        sort_dir = self._sort_direction if self._sort else self._default_sort_direction
+        if sort_col:
+            reverse = sort_dir == "desc"
+            col_map = {c.get_name(): c for c in self.flat_columns() if c.get_name()}
+            column = col_map.get(sort_col)
+
+            def _sort_key(record: Any) -> Any:
+                if column is not None:
+                    value = column.resolve_state(record)
+                else:
+                    value = self._record_value(record, sort_col)
+                return "" if value is None else value
+
+            records = sorted(records, key=_sort_key, reverse=reverse)
         return records
 
     def get_records(self) -> list[Any]:
         records = self._filtered_records()
-        if self._paginated:
+        reordering = bool(getattr(self, "_is_reordering", False))
+        if reordering and not self._paginated_while_reordering:
+            return records
+        if self._paginated and self._per_page > 0:
             total = len(records)
             max_page = max(1, (total + self._per_page - 1) // self._per_page) if total else 1
             if self._page > max_page:
@@ -300,16 +378,16 @@ class Table(Component):
     def pagination_meta(self) -> dict[str, int]:
         """Page window metadata for chrome (clamps ``_page`` like :meth:`get_records`)."""
         total = self.get_total()
-        per_page = max(1, self._per_page)
-        if not self._paginated:
+        if not self._paginated or self._per_page <= 0:
             return {
                 "total": total,
                 "page": 1,
-                "per_page": per_page,
+                "per_page": total or 1,
                 "last_page": 1,
                 "from": 1 if total else 0,
                 "to": total,
             }
+        per_page = max(1, self._per_page)
         last_page = max(1, (total + per_page - 1) // per_page) if total else 1
         page = min(max(1, self._page), last_page)
         self._page = page
@@ -325,7 +403,17 @@ class Table(Component):
         }
 
     def has_searchable_columns(self) -> bool:
-        return any(c.is_searchable() for c in self.flat_columns())
+        return self._table_searchable or any(c.is_searchable() for c in self.flat_columns())
+
+    def searchable(self, condition: bool = True) -> Self:
+        """Show the search field even when no column is marked searchable."""
+        self._table_searchable = condition
+        return self
+
+    def search_using(self, callback: Callable[..., Any]) -> Self:
+        """Custom search: ``callback(records, search) -> records``."""
+        self._search_using = callback
+        return self
 
     def search(self, term: str) -> Self:
         self._search = term
@@ -336,10 +424,78 @@ class Table(Component):
         self._sort_direction = direction
         return self
 
+    def default_sort(self, column: str, direction: str = "asc") -> Self:
+        """Initial sort until the user picks another column."""
+        self._default_sort = column
+        self._default_sort_direction = direction
+        if self._sort is None:
+            self._sort = column
+            self._sort_direction = direction
+        return self
+
     def paginate(self, page: int = 1, per_page: int = 10) -> Self:
         self._page = page
-        self._per_page = per_page
+        self._per_page = int(per_page) if per_page != "all" else 0
         self._paginated = True
+        return self
+
+    def paginated(self, options: bool | Sequence[int | str] = True) -> Self:
+        """Enable/disable pagination, or set per-page select options (incl. ``"all"``)."""
+        if options is False:
+            self._paginated = False
+            return self
+        self._paginated = True
+        if options is not True:
+            self._pagination_page_options = list(options)
+        return self
+
+    def pagination_page_options(self, options: Sequence[int | str]) -> Self:
+        self._pagination_page_options = list(options)
+        return self
+
+    def default_pagination_page_option(self, option: int | str) -> Self:
+        if option == "all":
+            self._per_page = 0
+        else:
+            self._per_page = int(option)
+        return self
+
+    def extreme_pagination_links(self, condition: bool = True) -> Self:
+        self._extreme_pagination_links = condition
+        return self
+
+    def pagination_mode(self, mode: PaginationMode | str) -> Self:
+        self._pagination_mode = PaginationMode(mode)
+        return self
+
+    def persist_records_per_page_in_session(self, condition: bool = True) -> Self:
+        self._persist_records_per_page_in_session = condition
+        return self
+
+    def query_string_identifier(self, identifier: str) -> Self:
+        self._query_string_identifier = identifier
+        return self
+
+    def persist_search_in_session(self, condition: bool = True) -> Self:
+        self._persist_search_in_session = condition
+        return self
+
+    def persist_sort_in_session(self, condition: bool = True) -> Self:
+        self._persist_sort_in_session = condition
+        return self
+
+    def persist_column_searches_in_session(self, condition: bool = True) -> Self:
+        # Alias kept for Filament naming; Orbit uses column manager persist flag.
+        self._persist_columns_in_session = condition
+        return self
+
+    def persist_in_session(self, condition: bool = True) -> Self:
+        """Toggle filters/search/sort/columns/per-page session persistence together."""
+        self.persist_filters_in_session(condition)
+        self._persist_search_in_session = condition
+        self._persist_sort_in_session = condition
+        self._persist_columns_in_session = condition
+        self._persist_records_per_page_in_session = condition
         return self
 
     def empty_state_heading(self, text: str) -> Self:
@@ -354,14 +510,94 @@ class Table(Component):
         self._empty_state_actions = list(actions)
         return self
 
+    def empty_state_icon(self, icon: str) -> Self:
+        self._empty_state_icon = icon
+        return self
+
+    def empty_state(self, view: Callable[..., str] | str) -> Self:
+        """Replace the default empty-state markup with custom HTML or a callable."""
+        self._empty_state_view = view
+        return self
+
     def striped(self, condition: bool = True) -> Self:
         self._striped = condition
         return self
 
+    def heading(self, text: str) -> Self:
+        self._heading = text
+        return self
+
+    def description(self, text: str) -> Self:
+        self._description = text
+        return self
+
+    def header(self, view: Callable[..., str] | str) -> Self:
+        """Custom header HTML (callable receives ``**ctx``)."""
+        self._header_html = view
+        return self
+
+    def poll(self, interval: str | None = "10s") -> Self:
+        self._poll = interval
+        return self
+
+    def defer_loading(self, condition: bool = True) -> Self:
+        self._defer_loading = condition
+        return self
+
+    def record_classes(
+        self, classes: Callable[..., Any] | str | list[str] | None
+    ) -> Self:
+        self._record_classes = classes
+        return self
+
+    def reorderable(
+        self,
+        column: str | None = "sort",
+        condition: bool = True,
+        *,
+        direction: str = "asc",
+    ) -> Self:
+        self._reorderable_column = column
+        self._reorderable_enabled = bool(condition) and column is not None
+        self._reorderable_direction = direction
+        return self
+
+    def paginated_while_reordering(self, condition: bool = True) -> Self:
+        self._paginated_while_reordering = condition
+        return self
+
+    def before_reordering(self, callback: Callable[..., None]) -> Self:
+        self._before_reordering = callback
+        return self
+
+    def after_reordering(self, callback: Callable[..., None]) -> Self:
+        self._after_reordering = callback
+        return self
+
+    def reorder_records_trigger_action(self, callback: Callable[..., Any]) -> Self:
+        self._reorder_records_trigger = callback
+        return self
+
+    def apply_reorder(self, order: Sequence[Any]) -> None:
+        """Apply a new record order (keys/ids); runs before/after hooks."""
+        keys = list(order)
+        if self._before_reordering:
+            self._before_reordering(keys)
+        # Soft reorder of in-memory records when ids match.
+        if self._records and keys:
+            by_id: dict[str, Any] = {}
+            for record in self._records:
+                rid = str(self._record_value(record, "id") or id(record))
+                by_id[rid] = record
+            reordered = [by_id[str(k)] for k in keys if str(k) in by_id]
+            leftovers = [r for r in self._records if r not in reordered]
+            self._records = [*reordered, *leftovers]
+        if self._after_reordering:
+            self._after_reordering(keys)
+
     def _record_value(self, record: Any, key: str) -> Any:
-        if isinstance(record, dict):
-            return record.get(key) or ""
-        return getattr(record, key, "") or ""
+        value = dot_get(record, key) if key else None
+        return "" if value is None else value
 
     def _record_matches_search(self, record: Any) -> bool:
         term = self._search.lower()
@@ -539,8 +775,11 @@ class Table(Component):
                 f'<button type="button" class="or-table-search-clear or-btn or-btn-ghost or-btn-sm"'
                 f'{conduit_attr("click", "clearSearch")} aria-label="Clear search">Clear</button>'
             )
+        attrs = ""
+        if self._persist_search_in_session:
+            attrs += ' data-persist-search="true"'
         return (
-            f'<div class="or-table-search">'
+            f'<div class="or-table-search"{attrs}>'
             f'<label class="or-sr-only" for="or-table-search-input">Search</label>'
             f'<input id="or-table-search-input" type="search" class="or-input or-table-search-input" '
             f'placeholder="Search…" value="{value}" autocomplete="off"'
@@ -632,55 +871,95 @@ class Table(Component):
             return ""
         page = meta["page"]
         last = meta["last_page"]
-        per_page = meta["per_page"]
+        per_page = self._per_page
         from_n = meta["from"]
         to_n = meta["to"]
         summary = f"Showing {from_n} to {to_n} of {total:,} results"
+        mode = self._pagination_mode
+        attrs: list[str] = [f'data-pagination-mode="{e(mode.value)}"']
+        if self._query_string_identifier:
+            attrs.append(f'data-query-string-id="{e(self._query_string_identifier)}"')
+        if self._persist_records_per_page_in_session:
+            attrs.append('data-persist-per-page="true"')
+        attr_s = (" " + " ".join(attrs)) if attrs else ""
+
         prev_disabled = ' disabled aria-disabled="true"' if page <= 1 else ""
         next_disabled = ' disabled aria-disabled="true"' if page >= last else ""
         prev_click = "" if page <= 1 else _conduit_click(f"gotoPage({page - 1})")
         next_click = "" if page >= last else _conduit_click(f"gotoPage({page + 1})")
-        sizes = (5, 10, 25, 50)
-        if per_page not in sizes:
-            sizes = tuple(sorted({*sizes, per_page}))
-        options = "".join(
-            f'<option value="{n}"{" selected" if n == per_page else ""}>{n}</option>'
-            for n in sizes
-        )
-        page_btns: list[str] = []
-        for item in _pagination_pages(page, last):
-            if item is None:
-                page_btns.append(
-                    '<span class="or-table-pagination-ellipsis" aria-hidden="true">…</span>'
-                )
-                continue
-            if item == page:
-                page_btns.append(
-                    f'<button type="button" class="or-table-pagination-page is-active" '
-                    f'aria-current="page">{item}</button>'
-                )
+
+        options_src = list(self._pagination_page_options) or [5, 10, 25, 50]
+        if per_page > 0 and per_page not in options_src and "all" not in options_src:
+            options_src = sorted(
+                [*options_src, per_page],
+                key=lambda x: (isinstance(x, str), x),
+            )
+        option_html: list[str] = []
+        for n in options_src:
+            if n == "all":
+                selected = " selected" if per_page <= 0 else ""
+                option_html.append(f'<option value="all"{selected}>All</option>')
             else:
-                page_btns.append(
-                    f'<button type="button" class="or-table-pagination-page"'
-                    f'{_conduit_click(f"gotoPage({item})")}>{item}</button>'
-                )
+                selected = " selected" if n == per_page else ""
+                option_html.append(f'<option value="{n}"{selected}>{n}</option>')
+        options = "".join(option_html)
+
+        nav_parts: list[str] = []
+        if self._extreme_pagination_links and mode == PaginationMode.DEFAULT:
+            first_dis = ' disabled aria-disabled="true"' if page <= 1 else ""
+            last_dis = ' disabled aria-disabled="true"' if page >= last else ""
+            first_click = "" if page <= 1 else _conduit_click("gotoPage(1)")
+            last_click = "" if page >= last else _conduit_click(f"gotoPage({last})")
+            nav_parts.append(
+                f'<button type="button" class="or-table-pagination-nav"'
+                f'{first_click}{first_dis} aria-label="First">'
+                f'<span aria-hidden="true">«</span></button>'
+            )
+        nav_parts.append(
+            f'<button type="button" class="or-table-pagination-nav"'
+            f'{prev_click}{prev_disabled} aria-label="Previous">'
+            f'<span aria-hidden="true">‹</span></button>'
+        )
+        if mode == PaginationMode.DEFAULT:
+            for item in _pagination_pages(page, last):
+                if item is None:
+                    nav_parts.append(
+                        '<span class="or-table-pagination-ellipsis" aria-hidden="true">…</span>'
+                    )
+                    continue
+                if item == page:
+                    nav_parts.append(
+                        f'<button type="button" class="or-table-pagination-page is-active" '
+                        f'aria-current="page">{item}</button>'
+                    )
+                else:
+                    nav_parts.append(
+                        f'<button type="button" class="or-table-pagination-page"'
+                        f'{_conduit_click(f"gotoPage({item})")}>{item}</button>'
+                    )
+        nav_parts.append(
+            f'<button type="button" class="or-table-pagination-nav"'
+            f'{next_click}{next_disabled} aria-label="Next">'
+            f'<span aria-hidden="true">›</span></button>'
+        )
+        if self._extreme_pagination_links and mode == PaginationMode.DEFAULT:
+            last_dis = ' disabled aria-disabled="true"' if page >= last else ""
+            last_click = "" if page >= last else _conduit_click(f"gotoPage({last})")
+            nav_parts.append(
+                f'<button type="button" class="or-table-pagination-nav"'
+                f'{last_click}{last_dis} aria-label="Last">'
+                f'<span aria-hidden="true">»</span></button>'
+            )
+
         return (
-            f'<nav class="or-table-pagination" aria-label="Pagination navigation">'
+            f'<nav class="or-table-pagination" aria-label="Pagination navigation"{attr_s}>'
             f'<span class="or-table-pagination-summary">{e(summary)}</span>'
             f'<label class="or-table-per-page or-per-page-split">'
             f'<span class="or-per-page-label">Per page</span>'
             f'<select class="or-per-page-select" aria-label="Records per page"'
             f'{_alpine_wire_call("setPerPage($event.target.value)")}>{options}</select>'
             f"</label>"
-            f'<div class="or-table-pagination-pages">'
-            f'<button type="button" class="or-table-pagination-nav"'
-            f"{prev_click}{prev_disabled} aria-label=\"Previous\">"
-            f'<span aria-hidden="true">‹</span></button>'
-            f'{"".join(page_btns)}'
-            f'<button type="button" class="or-table-pagination-nav"'
-            f"{next_click}{next_disabled} aria-label=\"Next\">"
-            f'<span aria-hidden="true">›</span></button>'
-            f"</div></nav>"
+            f'<div class="or-table-pagination-pages">{"".join(nav_parts)}</div></nav>'
         )
 
     def _render_summary_cells(
@@ -808,14 +1087,36 @@ class Table(Component):
         if group_key is not None:
             row_class += " or-group-member"
             row_attrs += f' data-group-key="{e(group_key)}"'
+        extra_classes = self._resolve_record_classes(record, **ctx)
+        if extra_classes:
+            row_class += f" {extra_classes}"
         if href:
             row_class += " or-tr-clickable"
+            target_js = (
+                f"window.open('{e(href)}','_blank')"
+                if self._open_record_url_in_new_tab
+                else f"location.href='{e(href)}'"
+            )
             row_attrs += (
                 f' data-record-url="{e(href)}" tabindex="0" '
                 f"onclick=\"if(!event.target.closest('a,button,input,label'))"
-                f" location.href='{e(href)}'\""
+                f" {target_js}\""
             )
+            if self._open_record_url_in_new_tab:
+                row_attrs += ' data-record-url-new-tab="true"'
         return f'<tr class="{row_class}"{row_attrs}>{cells}</tr>'
+
+    def _resolve_record_classes(self, record: Any, **ctx: Any) -> str:
+        classes = self._record_classes
+        if classes is None:
+            return ""
+        if callable(classes):
+            classes = evaluate(classes, record, record=record)
+        if classes is None or callable(classes):
+            return ""
+        if isinstance(classes, (list, tuple, set)):
+            return " ".join(str(c) for c in classes if c)
+        return str(classes)
 
     def _render_record_card(self, record: Any, display: list[Column | LayoutComponent], **ctx: Any) -> str:
         fields: list[str] = []
@@ -1024,26 +1325,42 @@ class Table(Component):
 
         body = "".join(rows)
         if not body:
-            empty_actions = self._empty_state_actions or (
-                list(self._header_actions) if not skip_header_actions else []
-            )
-            if not empty_actions and self._header_actions:
-                empty_actions = list(self._header_actions)
-            actions_html = ""
-            if empty_actions:
-                actions_html = (
-                    f'<div class="or-empty-state-actions">'
-                    f"{self._render_actions(empty_actions, None, **ctx)}</div>"
+            if self._empty_state_view is not None:
+                view = self._empty_state_view
+                empty_inner = str(evaluate(view, **ctx) if callable(view) else view)
+            else:
+                empty_actions = self._empty_state_actions or (
+                    list(self._header_actions) if not skip_header_actions else []
                 )
-            desc = (
-                f"<p>{e(self._empty_state_description)}</p>"
-                if self._empty_state_description
-                else ""
-            )
+                if not empty_actions and self._header_actions:
+                    empty_actions = list(self._header_actions)
+                actions_html = ""
+                if empty_actions:
+                    actions_html = (
+                        f'<div class="or-empty-state-actions">'
+                        f"{self._render_actions(empty_actions, None, **ctx)}</div>"
+                    )
+                desc = (
+                    f"<p>{e(self._empty_state_description)}</p>"
+                    if self._empty_state_description
+                    else ""
+                )
+                icon_html = ""
+                if self._empty_state_icon:
+                    from almasix.orbit.support.icons import icon as render_icon
+
+                    icon_html = (
+                        f'<div class="or-empty-state-icon">'
+                        f"{render_icon(self._empty_state_icon, size=40)}</div>"
+                    )
+                empty_inner = (
+                    f'<div class="or-empty-state">{icon_html}'
+                    f"<h3>{e(self._empty_state_heading)}</h3>"
+                    f"{desc}{actions_html}</div>"
+                )
             body = (
                 f'<tr class="or-tr"><td class="or-td or-empty" colspan="{colspan}">'
-                f'<div class="or-empty-state"><h3>{e(self._empty_state_heading)}</h3>'
-                f"{desc}{actions_html}</div></td></tr>"
+                f"{empty_inner}</td></tr>"
             )
 
         footer_parts: list[str] = []
@@ -1094,11 +1411,23 @@ class Table(Component):
             wrap_extra = " or-table-content-grid"
 
         toolbar_end = ""
-        if self._header_actions and not skip_header_actions:
-            toolbar_end += (
-                f'<div class="or-list-toolbar-actions">'
-                f'{self._render_actions(self._header_actions, None, **ctx)}</div>'
-            )
+        if self._reorderable_enabled:
+            is_reordering = bool(ctx.get("reordering") or getattr(self, "_is_reordering", False))
+            if self._reorder_records_trigger is not None:
+                from almasix.orbit.actions.action import Action as _Action
+
+                trigger = self._reorder_records_trigger(
+                    _Action.make("reorder").label("Reorder"),
+                    is_reordering,
+                )
+                reorder_btn = trigger.render(**ctx) if hasattr(trigger, "render") else ""
+            else:
+                label = "Disable reordering" if is_reordering else "Enable reordering"
+                reorder_btn = (
+                    f'<button type="button" class="or-btn or-btn-gray or-btn-sm"'
+                    f'{_conduit_click("toggleReordering")}>{e(label)}</button>'
+                )
+            toolbar_end += f'<div class="or-table-reorder-trigger">{reorder_btn}</div>'
         groups_chooser = ""
         if self._groups:
             active_name = self._active_group_name or (
@@ -1206,17 +1535,38 @@ class Table(Component):
                 selection_attr += ' data-select-all="true"'
         pagination = self._render_pagination_chrome(**ctx)
 
+        heading_html = self._render_table_heading(
+            skip_header_actions=skip_header_actions,
+            **ctx,
+        )
+        wrap_attrs = grid_attr + selection_attr
+        if self._poll:
+            wrap_attrs += f' data-poll="{e(self._poll)}"'
+        if self._defer_loading:
+            wrap_attrs += ' data-defer-loading="true"'
+        if self._query_string_identifier:
+            wrap_attrs += f' data-query-string-id="{e(self._query_string_identifier)}"'
+        if self._persist_sort_in_session:
+            wrap_attrs += ' data-persist-sort="true"'
+        if self._persist_columns_in_session:
+            wrap_attrs += ' data-persist-columns="true"'
+        if self._reorderable_enabled:
+            wrap_attrs += f' data-reorderable="{e(self._reorderable_column or "")}"'
+            wrap_attrs += f' data-reorder-direction="{e(self._reorderable_direction)}"'
+            if ctx.get("reordering") or getattr(self, "_is_reordering", False):
+                wrap_attrs += ' data-reordering="true"'
+
         if self._layout == "kanban":
             return (
-                f'<div class="or-table-wrap or-list-card or-table-kanban">'
-                f"{toolbar}{selection_indicator}"
+                f'<div class="or-table-wrap or-list-card or-table-kanban"{wrap_attrs}>'
+                f"{heading_html}{toolbar}{selection_indicator}"
                 f"{self._render_kanban(page_records, display, **ctx)}{pagination}</div>"
             )
 
         return (
             f'<div class="or-table-wrap or-list-card{wrap_extra}{stacked_cls}"'
-            f"{grid_attr}{selection_attr}>"
-            f"{toolbar}{selection_indicator}"
+            f"{wrap_attrs}>"
+            f"{heading_html}{toolbar}{selection_indicator}"
             f'<div class="or-list-table-scroll or-table-desktop">'
             f'<table class="or-table{striped}">'
             f'<thead class="or-thead">{headers}</thead>'
@@ -1224,3 +1574,30 @@ class Table(Component):
             f"{tfoot}</table></div>"
             f"{stacked}{pagination}</div>"
         )
+
+    def _render_table_heading(self, **ctx: Any) -> str:
+        if self._header_html is not None:
+            view = self._header_html
+            return str(evaluate(view, **ctx) if callable(view) else view)
+        skip_header_actions = bool(ctx.get("skip_header_actions", False))
+        text_parts: list[str] = []
+        if self._heading:
+            text_parts.append(f'<h2 class="or-table-heading">{e(self._heading)}</h2>')
+        if self._description:
+            text_parts.append(
+                f'<p class="or-table-description">{e(self._description)}</p>'
+            )
+        actions_html = ""
+        if self._header_actions and not skip_header_actions:
+            actions_html = (
+                f'<div class="or-table-header-actions">'
+                f"{self._render_actions(self._header_actions, None, **ctx)}</div>"
+            )
+        if not text_parts and not actions_html:
+            return ""
+        text_html = (
+            f'<div class="or-table-header-text">{"".join(text_parts)}</div>'
+            if text_parts
+            else ""
+        )
+        return f'<div class="or-table-header">{text_html}{actions_html}</div>'

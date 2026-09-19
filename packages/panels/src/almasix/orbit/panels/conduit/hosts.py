@@ -338,6 +338,7 @@ class ListRecordsHost(OrbitPageHost):
     table_filters: dict[str, Any] = {}
     table_group: str = ""
     toggled_columns: dict[str, bool] = {}
+    reordering: bool = False
 
     def mount(self, **kwargs: Any) -> Any:
         resource = self.get_resource()
@@ -422,12 +423,20 @@ class ListRecordsHost(OrbitPageHost):
             self.page = 1
 
     def setPerPage(self, n: int | str) -> None:
-        try:
-            self.per_page = max(1, int(n))
-        except (TypeError, ValueError):
-            self.per_page = 10
+        if str(n).lower() == "all":
+            self.per_page = 0
+        else:
+            try:
+                self.per_page = max(1, int(n))
+            except (TypeError, ValueError):
+                self.per_page = 10
         self.page = 1
         self.select_all = False
+
+    def toggleReordering(self) -> None:
+        self.reordering = not bool(getattr(self, "reordering", False))
+        if self.reordering:
+            self.select_all = False
 
     def clearSearch(self) -> None:
         self.table_search = ""
@@ -739,6 +748,7 @@ class ListRecordsHost(OrbitPageHost):
             select_all=bool(self.select_all),
             table_group=self.table_group or None,
             toggled_columns=self._column_visibility_state(),
+            reordering=bool(self.reordering),
         )
 
 
