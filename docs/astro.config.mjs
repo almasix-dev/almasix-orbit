@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import almasixTheme from '@almasix/starlight-theme';
 
 const base = '/';
 
@@ -62,65 +63,28 @@ export default defineConfig({
 			editLink: {
 				baseUrl: 'https://github.com/almasix-dev/almasix-orbit/edit/main/docs/',
 			},
-			customCss: ['./src/styles/custom.css', './src/styles/landing.css'],
+			plugins: [
+				almasixTheme({
+					github: 'almasix-dev/almasix-orbit',
+					product: 'Orbit',
+					hubUrl: 'https://almasix.com',
+					headerExtras: './src/components/VersionSelect.astro',
+					pageBanner: './src/components/VersionBanner.astro',
+				}),
+			],
+			// Landing-only CSS; shared chrome comes from @almasix/starlight-theme.
+			customCss: ['./src/styles/landing.css'],
 			components: {
-				Header: './src/components/Header.astro',
 				Hero: './src/components/Hero.astro',
-				PageFrame: './src/components/PageFrame.astro',
-				Pagination: './src/components/Pagination.astro',
-				SiteTitle: './src/components/SiteTitle.astro',
-				ThemeSelect: './src/components/ThemeSelect.astro',
-				TwoColumnContent: './src/components/TwoColumnContent.astro',
-			},
-			expressiveCode: {
-				// Filament docs (Mintlify): Shiki gruvbox-dark-hard — dark blocks on cream.
-				themes: ['gruvbox-dark-hard'],
-				useStarlightDarkModeSwitch: false,
-				useStarlightUiThemeColors: false,
-				// Must stay true on Astro 7: inlining can break code-frame CSS.
-				emitExternalStylesheet: true,
-				styleOverrides: {
-					borderRadius: '0.85rem',
-					borderWidth: '1px',
-					codeFontFamily: "'JetBrains Mono', ui-monospace, monospace",
-					codeFontSize: '0.9rem',
-					codeBackground: '#1d2021',
-					codeForeground: '#ebdbb2',
-					frames: {
-						shadowColor: 'rgba(0, 0, 0, 0.35)',
-						editorBackground: '#1d2021',
-						terminalBackground: '#1d2021',
-					},
-				},
 			},
 			head: [
-				{
-					tag: 'link',
-					attrs: { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-				},
-				{
-					tag: 'link',
-					attrs: {
-						rel: 'preconnect',
-						href: 'https://fonts.gstatic.com',
-						crossorigin: true,
-					},
-				},
 				{
 					tag: 'link',
 					attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
 				},
 				{
 					tag: 'script',
-					content: readFileSync('./src/scripts/sidebar-accordion.js', 'utf8'),
-				},
-				{
-					tag: 'script',
 					content: readFileSync('./src/scripts/hero-slides.js', 'utf8'),
-				},
-				{
-					tag: 'script',
-					content: readFileSync('./src/scripts/example-lightbox.js', 'utf8'),
 				},
 				{
 					tag: 'meta',
