@@ -208,8 +208,6 @@ def register_app_orbit_panels(
             except ImportError:
                 continue
             panel_id = name
-            if panel_id in seen_ids:
-                continue
             panel = _call_panel_registrar(module, panel_id, registry)
             if panel is not None or callable(getattr(module, f"register_{panel_id}_panel", None)):
                 seen_ids.add(panel_id)

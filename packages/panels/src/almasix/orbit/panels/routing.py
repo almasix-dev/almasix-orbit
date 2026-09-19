@@ -259,7 +259,6 @@ def mount_panel(router: Any, panel: Panel) -> None:
         *,
         name: str,
         mw: list[str] | None = None,
-        authed: bool = False,
     ) -> None:
         # Empty ``uri`` (root panel home) uses concat so ``full == ""`` can normalize to ``/``.
         if uri.startswith("/") or uri == "":
@@ -268,12 +267,8 @@ def mount_panel(router: Any, panel: Panel) -> None:
             full = f"{prefix}/{uri}"
         if full == "":
             full = "/"
-        if mw is not None:
-            stack = mw
-        elif authed:
-            stack = auth_middleware
-        else:
-            stack = middleware
+        # Guest routes pass ``mw=`` explicitly (e.g. ``["web"]``); others use auth stack.
+        stack = mw if mw is not None else auth_middleware
         router.add(
             ["GET"],
             full,
@@ -309,14 +304,13 @@ def mount_panel(router: Any, panel: Panel) -> None:
             )
             return _html_response(body)
 
-        _add(home_uri, dashboard_home, name=f"orbit.{panel.id}.home", authed=True)
+        _add(home_uri, dashboard_home, name=f"orbit.{panel.id}.home")
     elif resources:
         home_host = ListRecordsHost.bind(panel=panel, resource=resources[0])
         _add(
             home_uri,
             make_panel_page_action(panel, home_host),
             name=f"orbit.{panel.id}.home",
-            authed=True,
         )
     else:
 
@@ -335,7 +329,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
             )
             return _html_response(body)
 
-        _add(home_uri, empty_home, name=f"orbit.{panel.id}.home", authed=True)
+        _add(home_uri, empty_home, name=f"orbit.{panel.id}.home")
 
     if panel.login_enabled():
         from almasix.conduit import Conduit
@@ -408,25 +402,21 @@ def mount_panel(router: Any, panel: Panel) -> None:
             f"{slug}",
             make_panel_page_action(panel, list_host),
             name=f"orbit.{panel.id}.{slug}.index",
-            authed=True,
         )
         _add(
             f"{slug}/create",
             make_panel_page_action(panel, create_host),
             name=f"orbit.{panel.id}.{slug}.create",
-            authed=True,
         )
         _add(
             f"{slug}/{{record_id}}/edit",
             make_panel_page_action(panel, edit_host, pass_record_id=True),
             name=f"orbit.{panel.id}.{slug}.edit",
-            authed=True,
         )
         _add(
             f"{slug}/{{record_id}}",
             make_panel_page_action(panel, view_host, pass_record_id=True),
             name=f"orbit.{panel.id}.{slug}.view",
-            authed=True,
         )
 
     for page in panel.get_pages():
@@ -457,7 +447,6 @@ def mount_panel(router: Any, panel: Panel) -> None:
             f"{slug}",
             _make_page_action(page),
             name=f"orbit.{panel.id}.page.{slug}",
-            authed=True,
         )
 
 

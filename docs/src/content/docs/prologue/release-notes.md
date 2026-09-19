@@ -9,11 +9,17 @@ header switcher.
 
 ## Unreleased (`main`)
 
+_Nothing yet — see **0.3.1** below for the latest release._
+
+## 0.3.1
+
+Patch release after [#44](https://github.com/almasix-dev/almasix-orbit/issues/44) / [#42](https://github.com/almasix-dev/almasix-orbit/issues/42) / [#39](https://github.com/almasix-dev/almasix-orbit/issues/39).
+
 ### Resource auto-generation from the database ([#44](https://github.com/almasix-dev/almasix-orbit/issues/44))
 
 - `make:orbit-resource --generate` (Filament `--generate` parity) reflects the model's table via `Schema.columns` and stubs form fields + table columns with type intelligence (`Toggle` / `BooleanColumn`, `DateTimePicker`, `Textarea`, …)
 - `--model=` links an ORM model (bare name or dotted path); when the model resolves without `--generate`, an interactive TTY asks whether to generate
-- CI coverage gate raised to **99.5%**
+- CI coverage gate raised to **100%**
 
 ### Scaffold & navigation polish ([#42](https://github.com/almasix-dev/almasix-orbit/issues/42))
 
@@ -24,6 +30,10 @@ header switcher.
 
 - `make:orbit-resource|page|widget` prompt for a panel when several `app/orbit/{id}/panel.py` packages exist (skip with `--panel=…`; non-interactive defaults to `admin` or the first id)
 - Missing class names are prompted on a TTY
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.3.1'
+```
 
 ## 0.3.0
 

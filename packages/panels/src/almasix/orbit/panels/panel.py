@@ -1059,9 +1059,7 @@ class Panel:
         ordered: list[str | None] = named + ([None] if None in grouped else [])
         parts: list[str] = []
         for key in ordered:
-            members = grouped.get(key) or []
-            if not members:
-                continue
+            members = grouped[key]
             if key:
                 parts.append(self._nav_group(str(key)))
             secondary = build_menu_secondary(
