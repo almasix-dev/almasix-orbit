@@ -112,8 +112,8 @@ Deploy notes: [`examples/demo/README.md`](examples/demo/README.md) (`render.yaml
 pytest tests --cov=almasix.orbit --cov-branch
 ```
 
-Aim for **100%** statement + branch coverage. The CI fail-under is configured in
-`pyproject.toml` / `.github/workflows/ci.yml`.
+Aim for **100%** statement + branch coverage. CI fails under **99.5%**
+(`pyproject.toml` / `.github/workflows/ci.yml`).
 
 ## Discovery
 
