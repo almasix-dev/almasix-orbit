@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from enum import Enum
+
 from almasix.orbit.forms.components import (
     Block,
     Builder,
     Checkbox,
     CheckboxList,
+    CodeEditor,
     ColorPicker,
     DatePicker,
     DateTimePicker,
@@ -14,19 +17,21 @@ from almasix.orbit.forms.components import (
     Hidden,
     KeyValue,
     MarkdownEditor,
+    ModalTableSelect,
     MoneyInput,
     MorphToSelect,
     MultiSelect,
     OneTimeCodeInput,
     Placeholder,
     Radio,
+    RelationshipRepeater,
     Repeater,
     RichEditor,
     Select,
     Slider,
     TagsInput,
-    TextInput,
     Textarea,
+    TextInput,
     TimePicker,
     Toggle,
     ToggleButtons,
@@ -38,18 +43,38 @@ from almasix.orbit.schemas.layouts import (
     EmptyState,
     Fieldset,
     Flex,
-    Grid as SchemaGrid,
-    Group as SchemaGroup,
     Section,
-    Split as SchemaSplit,
     Tabs,
     Wizard,
+)
+from almasix.orbit.schemas.layouts import (
+    Grid as SchemaGrid,
+)
+from almasix.orbit.schemas.layouts import (
+    Group as SchemaGroup,
+)
+from almasix.orbit.schemas.layouts import (
+    Split as SchemaSplit,
 )
 from almasix.orbit.schemas.primes import Icon, Image, Text, UnorderedList
 
 
-def _form(*components, state: dict | None = None) -> str:
+class _Status(Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    ARCHIVED = "archived"
+
+
+class _Visibility(Enum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+    DRAFT = "draft"
+
+
+def _form(*components, state: dict | None = None, operation: str | None = None) -> str:
     form = Form.make().schema(list(components))
+    if operation:
+        form.operation(operation)
     if state:
         form.fill(state)
     return form.render()
@@ -70,6 +95,18 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
         "pro": "For growing teams",
         "enterprise": "Custom SLA",
     }
+    tag_opts = {"orbit": "Orbit", "tables": "Tables", "forms": "Forms", "panels": "Panels"}
+    author_opts = {"1": "Ada Lovelace", "2": "Grace Hopper", "3": "Alan Turing"}
+    builder_blocks = [
+        Block.make("hero")
+        .label("Hero")
+        .icon("heroicon-o-star")
+        .schema([TextInput.make("heading").label("Heading")]),
+        Block.make("text")
+        .label("Text")
+        .icon("heroicon-o-document-text")
+        .schema([Textarea.make("body").label("Body").rows(2)]),
+    ]
 
     return {
         # TextInput
@@ -185,6 +222,67 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .hint_icon("heroicon-o-information-circle")
             .render("launch-orbit"),
         ),
+        "forms/text-input/autocapitalize": (
+            "Text input — autocapitalize",
+            TextInput.make("name")
+            .label("Display name")
+            .autocapitalize("words")
+            .render("ada lovelace"),
+        ),
+        "forms/text-input/content-slots": (
+            "Text input — content slots",
+            TextInput.make("title")
+            .label("Title")
+            .above_label("<span class='or-helper'>Above label</span>")
+            .below_label("<span class='or-helper'>Below label</span>")
+            .above_content("<span class='or-helper'>Above content</span>")
+            .below_content("<span class='or-helper'>Below content</span>")
+            .render("Launch Orbit"),
+        ),
+        "forms/text-input/length": (
+            "Text input — length",
+            TextInput.make("pin").label("PIN").length(4).render("4242"),
+        ),
+        "forms/text-input/mark-as-required": (
+            "Text input — mark as required",
+            TextInput.make("nickname")
+            .label("Nickname")
+            .mark_as_required()
+            .helper_text("Shows the required asterisk without a required rule.")
+            .render("Ada"),
+        ),
+        "forms/text-input/prefix-icon-color": (
+            "Text input — prefix icon color",
+            TextInput.make("search")
+            .label("Search")
+            .prefix_icon("heroicon-o-magnifying-glass")
+            .prefix_icon_color("primary")
+            .render("orbit"),
+        ),
+        "forms/text-input/strip-characters": (
+            "Text input — strip characters",
+            TextInput.make("code")
+            .label("Promo code")
+            .strip_characters("- ")
+            .helper_text("Dashes and spaces are stripped on dehydrate.")
+            .render("ORB-2026"),
+        ),
+        "forms/text-input/tel-regex": (
+            "Text input — tel regex",
+            TextInput.make("phone")
+            .tel()
+            .label("Phone")
+            .tel_regex(r"^\+\d{8,15}$")
+            .render("+254700000000"),
+        ),
+        "forms/text-input/trim": (
+            "Text input — trim",
+            TextInput.make("title")
+            .label("Title")
+            .trim()
+            .helper_text("Leading and trailing whitespace is trimmed.")
+            .render("  Launch Orbit  "),
+        ),
         # Select
         "forms/select/basic": (
             "Select — basic",
@@ -205,6 +303,176 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .options({"orbit": "Orbit", "tables": "Tables", "forms": "Forms"})
             .render(["orbit", "forms"]),
         ),
+        "forms/select/allow-html": (
+            "Select — allow HTML",
+            Select.make("status")
+            .label("Status")
+            .options(
+                {
+                    "draft": "<em>Draft</em>",
+                    "published": "<strong>Published</strong>",
+                    "archived": "Archived",
+                }
+            )
+            .allow_html()
+            .native(False)
+            .render("published"),
+        ),
+        "forms/select/boolean": (
+            "Select — boolean",
+            Select.make("featured").label("Featured").boolean().render(True),
+        ),
+        "forms/select/create-option": (
+            "Select — create option",
+            Select.make("status")
+            .label("Status")
+            .options(status_opts)
+            .native(False)
+            .create_option_form([TextInput.make("label").label("Label").required()])
+            .create_option_using(lambda label, **_: label)
+            .render("draft"),
+        ),
+        "forms/select/custom-search": (
+            "Select — custom search",
+            Select.make("author")
+            .label("Author")
+            .options(author_opts)
+            .searchable()
+            .native(False)
+            .get_search_results_using(
+                lambda search, **_: {
+                    k: v for k, v in author_opts.items() if search.lower() in v.lower()
+                }
+            )
+            .render("1"),
+        ),
+        "forms/select/disable-option": (
+            "Select — disable option",
+            Select.make("status")
+            .label("Status")
+            .options(status_opts)
+            .disable_option_when(lambda value, **_: value == "archived")
+            .render("draft"),
+        ),
+        "forms/select/edit-option": (
+            "Select — edit option",
+            Select.make("status")
+            .label("Status")
+            .options(status_opts)
+            .native(False)
+            .edit_option_action("editStatus")
+            .render("published"),
+        ),
+        "forms/select/enum": (
+            "Select — enum",
+            Select.make("status").label("Status").enum(_Status).render("published"),
+        ),
+        "forms/select/grouped": (
+            "Select — grouped",
+            Select.make("topic")
+            .label("Topic")
+            .options(
+                {
+                    "Product": {"tables": "Tables", "forms": "Forms"},
+                    "Ops": {"panels": "Panels", "auth": "Auth"},
+                }
+            )
+            .render("forms"),
+        ),
+        "forms/select/messages": (
+            "Select — messages",
+            Select.make("author")
+            .label("Author")
+            .options(author_opts)
+            .searchable()
+            .native(False)
+            .search_prompt("Find an author…")
+            .no_search_results_message("No authors match.")
+            .loading_message("Loading authors…")
+            .searching_message("Searching…")
+            .render("1"),
+        ),
+        "forms/select/min-max-items": (
+            "Select — min/max items",
+            Select.make("tags")
+            .label("Tags")
+            .options(tag_opts)
+            .multiple()
+            .min_items(1)
+            .max_items(3)
+            .render(["orbit", "forms"]),
+        ),
+        "forms/select/native": (
+            "Select — non-native",
+            Select.make("status")
+            .label("Status")
+            .options(status_opts)
+            .native(False)
+            .searchable()
+            .render("draft"),
+        ),
+        "forms/select/options-limit": (
+            "Select — options limit",
+            Select.make("author")
+            .label("Author")
+            .options(author_opts)
+            .options_limit(2)
+            .searchable()
+            .native(False)
+            .render("1"),
+        ),
+        "forms/select/preload": (
+            "Select — preload",
+            Select.make("author")
+            .label("Author")
+            .options(author_opts)
+            .relationship("author", "name")
+            .searchable()
+            .preload()
+            .render("1"),
+        ),
+        "forms/select/relationship": (
+            "Select — relationship",
+            Select.make("author_id")
+            .label("Author")
+            .relationship("author", "name")
+            .options(author_opts)
+            .searchable()
+            .render("1"),
+        ),
+        "forms/select/reorderable": (
+            "Select — reorderable",
+            Select.make("tags")
+            .label("Tags")
+            .options(tag_opts)
+            .multiple()
+            .reorderable()
+            .render(["forms", "orbit"]),
+        ),
+        "forms/select/selectable-placeholder": (
+            "Select — selectable placeholder",
+            Select.make("status")
+            .label("Status")
+            .options(status_opts)
+            .selectable_placeholder()
+            .placeholder("Choose a status")
+            .render(None),
+        ),
+        "forms/select/wrap": (
+            "Select — wrap labels",
+            Select.make("plan")
+            .label("Plan")
+            .options(
+                {
+                    "starter": "Starter — for side projects and experiments",
+                    "pro": "Pro — for growing product teams",
+                    "enterprise": "Enterprise — custom SLA and support",
+                }
+            )
+            .wrap()
+            .native(False)
+            .render("pro"),
+        ),
         # Textarea
         "forms/textarea/basic": (
             "Textarea — basic",
@@ -220,14 +488,78 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
                 "Line one.\nLine two.\nLine three."
             ),
         ),
+        "forms/textarea/autosize": (
+            "Textarea — autosize",
+            Textarea.make("notes")
+            .label("Notes")
+            .autosize()
+            .render("Grows with content.\nSecond line."),
+        ),
+        "forms/textarea/validation": (
+            "Textarea — validation",
+            Textarea.make("bio")
+            .label("Bio")
+            .required()
+            .min_length(10)
+            .max_length(280)
+            .render("Editor at Orbit."),
+        ),
         # Checkbox / Toggle
         "forms/checkbox/basic": (
             "Checkbox — basic",
             Checkbox.make("terms").label("Accept terms and conditions").render(True),
         ),
+        "forms/checkbox/default": (
+            "Checkbox — default",
+            Checkbox.make("newsletter").label("Subscribe to newsletter").default(True).render(True),
+        ),
+        "forms/checkbox/disabled": (
+            "Checkbox — disabled",
+            Checkbox.make("locked").label("Locked preference").disabled().render(True),
+        ),
+        "forms/checkbox/inline": (
+            "Checkbox — inline",
+            Checkbox.make("remember").label("Remember me").inline().render(True),
+        ),
+        "forms/checkbox/required": (
+            "Checkbox — required",
+            Checkbox.make("terms").label("Accept terms").required().render(False),
+        ),
         "forms/toggle/basic": (
             "Toggle — basic",
             Toggle.make("active").label("Active account").render(True),
+        ),
+        "forms/toggle/colors": (
+            "Toggle — colors",
+            Toggle.make("featured")
+            .label("Featured")
+            .on_color("success")
+            .off_color("danger")
+            .render(True),
+        ),
+        "forms/toggle/default": (
+            "Toggle — default",
+            Toggle.make("notifications").label("Email notifications").default(True).render(True),
+        ),
+        "forms/toggle/icons": (
+            "Toggle — icons",
+            Toggle.make("dark")
+            .label("Dark mode")
+            .on_icon("heroicon-o-moon")
+            .off_icon("heroicon-o-sun")
+            .render(True),
+        ),
+        "forms/toggle/inline": (
+            "Toggle — inline",
+            Toggle.make("active").label("Active").inline().render(True),
+        ),
+        "forms/toggle/required-disabled": (
+            "Toggle — required + disabled",
+            Toggle.make("verified")
+            .label("Verified")
+            .required()
+            .disabled()
+            .render(True),
         ),
         # Date pickers
         "forms/date-picker/basic": (
@@ -242,6 +574,20 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .max_date("2026-12-31")
             .render("2026-06-15"),
         ),
+        "forms/date-picker/display-format": (
+            "Date picker — display format",
+            DatePicker.make("starts")
+            .label("Starts on")
+            .display_format("d/m/Y")
+            .render("2026-09-18"),
+        ),
+        "forms/date-picker/non-native": (
+            "Date picker — non-native",
+            DatePicker.make("starts")
+            .label("Starts on")
+            .native(False)
+            .render("2026-09-18"),
+        ),
         "forms/date-time-picker/basic": (
             "Date time picker — basic",
             DateTimePicker.make("published_at").label("Published at").render("2026-09-18T09:00"),
@@ -253,6 +599,20 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .min_date("2026-01-01")
             .max_date("2026-12-31")
             .render("2026-09-18T14:30"),
+        ),
+        "forms/date-time-picker/display-format": (
+            "Date time picker — display format",
+            DateTimePicker.make("published_at")
+            .label("Published at")
+            .display_format("Y-m-d H:i")
+            .render("2026-09-18T09:00"),
+        ),
+        "forms/date-time-picker/non-native": (
+            "Date time picker — non-native",
+            DateTimePicker.make("published_at")
+            .label("Published at")
+            .native(False)
+            .render("2026-09-18T09:00"),
         ),
         "forms/time-picker/basic": (
             "Time picker — basic",
@@ -266,6 +626,17 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .max_date("18:00")
             .render("10:30"),
         ),
+        "forms/time-picker/display-format": (
+            "Time picker — display format",
+            TimePicker.make("remind_at")
+            .label("Remind at")
+            .display_format("H:i")
+            .render("09:00"),
+        ),
+        "forms/time-picker/step": (
+            "Time picker — step",
+            TimePicker.make("slot").label("Time slot").step(900).render("10:30"),
+        ),
         # File upload
         "forms/file-upload/basic": (
             "File upload — basic",
@@ -278,6 +649,84 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
         "forms/file-upload/avatar": (
             "File upload — avatar",
             FileUpload.make("avatar").avatar().label("Avatar").render(),
+        ),
+        "forms/file-upload/accepted-types": (
+            "File upload — accepted types",
+            FileUpload.make("docs")
+            .label("Documents")
+            .accepted_file_types(["application/pdf", "image/png"])
+            .helper_text("PDF or PNG only.")
+            .render(),
+        ),
+        "forms/file-upload/disk": (
+            "File upload — disk",
+            FileUpload.make("attachment")
+            .label("Attachment")
+            .disk("s3")
+            .directory("uploads/orbit")
+            .visibility("private")
+            .render(),
+        ),
+        "forms/file-upload/image-editor": (
+            "File upload — image editor",
+            FileUpload.make("cover")
+            .image()
+            .label("Cover")
+            .image_editor()
+            .image_editor_aspect_ratios(["16:9", "1:1"])
+            .render(),
+        ),
+        "forms/file-upload/image-size": (
+            "File upload — image size",
+            FileUpload.make("cover")
+            .image()
+            .label("Cover")
+            .image_size(min_width=800, max_width=2400, min_height=400, max_height=1600)
+            .render(),
+        ),
+        "forms/file-upload/multiple": (
+            "File upload — multiple",
+            FileUpload.make("gallery")
+            .label("Gallery")
+            .multiple()
+            .min_files(1)
+            .max_files(5)
+            .reorderable()
+            .render(),
+        ),
+        "forms/file-upload/panel-layout": (
+            "File upload — panel layout",
+            FileUpload.make("files").label("Files").panel_layout().multiple().render(),
+        ),
+        "forms/file-upload/preview-actions": (
+            "File upload — preview actions",
+            FileUpload.make("docs")
+            .label("Documents")
+            .previewable()
+            .openable()
+            .downloadable()
+            .image_preview_height(120)
+            .render(),
+        ),
+        "forms/file-upload/size-limits": (
+            "File upload — size limits",
+            FileUpload.make("attachment")
+            .label("Attachment")
+            .min_size(10)
+            .max_size(5120)
+            .helper_text("10 KB – 5 MB.")
+            .render(),
+        ),
+        "forms/file-upload/storage-flags": (
+            "File upload — storage flags",
+            FileUpload.make("attachment")
+            .label("Attachment")
+            .move_files()
+            .store_files(False)
+            .preserve_filenames()
+            .fetch_file_information(False)
+            .prevent_file_path_tampering()
+            .render(),
         ),
         # Radio / CheckboxList
         "forms/radio/basic": (
@@ -300,6 +749,19 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .options_columns(2)
             .render("starter"),
         ),
+        "forms/radio/boolean": (
+            "Radio — boolean",
+            Radio.make("featured").label("Featured").boolean().render(True),
+        ),
+        "forms/radio/disable-option": (
+            "Radio — disable option",
+            Radio.make("plan")
+            .label("Plan")
+            .options(plan_opts)
+            .disable_option_when(lambda value, **_: value == "enterprise")
+            .helper_text("Enterprise is disabled for this account.")
+            .render("pro"),
+        ),
         "forms/checkbox-list/basic": (
             "Checkbox list — basic",
             CheckboxList.make("features")
@@ -317,6 +779,38 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .options_columns(2)
             .render(["api"]),
         ),
+        "forms/checkbox-list/columns": (
+            "Checkbox list — columns",
+            CheckboxList.make("features")
+            .label("Features")
+            .options(feature_opts)
+            .options_columns(2)
+            .render(["api", "audit"]),
+        ),
+        "forms/checkbox-list/descriptions": (
+            "Checkbox list — descriptions",
+            CheckboxList.make("features")
+            .label("Features")
+            .options(feature_opts)
+            .descriptions(
+                {
+                    "api": "REST + webhooks",
+                    "sso": "SAML + OIDC",
+                    "audit": "90-day retention",
+                    "support": "Business hours",
+                }
+            )
+            .render(["api", "sso"]),
+        ),
+        "forms/checkbox-list/disable-option": (
+            "Checkbox list — disable option",
+            CheckboxList.make("features")
+            .label("Features")
+            .options(feature_opts)
+            .disable_option_when(lambda value, **_: value == "support")
+            .helper_text("Priority support requires Pro.")
+            .render(["api"]),
+        ),
         # Tags
         "forms/tags-input/basic": (
             "Tags input — basic",
@@ -330,10 +824,37 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .reorderable()
             .render(["orbit", "tables"]),
         ),
+        "forms/tags-input/reorderable": (
+            "Tags input — reorderable",
+            TagsInput.make("tags")
+            .label("Tags")
+            .reorderable()
+            .render(["forms", "orbit", "tables"]),
+        ),
+        "forms/tags-input/separator": (
+            "Tags input — separator",
+            TagsInput.make("tags")
+            .label("Tags")
+            .separator("|")
+            .helper_text("Pipe-separated tags.")
+            .render(["orbit", "forms"]),
+        ),
         # Color / Money
         "forms/color-picker/basic": (
             "Color picker — basic",
             ColorPicker.make("brand").label("Brand color").render("#286291"),
+        ),
+        "forms/color-picker/required": (
+            "Color picker — required",
+            ColorPicker.make("brand").label("Brand color").required().render("#286291"),
+        ),
+        "forms/color-picker/with-hint": (
+            "Color picker — with hint",
+            ColorPicker.make("brand")
+            .label("Brand color")
+            .hint("Used on buttons and links.")
+            .hint_icon("heroicon-o-information-circle")
+            .render("#286291"),
         ),
         "forms/money-input/usd": (
             "Money input — USD",
@@ -343,6 +864,23 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             "Money input — EUR",
             MoneyInput.make("price").label("Price").currency("EUR").render(49.99),
         ),
+        "forms/money-input/bounds": (
+            "Money input — bounds",
+            MoneyInput.make("price")
+            .label("Price")
+            .currency("USD")
+            .min_value(0)
+            .max_value(10000)
+            .render(49.99),
+        ),
+        "forms/money-input/locale": (
+            "Money input — locale",
+            MoneyInput.make("price")
+            .label("Price")
+            .currency("EUR")
+            .locale("de_DE")
+            .render(49.99),
+        ),
         # Editors
         "forms/rich-editor/basic": (
             "Rich editor — basic",
@@ -351,12 +889,81 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .toolbar_buttons(["bold", "italic", "link", "heading"])
             .render("<p>Hello from <strong>Orbit</strong>.</p>"),
         ),
+        "forms/rich-editor/disabled": (
+            "Rich editor — disabled",
+            RichEditor.make("body")
+            .label("Body")
+            .disabled()
+            .render("<p>Read-only body.</p>"),
+        ),
+        "forms/rich-editor/live": (
+            "Rich editor — live",
+            RichEditor.make("body")
+            .label("Body")
+            .live()
+            .toolbar_buttons(["bold", "italic"])
+            .render("<p>Live updates on change.</p>"),
+        ),
+        "forms/rich-editor/toolbar": (
+            "Rich editor — toolbar",
+            RichEditor.make("body")
+            .label("Body")
+            .toolbar_buttons(["bold", "italic", "strike", "link", "bulletList", "orderedList", "blockquote"])
+            .render("<p>Expanded toolbar.</p>"),
+        ),
         "forms/markdown-editor/basic": (
             "Markdown editor — basic",
             MarkdownEditor.make("readme")
             .label("README")
             .rows(5)
             .render("# Orbit\n\nShip admin UIs without the SPA tax."),
+        ),
+        "forms/markdown-editor/autosize": (
+            "Markdown editor — autosize",
+            MarkdownEditor.make("readme")
+            .label("README")
+            .autosize()
+            .render("# Orbit\n\nAutosized markdown."),
+        ),
+        "forms/markdown-editor/required": (
+            "Markdown editor — required",
+            MarkdownEditor.make("readme")
+            .label("README")
+            .required()
+            .rows(4)
+            .render("# Required"),
+        ),
+        "forms/code-editor/basic": (
+            "Code editor — basic",
+            CodeEditor.make("snippet")
+            .label("Snippet")
+            .rows(6)
+            .render("print('hello orbit')\n"),
+        ),
+        "forms/code-editor/autosize": (
+            "Code editor — autosize",
+            CodeEditor.make("snippet")
+            .label("Snippet")
+            .autosize()
+            .language("python")
+            .render("def greet():\n    return 'orbit'\n"),
+        ),
+        "forms/code-editor/language": (
+            "Code editor — language",
+            CodeEditor.make("snippet")
+            .label("Snippet")
+            .language("javascript")
+            .rows(5)
+            .render("const greet = () => 'orbit';\n"),
+        ),
+        "forms/code-editor/required": (
+            "Code editor — required",
+            CodeEditor.make("snippet")
+            .label("Snippet")
+            .language("python")
+            .required()
+            .rows(4)
+            .render("pass\n"),
         ),
         # KeyValue
         "forms/key-value/basic": (
@@ -368,6 +975,13 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             KeyValue.make("meta")
             .label("Metadata")
             .render({"version": "1.0", "env": "production"}),
+        ),
+        "forms/key-value/required": (
+            "Key-value — required",
+            KeyValue.make("meta")
+            .label("Metadata")
+            .required()
+            .render({"owner": "orbit"}),
         ),
         # Repeater
         "forms/repeater/basic": (
@@ -403,9 +1017,79 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .default_items(2)
             .render([{"name": "Widget", "qty": "2"}, {"name": "Gadget", "qty": "1"}]),
         ),
+        "forms/repeater/actions": (
+            "Repeater — actions",
+            Repeater.make("items")
+            .label("Line items")
+            .schema([TextInput.make("name").label("Name")])
+            .add_action_label("Add line item")
+            .addable()
+            .deletable()
+            .cloneable()
+            .default_items(1)
+            .render([{"name": "Widget"}]),
+        ),
+        "forms/repeater/grid": (
+            "Repeater — grid",
+            Repeater.make("items")
+            .label("Cards")
+            .schema([TextInput.make("name").label("Name")])
+            .grid(2)
+            .default_items(2)
+            .render([{"name": "Alpha"}, {"name": "Beta"}]),
+        ),
+        "forms/repeater/item-label": (
+            "Repeater — item label",
+            Repeater.make("items")
+            .label("Line items")
+            .schema([TextInput.make("name").label("Name")])
+            .item_label(lambda index, item, **_: f"{item.get('name') or 'Item'} #{index + 1}")
+            .default_items(2)
+            .render([{"name": "Widget"}, {"name": "Gadget"}]),
+        ),
+        "forms/repeater/item-limits": (
+            "Repeater — item limits",
+            Repeater.make("items")
+            .label("Line items")
+            .schema([TextInput.make("name").label("Name")])
+            .min_items(1)
+            .max_items(3)
+            .default_items(2)
+            .render([{"name": "Widget"}, {"name": "Gadget"}]),
+        ),
+        "forms/repeater/relationship": (
+            "Repeater — relationship",
+            Repeater.make("items")
+            .label("Order items")
+            .relationship("items")
+            .schema(
+                [
+                    TextInput.make("name").label("Name"),
+                    TextInput.make("qty").label("Qty"),
+                ]
+            )
+            .default_items(1)
+            .render([{"name": "Widget", "qty": "2"}]),
+        ),
+        "forms/repeater/simple": (
+            "Repeater — simple",
+            Repeater.make("emails")
+            .label("Emails")
+            .simple(TextInput.make("email").email().label("Email"))
+            .default_items(2)
+            .render([{"email": "ada@orbit.test"}, {"email": "grace@orbit.test"}]),
+        ),
         # Builder / toggles / morph
         "forms/builder/basic": (
             "Builder — basic",
+            Builder.make("content")
+            .label("Page blocks")
+            .blocks(builder_blocks)
+            .block_picker_columns(2)
+            .render([{"type": "hero", "heading": "Welcome to Orbit"}]),
+        ),
+        "forms/builder/block-limits": (
+            "Builder — block limits",
             Builder.make("content")
             .label("Page blocks")
             .blocks(
@@ -413,15 +1097,38 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
                     Block.make("hero")
                     .label("Hero")
                     .icon("heroicon-o-star")
+                    .max_items(1)
                     .schema([TextInput.make("heading").label("Heading")]),
                     Block.make("text")
                     .label("Text")
                     .icon("heroicon-o-document-text")
+                    .max_items(3)
                     .schema([Textarea.make("body").label("Body").rows(2)]),
                 ]
             )
-            .block_picker_columns(2)
-            .render([{"type": "hero", "heading": "Welcome to Orbit"}]),
+            .render([{"type": "hero", "heading": "Only one hero"}]),
+        ),
+        "forms/builder/picker-columns": (
+            "Builder — picker columns",
+            Builder.make("content")
+            .label("Page blocks")
+            .blocks(builder_blocks)
+            .block_picker_columns(3)
+            .render([{"type": "text", "body": "Three-column picker."}]),
+        ),
+        "forms/builder/reorderable": (
+            "Builder — reorderable",
+            Builder.make("content")
+            .label("Page blocks")
+            .blocks(builder_blocks)
+            .reorderable()
+            .cloneable()
+            .render(
+                [
+                    {"type": "hero", "heading": "First"},
+                    {"type": "text", "body": "Second"},
+                ]
+            ),
         ),
         "forms/toggle-buttons/basic": (
             "Toggle buttons — basic",
@@ -429,6 +1136,22 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .label("Visibility")
             .options({"public": "Public", "private": "Private", "draft": "Draft"})
             .render("public"),
+        ),
+        "forms/toggle-buttons/boolean": (
+            "Toggle buttons — boolean",
+            ToggleButtons.make("featured").label("Featured").boolean().render(True),
+        ),
+        "forms/toggle-buttons/enum": (
+            "Toggle buttons — enum",
+            ToggleButtons.make("visibility").label("Visibility").enum(_Visibility).render("public"),
+        ),
+        "forms/toggle-buttons/required": (
+            "Toggle buttons — required",
+            ToggleButtons.make("visibility")
+            .label("Visibility")
+            .options({"public": "Public", "private": "Private"})
+            .required()
+            .render("private"),
         ),
         "forms/morph-to-select/basic": (
             "Morph-to select — basic",
@@ -443,6 +1166,139 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             )
             .render({"type": "user", "id": "1"}),
         ),
+        "forms/morph-to-select/attributes": (
+            "Morph-to select — attributes",
+            MorphToSelect.make("owner")
+            .label("Owner")
+            .type_attribute("owner_type")
+            .id_attribute("owner_id")
+            .types(
+                [
+                    {"type": "user", "label": "User", "options": {"1": "Ada", "2": "Grace"}},
+                    {"type": "team", "label": "Team", "options": {"10": "Engineering"}},
+                ]
+            )
+            .render({"owner_type": "team", "owner_id": "10"}),
+        ),
+        "forms/morph-to-select/class-strings": (
+            "Morph-to select — class strings",
+            MorphToSelect.make("assignee")
+            .label("Assignee")
+            .types(["App\\Models\\User", "App\\Models\\Team"])
+            .options({"1": "Ada", "2": "Grace", "10": "Engineering"})
+            .render({"type": "App\\Models\\User", "id": "1"}),
+        ),
+        "forms/morph-to-select/searchable": (
+            "Morph-to select — searchable",
+            MorphToSelect.make("assignee")
+            .label("Assignee")
+            .searchable()
+            .types(
+                [
+                    {
+                        "type": "user",
+                        "label": "User",
+                        "options": {"1": "Ada Lovelace", "2": "Grace Hopper"},
+                    },
+                    {"type": "team", "label": "Team", "options": {"10": "Engineering"}},
+                ]
+            )
+            .render({"type": "user", "id": "2"}),
+        ),
+        # Multi-select dedicated page
+        "forms/multi-select/min-max-items": (
+            "Multi-select — min/max items",
+            MultiSelect.make("tags")
+            .label("Tags")
+            .options(tag_opts)
+            .min_items(1)
+            .max_items(3)
+            .render(["orbit", "forms"]),
+        ),
+        "forms/multi-select/relationship": (
+            "Multi-select — relationship",
+            MultiSelect.make("categories")
+            .label("Categories")
+            .relationship("categories", "name")
+            .options(tag_opts)
+            .searchable()
+            .render(["orbit", "tables"]),
+        ),
+        "forms/multi-select/reorderable": (
+            "Multi-select — reorderable",
+            MultiSelect.make("tags")
+            .label("Tags")
+            .options(tag_opts)
+            .reorderable()
+            .render(["forms", "orbit"]),
+        ),
+        "forms/multi-select/searchable": (
+            "Multi-select — searchable",
+            MultiSelect.make("tags")
+            .label("Tags")
+            .options(tag_opts)
+            .searchable()
+            .native(False)
+            .render(["orbit", "panels"]),
+        ),
+        # Modal / table select
+        "forms/modal-table-select/basic": (
+            "Modal table select — basic",
+            ModalTableSelect.make("product_id").label("Product").render(),
+        ),
+        "forms/modal-table-select/disabled-on-view": (
+            "Modal table select — disabled on view",
+            ModalTableSelect.make("product_id")
+            .label("Product")
+            .disabled_on("view")
+            .render("SKU-42", operation="view"),
+        ),
+        "forms/modal-table-select/populated": (
+            "Modal table select — populated",
+            ModalTableSelect.make("product_id").label("Product").render("SKU-42"),
+        ),
+        "forms/modal-table-select/required": (
+            "Modal table select — required",
+            ModalTableSelect.make("product_id").label("Product").required().render("SKU-1"),
+        ),
+        # Relationship repeater
+        "forms/relationship-repeater/basic": (
+            "Relationship repeater — basic",
+            RelationshipRepeater.make("comments")
+            .label("Comments")
+            .relationship("comments")
+            .schema(
+                [
+                    TextInput.make("author").label("Author"),
+                    Textarea.make("body").label("Body").rows(2),
+                ]
+            )
+            .default_items(1)
+            .render([{"author": "Ada", "body": "Looks great."}]),
+        ),
+        "forms/relationship-repeater/mutate": (
+            "Relationship repeater — mutate",
+            RelationshipRepeater.make("comments")
+            .label("Comments")
+            .relationship("comments")
+            .schema([TextInput.make("body").label("Body")])
+            .mutate_relationship_data_before_create(lambda data, **_: {**data, "source": "admin"})
+            .mutate_relationship_data_before_save(lambda data, **_: {**data, "edited": True})
+            .default_items(1)
+            .render([{"body": "Mutated on create/save."}]),
+        ),
+        "forms/relationship-repeater/mutate-fill": (
+            "Relationship repeater — mutate fill",
+            RelationshipRepeater.make("comments")
+            .label("Comments")
+            .relationship("comments")
+            .schema([TextInput.make("body").label("Body")])
+            .mutate_relationship_data_before_fill(
+                lambda data, **_: {**data, "body": f"[filled] {data.get('body', '')}"}
+            )
+            .default_items(1)
+            .render([{"body": "Original"}]),
+        ),
         # Misc fields
         "forms/placeholder/basic": (
             "Placeholder — basic",
@@ -450,15 +1306,69 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .content("This slot is reserved for future fields.")
             .render(),
         ),
+        "forms/placeholder/dehydrated": (
+            "Placeholder — dehydrated",
+            Placeholder.make("note")
+            .content("Dehydrated placeholder content.")
+            .dehydrated()
+            .render(),
+        ),
+        "forms/placeholder/from-state": (
+            "Placeholder — from state",
+            Placeholder.make("summary").render("Computed from form state."),
+        ),
+        "forms/placeholder/visible-on": (
+            "Placeholder — visible on",
+            Placeholder.make("edit_note")
+            .content("Only visible while editing.")
+            .visible_on("edit")
+            .render(None, operation="edit"),
+        ),
         "forms/hidden/basic": (
             "Hidden — note",
             '<p class="or-helper">Hidden fields render as '
             f'{Hidden.make("token").render("orb_secret")}'
             " — not shown in screenshots.</p>",
         ),
+        "forms/hidden/from-record": (
+            "Hidden — from record",
+            '<p class="or-helper">Hidden from record id: '
+            f'{Hidden.make("id").default(42).render(42)}'
+            "</p>",
+        ),
+        "forms/hidden/state-path": (
+            "Hidden — state path",
+            '<p class="or-helper">Nested state path: '
+            f'{Hidden.make("token").state_path("meta.token").render("nested-secret")}'
+            "</p>",
+        ),
+        "forms/hidden/validation": (
+            "Hidden — validation",
+            '<p class="or-helper">Hidden with required rule: '
+            f'{Hidden.make("csrf").required().rules("uuid").render("not-a-uuid")}'
+            "</p>",
+        ),
         "forms/one-time-code-input/basic": (
             "One-time code — basic",
             OneTimeCodeInput.make("code").label("Verification code").render("123456"),
+        ),
+        "forms/one-time-code-input/mask": (
+            "One-time code — mask",
+            OneTimeCodeInput.make("code")
+            .label("Verification code")
+            .mask("999999")
+            .render("424242"),
+        ),
+        "forms/one-time-code-input/required": (
+            "One-time code — required",
+            OneTimeCodeInput.make("code").label("Verification code").required().render("123456"),
+        ),
+        "forms/one-time-code-input/trim": (
+            "One-time code — trim",
+            OneTimeCodeInput.make("code")
+            .label("Verification code")
+            .trim()
+            .render(" 123456 "),
         ),
         "forms/view-field/basic": (
             "View field — basic",
@@ -467,9 +1377,132 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .content("<p>Published on <strong>18 Sep 2026</strong>.</p>")
             .render(),
         ),
+        "forms/view-field/callable": (
+            "View field — callable",
+            ViewField.make("summary")
+            .label("Summary")
+            .content(lambda state, **_: f"<p>State is <strong>{state}</strong>.</p>")
+            .render("ready"),
+        ),
+        "forms/view-field/conditional": (
+            "View field — conditional",
+            ViewField.make("notice")
+            .label("Notice")
+            .content("<p>Visible on create only.</p>")
+            .visible_on("create")
+            .render(None, operation="create"),
+        ),
+        "forms/view-field/dehydrated": (
+            "View field — dehydrated",
+            ViewField.make("summary")
+            .label("Summary")
+            .content("<p>Included in dehydrated state.</p>")
+            .dehydrated()
+            .render(),
+        ),
         "forms/slider/basic": (
             "Slider — basic",
             Slider.make("volume").label("Volume").min_value(0).max_value(100).render(65),
+        ),
+        "forms/slider/live": (
+            "Slider — live",
+            Slider.make("volume").label("Volume").min_value(0).max_value(100).live().render(40),
+        ),
+        "forms/slider/pips": (
+            "Slider — pips",
+            Slider.make("volume")
+            .label("Volume")
+            .min_value(0)
+            .max_value(100)
+            .step(25)
+            .pips()
+            .render(50),
+        ),
+        "forms/slider/range": (
+            "Slider — range",
+            Slider.make("budget")
+            .label("Budget")
+            .min_value(0)
+            .max_value(1000)
+            .step(50)
+            .helper_text("Range bounds via min/max (single thumb).")
+            .render(250),
+        ),
+        # Overview shared Field APIs (Form.make demos)
+        "forms/overview/affixes": (
+            "Overview — affixes",
+            _form(
+                TextInput.make("price").label("Price").prefix("$").suffix("USD").numeric(),
+                TextInput.make("domain").label("Domain").prefix("https://").suffix(".test"),
+                state={"price": "49.99", "domain": "orbit"},
+            ),
+        ),
+        "forms/overview/content-slots": (
+            "Overview — content slots",
+            _form(
+                TextInput.make("title")
+                .label("Title")
+                .above_label("<span class='or-helper'>Above label</span>")
+                .below_content("<span class='or-helper'>Below content</span>")
+                .before_content("<span class='or-helper'>Before</span>")
+                .after_content("<span class='or-helper'>After</span>"),
+                state={"title": "Launch Orbit"},
+            ),
+        ),
+        "forms/overview/defaults": (
+            "Overview — defaults",
+            _form(
+                TextInput.make("locale").label("Locale").default("en"),
+                Toggle.make("active").label("Active").default(True),
+                state={"locale": "en", "active": True},
+            ),
+        ),
+        "forms/overview/disabled": (
+            "Overview — disabled",
+            _form(
+                TextInput.make("locked").label("Locked").disabled(),
+                Select.make("status").label("Status").options(status_opts).disabled(),
+                state={"locked": "Cannot edit", "status": "published"},
+            ),
+        ),
+        "forms/overview/hidden-label": (
+            "Overview — hidden label",
+            _form(
+                TextInput.make("search")
+                .label("Search")
+                .hidden_label()
+                .placeholder("Search records…")
+                .prefix_icon("heroicon-o-magnifying-glass"),
+                state={"search": "orbit"},
+            ),
+        ),
+        "forms/overview/labels": (
+            "Overview — labels",
+            _form(
+                TextInput.make("title").label("Post title"),
+                TextInput.make("slug").label("URL slug").helper_text("Derived from the title."),
+                state={"title": "Launch Orbit", "slug": "launch-orbit"},
+            ),
+        ),
+        "forms/overview/live": (
+            "Overview — live",
+            _form(
+                TextInput.make("title").label("Title").live(),
+                TextInput.make("slug").label("Slug").live(on_blur=True),
+                state={"title": "Launch Orbit", "slug": "launch-orbit"},
+            ),
+        ),
+        "forms/overview/operation": (
+            "Overview — operation",
+            _form(
+                TextInput.make("name").label("Name"),
+                TextInput.make("created_at")
+                .label("Created at")
+                .disabled_on("create")
+                .visible_on("edit", "view"),
+                operation="edit",
+                state={"name": "Ada", "created_at": "2026-09-18"},
+            ),
         ),
     }
 
