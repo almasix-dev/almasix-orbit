@@ -23,7 +23,6 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
         .default()
         .path("/")
         .brand_name("Orbit Admin")
-        .brand_name_font_size("1.35rem")
         .brand_logo("images/almasix-light.svg")
         .brand_logo_dark("images/almasix-dark.svg")
         .brand_logo_height("2.25rem")

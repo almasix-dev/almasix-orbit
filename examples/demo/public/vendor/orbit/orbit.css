@@ -153,9 +153,9 @@ html.or-scroll-lock body {
 .or-brand-name {
   display: block;
   margin: 0;
-  padding: 0;
+  padding: 0.25rem;
   font-weight: 800;
-  font-size: var(--or-brand-name-size, 1.05rem);
+  font-size: var(--or-brand-name-size, 1.8rem);
   letter-spacing: -0.02em;
   line-height: 1;
   /* Trim font metric padding so flex-end sits on the glyph edge */
@@ -166,7 +166,7 @@ html.or-scroll-lock body {
 }
 
 .or-brand-logo {
-  height: 2rem;
+  height: var(--or-brand-logo-height, 2rem);
   width: auto;
   max-width: 9rem;
   object-fit: contain;
@@ -176,7 +176,7 @@ html.or-scroll-lock body {
 
 .or-brand-logo-only .or-brand-logo {
   max-width: 11rem;
-  height: 2.25rem;
+  height: var(--or-brand-logo-height, 2.25rem);
 }
 
 .or-brand-logo-dark {
@@ -1000,8 +1000,8 @@ html.dark .or-login-logo-dark {
 .or-login-brand-name {
   display: block;
   margin: 0;
-  padding: 0;
-  font-size: var(--or-brand-name-size, 1.05rem);
+  padding: 0.25rem;
+  font-size: var(--or-brand-name-size, 1.8rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1;

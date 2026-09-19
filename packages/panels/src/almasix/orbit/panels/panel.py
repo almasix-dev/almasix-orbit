@@ -30,7 +30,7 @@ from almasix.orbit.support.html import e
 from almasix.orbit.support.icons import icon as render_icon
 
 _TOPBAR_ICON = 20
-DEFAULT_BRAND_NAME_FONT_SIZE = "1.05rem"
+DEFAULT_BRAND_NAME_FONT_SIZE = "1.8rem"
 DEFAULT_BRAND_LOGO_HEIGHT = "2rem"
 DEFAULT_SIMPLE_PAGE_MAX_CONTENT_WIDTH = "lg"
 
