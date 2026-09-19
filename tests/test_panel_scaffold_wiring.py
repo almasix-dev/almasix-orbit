@@ -117,6 +117,56 @@ def test_make_orbit_page_and_widget(tmp_path: Path) -> None:
     ).is_file()
 
 
+def test_resolve_panel_id_prompts_when_multiple(tmp_path: Path, monkeypatch) -> None:
+    from almasix.orbit.panels.commands import (
+        MakeOrbitResourceCommand,
+        _list_panel_ids,
+        _panel_id_option,
+    )
+
+    app = _app_tree(tmp_path)
+    install = OrbitInstallCommand(app)
+    install._options = {"path": "admin", "panel": "admin", "force": True}
+    assert install.handle() == 0
+    shop = MakeOrbitPanelCommand(app)
+    shop._arguments = {"name": "shop"}
+    shop._options = {"path": "shop", "force": True}
+    assert shop.handle() == 0
+
+    assert _list_panel_ids(app) == ["admin", "shop"]
+
+    # Explicit --panel wins
+    cmd = MakeOrbitResourceCommand(app)
+    cmd._options = {"panel": "shop"}
+    assert _panel_id_option(cmd) == "shop"
+
+    # Non-interactive multi-panel → admin preferred
+    monkeypatch.setenv("ALMASIX_PROMPTS_INTERACTIVE", "0")
+    cmd2 = MakeOrbitResourceCommand(app)
+    cmd2._options = {}
+    assert _panel_id_option(cmd2) == "admin"
+
+    # Interactive multi-panel → choice()
+    monkeypatch.setenv("ALMASIX_PROMPTS_INTERACTIVE", "1")
+    monkeypatch.setattr(
+        "almasix.console.prompts.types.is_interactive",
+        lambda: True,
+    )
+    cmd3 = MakeOrbitResourceCommand(app)
+    cmd3._options = {}
+    cmd3.choice = lambda question, choices, default=None, **_k: "shop"  # type: ignore[method-assign]
+    assert _panel_id_option(cmd3) == "shop"
+
+    # Single panel → that id without prompting
+    alone = _app_tree(tmp_path / "alone")
+    install2 = OrbitInstallCommand(alone)
+    install2._options = {"path": "ops", "panel": "ops", "force": True}
+    assert install2.handle() == 0
+    cmd4 = MakeOrbitResourceCommand(alone)
+    cmd4._options = {}
+    assert _panel_id_option(cmd4) == "ops"
+
+
 def test_register_app_orbit_panels_discovers_colocated(tmp_path: Path, monkeypatch) -> None:
     app = _app_tree(tmp_path)
     install = OrbitInstallCommand(app)

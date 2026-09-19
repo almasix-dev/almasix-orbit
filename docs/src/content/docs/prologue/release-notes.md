@@ -7,6 +7,13 @@ Orbit follows Almasix’s major-line docs model. This page tracks notable
 changes; pin a package version in production and read the matching line in the
 header switcher.
 
+## Unreleased (`main`)
+
+### Interactive panel scaffolding ([#39](https://github.com/almasix-dev/almasix-orbit/issues/39))
+
+- `make:orbit-resource|page|widget` prompt for a panel when several `app/orbit/{id}/panel.py` packages exist (skip with `--panel=…`; non-interactive defaults to `admin` or the first id)
+- Missing class names are prompted on a TTY
+
 ## 0.3.0
 
 Per-panel component directories ([#32](https://github.com/almasix-dev/almasix-orbit/issues/32) / [#33](https://github.com/almasix-dev/almasix-orbit/pull/33) / [#35](https://github.com/almasix-dev/almasix-orbit/pull/35) / [#36](https://github.com/almasix-dev/almasix-orbit/pull/36)).
