@@ -132,11 +132,13 @@ Other generators (panel-scoped):
 
 ```bash title="terminal"
 smith make:orbit-resource Post --panel=admin
+smith make:orbit-resource Post --panel=admin --model=Post --generate
 smith make:orbit-page Settings --panel=admin
 smith make:orbit-widget StatsOverview --panel=admin
 smith make:orbit-field MoneyInput             # app/orbit/shared/fields/
 ```
 
+`--generate` (Filament parity) fills form/table stubs from the model’s database columns when the table exists.
 With more than one panel, omit `--panel` in an interactive terminal and Smith asks which panel to use. Under `--no-interaction` / CI it picks `admin` when present, otherwise the first panel id.
 
 ## Troubleshooting 404s

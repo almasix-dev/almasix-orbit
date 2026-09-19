@@ -68,6 +68,23 @@ class PostResource(Resource):
 
 Call `Resource.get_form()`, `get_table()`, or `get_infolist()` when you need the built instance.
 
+## Scaffolding (`make:orbit-resource`)
+
+```bash
+smith make:orbit-resource Post --panel=admin
+smith make:orbit-resource Post --model=Post --generate
+# or: smith orbit:resource Post -G --model=app.models.post.Post
+```
+
+| Option | Role |
+|--------|------|
+| `--panel=` | Target panel package (`app/orbit/{id}/resources/`) |
+| `--model=` | ORM model (bare `Post` or `app.models.post.Post`); also guessed from the resource name |
+| `--generate` / `-G` | Reflect `Schema.columns` on the model’s table and stub form fields + table columns (Filament parity) |
+| `--force` | Overwrite an existing file |
+
+Without `--generate`, the stub still uses a `title` TextInput / TextColumn. When a model resolves and the CLI is interactive, Orbit asks whether to generate from the database. Review and adjust the guessed types afterward (especially enums and relationships).
+
 ### Default table actions
 
 If you leave action slots empty, `get_table()` wires:

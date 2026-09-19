@@ -9,6 +9,11 @@ header switcher.
 
 ## Unreleased (`main`)
 
+### Resource auto-generation from the database ([#44](https://github.com/almasix-dev/almasix-orbit/issues/44))
+
+- `make:orbit-resource --generate` (Filament `--generate` parity) reflects the model's table via `Schema.columns` and stubs form fields + table columns with type intelligence (`Toggle` / `BooleanColumn`, `DateTimePicker`, `Textarea`, …)
+- `--model=` links an ORM model (bare name or dotted path); when the model resolves without `--generate`, an interactive TTY asks whether to generate
+
 ### Scaffold & navigation polish ([#42](https://github.com/almasix-dev/almasix-orbit/issues/42))
 
 - `make:orbit-resource` uses a plural navigation label (Artist → Artists) and no longer sets a default `Content` group

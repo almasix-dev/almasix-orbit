@@ -396,6 +396,8 @@ class MakeOrbitResourceCommand(Command):
     signature = (
         "make:orbit-resource {name? : Resource class name (e.g. Post or Blog/Post)}"
         " {--panel= : Panel id (prompted when multiple panels exist)}"
+        " {--model= : Eloquent/ORM model class (Post or app.models.post.Post)}"
+        " {--G|generate : Generate form/table from the model's database columns}"
         " {--force : Overwrite}"
     )
     description = "Create a new Orbit resource class under a panel package"
@@ -410,6 +412,7 @@ class MakeOrbitResourceCommand(Command):
             self.error("name is required")
             return self.INVALID
         force = bool(self.option("force") or kwargs.get("force"))
+        generate = bool(self.option("generate") or kwargs.get("generate"))
         panel_id = _panel_id_option(self, **kwargs)
         parts = [p for p in raw.replace("\\", "/").replace(".", "/").split("/") if p]
         class_name = _studly(parts[-1])
@@ -428,20 +431,79 @@ class MakeOrbitResourceCommand(Command):
         if out.exists() and not force:
             self.error(f"{out} already exists")
             return self.FAILURE
+
         model_hint = class_name.removesuffix("Resource")
+        model_opt = self.option("model") or kwargs.get("model")
+        model_name = str(model_opt).strip() if model_opt not in (None, False, True, "") else ""
+        if not model_name:
+            model_name = model_hint
+
+        from almasix.orbit.panels.resource_generator import (
+            default_title_schemas,
+            format_list,
+            generate_schemas,
+            load_columns,
+            model_import_statement,
+            resolve_model,
+        )
+
+        model_cls = resolve_model(model_name)
+        schemas = default_title_schemas()
+        model_line = f"    # model = {model_hint}"
+        extra_imports: list[str] = []
+
+        if generate or model_cls is not None:
+            if model_cls is None:
+                self.comment(
+                    f"Model [{model_name}] not found — writing the default title stub."
+                )
+            else:
+                model_line = f"    model = {model_cls.__name__}"
+                extra_imports.append(model_import_statement(model_cls))
+                if generate:
+                    columns, err = load_columns(model_cls)
+                    if err:
+                        self.comment(err)
+                        self.comment("Falling back to the default title stub.")
+                    else:
+                        schemas = generate_schemas(columns, model=model_cls)
+                        self.info(
+                            f"generated form/table from {schemas.column_count} "
+                            f"column(s) on [{model_cls.get_table()}]"
+                        )
+                elif self._should_prompt_generate():
+                    if self.confirm(
+                        "Generate form and table columns from the database?",
+                        default=True,
+                    ):
+                        columns, err = load_columns(model_cls)
+                        if err:
+                            self.comment(err)
+                        else:
+                            schemas = generate_schemas(columns, model=model_cls)
+                            self.info(
+                                f"generated form/table from {schemas.column_count} "
+                                f"column(s) on [{model_cls.get_table()}]"
+                            )
+
+        form_imports = ", ".join(("Form", *schemas.form_imports))
+        table_imports = ", ".join(("Table", *schemas.table_imports))
         nav_label = _pluralize_label(model_hint)
+        model_import_block = ("\n".join(extra_imports) + "\n") if extra_imports else ""
+        form_body = format_list(schemas.form_fields)
+        table_body = format_list(schemas.table_columns)
+
         out.write_text(
             f'''"""Orbit resource: {class_name}."""
 
 from __future__ import annotations
 
 from almasix.orbit import Resource
-from almasix.orbit.forms import Form, TextInput
-from almasix.orbit.tables import Table, TextColumn
-
-
+from almasix.orbit.forms import {form_imports}
+from almasix.orbit.tables import {table_imports}
+{model_import_block}
 class {class_name}(Resource):
-    # model = {model_hint}
+{model_line}
     navigation_label = "{nav_label}"
     navigation_icon = "heroicon-o-rectangle-stack"
 
@@ -449,16 +511,14 @@ class {class_name}(Resource):
     def form(cls, form: Form) -> Form:
         return form.schema(
             [
-                TextInput.make("title").required().max_length(200),
-            ]
+{form_body}            ]
         )
 
     @classmethod
     def table(cls, table: Table) -> Table:
         return table.columns(
             [
-                TextColumn.make("title").searchable().sortable(),
-            ]
+{table_body}            ]
         )
 ''',
             encoding="utf-8",
@@ -466,6 +526,11 @@ class {class_name}(Resource):
         self.info(f"resource → {out}")
         self.success(f"orbit resource created under panel {panel_id!r}")
         return self.SUCCESS
+
+    def _should_prompt_generate(self) -> bool:
+        from almasix.console.prompts.types import is_interactive
+
+        return is_interactive()
 
 
 class MakeOrbitPageCommand(Command):
