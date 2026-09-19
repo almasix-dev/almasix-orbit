@@ -137,6 +137,8 @@ smith make:orbit-widget StatsOverview --panel=admin
 smith make:orbit-field MoneyInput             # app/orbit/shared/fields/
 ```
 
+With more than one panel, omit `--panel` in an interactive terminal and Smith asks which panel to use. Under `--no-interaction` / CI it picks `admin` when present, otherwise the first panel id.
+
 ## Troubleshooting 404s
 
 If `/admin` or `/app` 404s:
