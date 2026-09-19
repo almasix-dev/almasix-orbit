@@ -100,6 +100,36 @@ class Field(Component):
         self._max_value: float | int | None = None
         self._option_descriptions: dict[str, str] = {}
         self._options_columns: int | None = None
+        self._trim = False
+        self._strip_characters: str | Sequence[str] | None = None
+        self._mark_as_required: bool | Callable[..., bool] | None = None
+        self._disabled_on: set[str] = set()
+        self._hidden_on: set[str] = set()
+        self._visible_on: set[str] | None = None
+        self._above_label: str | Callable[..., str] | None = None
+        self._below_label: str | Callable[..., str] | None = None
+        self._before_label: str | Callable[..., str] | None = None
+        self._after_label: str | Callable[..., str] | None = None
+        self._above_content: str | Callable[..., str] | None = None
+        self._below_content: str | Callable[..., str] | None = None
+        self._before_content: str | Callable[..., str] | None = None
+        self._after_content: str | Callable[..., str] | None = None
+        self._below_error: str | Callable[..., str] | None = None
+        self._prefix_icon_color: str | None = None
+        self._suffix_icon_color: str | None = None
+        self._autocapitalize: str | None = None
+        self._tel_regex: str | None = None
+        self._length: int | None = None
+        self._disable_option_when: Callable[..., bool] | None = None
+        self._boolean_select = False
+        self._preload = False
+        self._wrap_labels = False
+        # Toggle chrome (also used when Checkbox/Toggle share Field)
+        self._on_color: str | None = None
+        self._off_color: str | None = None
+        self._on_icon: str | None = None
+        self._off_icon: str | None = None
+        self._inline: bool | None = None
 
     def rules(self, *rules: str | Callable[..., Any]) -> Self:
         self._rules.extend(rules)
@@ -117,6 +147,30 @@ class Field(Component):
 
     def is_required(self, **ctx: Any) -> bool:
         return bool(evaluate(self._required, **ctx))
+
+    def shows_required_asterisk(self, **ctx: Any) -> bool:
+        if self._mark_as_required is not None:
+            return bool(evaluate(self._mark_as_required, **ctx))
+        return self.is_required(**ctx)
+
+    def is_disabled(self, **ctx: Any) -> bool:
+        if super().is_disabled(**ctx):
+            return True
+        op = ctx.get("operation")
+        if op is not None and self._disabled_on and str(op) in self._disabled_on:
+            return True
+        return False
+
+    def is_visible(self, **ctx: Any) -> bool:
+        if not super().is_visible(**ctx):
+            return False
+        op = ctx.get("operation")
+        if op is not None:
+            if self._hidden_on and str(op) in self._hidden_on:
+                return False
+            if self._visible_on is not None and str(op) not in self._visible_on:
+                return False
+        return True
 
     def readonly(self, condition: bool = True) -> Self:
         self._readonly = condition
@@ -179,6 +233,241 @@ class Field(Component):
     def options_columns(self, count: int) -> Self:
         self._options_columns = count
         return self
+
+    def trim(self, condition: bool = True) -> Self:
+        """Strip leading/trailing whitespace on dehydrate (Filament ``trim``)."""
+        self._trim = condition
+        return self
+
+    def strip_characters(self, characters: str | Sequence[str]) -> Self:
+        """Remove listed characters from state on dehydrate (Filament ``stripCharacters``)."""
+        self._strip_characters = characters
+        return self
+
+    def length(self, value: int) -> Self:
+        """Exact character length validation (Filament ``length``)."""
+        self._length = value
+        return self.rules(f"size:{value}")
+
+    def tel_regex(self, pattern: str) -> Self:
+        """Custom telephone validation pattern (Filament ``telRegex``)."""
+        self._tel_regex = pattern
+        return self.rules(f"regex:{pattern}")
+
+    def autocapitalize(self, value: str) -> Self:
+        self._autocapitalize = value
+        return self
+
+    def mark_as_required(self, condition: bool | Callable[..., bool] = True) -> Self:
+        """Show the required asterisk without adding a ``required`` rule."""
+        self._mark_as_required = condition
+        return self
+
+    def disabled_on(self, *operations: str) -> Self:
+        """Disable when Form/Schema ``operation`` is one of ``operations``."""
+        self._disabled_on |= {str(op) for op in operations}
+        return self
+
+    def hidden_on(self, *operations: str) -> Self:
+        self._hidden_on |= {str(op) for op in operations}
+        return self
+
+    def visible_on(self, *operations: str) -> Self:
+        self._visible_on = {str(op) for op in operations}
+        return self
+
+    def above_label(self, content: str | Callable[..., str]) -> Self:
+        self._above_label = content
+        return self
+
+    def below_label(self, content: str | Callable[..., str]) -> Self:
+        self._below_label = content
+        return self
+
+    def before_label(self, content: str | Callable[..., str]) -> Self:
+        self._before_label = content
+        return self
+
+    def after_label(self, content: str | Callable[..., str]) -> Self:
+        self._after_label = content
+        return self
+
+    def above_content(self, content: str | Callable[..., str]) -> Self:
+        self._above_content = content
+        return self
+
+    def below_content(self, content: str | Callable[..., str]) -> Self:
+        self._below_content = content
+        return self
+
+    def before_content(self, content: str | Callable[..., str]) -> Self:
+        self._before_content = content
+        return self
+
+    def after_content(self, content: str | Callable[..., str]) -> Self:
+        self._after_content = content
+        return self
+
+    def below_error(self, content: str | Callable[..., str]) -> Self:
+        self._below_error = content
+        return self
+
+    def prefix_icon_color(self, color: str) -> Self:
+        self._prefix_icon_color = color
+        return self
+
+    def suffix_icon_color(self, color: str) -> Self:
+        self._suffix_icon_color = color
+        return self
+
+    def disable_option_when(self, callback: Callable[..., bool]) -> Self:
+        """Disable select/radio/checkbox-list options when callback returns True."""
+        self._disable_option_when = callback
+        return self
+
+    def boolean(self, condition: bool = True) -> Self:
+        """Use Yes/No options for Select/Radio (Filament ``boolean``)."""
+        self._boolean_select = condition
+        if condition:
+            self._options = {1: "Yes", 0: "No"}
+        return self
+
+    def preload(self, condition: bool = True) -> Self:
+        """Eager-load relationship options (fluent Filament ``preload``)."""
+        self._preload = condition
+        if isinstance(self._relationship, dict):
+            self._relationship = {**self._relationship, "preload": condition}
+        return self
+
+    def wrap(self, condition: bool = True) -> Self:
+        """Allow option labels to wrap (Filament select ``wrap``)."""
+        self._wrap_labels = condition
+        return self
+
+    def on_color(self, color: str) -> Self:
+        self._on_color = color
+        return self
+
+    def off_color(self, color: str) -> Self:
+        self._off_color = color
+        return self
+
+    def on_icon(self, icon: str) -> Self:
+        self._on_icon = icon
+        return self
+
+    def off_icon(self, icon: str) -> Self:
+        self._off_icon = icon
+        return self
+
+    def inline(self, condition: bool = True) -> Self:
+        """Inline checkbox/toggle/radio chrome (Filament ``inline``)."""
+        self._inline = condition
+        if condition:
+            self._inline_label = True
+        return self
+
+    def active_url(self) -> Self:
+        return self.rules("active_url")
+
+    def ascii(self) -> Self:
+        return self.rules("ascii")
+
+    def alpha(self) -> Self:
+        return self.rules("alpha")
+
+    def alpha_dash(self) -> Self:
+        return self.rules("alpha_dash")
+
+    def alpha_num(self) -> Self:
+        return self.rules("alpha_num")
+
+    def confirmed(self) -> Self:
+        return self.rules("confirmed")
+
+    def different(self, field: str) -> Self:
+        return self.rules(f"different:{field}")
+
+    def same(self, field: str) -> Self:
+        return self.rules(f"same:{field}")
+
+    def filled(self) -> Self:
+        return self.rules("filled")
+
+    def present(self) -> Self:
+        return self.rules("present")
+
+    def ip(self) -> Self:
+        return self.rules("ip")
+
+    def ipv4(self) -> Self:
+        return self.rules("ipv4")
+
+    def ipv6(self) -> Self:
+        return self.rules("ipv6")
+
+    def mac_address(self) -> Self:
+        return self.rules("mac_address")
+
+    def json(self) -> Self:
+        return self.rules("json")
+
+    def ulid(self) -> Self:
+        return self.rules("ulid")
+
+    def uuid(self) -> Self:
+        return self.rules("uuid")
+
+    def hex_color(self) -> Self:
+        return self.rules("hex_color")
+
+    def multiple_of(self, value: int | float) -> Self:
+        return self.rules(f"multiple_of:{value}")
+
+    def doesnt_start_with(self, *values: str) -> Self:
+        return self.rules("doesnt_start_with:" + ",".join(values))
+
+    def doesnt_end_with(self, *values: str) -> Self:
+        return self.rules("doesnt_end_with:" + ",".join(values))
+
+    def starts_with(self, *values: str) -> Self:
+        return self.rules("starts_with:" + ",".join(values))
+
+    def ends_with(self, *values: str) -> Self:
+        return self.rules("ends_with:" + ",".join(values))
+
+    def required_with(self, *fields: str) -> Self:
+        return self.rules("required_with:" + ",".join(fields))
+
+    def required_with_all(self, *fields: str) -> Self:
+        return self.rules("required_with_all:" + ",".join(fields))
+
+    def required_without(self, *fields: str) -> Self:
+        return self.rules("required_without:" + ",".join(fields))
+
+    def required_without_all(self, *fields: str) -> Self:
+        return self.rules("required_without_all:" + ",".join(fields))
+
+    def required_if_accepted(self, field: str) -> Self:
+        return self.rules(f"required_if_accepted:{field}")
+
+    def prohibits(self, *fields: str) -> Self:
+        return self.rules("prohibits:" + ",".join(fields))
+
+    def after(self, date: str) -> Self:
+        return self.rules(f"after:{date}")
+
+    def after_or_equal(self, date: str) -> Self:
+        return self.rules(f"after_or_equal:{date}")
+
+    def before(self, date: str) -> Self:
+        return self.rules(f"before:{date}")
+
+    def before_or_equal(self, date: str) -> Self:
+        return self.rules(f"before_or_equal:{date}")
+
+    def date_equals(self, date: str) -> Self:
+        return self.rules(f"date_equals:{date}")
 
     def required_if(self, field: str, value: Any) -> Self:
         return self.rules(f"required_if:{field},{value}")
@@ -335,7 +624,7 @@ class Field(Component):
             "model": model,
             "option_label": fmt,
             "search_columns": cols,
-            "preload": preload,
+            "preload": preload or self._preload,
             "modify_query": modify_query,
             "get_option_label": label_cb,
         }
@@ -481,6 +770,8 @@ class Field(Component):
             parts.append("autofocus")
         if self._input_mode:
             parts.append(f'inputmode="{e(self._input_mode)}"')
+        if self._autocapitalize:
+            parts.append(f'autocapitalize="{e(self._autocapitalize)}"')
         if self._step is not None:
             parts.append(f'step="{e(self._step)}"')
         if self._min_value is not None:
@@ -493,8 +784,21 @@ class Field(Component):
     def _label_html(self, name: str, **ctx: Any) -> str:
         if self._hidden_label:
             return f'<label class="or-label or-sr-only" for="or-{name}">{e(self.get_label(**ctx))}</label>'
-        req = ' <span class="or-required">*</span>' if self.is_required(**ctx) else ""
-        return f'<label class="or-label" for="or-{name}">{e(self.get_label(**ctx))}{req}</label>'
+        req = ' <span class="or-required">*</span>' if self.shows_required_asterisk(**ctx) else ""
+        before = self._slot_html(self._before_label, "or-before-label", **ctx)
+        after = self._slot_html(self._after_label, "or-after-label", **ctx)
+        return (
+            f"{before}<label class=\"or-label\" for=\"or-{name}\">"
+            f"{e(self.get_label(**ctx))}{req}</label>{after}"
+        )
+
+    def _slot_html(self, content: str | Callable[..., str] | None, css: str, **ctx: Any) -> str:
+        if content is None:
+            return ""
+        text = evaluate(content, **ctx)
+        if text in (None, ""):
+            return ""
+        return f'<div class="{css}">{text}</div>'
 
     def _hint_html(self, **ctx: Any) -> str:
         hint = self.get_hint(**ctx)
@@ -535,7 +839,10 @@ class Field(Component):
         if self._prefix_icon or prefix or self._prefix_action:
             from almasix.orbit.support.icons import icon as render_icon
 
-            icon = render_icon(self._prefix_icon) if self._prefix_icon else ""
+            icon = ""
+            if self._prefix_icon:
+                color_c = f" or-color-{e(self._prefix_icon_color)}" if self._prefix_icon_color else ""
+                icon = f'<span class="or-affix-icon{color_c}">{render_icon(self._prefix_icon)}</span>'
             text = f'<span class="or-affix-text">{e(prefix)}</span>' if prefix else ""
             act = ""
             if self._prefix_action:
@@ -548,7 +855,10 @@ class Field(Component):
         if self._suffix_icon or suffix or self._suffix_action:
             from almasix.orbit.support.icons import icon as render_icon
 
-            icon = render_icon(self._suffix_icon) if self._suffix_icon else ""
+            icon = ""
+            if self._suffix_icon:
+                color_c = f" or-color-{e(self._suffix_icon_color)}" if self._suffix_icon_color else ""
+                icon = f'<span class="or-affix-icon{color_c}">{render_icon(self._suffix_icon)}</span>'
             text = f'<span class="or-affix-text">{e(suffix)}</span>' if suffix else ""
             act = ""
             if self._suffix_action:
@@ -567,21 +877,46 @@ class Field(Component):
         return ""
 
     def wrap_field(self, name: str, control: str, **ctx: Any) -> str:
-        """Shared field chrome: label, hint, helper, wrapper attributes, inline label."""
-        inline = " or-field-inline" if self._inline_label else ""
+        """Shared field chrome: label, hint, helper, content slots, wrapper attributes."""
+        inline = " or-field-inline" if self._inline_label or self._inline else ""
         wrapper_attrs = self._attrs_to_html(
             {**self.get_extra_attributes(**ctx), **{
                 k: evaluate(v, **ctx) for k, v in self._extra_field_wrapper_attributes.items()
             }}
         )
         body = (
-            f"{self._label_html(name, **ctx)}{self._hint_html(**ctx)}"
-            f"{self._affix_wrap(control, **ctx)}{self._helper_html(**ctx)}"
+            f"{self._slot_html(self._above_label, 'or-above-label', **ctx)}"
+            f"{self._label_html(name, **ctx)}"
+            f"{self._slot_html(self._below_label, 'or-below-label', **ctx)}"
+            f"{self._hint_html(**ctx)}"
+            f"{self._slot_html(self._above_content, 'or-above-content', **ctx)}"
+            f"{self._slot_html(self._before_content, 'or-before-content', **ctx)}"
+            f"{self._affix_wrap(control, **ctx)}"
+            f"{self._slot_html(self._after_content, 'or-after-content', **ctx)}"
+            f"{self._slot_html(self._below_content, 'or-below-content', **ctx)}"
+            f"{self._helper_html(**ctx)}"
+            f"{self._slot_html(self._below_error, 'or-below-error', **ctx)}"
         )
         return (
             f'<div class="or-field or-field-{type(self).__name__}{inline}" data-field="{name}"'
             f"{wrapper_attrs}>{body}</div>"
         )
+
+    def apply_dehydrate_transforms(self, value: Any) -> Any:
+        """Apply trim / strip_characters before custom dehydrate callbacks."""
+        if value is None:
+            return value
+        text = str(value)
+        if self._strip_characters:
+            chars = (
+                self._strip_characters
+                if isinstance(self._strip_characters, str)
+                else "".join(self._strip_characters)
+            )
+            text = text.translate({ord(c): None for c in chars})
+        if self._trim:
+            text = text.strip()
+        return text if isinstance(value, str) or self._trim or self._strip_characters else value
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -934,10 +1269,17 @@ class Select(Field):
                 for k, v in opts.items():
                     if limit is not None and count >= limit:
                         break
+                    if self._disable_option_when is not None and evaluate(
+                        self._disable_option_when, value=k, label=v, state=state, **ctx
+                    ):
+                        disabled_opt = " disabled"
+                    else:
+                        disabled_opt = ""
                     sel = " selected" if str(k) in selected_s else ""
                     label = str(v) if self._allow_html else e(v)
+                    wrap_cls = ' class="or-option-wrap"' if self._wrap_labels else ""
                     inner.append(
-                        f'<option value="{e(k)}" data-label="{e(v)}"{sel}>{label}</option>'
+                        f'<option value="{e(k)}" data-label="{e(v)}"{sel}{disabled_opt}{wrap_cls}>{label}</option>'
                     )
                     count += 1
                 body = "".join(inner)
@@ -1037,8 +1379,9 @@ class Checkbox(Field):
         label = e(self.get_label(**ctx))
         checked = " checked" if state else ""
         disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        inline = " or-field-inline" if self._inline or self._inline_label else ""
         return (
-            f'<div class="or-field or-field-Checkbox" data-field="{name}">'
+            f'<div class="or-field or-field-Checkbox{inline}" data-field="{name}">'
             f'<label class="or-checkbox-label"><input class="or-checkbox" type="checkbox" '
             f'name="{name}"{self._wire_binding(name)}{checked}{disabled} /> {label}</label></div>'
         )
@@ -1047,8 +1390,24 @@ class Checkbox(Field):
 class Toggle(Checkbox):
     def render(self, state: Any = None, **ctx: Any) -> str:
         html = super().render(state, **ctx)
-        return html.replace("or-field-Checkbox", "or-field-Toggle").replace("or-checkbox", "or-toggle")
+        html = html.replace("or-field-Checkbox", "or-field-Toggle").replace("or-checkbox", "or-toggle")
+        color_attrs = ""
+        if self._on_color:
+            color_attrs += f' data-on-color="{e(self._on_color)}"'
+        if self._off_color:
+            color_attrs += f' data-off-color="{e(self._off_color)}"'
+        if color_attrs:
+            html = html.replace('class="or-toggle"', f'class="or-toggle"{color_attrs}', 1)
+        if self._on_icon or self._off_icon:
+            from almasix.orbit.support.icons import icon as render_icon
 
+            icons = ""
+            if self._on_icon:
+                icons += f'<span class="or-toggle-on-icon">{render_icon(self._on_icon)}</span>'
+            if self._off_icon:
+                icons += f'<span class="or-toggle-off-icon">{render_icon(self._off_icon)}</span>'
+            html = html.replace("</label>", f"{icons}</label>", 1)
+        return html
 
 class Hidden(Field):
     def render(self, state: Any = None, **ctx: Any) -> str:

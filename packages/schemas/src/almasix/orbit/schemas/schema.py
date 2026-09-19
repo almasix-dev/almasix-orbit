@@ -92,6 +92,9 @@ class Schema(Component):
                 value = c.get_default()
             else:
                 continue
+            transform = getattr(c, "apply_dehydrate_transforms", None)
+            if callable(transform):
+                value = transform(value)
             mutate = getattr(c, "get_dehydrate_state_using", None)
             if callable(mutate):
                 cb = mutate()
