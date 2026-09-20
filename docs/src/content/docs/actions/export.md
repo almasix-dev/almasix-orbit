@@ -1,71 +1,65 @@
 ---
 title: Export action
-description: ExportAction — download CSV/JSON with formats, columns, filename, and host-owned Exporter adapters.
+description: ExportAction downloads the current table as CSV or JSON through the in-process job runner.
 ---
 
 ## Introduction
 
-`ExportAction` downloads the current table / query as a file. Defaults: name `export`, label **Export**, arrow-down-tray icon, gray color.
+`ExportAction` is the header button that takes the current list of records (search, filters, and all) and turns it into a file. The default runner serialises CSV or JSON in the request and the browser downloads it from the `orbit-export-ready` event.
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.actions import ExportAction
 
-ExportAction.make()
-    .formats(["csv", "json"])
-    .columns(["title", "status", "published_at"])
-    .column_map({"title": "Title", "status": "Status"})
-    .filename("posts-export")
-    .chunk_size(500)
-    .max_rows(50_000)
-    .exporter(run_export)
+table.header_actions([
+    ExportAction.make()
+        .formats(["csv", "json"])
+        .columns(["title", "status", "amount"])
+        .column_map({"title": "Title", "status": "Status"})
+        .filename("posts")
+        .chunk_size(500)
+        .max_rows(50_000),
+])
 ```
+
+`mountAction("export", payload={"format": "csv"})` returns `{filename, format, rows, content, mime}`.
 
 ![Orbit ExportAction (light)](/examples/light/actions/export.png)
 
 ![Orbit ExportAction (dark)](/examples/dark/actions/export.png)
 
-## Configuration bag
+## Configuration
 
 | Method | Role |
 |--------|------|
-| `.formats` | Allowed formats (`data-formats`) |
-| `.columns` | Attribute list to include |
+| `.formats` | Allowed formats (`csv`, `json`) |
+| `.columns` | Attributes to include (all keys if omitted) |
 | `.column_map` | Attribute → header label |
 | `.filename` | Base name (string or callable) |
-| `.chunk_size` / `.max_rows` | Streaming limits |
-| `.exporter` | Callable / `Exporter` subclass |
+| `.chunk_size` / `.max_rows` | Limits for a custom exporter |
+| `.exporter` | Optional callable that returns text, a dict, or an `ExportReport` |
 
-## Adapter contract
-
-Like import, the **host** owns the job. Subclass `Exporter` or pass a callable:
+## Custom exporter
 
 ```python title="app/orbit/exporters/post_exporter.py"
-from almasix.orbit.actions import Exporter
+from almasix.orbit.actions import Exporter, ExportAction
 
 class PostExporter(Exporter):
     def __call__(self, records=None, **kwargs):
-        # Stream records to CSV/JSON; return path or response
-        return "/tmp/posts.csv"
+        return {"content": render_xlsx(records), "filename": "posts.xlsx", "mime": "application/vnd.ms-excel"}
+
+ExportAction.make().exporter(PostExporter()).formats(["xlsx"])
 ```
 
-```python title="app/orbit/actions/export_wire.py"
-from almasix.orbit.actions import ExportAction
+`.filename()` accepts a callable:
 
-ExportAction.make().exporter(PostExporter())
-# or
-ExportAction.make().action(lambda records, **_: stream_csv(records))
-```
-
-`.call()` prefers `.using` / `.action`; otherwise invokes `.exporter`.
-
-## Filename callables
-
-```python title="app/orbit/actions/export_filename.py"
-from almasix.orbit.actions import ExportAction
+```python
 from datetime import date
-
 ExportAction.make().filename(lambda **_: f"posts-{date.today().isoformat()}")
 ```
+
+## Queueing
+
+Same runner as import — see [Import action](/actions/import/). `set_job_runner(...)` replaces both.
 
 ## Header placement
 
@@ -73,7 +67,7 @@ ExportAction.make().filename(lambda **_: f"posts-{date.today().isoformat()}")
 from almasix.orbit.actions import ExportAction, ImportAction
 
 table.header_actions([
-    ImportAction.make().importer(PostImporter()),
-    ExportAction.make().exporter(PostExporter()),
+    ImportAction.make().column_map({"Title": "title"}),
+    ExportAction.make().filename("posts"),
 ])
 ```

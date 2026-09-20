@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from almasix.orbit import Resource
+from almasix.orbit.actions import ExportAction, ImportAction
 from almasix.orbit.forms import (
     FileUpload,
     Form,
@@ -167,4 +168,15 @@ class PostResource(Resource):
             .defer_filters()
             .persist_filters_in_session()
             .stacked_on_mobile()
+            .header_actions(
+                [
+                    ImportAction.make()
+                    .column_map({"Title": "title", "Status": "status", "Amount": "amount"})
+                    .chunk_size(100),
+                    ExportAction.make()
+                    .formats(["csv", "json"])
+                    .columns(["title", "status", "amount"])
+                    .filename("posts"),
+                ]
+            )
         )

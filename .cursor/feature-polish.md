@@ -12,11 +12,16 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 101 | Plugins marketplace (v1) | `docs/src/content/docs/plugins/*` | **closed** |
 | 102 | Resources depth (relation managers, global search, record titles, soft deletes) | `docs/src/content/docs/resources/*` | **closed** |
 | 103 | Forms leftovers (FileUpload endpoint, RichEditor, MorphTo live search, ModalTableSelect / KeyValue hosts) | `docs/src/content/docs/forms/{file-upload,rich-editor,morph-to-select,modal-table-select,key-value}.md` | **closed** |
-| 104+ | Remaining stability milestones (import/export → support toolkit) | docs nav | queued |
+| 104 | Import / export job runners | `docs/src/content/docs/actions/{import,export}.md` | **closed** |
+| 105+ | Remaining stability milestones (query builder → support toolkit) | docs nav | queued |
 
 ## Infolists layout + docs depth — closed
 
 **Bar:** Stacked label-above-value default (`.or-entry-inline` for side-by-side), Orbit-first overview depth (hidden/inline labels, sections, extra attrs, utility injection) with unique gallery shots, 100% coverage on infolists surface, vendor CSS synced.
+
+## Import / export runners — closed
+
+**Bar:** In-process `ImmediateJobRunner` parses CSV/JSON, maps columns, chunks, and writes rows (or calls a custom importer/exporter). List host `mountAction("import"|"export")` plus `orbit-export-ready` download. Pluggable `set_job_runner` for queues. Orbit-admin Posts header actions, Orbit-first import/export docs, 100% coverage.
 
 ## Forms leftovers — closed
 
