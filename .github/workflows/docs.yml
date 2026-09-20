@@ -1,7 +1,7 @@
 name: Docs
 
 # Builds the Starlight site under docs/. Deploy is Cloudflare Workers Builds
-# connected to this repo (root docs/, build: npm ci && npm run build,
+# connected to this repo (root docs/, build: git fetch --tags && npm ci && npm run build,
 # deploy: npx wrangler deploy) — same pattern as almasix-docs.
 # No CLOUDFLARE_API_TOKEN in GitHub.
 #
@@ -38,6 +38,9 @@ jobs:
         working-directory: docs
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - uses: actions/setup-node@v4
         with:

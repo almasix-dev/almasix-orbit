@@ -6,11 +6,8 @@
  * the button can open GitHub instead.
  */
 
-function parseGithubRepo(url) {
-	if (!url || typeof url !== 'string') return null;
-	const match = url.match(/^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:\/|#|\?|$)/i);
-	return match ? `${match[1]}/${match[2]}` : null;
-}
+import { parseGithubRepo } from './marketplace-lib.mjs';
+import { splitVersionPath } from '../src/versions.mjs';
 
 export const TOKEN_COOKIE = 'orbit_gh';
 export const STATE_COOKIE = 'orbit_gh_state';
@@ -26,21 +23,24 @@ export function parseOwnerRepo(input) {
 	return null;
 }
 
-/** Same-origin return paths only — marketplace listings. */
+/** Same-origin return paths only — marketplace listings (any docs tree). */
 export function safeReturnPath(path) {
 	const raw = String(path ?? '').split('?')[0];
-	const normalized = raw.startsWith('/') ? raw : `/${raw}`;
-	if (normalized === '/plugins' || normalized === '/plugins/') return '/plugins/';
-	if (!normalized.startsWith('/plugins/')) return '/plugins/';
-	if (
+	const leading = raw.startsWith('/') ? raw : `/${raw}`;
+	const { version, inner } = splitVersionPath(leading);
+	let normalized = inner.startsWith('/') ? inner : `/${inner}`;
+	if (normalized === '/plugins' || normalized === '/plugins/') normalized = '/plugins/';
+	if (!normalized.startsWith('/plugins/')) {
+		normalized = '/plugins/';
+	} else if (
 		normalized.includes('\\') ||
 		normalized.includes('//') ||
 		normalized.includes('://') ||
 		normalized.includes('..')
 	) {
-		return '/plugins/';
+		normalized = '/plugins/';
 	}
-	return normalized;
+	return version ? `/${version}${normalized}` : normalized;
 }
 
 export function json(body, status = 200, headers = {}) {

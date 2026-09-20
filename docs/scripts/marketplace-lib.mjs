@@ -2,6 +2,8 @@
  * Shared marketplace helpers — used by the Astro catalog and Node tests.
  */
 
+import { stripVersionPrefix } from '../src/versions.mjs';
+
 /** Catalog indexes (not a plugin listing slug). */
 export const MARKETPLACE_INDEX_SEGMENTS = ['authors', 'categories', 'develop', 'feed', 'paid'];
 
@@ -26,14 +28,14 @@ export const MARKETPLACE_NAV = [
 
 /** Trailing slash, no query string — matches Starlight's static URLs. */
 export function normalizePath(pathname) {
-	const raw = (pathname ?? '/').split('?')[0] || '/';
+	const raw = stripVersionPrefix((pathname ?? '/').split('?')[0] || '/');
 	if (raw === '/') return '/';
 	return raw.endsWith('/') ? raw : `${raw}/`;
 }
 
 /** First `/plugins/…` segment, without a trailing file extension. */
 export function pluginPathSegment(pathname) {
-	const path = (pathname ?? '/').split('?')[0].replace(/\/+$/, '') || '/';
+	const path = stripVersionPrefix((pathname ?? '/').split('?')[0]).replace(/\/+$/, '') || '/';
 	if (path === '/plugins') return '';
 	if (!path.startsWith('/plugins/')) return null;
 	return path.slice('/plugins/'.length).split('/')[0].replace(/\.[a-z0-9]+$/i, '');
@@ -52,7 +54,7 @@ export function isPluginDocPath(pathname) {
 }
 
 export function isHomePath(pathname) {
-	const path = (pathname ?? '/').split('?')[0].replace(/\/+$/, '') || '/';
+	const path = stripVersionPrefix((pathname ?? '/').split('?')[0]).replace(/\/+$/, '') || '/';
 	return path === '/' || path === '/index' || path === '/index.html';
 }
 
