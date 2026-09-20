@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from almasix.orbit import Panel, PanelRegistry
-from almasix.orbit.panels.navigation import NavigationGroup
+from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem, NavigationSubgroup
+from almasix.orbit.panels.users import UserMenuItem
+from app.orbit.app.clusters.settings_hub_cluster import SettingsHubCluster
+from app.orbit.app.pages.nav_account_pages import NavAccountPage, NavPreferencesPage
 from app.orbit.app.plugins import BrandingPlugin
 from app.orbit.app.resources.actions_overview_resource import ActionsOverviewResource
 from app.orbit.app.resources.author_resource import AuthorResource
@@ -16,6 +19,9 @@ from app.orbit.app.resources.kitchen_sink_resource import KitchenSinkResource
 from app.orbit.app.resources.layout_columns_resource import LayoutColumnsResource
 from app.orbit.app.resources.media_columns_resource import MediaColumnsResource
 from app.orbit.app.resources.modal_tasks_resource import ModalTasksResource
+from app.orbit.app.resources.nav_colors_resource import NavColorsResource
+from app.orbit.app.resources.nav_fonts_resource import NavFontsResource
+from app.orbit.app.resources.navigation_overview_resource import NavigationOverviewResource
 from app.orbit.app.resources.post_resource import PostResource
 from app.orbit.app.resources.settings_resource import SettingsResource
 from app.orbit.app.resources.tables_overview_resource import TablesOverviewResource
@@ -79,15 +85,55 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
             .sort(7)
         )
         .navigation_group(
+            NavigationGroup.make("Navigation")
+            .icon("heroicon-o-bars-3")
+            .sort(8)
+        )
+        .navigation_group(
             NavigationGroup.make("Demos")
             .icon("heroicon-o-beaker")
-            .sort(8)
+            .sort(9)
         )
         .navigation_group(
             NavigationGroup.make("System")
             .icon("heroicon-o-cog-6-tooth")
             .sort(10)
         )
+        .navigation_subgroup(
+            NavigationSubgroup.make("Samples")
+            .parent("Navigation")
+            .icon("heroicon-o-squares-2x2")
+            .sort(0)
+        )
+        .navigation_items(
+            [
+                NavigationItem.make("orbit-docs")
+                .label("Orbit docs")
+                .url("https://orbit.almasix.com")
+                .icon("heroicon-o-book-open")
+                .group("Navigation")
+                .sort(50)
+                .open_url_in_new_tab(),
+            ]
+        )
+        .user_menu_items(
+            [
+                UserMenuItem.make("docs")
+                .label("Documentation")
+                .url("https://orbit.almasix.com")
+                .icon("heroicon-o-book-open")
+                .group("Help")
+                .sort(10),
+                UserMenuItem.make("status")
+                .label("System status")
+                .url("https://status.almasix.com")
+                .icon("heroicon-o-signal")
+                .group("Help")
+                .sort(20),
+            ]
+        )
+        .clusters([SettingsHubCluster])
+        .pages([NavAccountPage, NavPreferencesPage])
         .widgets(
             [
                 WelcomeWidget,
@@ -103,6 +149,9 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
                 ColumnsOverviewResource,
                 InfolistsOverviewResource,
                 ActionsOverviewResource,
+                NavigationOverviewResource,
+                NavColorsResource,
+                NavFontsResource,
                 PostResource,
                 AuthorResource,
                 SettingsResource,

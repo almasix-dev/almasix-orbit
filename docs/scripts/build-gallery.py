@@ -91,6 +91,7 @@ from gallery_variants import (
     build_action_variants,
     build_form_variants,
     build_infolist_variants,
+    build_navigation_variants,
     build_schema_variants,
     build_widget_variants,
 )
@@ -359,6 +360,23 @@ SHOTS: list[tuple[str, str]] = [
     ("panels/dashboard/columns", "Dashboard — columns"),
     ("panels/dashboard/filters", "Dashboard — filters"),
     ("panels/dashboard/route-path", "Dashboard — route path"),
+    # Navigation
+    ("navigation/overview", "Navigation overview"),
+    ("navigation/overview/layouts-apps", "Navigation — apps layout"),
+    ("navigation/overview/layouts-sidebar", "Navigation — sidebar layout"),
+    ("navigation/overview/layouts-top", "Navigation — top layout"),
+    ("navigation/overview/groups", "Navigation — groups"),
+    ("navigation/overview/subgroups", "Navigation — subgroups"),
+    ("navigation/overview/badges", "Navigation — badges"),
+    ("navigation/overview/parent-items", "Navigation — parent items"),
+    ("navigation/overview/custom-items", "Navigation — custom items"),
+    ("navigation/overview/sidebar-collapse", "Navigation — sidebar collapse"),
+    ("navigation/custom-pages", "Custom pages"),
+    ("navigation/user-menu", "User menu"),
+    ("navigation/user-menu/groups", "User menu — groups"),
+    ("navigation/user-menu/position", "User menu — sidebar position"),
+    ("navigation/clusters", "Clusters"),
+    ("navigation/clusters/sub-nav", "Clusters — sub-navigation"),
     ("panels/shell", "Panel shell"),
     ("users/login", "Login"),
 ]
@@ -1878,6 +1896,7 @@ def build() -> str:
     infolist_variants = build_infolist_variants()
     action_variants = build_action_variants()
     widget_variants = build_widget_variants()
+    navigation_variants = build_navigation_variants()
 
     parts = [
         shot("forms/overview", "Forms overview", form_overview.render()),
@@ -1915,6 +1934,10 @@ def build() -> str:
         *(
             shot(sid, label, html)
             for sid, (label, html) in widget_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in navigation_variants.items()
         ),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/overview-columns", "Overview — columns", table_overview_columns.render()),
@@ -2074,6 +2097,18 @@ def build() -> str:
   display: block !important;
   position: static;
   margin-top: 0.5rem;
+}}
+[data-shot^="navigation/user-menu"] .or-user-menu-panel {{
+  display: block !important;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 40;
+  min-width: 14rem;
+}}
+[data-shot="navigation/overview/subgroups"] .or-topnav-dropdown .or-topnav-menu,
+[data-shot="navigation/overview"] .or-topnav-dropdown.is-active .or-topnav-menu {{
+  display: block !important;
 }}
 html, body {{
   margin: 0;

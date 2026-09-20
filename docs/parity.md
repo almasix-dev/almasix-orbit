@@ -103,6 +103,19 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | Dashboard mount (`get_widgets` / `get_columns` / filters / `route_path`) | Done |
 | Docs + light/dark gallery shots + orbit-admin sample | Done |
 
+## Navigation — Done
+
+| Feature | Status |
+|---------|--------|
+| Layouts (`sidebar` / `top` / `apps` / `sidebar_topbar`) + active path matching | Done |
+| Groups / subgroups / badges / parent items / custom `NavigationItem` | Done |
+| `should_register_navigation` + `NavigationBuilder` / `.navigation(False)` | Done |
+| Sidebar collapse / widths / collapsible groups | Done |
+| Custom pages nav knobs + `can_access` | Done |
+| User menu items / groups / profile+logout specials / position / disable | Done |
+| Clusters discover/register, URL prefix, sub-nav positions, breadcrumbs | Done |
+| Docs + light/dark gallery shots + orbit-admin sample | Done |
+
 ## Panels / platform — Partial
 
 | Feature | Status |
@@ -113,7 +126,7 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | Clusters / auth pages / MFA protocol / tenancy | Done |
 | Render hooks + Plugin base | Done |
 | `discover_*` + `load_discovered` + scaffolding writes files | Done |
-| User menu / multi-panel domains / SPA / billing adapters | Partial (domains Done; SPA/billing later) |
+| Multi-panel domains / SPA / billing adapters | Partial (domains Done; SPA/billing later) |
 | Real DB notification persistence / Echo | Partial |
 
 ## Docs / screenshots

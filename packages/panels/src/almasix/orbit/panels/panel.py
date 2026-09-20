@@ -12,13 +12,16 @@ from almasix.orbit.panels.content_width import (
 from almasix.orbit.panels.discover import load_theme_css
 from almasix.orbit.panels.hooks import register_render_hook, render_hook
 from almasix.orbit.panels.navigation import (
+    NavigationBuilder,
     NavigationGroup,
     NavigationItem,
     NavigationSubgroup,
     NavLayout,
+    attrs_to_html,
     build_menu_layout,
     build_menu_secondary,
     group_items,
+    nest_parent_items,
     normalize_nav_layout,
 )
 from almasix.orbit.panels.page import Page
@@ -36,10 +39,14 @@ _TOPBAR_ICON = 20
 DEFAULT_BRAND_NAME_FONT_SIZE = "1.8rem"
 DEFAULT_BRAND_LOGO_HEIGHT = "2rem"
 DEFAULT_SIMPLE_PAGE_MAX_CONTENT_WIDTH = "lg"
+DEFAULT_SIDEBAR_WIDTH = "16rem"
+DEFAULT_COLLAPSED_SIDEBAR_WIDTH = "4.5rem"
 
 PageOption = bool | type[Page]
 ThemeMode = Literal["light", "dark", "system"]
+UserMenuPosition = Literal["topbar", "sidebar"]
 PluginLike = Any  # ``Plugin`` / ``PanelPlugin`` or ``Callable[[Panel], Any]``
+NavigationConfig = bool | NavigationBuilder | Callable[..., Any]
 
 
 def _resolve_page_option(value: PageOption, *, default_cls: type[Page]) -> type[Page] | None:
@@ -92,17 +99,30 @@ class Panel:
         self._theme_switcher = True
         self._default_theme_mode: ThemeMode = "system"
         self._sidebar_collapsible = False
+        self._sidebar_fully_collapsible = False
+        self._sidebar_width: str = DEFAULT_SIDEBAR_WIDTH
+        self._collapsed_sidebar_width: str = DEFAULT_COLLAPSED_SIDEBAR_WIDTH
+        self._collapsible_navigation_groups = True
+        self._navigation_enabled = True
+        self._navigation_builder: NavigationConfig | None = None
+        self._topbar_enabled = True
         self._breadcrumbs_enabled = True
         self._discover_resources_in: list[str] = []
         self._discover_pages_in: list[str] = []
         self._discover_widgets_in: list[str] = []
+        self._discover_clusters_in: list[str] = []
         self._theme_packages: list[str] = []
         self._theme_stylesheets: list[str] = []
         self._custom_nav_items: list[NavigationItem] = []
         self._nav_groups: dict[str, NavigationGroup] = {}
+        self._nav_group_order: list[str] = []
         self._nav_subgroups: dict[tuple[str | None, str], NavigationSubgroup] = {}
         self._navigation_layout: NavLayout = "apps"
-        self._user_menu_items: list[dict[str, str]] = []
+        self._user_menu_enabled = True
+        self._user_menu_position: UserMenuPosition = "topbar"
+        self._user_menu_items: list[dict[str, Any]] = []
+        self._user_menu_specials: dict[str, dict[str, Any]] = {}
+        self._clusters: list[type[Any]] = []
         self._notifications_enabled = True
         self._database_notifications: list[dict[str, Any]] = []
         self._panel_user: Any = None
@@ -347,7 +367,52 @@ class Panel:
         return self
 
     def sidebar_collapsible(self, condition: bool = True) -> Self:
+        """Collapse the sidebar to an icon rail on desktop (Filament ``sidebarCollapsibleOnDesktop``)."""
         self._sidebar_collapsible = bool(condition)
+        return self
+
+    def sidebar_collapsible_on_desktop(self, condition: bool = True) -> Self:
+        """Alias for :meth:`sidebar_collapsible`."""
+        return self.sidebar_collapsible(condition)
+
+    def sidebar_fully_collapsible_on_desktop(self, condition: bool = True) -> Self:
+        """Hide the entire sidebar when collapsed (not just the icon rail)."""
+        self._sidebar_fully_collapsible = bool(condition)
+        if condition:
+            self._sidebar_collapsible = True
+        return self
+
+    def sidebar_width(self, css: str) -> Self:
+        self._sidebar_width = (css or DEFAULT_SIDEBAR_WIDTH).strip() or DEFAULT_SIDEBAR_WIDTH
+        return self
+
+    def collapsed_sidebar_width(self, css: str) -> Self:
+        self._collapsed_sidebar_width = (
+            (css or DEFAULT_COLLAPSED_SIDEBAR_WIDTH).strip() or DEFAULT_COLLAPSED_SIDEBAR_WIDTH
+        )
+        return self
+
+    def collapsible_navigation_groups(self, condition: bool = True) -> Self:
+        """Global default for whether navigation groups are collapsible."""
+        self._collapsible_navigation_groups = bool(condition)
+        return self
+
+    def navigation(self, config: NavigationConfig = True) -> Self:
+        """Disable navigation (``False``) or replace items via builder/callable."""
+        if config is False:
+            self._navigation_enabled = False
+            self._navigation_builder = None
+            return self
+        if config is True:
+            self._navigation_enabled = True
+            self._navigation_builder = None
+            return self
+        self._navigation_enabled = True
+        self._navigation_builder = config
+        return self
+
+    def topbar(self, condition: bool = True) -> Self:
+        self._topbar_enabled = bool(condition)
         return self
 
     def breadcrumbs_enabled(self, condition: bool = True) -> Self:
@@ -372,17 +437,78 @@ class Panel:
         """Top-bar navigation only (no sidebar)."""
         return self.navigation_layout("top")
 
-    def user_menu_items(self, items: Sequence[UserMenuItem | dict[str, str]]) -> Self:
+    def user_menu(self, enabled: bool = True, *, position: UserMenuPosition | None = None) -> Self:
+        """Enable/disable the user menu; optionally set ``topbar`` or ``sidebar`` position."""
+        if enabled is False:
+            self._user_menu_enabled = False
+            return self
+        self._user_menu_enabled = True
+        if position is not None:
+            self._user_menu_position = position
+        return self
+
+    def user_menu_position(self, position: UserMenuPosition) -> Self:
+        self._user_menu_position = position
+        return self
+
+    def user_menu_items(
+        self,
+        items: Sequence[UserMenuItem | dict[str, Any]] | dict[str, Any] | None = None,
+    ) -> Self:
+        if items is None:
+            return self
+        if isinstance(items, dict):
+            for key, value in items.items():
+                self._register_user_menu_entry(key, value)
+            return self
         for item in items:
             self.user_menu_item(item)
         return self
 
-    def user_menu_item(self, item: UserMenuItem | dict[str, str]) -> Self:
+    def user_menu_item(self, item: UserMenuItem | dict[str, Any]) -> Self:
         if isinstance(item, UserMenuItem):
             self._user_menu_items.append(item.to_dict())
         else:
             self._user_menu_items.append(dict(item))
         return self
+
+    def _register_user_menu_entry(self, key: str, value: Any) -> None:
+        if key in ("profile", "logout"):
+            if callable(value):
+                base = UserMenuItem.make(key)
+                if key == "logout":
+                    base.label("Sign out").url(self.url("logout")).post_to_url()
+                else:
+                    # ``profile`` (only other special key admitted above).
+                    base.label("Profile")
+                customized = value(base)
+                data = customized.to_dict() if isinstance(customized, UserMenuItem) else dict(customized)
+                data["name"] = key
+                self._user_menu_specials[key] = data
+            elif isinstance(value, UserMenuItem):
+                data = value.to_dict()
+                data["name"] = key
+                self._user_menu_specials[key] = data
+            else:
+                data = dict(value)
+                data["name"] = key
+                self._user_menu_specials[key] = data
+            return
+        if isinstance(value, UserMenuItem):
+            self.user_menu_item(value)
+        else:
+            self.user_menu_item(dict(value))
+
+    def clusters(self, clusters: Sequence[type[Any]]) -> Self:
+        self._clusters.extend(list(clusters))
+        return self
+
+    def discover_clusters(self, *paths: str) -> Self:
+        self._discover_clusters_in.extend(str(p) for p in paths)
+        return self
+
+    def get_clusters(self) -> list[type[Any]]:
+        return list(self._clusters)
 
     def database_notifications(
         self,
@@ -448,8 +574,16 @@ class Panel:
         self._custom_nav_items.append(item)
         return self
 
-    def navigation_groups(self, groups: Sequence[NavigationGroup]) -> Self:
+    def navigation_groups(self, groups: Sequence[NavigationGroup | str]) -> Self:
+        """Register group metadata objects, or a list of group labels for order."""
         for group in groups:
+            if isinstance(group, str):
+                label = group.strip()
+                if label and label not in self._nav_group_order:
+                    self._nav_group_order.append(label)
+                if label and label not in self._nav_groups:
+                    self._nav_groups[label] = NavigationGroup.make(label)
+                continue
             self.navigation_group(group)
         return self
 
@@ -457,7 +591,9 @@ class Panel:
         """Optional group metadata (icon/sort). Group names still come from resources/pages."""
         name = group.get_name() or group.get_label()
         if name:
-            self._nav_groups[name] = group
+            self._nav_groups[str(name)] = group
+            if str(name) not in self._nav_group_order:
+                self._nav_group_order.append(str(name))
         # Nested fluent items on the group also register as panel nav items.
         for item in getattr(group, "_items", []) or []:
             if not item._group:
@@ -557,6 +693,17 @@ class Panel:
                     self._widgets.append(cls)
                     seen_widgets.add(key)
 
+        if self._discover_clusters_in:
+            from almasix.orbit.panels.cluster import Cluster
+
+            seen_clusters = {class_key(c) for c in self._clusters}
+            for path in self._discover_clusters_in:
+                for cls in discover_classes(path, base_class=Cluster):
+                    key = class_key(cls)
+                    if key not in seen_clusters:
+                        self._clusters.append(cls)
+                        seen_clusters.add(key)
+
         return self
 
     def plugin(self, plugin: PluginLike) -> Self:
@@ -632,73 +779,343 @@ class Panel:
     def get_middleware(self) -> list[Any]:
         return list(self._middleware)
 
-    def _collect_navigation_items(self) -> list[dict[str, Any]]:
+    def _collect_navigation_items(
+        self,
+        *,
+        user: Any = None,
+        active_path: str | None = None,
+    ) -> list[dict[str, Any]]:
+        if not self._navigation_enabled:
+            return []
+
+        # Stamp panel path so resource/page URL helpers include it.
+        for res in self._resources:
+            res._panel_path = self.get_path()  # type: ignore[attr-defined]
+        for page in self._pages:
+            page._panel_path = self.get_path()  # type: ignore[attr-defined]
+
+        ctx: dict[str, Any] = {"user": user, "active_path": active_path, "panel": self}
+
+        # Custom builder replaces auto-generated navigation entirely.
+        if self._navigation_builder is not None:
+            return self._collect_from_builder(**ctx)
+
         items: list[dict[str, Any]] = []
+        registered_clusters: set[type[Any] | str] = set()
+
         dash = self.dashboard_page() if self.dashboard_enabled() else None
         if dash is not None and dash not in self._pages:
-            items.append(
-                {
-                    "slug": dash.get_slug(),
-                    "label": dash.get_navigation_label(),
-                    "icon": getattr(dash, "navigation_icon", "heroicon-o-home"),
-                    "group": getattr(dash, "navigation_group", None),
-                    "subgroup": _nav_subgroup_of(dash),
-                    "url": self.url(),
-                    "sort": getattr(dash, "navigation_sort", -100),
-                }
-            )
+            if self._should_register(dash, **ctx) and self._can_access_page(dash, user):
+                items.append(self._page_nav_dict(dash, url=self.url(), sort_default=-100, **ctx))
+
         for res in self._resources:
-            items.append(
-                {
-                    "slug": getattr(res, "get_slug", lambda r=res: r.__name__.lower())(),
-                    "label": getattr(
-                        res, "get_navigation_label", lambda r=res: r.__name__
-                    )(),
-                    "icon": getattr(res, "navigation_icon", "heroicon-o-users"),
-                    "group": getattr(res, "navigation_group", None),
-                    "subgroup": _nav_subgroup_of(res),
-                    "url": self.url(
-                        getattr(res, "get_slug", lambda r=res: r.__name__.lower())()
-                    ),
-                    "sort": getattr(res, "navigation_sort", 0),
-                }
-            )
-        for page in self._pages:
-            # Home dashboard is mounted at ``/`` — avoid a duplicate ``/dashboard`` nav entry.
-            if dash is not None and page is dash:
-                items.append(
-                    {
-                        "slug": page.get_slug(),
-                        "label": page.get_navigation_label(),
-                        "icon": getattr(page, "navigation_icon", "heroicon-o-home"),
-                        "group": getattr(page, "navigation_group", None),
-                        "subgroup": _nav_subgroup_of(page),
-                        "url": self.url(),
-                        "sort": getattr(page, "navigation_sort", -100),
-                    }
-                )
+            cluster = self._resolve_cluster(res)
+            if cluster is not None:
+                registered_clusters.add(cluster if isinstance(cluster, type) else cluster)
                 continue
-            items.append(
-                {
-                    "slug": getattr(page, "get_slug", lambda p=page: p.__name__.lower())(),
-                    "label": getattr(
-                        page, "get_navigation_label", lambda p=page: p.__name__
-                    )(),
-                    "icon": getattr(page, "navigation_icon", "heroicon-o-home"),
-                    "group": getattr(page, "navigation_group", None),
-                    "subgroup": _nav_subgroup_of(page),
-                    "url": self.url(
-                        getattr(page, "get_slug", lambda p=page: p.__name__.lower())()
-                    ),
-                    "sort": getattr(page, "navigation_sort", 0),
-                }
-            )
+            if not self._should_register(res, **ctx):
+                continue
+            if user is not None and hasattr(res, "can_view_any") and not res.can_view_any(user):
+                continue
+            items.append(self._resource_nav_dict(res, **ctx))
+
+        for page in self._pages:
+            cluster = self._resolve_cluster(page)
+            if cluster is not None:
+                registered_clusters.add(cluster if isinstance(cluster, type) else cluster)
+                continue
+            if dash is not None and page is dash:
+                if self._should_register(page, **ctx) and self._can_access_page(page, user):
+                    items.append(self._page_nav_dict(page, url=self.url(), sort_default=-100, **ctx))
+                continue
+            if not self._should_register(page, **ctx):
+                continue
+            if not self._can_access_page(page, user):
+                continue
+            items.append(self._page_nav_dict(page, **ctx))
+
+        # One main-nav entry per cluster that has members on this panel.
+        for cluster in self._iter_clusters_for_nav(registered_clusters):
+            cluster_item = self._cluster_nav_dict(cluster, **ctx)
+            if cluster_item is not None:
+                items.append(cluster_item)
+
         for item in self._custom_nav_items:
-            items.append(item.to_nav_dict())
+            if not item.is_visible(**ctx):
+                continue
+            nav = item.to_nav_dict(**ctx)
+            items.append(nav)
+
         items.sort(key=lambda i: (i.get("sort") or 0, i.get("label") or ""))
         return items
 
-    def menu_layout_context(self, active_path: str | None = None) -> Any:
+    def _collect_from_builder(self, **ctx: Any) -> list[dict[str, Any]]:
+        builder = self._navigation_builder
+        if callable(builder) and not isinstance(builder, NavigationBuilder):
+            result = builder(NavigationBuilder.make())
+            if isinstance(result, NavigationBuilder):
+                builder = result
+            elif result is False:
+                return []
+            else:
+                builder = result
+        if not isinstance(builder, NavigationBuilder):
+            return []
+        for group in builder.get_groups():
+            name = group.get_name() or group.get_label()
+            if name:
+                self._nav_groups[str(name)] = group
+        items: list[dict[str, Any]] = []
+        for item in builder.get_items():
+            if not item.is_visible(**ctx):
+                continue
+            items.append(item.to_nav_dict(**ctx))
+        items.sort(key=lambda i: (i.get("sort") or 0, i.get("label") or ""))
+        return items
+
+    def _should_register(self, obj: Any, **ctx: Any) -> bool:
+        getter = getattr(obj, "get_should_register_navigation", None)
+        if callable(getter):
+            return bool(getter(**ctx))
+        flag = getattr(obj, "should_register_navigation", True)
+        if callable(flag):
+            return bool(flag(**ctx))
+        return bool(flag)
+
+    def _can_access_page(self, page: Any, user: Any) -> bool:
+        if user is None:
+            # No auth context — keep pages visible (guest shells / tests).
+            return True
+        can = getattr(page, "can_access", None)
+        if callable(can):
+            return bool(can(user))
+        return True
+
+    def _resolve_cluster(self, obj: Any) -> type[Any] | str | None:
+        getter = getattr(obj, "get_cluster", None)
+        if callable(getter):
+            return getter()
+        return getattr(obj, "cluster", None)
+
+    def _cluster_key(self, cluster: type[Any] | str) -> str:
+        if isinstance(cluster, str):
+            return cluster
+        return f"{cluster.__module__}.{cluster.__qualname__}"
+
+    def _iter_clusters_for_nav(
+        self, registered: set[type[Any] | str]
+    ) -> list[type[Any]]:
+        """Return concrete Cluster classes for main-nav entries."""
+        by_key: dict[str, type[Any]] = {}
+        for cluster in self._clusters:
+            by_key[self._cluster_key(cluster)] = cluster
+        out: list[type[Any]] = []
+        seen: set[str] = set()
+        for cluster in registered:
+            if isinstance(cluster, type):
+                key = self._cluster_key(cluster)
+                if key not in seen:
+                    out.append(cluster)
+                    seen.add(key)
+                continue
+            # String name — match registered panel clusters by slug/name.
+            for cand in self._clusters:
+                if cand.get_slug() == cluster or cand.__name__ == cluster:
+                    key = self._cluster_key(cand)
+                    if key not in seen:
+                        out.append(cand)
+                        seen.add(key)
+                    break
+            else:
+                # Synthesize a minimal cluster class from the string slug.
+                from almasix.orbit.panels.cluster import Cluster
+
+                slug_value = str(cluster)
+                label = slug_value.replace("_", " ").replace("-", " ").title()
+                class_name = f"{slug_value.title().replace('_', '').replace('-', '')}Cluster"
+                # ``type()`` avoids class-body scoping (locals are not visible as ``slug = slug``).
+                _DynamicCluster = type(
+                    class_name,
+                    (Cluster,),
+                    {
+                        "slug": slug_value,
+                        "navigation_label": label,
+                    },
+                )
+                key = self._cluster_key(_DynamicCluster)
+                if key not in seen:
+                    out.append(_DynamicCluster)
+                    seen.add(key)
+        # Also include explicitly registered clusters that have members
+        for cluster in self._clusters:
+            key = self._cluster_key(cluster)
+            members = self._cluster_members(cluster)
+            if members and key not in seen:
+                out.append(cluster)
+                seen.add(key)
+        return out
+
+    def _cluster_members(self, cluster: type[Any] | str) -> list[type[Any]]:
+        members: list[type[Any]] = []
+        key = self._cluster_key(cluster) if not isinstance(cluster, str) else None
+        slug = cluster.get_slug() if isinstance(cluster, type) else str(cluster)
+        for obj in list(self._resources) + list(self._pages):
+            resolved = self._resolve_cluster(obj)
+            if resolved is None:
+                continue
+            if resolved is cluster or resolved == cluster:
+                members.append(obj)
+                continue
+            if isinstance(resolved, type) and key and self._cluster_key(resolved) == key:
+                members.append(obj)
+                continue
+            if isinstance(resolved, str) and resolved in (slug, getattr(cluster, "__name__", "")):
+                members.append(obj)
+        return members
+
+    def _cluster_nav_dict(self, cluster: type[Any], **ctx: Any) -> dict[str, Any] | None:
+        user = ctx.get("user")
+        members = self._cluster_members(cluster)
+        if not members:
+            return None
+        # First visible member URL becomes the cluster landing link.
+        first_url = None
+        for member in sorted(
+            members,
+            key=lambda m: (
+                int(getattr(m, "navigation_sort", 0) or 0),
+                str(getattr(m, "get_navigation_label", lambda: m.__name__)()),
+            ),
+        ):
+            if not self._should_register(member, **ctx):
+                continue
+            if hasattr(member, "can_view_any") and user is not None:
+                if not member.can_view_any(user):
+                    continue
+            if hasattr(member, "can_access") and not self._can_access_page(member, user):
+                continue
+            first_url = self._member_url(member)
+            break
+        if not first_url:
+            return None
+        return {
+            "slug": cluster.get_slug(),
+            "label": cluster.get_navigation_label(),
+            "icon": getattr(cluster, "navigation_icon", None) or "heroicon-o-squares-2x2",
+            "active_icon": getattr(cluster, "active_navigation_icon", None),
+            "group": getattr(cluster, "navigation_group", None),
+            "subgroup": None,
+            "url": first_url,
+            "sort": getattr(cluster, "navigation_sort", 0),
+            "badge": None,
+            "badge_color": None,
+            "badge_tooltip": None,
+            "open_in_new_tab": False,
+            "parent_item": None,
+            "cluster": True,
+            "cluster_slug": cluster.get_slug(),
+        }
+
+    def _member_url(self, member: type[Any]) -> str:
+        if hasattr(member, "get_pages") and callable(member.get_pages):
+            pages = member.get_pages()
+            if isinstance(pages, dict) and pages.get("index"):
+                return str(pages["index"])
+        slug = member.get_slug() if hasattr(member, "get_slug") else member.__name__.lower()
+        prefix = ""
+        if hasattr(member, "get_url_path_prefix"):
+            prefix = member.get_url_path_prefix()
+        else:
+            prefix = (self._path or "").rstrip("/")
+            cluster = self._resolve_cluster(member)
+            if cluster is not None:
+                if isinstance(cluster, type):
+                    prefix = f"{prefix}{cluster.path_prefix()}"
+                else:
+                    prefix = f"{prefix}/{cluster}"
+        return f"{prefix}/{slug}" if prefix else f"/{slug}"
+
+    def _resource_nav_dict(self, res: type[Any], **ctx: Any) -> dict[str, Any]:
+        badge = res.get_navigation_badge(**ctx) if hasattr(res, "get_navigation_badge") else None
+        return {
+            "slug": res.get_slug(),
+            "label": res.get_navigation_label(),
+            "icon": getattr(res, "navigation_icon", "heroicon-o-users"),
+            "active_icon": getattr(res, "active_navigation_icon", None),
+            "group": getattr(res, "navigation_group", None),
+            "subgroup": _nav_subgroup_of(res),
+            "url": self._member_url(res),
+            "sort": getattr(res, "navigation_sort", 0),
+            "badge": badge,
+            "badge_color": (
+                res.get_navigation_badge_color(**ctx)
+                if hasattr(res, "get_navigation_badge_color")
+                else None
+            ),
+            "badge_tooltip": (
+                res.get_navigation_badge_tooltip(**ctx)
+                if hasattr(res, "get_navigation_badge_tooltip")
+                else None
+            ),
+            "open_in_new_tab": False,
+            "parent_item": (
+                res.get_navigation_parent_item()
+                if hasattr(res, "get_navigation_parent_item")
+                else getattr(res, "navigation_parent_item", None)
+            ),
+        }
+
+    def _page_nav_dict(
+        self,
+        page: type[Any],
+        *,
+        url: str | None = None,
+        sort_default: int = 0,
+        **ctx: Any,
+    ) -> dict[str, Any]:
+        slug = page.get_slug() if hasattr(page, "get_slug") else page.__name__.lower()
+        if url is None:
+            prefix = ""
+            if hasattr(page, "get_url_path_prefix"):
+                # Ensure panel path is available for page URL building.
+                if not getattr(page, "_panel_path", None):
+                    page._panel_path = self.get_path()  # type: ignore[attr-defined]
+                prefix = page.get_url_path_prefix()
+            else:
+                prefix = (self._path or "").rstrip("/")
+            url = f"{prefix}/{slug}" if prefix else self.url(slug)
+        badge = page.get_navigation_badge(**ctx) if hasattr(page, "get_navigation_badge") else None
+        return {
+            "slug": slug,
+            "label": page.get_navigation_label(),
+            "icon": getattr(page, "navigation_icon", "heroicon-o-home"),
+            "active_icon": getattr(page, "active_navigation_icon", None),
+            "group": getattr(page, "navigation_group", None),
+            "subgroup": _nav_subgroup_of(page),
+            "url": url,
+            "sort": getattr(page, "navigation_sort", sort_default),
+            "badge": badge,
+            "badge_color": (
+                page.get_navigation_badge_color(**ctx)
+                if hasattr(page, "get_navigation_badge_color")
+                else None
+            ),
+            "badge_tooltip": (
+                page.get_navigation_badge_tooltip(**ctx)
+                if hasattr(page, "get_navigation_badge_tooltip")
+                else None
+            ),
+            "open_in_new_tab": False,
+            "parent_item": (
+                page.get_navigation_parent_item()
+                if hasattr(page, "get_navigation_parent_item")
+                else getattr(page, "navigation_parent_item", None)
+            ),
+        }
+
+    def menu_layout_context(
+        self, active_path: str | None = None, *, user: Any = None
+    ) -> Any:
         meta = dict(self._nav_groups)
         # Ensure the Dashboard group sorts first when the built-in home page is on.
         if self.dashboard_enabled():
@@ -711,14 +1128,56 @@ class Panel:
                         .icon(getattr(dash, "navigation_icon", "heroicon-o-home"))
                         .sort(getattr(dash, "navigation_sort", -100))
                     )
+        # Stamp panel path onto resources/pages so URL helpers include it.
+        for res in self._resources:
+            res._panel_path = self.get_path()  # type: ignore[attr-defined]
+        for page in self._pages:
+            page._panel_path = self.get_path()  # type: ignore[attr-defined]
         return build_menu_layout(
-            self._collect_navigation_items(),
+            self._collect_navigation_items(user=user, active_path=active_path),
             group_meta=meta,
             subgroup_meta=dict(self._nav_subgroups),
             active_path=active_path,
             layout=normalize_nav_layout(self._navigation_layout),
             panel_path=self._path,
+            group_order=list(self._nav_group_order) or None,
         )
+
+    def collect_cluster_sub_navigation(
+        self,
+        active_path: str | None = None,
+        *,
+        user: Any = None,
+    ) -> tuple[type[Any] | None, list[dict[str, Any]]]:
+        """Return ``(cluster, items)`` when ``active_path`` is inside a cluster."""
+        if not active_path:
+            return None, []
+        path = active_path.rstrip("/") or "/"
+        base = (self._path or "/").rstrip("/")
+        for cluster in self._iter_clusters_for_nav(
+            {c for c in (self._resolve_cluster(o) for o in list(self._resources) + list(self._pages)) if c}
+        ):
+            prefix = f"{base}{cluster.path_prefix()}".rstrip("/")
+            if path == prefix or path.startswith(prefix + "/"):
+                items: list[dict[str, Any]] = []
+                ctx = {"user": user, "active_path": active_path, "panel": self}
+                for member in self._cluster_members(cluster):
+                    if not self._should_register(member, **ctx):
+                        continue
+                    if hasattr(member, "can_view_any") and user is not None:
+                        if not member.can_view_any(user):
+                            continue
+                    if hasattr(member, "can_access") and not self._can_access_page(member, user):
+                        continue
+                    if hasattr(member, "get_pages"):
+                        items.append(self._resource_nav_dict(member, **ctx))
+                    else:
+                        items.append(self._page_nav_dict(member, **ctx))
+                items.sort(key=lambda i: (i.get("sort") or 0, i.get("label") or ""))
+                from almasix.orbit.panels.navigation import apply_active_state
+
+                return cluster, apply_active_state(items, active_path=active_path)
+        return None, []
 
     def _render_theme_styles(self) -> str:
         """Inline theme package CSS + linked stylesheets for the shell head."""
@@ -744,10 +1203,11 @@ class Panel:
         Conduit/Alpine asset tags when mounting live hosts.
         """
         layout = normalize_nav_layout(self._navigation_layout)
-        ctx = self.menu_layout_context(active_path=active_path)
+        ctx = self.menu_layout_context(active_path=active_path, user=user)
         brand = e(self._brand)
         font = e(self._font)
         collapsible = self._sidebar_collapsible
+        fully_collapsible = self._sidebar_fully_collapsible
         scope = self.id
         width_token = (
             self._simple_page_max_content_width if bare else self._content_max_width
@@ -760,6 +1220,8 @@ class Panel:
         )
         brand_name_size = e(self._brand_name_font_size or DEFAULT_BRAND_NAME_FONT_SIZE)
         brand_logo_height = e(self._brand_logo_height or DEFAULT_BRAND_LOGO_HEIGHT)
+        sidebar_w = e(self._sidebar_width or DEFAULT_SIDEBAR_WIDTH)
+        collapsed_w = e(self._collapsed_sidebar_width or DEFAULT_COLLAPSED_SIDEBAR_WIDTH)
         show_theme_toggle = self._dark_mode and self._theme_switcher
         default_theme = e(self._default_theme_mode or "system")
 
@@ -788,8 +1250,35 @@ class Panel:
             )
             app_wrap = body_inner
         else:
-            sidebar_html = self._render_sidebar(ctx, collapsible, user=user)
-            topbar_html = self._render_topbar(ctx, user=user, collapsible=collapsible)
+            show_sidebar = self._navigation_enabled and layout != "top"
+            show_topbar = self._topbar_enabled
+            sidebar_html = (
+                self._render_sidebar(ctx, collapsible, user=user) if show_sidebar else ""
+            )
+            topbar_html = (
+                self._render_topbar(ctx, user=user, collapsible=collapsible)
+                if show_topbar
+                else ""
+            )
+            # User menu in sidebar when positioned there or topbar is off.
+            if (
+                self._user_menu_enabled
+                and user is not None
+                and (
+                    self._user_menu_position == "sidebar"
+                    or not show_topbar
+                )
+                and show_sidebar
+            ):
+                sidebar_html = sidebar_html.replace(
+                    "</aside>",
+                    f'{self._render_user_menu(user=user, placement="sidebar")}</aside>',
+                    1,
+                )
+            cluster, cluster_items = self.collect_cluster_sub_navigation(
+                active_path, user=user
+            )
+            cluster_nav = self._render_cluster_sub_nav(cluster, cluster_items)
             modal_html = _action_modal_html()
             app_class = "or-app"
             if layout == "sidebar_topbar":
@@ -798,9 +1287,36 @@ class Panel:
                 app_class += " or-app-top"
             if layout == "sidebar":
                 app_class += " or-app-sidebar"
-            collapse_bind = (
-                ", 'is-collapsed': collapsed" if collapsible and layout != "top" else ""
-            )
+            if not show_sidebar:
+                app_class += " or-app-no-sidebar"
+            if fully_collapsible:
+                app_class += " or-app-fully-collapsible"
+            collapse_bind = ""
+            if collapsible and layout != "top" and show_sidebar:
+                if fully_collapsible:
+                    collapse_bind = ", 'is-collapsed': collapsed, 'is-fully-collapsed': collapsed"
+                else:
+                    collapse_bind = ", 'is-collapsed': collapsed"
+            content_inner = content
+            if cluster_nav:
+                position = getattr(cluster, "sub_navigation_position", "start")
+                if position == "top":
+                    content_inner = (
+                        '<div class="or-cluster-layout or-cluster-layout-top">'
+                        f"{cluster_nav}"
+                        f'<div class="or-cluster-body">{content}</div></div>'
+                    )
+                elif position == "end":
+                    content_inner = (
+                        '<div class="or-cluster-layout or-cluster-layout-end">'
+                        f'<div class="or-cluster-body">{content}</div>{cluster_nav}</div>'
+                    )
+                else:
+                    content_inner = (
+                        '<div class="or-cluster-layout or-cluster-layout-start">'
+                        f"{cluster_nav}"
+                        f'<div class="or-cluster-body">{content}</div></div>'
+                    )
             app_wrap = (
                 f'{render_hook("panels::body.start", scope=scope, user=user)}'
                 f'<div class="{app_class}" x-data="orbitShell" '
@@ -811,7 +1327,7 @@ class Panel:
                 f"{topbar_html}"
                 f'    {render_hook("panels::content.start", scope=scope, user=user)}\n'
                 f"{self._render_breadcrumbs(active_path)}"
-                f'    <main class="or-content">{content}</main>\n'
+                f'    <main class="or-content">{content_inner}</main>\n'
                 f'    {render_hook("panels::content.end", scope=scope, user=user)}\n'
                 "  </div>\n"
                 "</div>\n"
@@ -872,6 +1388,7 @@ class Panel:
             f"  <style>:root {{ --or-font: '{font}', ui-sans-serif, system-ui, sans-serif; "
             f"{color_vars}--or-brand-name-size: {brand_name_size}; "
             f"--or-brand-logo-height: {brand_logo_height}; "
+            f"--or-sidebar-w: {sidebar_w}; --or-sidebar-collapsed-w: {collapsed_w}; "
             f"--or-content-max: {width_css}; }}</style>\n"
             f"{self._render_theme_styles()}"
             f"{extra_head}\n"
@@ -896,6 +1413,10 @@ class Panel:
         Each item is ``{"label": str, "url": str | None}``. The last item is the
         current page (``url`` is ``None``).
         """
+        for res in self._resources:
+            res._panel_path = self.get_path()  # type: ignore[attr-defined]
+        for page in self._pages:
+            page._panel_path = self.get_path()  # type: ignore[attr-defined]
         home_url = self.get_home_url()
         crumbs: list[dict[str, str | None]] = [
             {"label": self._brand, "url": home_url},
@@ -926,6 +1447,42 @@ class Panel:
             return crumbs
 
         slug = segments[0]
+        # Cluster-prefixed paths: /{panel}/{cluster}/{resource}/...
+        cluster_match = None
+        for cluster in self.get_clusters() or []:
+            if cluster.get_slug() == slug:
+                cluster_match = cluster
+                break
+        if cluster_match is None:
+            # Also detect clusters implied by resource/page membership.
+            for obj in list(self._resources) + list(self._pages):
+                cluster = self._resolve_cluster(obj)
+                if isinstance(cluster, type) and cluster.get_slug() == slug:
+                    cluster_match = cluster
+                    if cluster not in self._clusters:
+                        self._clusters.append(cluster)
+                    break
+
+        if cluster_match is not None:
+            cluster_url = self.url(cluster_match.get_slug())
+            # Prefer first member URL for the cluster breadcrumb link.
+            members = self._cluster_members(cluster_match)
+            if members:
+                cluster_url = self._member_url(members[0])
+            crumbs.append(
+                {
+                    "label": cluster_match.get_cluster_breadcrumb()
+                    if hasattr(cluster_match, "get_cluster_breadcrumb")
+                    else cluster_match.get_navigation_label(),
+                    "url": cluster_url,
+                }
+            )
+            segments = segments[1:]
+            if not segments:
+                crumbs[-1]["url"] = None
+                return crumbs
+            slug = segments[0]
+
         resource = next(
             (r for r in self._resources if getattr(r, "get_slug", lambda: "")() == slug),
             None,
@@ -937,7 +1494,7 @@ class Panel:
 
         if resource is not None:
             label = resource.get_navigation_label()
-            index_url = self.url(slug)
+            index_url = self._member_url(resource)
             crumbs.append({"label": label, "url": index_url})
             if len(segments) == 1:
                 crumbs[-1]["url"] = None
@@ -1017,23 +1574,109 @@ class Panel:
         name_html = f'<span class="or-brand-name">{name}</span>' if show_name else ""
         return f'<a class="{classes}" href="{home}">{logo}{name_html}</a>'
 
-    def _nav_group(self, label: str) -> str:
+    def _nav_group(
+        self,
+        label: str,
+        *,
+        group: NavigationGroup | None = None,
+        children_html: str = "",
+        open: bool = True,
+    ) -> str:
         tip = e(label)
+        extra = ""
+        if group is not None:
+            extra = attrs_to_html(group.get_extra_sidebar_attributes())
+        collapsible = self._collapsible_navigation_groups
+        collapsed = False
+        if group is not None:
+            collapsible = group.is_collapsible() and self._collapsible_navigation_groups
+            collapsed = group.is_collapsed()
+        if collapsible and children_html:
+            open_js = "false" if collapsed and not open else ("true" if open or not collapsed else "false")
+            if open:
+                open_js = "true"
+            return (
+                f'<div class="or-nav-group or-nav-group-collapsible" data-tooltip="{tip}" '
+                f'x-data="{{ open: {open_js} }}"{extra}>'
+                f'<button type="button" class="or-nav-group-trigger" @click="open = !open" '
+                f':aria-expanded="open.toString()">'
+                f'<span class="or-nav-group-label">{tip}</span>'
+                f'{render_icon("heroicon-o-chevron-down", size=14, css_class="or-icon or-nav-group-chevron")}'
+                f"</button>"
+                f'<div class="or-nav-group-panel" x-show="open" x-cloak>{children_html}</div>'
+                f"</div>"
+            )
         return (
-            f'<div class="or-nav-group" data-tooltip="{tip}" role="presentation">'
+            f'<div class="or-nav-group" data-tooltip="{tip}" role="presentation"{extra}>'
             f'<span class="or-nav-group-label">{tip}</span>'
             f'<span class="or-nav-group-mark" aria-hidden="true"></span>'
             f"</div>"
+            f"{children_html}"
         )
 
-    def _nav_link(self, href: str, label: str, icon: str | None, *, active: bool = False) -> str:
-        ic = render_icon(icon) if icon else ""
+    def _nav_badge(
+        self,
+        badge: str | None,
+        *,
+        color: str | None = None,
+        tooltip: str | None = None,
+    ) -> str:
+        if not badge:
+            return ""
+        color_cls = f" or-nav-badge-{e(color)}" if color else ""
+        tip = f' title="{e(tooltip)}"' if tooltip else ""
+        return f'<span class="or-nav-badge{color_cls}"{tip}>{e(badge)}</span>'
+
+    def _nav_link(
+        self,
+        href: str,
+        label: str,
+        icon: str | None,
+        *,
+        active: bool = False,
+        active_icon: str | None = None,
+        badge: str | None = None,
+        badge_color: str | None = None,
+        badge_tooltip: str | None = None,
+        open_in_new_tab: bool = False,
+        children: list[dict[str, Any]] | None = None,
+        nested: bool = False,
+    ) -> str:
+        display_icon = active_icon if active and active_icon else icon
+        ic = render_icon(display_icon) if display_icon else ""
         active_cls = " is-active" if active else ""
+        nested_cls = " or-nav-link-nested" if nested else ""
         tip = e(label)
-        return (
-            f'<a class="or-nav-link{active_cls}" href="{e(href)}" '
+        target = ' target="_blank" rel="noopener noreferrer"' if open_in_new_tab else ""
+        badge_html = self._nav_badge(badge, color=badge_color, tooltip=badge_tooltip)
+        link = (
+            f'<a class="or-nav-link{active_cls}{nested_cls}" href="{e(href)}"{target} '
             f'data-tooltip="{tip}" @click="closeDrawer()">'
-            f"{ic}<span>{tip}</span></a>"
+            f"{ic}<span>{tip}</span>{badge_html}</a>"
+        )
+        if not children:
+            return link
+        child_html = "".join(
+            self._nav_link(
+                str(c.get("url") or "#"),
+                str(c.get("label") or ""),
+                c.get("icon"),
+                active=bool(c.get("active")),
+                active_icon=c.get("active_icon"),
+                badge=c.get("badge"),
+                badge_color=c.get("badge_color"),
+                badge_tooltip=c.get("badge_tooltip"),
+                open_in_new_tab=bool(c.get("open_in_new_tab")),
+                children=c.get("children") or None,
+                nested=True,
+            )
+            for c in children
+        )
+        parent_active = active or any(c.get("active") for c in children)
+        return (
+            f'<div class="or-nav-parent{" is-active" if parent_active else ""}">'
+            f"{link}"
+            f'<div class="or-nav-children">{child_html}</div></div>'
         )
 
     def _nav_accordion(self, label: str, icon: str | None, children_html: str, *, open: bool) -> str:
@@ -1054,10 +1697,14 @@ class Panel:
 
     def _render_flat_nav_tree(self, items: list[dict[str, Any]]) -> str:
         """Sidebar tree: group labels + optional subgroup accordions + links."""
-        grouped = group_items(list(items))
+        nested = nest_parent_items(list(items))
+        grouped = group_items(nested)
         named = [g for g in grouped if g is not None]
         named.sort(
             key=lambda g: (
+                self._nav_group_order.index(g)
+                if g in self._nav_group_order
+                else len(self._nav_group_order),
                 self._nav_groups[g]._sort
                 if g in self._nav_groups
                 else min(int(m.get("sort") or 0) for m in grouped[g]),
@@ -1068,8 +1715,7 @@ class Panel:
         parts: list[str] = []
         for key in ordered:
             members = grouped[key]
-            if key:
-                parts.append(self._nav_group(str(key)))
+            group_meta = self._nav_groups.get(str(key)) if key else None
             secondary = build_menu_secondary(
                 members,
                 active_url=next(
@@ -1079,7 +1725,11 @@ class Panel:
                 subgroup_meta=self._nav_subgroups,
                 parent_group=key,
             )
+            group_children: list[str] = []
+            group_has_active = False
             for entry in secondary:
+                matching = next((m for m in members if m.get("label") == entry.label), None)
+                nested_children = (matching or {}).get("children") or []
                 if entry.children:
                     children = "".join(
                         self._nav_link(
@@ -1087,10 +1737,15 @@ class Panel:
                             c.label,
                             c.icon,
                             active=c.active,
+                            active_icon=getattr(c, "active_icon", None),
+                            badge=getattr(c, "badge", None),
+                            badge_color=getattr(c, "badge_color", None),
+                            badge_tooltip=getattr(c, "badge_tooltip", None),
+                            open_in_new_tab=getattr(c, "open_in_new_tab", False),
                         )
                         for c in entry.children
                     )
-                    parts.append(
+                    group_children.append(
                         self._nav_accordion(
                             entry.label,
                             entry.icon,
@@ -1098,16 +1753,69 @@ class Panel:
                             open=entry.active or any(c.active for c in entry.children),
                         )
                     )
+                    if entry.active or any(c.active for c in entry.children):
+                        group_has_active = True
                 else:
-                    parts.append(
-                        self._nav_link(
-                            entry.href or "#",
-                            entry.label,
-                            entry.icon,
-                            active=entry.active,
-                        )
+                    link = self._nav_link(
+                        entry.href or "#",
+                        entry.label,
+                        entry.icon,
+                        active=entry.active,
+                        active_icon=getattr(entry, "active_icon", None),
+                        badge=getattr(entry, "badge", None),
+                        badge_color=getattr(entry, "badge_color", None),
+                        badge_tooltip=getattr(entry, "badge_tooltip", None),
+                        open_in_new_tab=getattr(entry, "open_in_new_tab", False),
+                        children=nested_children or None,
                     )
+                    group_children.append(link)
+                    if entry.active or any(c.get("active") for c in nested_children):
+                        group_has_active = True
+            children_html = "".join(group_children)
+            if key:
+                parts.append(
+                    self._nav_group(
+                        str(key),
+                        group=group_meta,
+                        children_html=children_html,
+                        open=group_has_active,
+                    )
+                )
+            else:
+                parts.append(children_html)
         return "".join(parts)
+
+    def _render_cluster_sub_nav(
+        self, cluster: type[Any] | None, items: list[dict[str, Any]]
+    ) -> str:
+        if cluster is None or not items:
+            return ""
+        should = True
+        getter = getattr(cluster, "get_should_register_sub_navigation", None)
+        if callable(getter):
+            should = bool(getter())
+        else:
+            should = bool(getattr(cluster, "should_register_sub_navigation", True))
+        if not should:
+            return ""
+        position = getattr(cluster, "sub_navigation_position", "start")
+        links = "".join(
+            self._nav_link(
+                str(i.get("url") or "#"),
+                str(i.get("label") or ""),
+                i.get("icon"),
+                active=bool(i.get("active")),
+                active_icon=i.get("active_icon"),
+                badge=i.get("badge"),
+                badge_color=i.get("badge_color"),
+                badge_tooltip=i.get("badge_tooltip"),
+            )
+            for i in items
+        )
+        return (
+            f'<nav class="or-cluster-nav or-cluster-nav-{e(position)}" '
+            f'aria-label="{e(cluster.get_navigation_label())}">{links}</nav>'
+        )
 
     def _render_sidebar(self, ctx: Any, collapsible: bool, *, user: Any = None) -> str:
         layout = normalize_nav_layout(ctx.layout)
@@ -1180,22 +1888,54 @@ class Panel:
         layout = normalize_nav_layout(ctx.layout)
         secondary = []
         for item in ctx.menu_secondary:
-            item_icon = render_icon(item.icon) if getattr(item, "icon", None) else ""
+            item_icon_name = (
+                item.active_icon if item.active and getattr(item, "active_icon", None) else item.icon
+            )
+            item_icon = render_icon(item_icon_name) if item_icon_name else ""
+            badge = self._nav_badge(
+                getattr(item, "badge", None),
+                color=getattr(item, "badge_color", None),
+                tooltip=getattr(item, "badge_tooltip", None),
+            )
+            target = (
+                ' target="_blank" rel="noopener noreferrer"'
+                if getattr(item, "open_in_new_tab", False)
+                else ""
+            )
             if item.children:
-                children = "".join(
-                    (
-                        f'<a class="or-topnav-child{" is-active" if c.active else ""}" '
-                        f'href="{e(c.href)}">'
-                        f'{render_icon(c.icon) if c.icon else ""}'
-                        f"<span>{e(c.label)}</span></a>"
+                child_bits: list[str] = []
+                for c in item.children:
+                    child_active = " is-active" if c.active else ""
+                    child_target = (
+                        ' target="_blank" rel="noopener noreferrer"'
+                        if getattr(c, "open_in_new_tab", False)
+                        else ""
                     )
-                    for c in item.children
-                )
+                    child_icon_name = (
+                        c.active_icon
+                        if c.active and getattr(c, "active_icon", None)
+                        else c.icon
+                    )
+                    child_icon = render_icon(child_icon_name) if child_icon_name else ""
+                    child_badge = self._nav_badge(
+                        getattr(c, "badge", None),
+                        color=getattr(c, "badge_color", None),
+                        tooltip=getattr(c, "badge_tooltip", None),
+                    )
+                    child_bits.append(
+                        f'<a class="or-topnav-child{child_active}" href="{e(c.href)}"{child_target}>'
+                        f"{child_icon}<span>{e(c.label)}</span>{child_badge}</a>"
+                    )
+                children = "".join(child_bits)
+                extra = ""
+                group_meta = self._nav_groups.get(item.label)
+                if group_meta is not None:
+                    extra = attrs_to_html(group_meta.get_extra_topbar_attributes())
                 secondary.append(
                     f'<div class="or-topnav-dropdown{" is-active" if item.active else ""}" '
-                    f'x-data="{{ open: false }}" @click.outside="open = false">'
+                    f'x-data="{{ open: false }}" @click.outside="open = false"{extra}>'
                     f'<button type="button" class="or-topnav-link" @click="open = !open">'
-                    f"{item_icon}<span>{e(item.label)}</span>"
+                    f"{item_icon}<span>{e(item.label)}</span>{badge}"
                     f"{render_icon('heroicon-o-chevron-down', size=14, css_class='or-icon or-topnav-chevron')}"
                     f"</button>"
                     f'<div class="or-topnav-menu" x-show="open" x-cloak>{children}</div></div>'
@@ -1204,8 +1944,8 @@ class Panel:
                 active = " is-active" if item.active else ""
                 href = e(item.href or "#")
                 secondary.append(
-                    f'<a class="or-topnav-link{active}" href="{href}">'
-                    f"{item_icon}<span>{e(item.label)}</span></a>"
+                    f'<a class="or-topnav-link{active}" href="{href}"{target}>'
+                    f"{item_icon}<span>{e(item.label)}</span>{badge}</a>"
                 )
 
         start_bits: list[str] = []
@@ -1242,6 +1982,77 @@ class Panel:
             f"      {active_root}\n"
             f'      <div class="or-topbar-end">{end_chrome}{end_hook}</div>\n'
             "    </header>\n"
+        )
+
+    def _render_user_menu_items_html(self, *, user: Any = None) -> str:
+        items = [dict(i) for i in self._user_menu_items if i.get("visible", True)]
+
+        # Filament-style special keys registered via ``user_menu_items({"profile": …})``.
+        if "profile" in self._user_menu_specials:
+            profile = dict(self._user_menu_specials["profile"])
+            if profile.get("visible", True) and not any(i.get("name") == "profile" for i in items):
+                items.insert(0, profile)
+
+        has_logout = any(i.get("name") == "logout" for i in items)
+        if "logout" in self._user_menu_specials:
+            logout = dict(self._user_menu_specials["logout"])
+            if logout.get("visible", True) and not has_logout:
+                items.append(logout)
+                has_logout = True
+        if not has_logout:
+            items.append(
+                {
+                    "name": "logout",
+                    "label": "Sign out",
+                    "url": self.url("logout"),
+                    "icon": "heroicon-o-arrow-left-on-rectangle",
+                    "sort": 1000,
+                    "group": "__logout__",
+                    "post_to_url": False,
+                    "visible": True,
+                }
+            )
+
+        items.sort(key=lambda i: (i.get("sort") or 0, i.get("label") or ""))
+        parts: list[str] = []
+        last_group: Any = object()
+        for item in items:
+            group = item.get("group")
+            if last_group is not object() and group != last_group:
+                parts.append('<div class="or-user-menu-divider" role="separator"></div>')
+            last_group = group
+            icon = render_icon(item["icon"]) if item.get("icon") else ""
+            label = e(str(item.get("label") or ""))
+            url = e(str(item.get("url") or "#"))
+            if item.get("post_to_url"):
+                parts.append(
+                    f'<form class="or-user-menu-form" method="post" action="{url}">'
+                    f'<button type="submit" class="or-user-menu-item">{icon}<span>{label}</span></button>'
+                    f"</form>"
+                )
+            else:
+                parts.append(
+                    f'<a class="or-user-menu-item" href="{url}">{icon}<span>{label}</span></a>'
+                )
+        return "".join(parts)
+
+    def _render_user_menu(self, *, user: Any = None, placement: str = "topbar") -> str:
+        if not self._user_menu_enabled or user is None:
+            return ""
+        name = str(getattr(user, "name", None) or getattr(user, "email", None) or "User")
+        initials = "".join(p[:1] for p in name.split()[:2]).upper() or "U"
+        menu_html = self._render_user_menu_items_html(user=user)
+        return (
+            f'<div class="or-user-menu or-user-menu-{e(placement)}" '
+            f'x-data="{{ open: false }}" @click.outside="open = false">'
+            '<button type="button" class="or-user-menu-btn" @click="open = !open">'
+            f'<span class="or-avatar" aria-hidden="true">{e(initials)}</span>'
+            f'<span class="or-user-name">{e(name)}</span>'
+            f"{render_icon('heroicon-o-chevron-down', size=14, css_class='or-icon or-user-chevron')}"
+            f"</button>"
+            '<div class="or-user-menu-panel" x-show="open" x-cloak role="menu">'
+            f"{menu_html}"
+            "</div></div>"
         )
 
     def _render_topbar_end(self, *, user: Any = None) -> str:
@@ -1286,28 +2097,13 @@ class Panel:
             )
 
         parts.append(render_hook("panels::user-menu.before", scope=scope, user=user))
-        if user is not None:
-            name = str(getattr(user, "name", None) or getattr(user, "email", None) or "User")
-            initials = "".join(p[:1] for p in name.split()[:2]).upper() or "U"
-            menu_items = list(self._user_menu_items)
-            menu_html = "".join(
-                f'<a class="or-user-menu-item" href="{e(i.get("url") or "#")}">'
-                f'{e(i.get("label") or "")}</a>'
-                for i in menu_items
-            )
-            logout = e(self.url("logout"))
-            parts.append(
-                '<div class="or-user-menu" x-data="{ open: false }" @click.outside="open = false">'
-                '<button type="button" class="or-user-menu-btn" @click="open = !open">'
-                f'<span class="or-avatar" aria-hidden="true">{e(initials)}</span>'
-                f'<span class="or-user-name">{e(name)}</span>'
-                f"{render_icon('heroicon-o-chevron-down', size=14, css_class='or-icon or-user-chevron')}"
-                f"</button>"
-                '<div class="or-user-menu-panel" x-show="open" x-cloak role="menu">'
-                f"{menu_html}"
-                f'<a class="or-user-menu-item" href="{logout}">Sign out</a>'
-                "</div></div>"
-            )
+        if (
+            self._user_menu_enabled
+            and user is not None
+            and self._user_menu_position == "topbar"
+            and self._topbar_enabled
+        ):
+            parts.append(self._render_user_menu(user=user, placement="topbar"))
         parts.append(render_hook("panels::user-menu.after", scope=scope, user=user))
         return "".join(parts)
 

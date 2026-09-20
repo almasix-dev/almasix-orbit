@@ -18,6 +18,8 @@ class Cluster(Component):
     navigation_sort: ClassVar[int] = 0
     slug: ClassVar[str | None] = None
     sub_navigation_position: ClassVar[SubNavPosition] = "start"
+    should_register_sub_navigation: ClassVar[bool] = True
+    cluster_breadcrumb: ClassVar[str | None] = None
 
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
@@ -40,6 +42,18 @@ class Cluster(Component):
     def get_navigation_label(cls) -> str:
         return cls.navigation_label or cls.get_slug().replace("_", " ").title()
 
+    @classmethod
+    def get_navigation_icon(cls) -> str | None:
+        return cls.navigation_icon
+
+    @classmethod
+    def get_cluster_breadcrumb(cls) -> str:
+        return cls.cluster_breadcrumb or cls.get_navigation_label()
+
+    @classmethod
+    def get_should_register_sub_navigation(cls, **_ctx: Any) -> bool:
+        return bool(cls.should_register_sub_navigation)
+
     def resources(self, resources: list[type[Any]]) -> Self:
         self._resources = list(resources)
         return self
@@ -53,7 +67,7 @@ class Cluster(Component):
         return self
 
     def get_breadcrumb(self) -> str:
-        return self._breadcrumb or self.get_navigation_label()
+        return self._breadcrumb or type(self).get_cluster_breadcrumb()
 
     def get_resources(self) -> list[type[Any]]:
         return list(self._resources)
@@ -61,5 +75,6 @@ class Cluster(Component):
     def get_pages(self) -> list[type[Any]]:
         return list(self._pages)
 
-    def path_prefix(self) -> str:
-        return f"/{self.get_slug()}"
+    @classmethod
+    def path_prefix(cls) -> str:
+        return f"/{cls.get_slug()}"
