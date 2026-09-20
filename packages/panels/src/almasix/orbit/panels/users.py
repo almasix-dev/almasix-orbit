@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, Self
+
+from almasix.orbit.support.evaluate import evaluate
 
 
 class _FluentStr:
@@ -108,12 +111,18 @@ class OrbitUser:
 
 
 class UserMenuItem:
-    """Fluent topbar user-menu link."""
+    """Fluent topbar/sidebar user-menu link."""
 
     def __init__(self, name: str | None = None) -> None:
         self._name = name
         self._label: str = (name or "Item").replace("_", " ").title()
         self._url: str = "#"
+        self._icon: str | None = None
+        self._sort: int = 0
+        self._group: str | None = None
+        self._visible: bool | Callable[..., bool] = True
+        self._hidden: bool = False
+        self._post_to_url: bool = False
 
     @classmethod
     def make(cls, name: str | None = None) -> Self:
@@ -127,8 +136,47 @@ class UserMenuItem:
         self._url = value
         return self
 
-    def to_dict(self) -> dict[str, str]:
-        return {"label": self._label, "url": self._url}
+    def icon(self, name: str | None) -> Self:
+        self._icon = name
+        return self
+
+    def sort(self, value: int) -> Self:
+        self._sort = value
+        return self
+
+    def group(self, name: str | None) -> Self:
+        self._group = name
+        return self
+
+    def visible(self, condition: bool | Callable[..., bool] = True) -> Self:
+        self._visible = condition
+        return self
+
+    def hidden(self, condition: bool = True) -> Self:
+        self._hidden = bool(condition)
+        return self
+
+    def post_to_url(self, condition: bool = True) -> Self:
+        """Render as a POST form (logout-style) instead of a GET link."""
+        self._post_to_url = bool(condition)
+        return self
+
+    def is_visible(self, **ctx: Any) -> bool:
+        if self._hidden:
+            return False
+        return bool(evaluate(self._visible, **ctx))
+
+    def to_dict(self, **ctx: Any) -> dict[str, Any]:
+        return {
+            "name": self._name,
+            "label": self._label,
+            "url": self._url,
+            "icon": self._icon,
+            "sort": self._sort,
+            "group": self._group,
+            "post_to_url": self._post_to_url,
+            "visible": self.is_visible(**ctx),
+        }
 
 
 class PanelNotification:

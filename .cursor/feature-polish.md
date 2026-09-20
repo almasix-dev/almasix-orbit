@@ -11,28 +11,22 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 31–65 | Forms module | `docs/src/content/docs/forms/*` | **closed** |
 | 66–74 | Infolists module | `docs/src/content/docs/infolists/*` | **closed** |
 | 75–86 | Actions module | `docs/src/content/docs/actions/*` | **closed** |
-| 87 | Widgets overview | `docs/src/content/docs/widgets/overview.md` | **closed** |
-| 88 | Stats overview | `docs/src/content/docs/widgets/stats-overview.md` | **closed** |
-| 89 | Chart widgets | `docs/src/content/docs/widgets/charts.md` | **closed** |
-| 90 | Table widgets | `docs/src/content/docs/widgets/tables.md` | **closed** |
-| 91 | Dashboard / Home | `docs/src/content/docs/panels/dashboard.md` | **closed** |
-| 92+ | Remaining Orbit doc features | docs nav | queued |
+| 87–91 | Widgets + Dashboard | `docs/src/content/docs/widgets/*`, `panels/dashboard.md` | **closed** |
+| 92 | Navigation overview | `docs/src/content/docs/navigation/overview.md` | **closed** |
+| 93 | Custom pages | `docs/src/content/docs/navigation/custom-pages.md` | **closed** |
+| 94 | User menu | `docs/src/content/docs/navigation/user-menu.md` | **closed** |
+| 95 | Clusters | `docs/src/content/docs/navigation/clusters.md` | **closed** |
+| 96+ | Remaining Orbit doc features | docs nav | queued |
 
-## Widgets + Dashboard autopilot — closed
+## Navigation autopilot — closed
 
-**Bar:** 100% Filament 5 Widgets + Dashboard parity (API + UX + DX), Chart.js **or** ApexCharts selectable on chart widgets, Filament-depth docs + light/dark screenshots, 100% test coverage, orbit-admin sample.
+**Bar:** 100% Filament 5 Navigation parity (API + UX + DX), Filament-depth docs + light/dark screenshots, 100% coverage on touched surface, orbit-admin sample.
 
 ### Delivered
 
-- Dashboard mount pipeline (panel widgets → home grid)
-- Widget class API (sort / span / can_view / polling / lazy)
-- Fluent Stat + sparklines (`orbitSparkline`)
-- ChartWidget dual libraries (Chart.js default + ApexCharts via `.chart_library`)
-- TableWidget + custom widgets
-- Dashboard filters / columns / multi-dashboard `route_path`
-- Docs pages + gallery shots (light/dark)
-- orbit-admin home Dashboard sample (stats, Chart.js, Apex, table, custom)
-
-## Next
-
-Open the next queued feature only after confirming 87–91 stay closed.
+- Overview: layouts, groups, subgroups, badges, parent items, custom items, builder, sidebar collapse/width
+- Custom pages: nav knobs + `can_access` / `should_register_navigation`
+- User menu: `UserMenuItem` depth, groups, profile/logout, disable, position
+- Clusters: discover/register, `$cluster`, sub-nav positions, URL prefix, breadcrumbs
+- Gallery: `build_navigation_variants` + `capture-navigation.mjs` → `docs/public/examples/{light,dark}/navigation/`
+- orbit-admin: focused Navigation showcase (badges, subgroup/parent, custom item, user menu, small cluster)

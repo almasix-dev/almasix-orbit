@@ -12,7 +12,10 @@ A straight inventory of what ships today. For narrative guides, start at [Quick 
 - Default create / view / edit / delete (and bulk delete) actions
 - Pages and relation managers
 - Permission helpers (`view_any`, `view`, `create`, `update`, `delete`)
-- Navigation items with groups, icons, and sort
+- Navigation layouts (`apps` / sidebar / top), groups, subgroups, badges, parent items
+- Custom `NavigationItem`, `NavigationBuilder`, sidebar collapse / widths
+- User menu items with groups, profile / logout specials, sidebar position
+- Clusters with URL prefix, sub-navigation positions, and breadcrumbs
 - `render_shell` HTML chrome with vendor assets
 - `PanelRegistry` singleton via `OrbitServiceProvider`
 - `LiveResource` test helper
@@ -71,6 +74,16 @@ See [Infolists overview](/infolists/overview/).
 - Panel home [Dashboard](/panels/dashboard/) — columns, filters, multi-dashboard `route_path`
 
 See [Widgets overview](/widgets/overview/).
+
+## Navigation
+
+- Sorted nav from resources, pages, clusters, and custom items
+- Layout modes: sidebar, top, and Shamar-style `apps` (sidebar roots + topbar secondary)
+- Groups / subgroups, badges, active icons, parent items, builder override
+- User menu with icons, groups, profile / logout hooks, topbar or sidebar
+- Clusters: discover/register, sub-nav `start` / `end` / `top`, breadcrumbs
+
+See [Navigation overview](/navigation/overview/).
 
 ## Query builder & support
 

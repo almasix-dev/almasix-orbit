@@ -90,7 +90,18 @@ from almasix.orbit.widgets import (
     TableWidget,
     Widget,
 )
+from almasix.orbit.panels.cluster import Cluster
+from almasix.orbit.panels.navigation import (
+    NavigationGroup,
+    NavigationItem,
+    NavigationSubgroup,
+    normalize_nav_layout,
+)
+from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.pages.dashboard import Dashboard
+from almasix.orbit.panels.panel import Panel
+from almasix.orbit.panels.resource import Resource
+from almasix.orbit.panels.users import OrbitUser, UserMenuItem
 
 
 class _Status(Enum):
@@ -2927,5 +2938,538 @@ def build_widget_variants() -> dict[str, tuple[str, str]]:
                 '<h1 class="or-page-title">Analytics</h1>',
                 1,
             ),
+        ),
+    }
+
+
+# --- Navigation gallery helpers -------------------------------------------------
+
+
+class _GalleryPostResource(Resource):
+    slug = "posts"
+    navigation_label = "Posts"
+    navigation_icon = "heroicon-o-document-text"
+    navigation_group = "Content"
+    navigation_sort = 10
+    navigation_subgroup = "Writing"
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return table.columns([TextColumn.make("title")])
+
+    @classmethod
+    def get_records(cls):
+        return [{"id": 1, "title": "Hello"}]
+
+
+class _GalleryPageResource(Resource):
+    slug = "pages"
+    navigation_label = "Pages"
+    navigation_icon = "heroicon-o-document"
+    navigation_group = "Content"
+    navigation_sort = 20
+    navigation_subgroup = "Writing"
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return table.columns([TextColumn.make("title")])
+
+    @classmethod
+    def get_records(cls):
+        return []
+
+
+class _GalleryInboxResource(Resource):
+    slug = "inbox"
+    navigation_label = "Inbox"
+    navigation_icon = "heroicon-o-inbox"
+    active_navigation_icon = "heroicon-s-inbox"
+    navigation_group = "Content"
+    navigation_sort = 5
+    navigation_badge = "3"
+    navigation_badge_color = "danger"
+    navigation_badge_tooltip = "Unread"
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return table.columns([TextColumn.make("title")])
+
+    @classmethod
+    def get_records(cls):
+        return []
+
+
+class _GalleryAuthorResource(Resource):
+    slug = "authors"
+    navigation_label = "Authors"
+    navigation_icon = "heroicon-o-users"
+    navigation_group = "People"
+    navigation_sort = 10
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return table.columns([TextColumn.make("name")])
+
+    @classmethod
+    def get_records(cls):
+        return []
+
+
+class _GallerySettingsPage(Page):
+    slug = "settings"
+    navigation_label = "Settings"
+    navigation_icon = "heroicon-o-cog-6-tooth"
+    navigation_group = "System"
+    navigation_sort = 10
+
+
+class _GalleryPreferencesPage(Page):
+    slug = "preferences"
+    navigation_label = "Preferences"
+    navigation_group = "System"
+    navigation_parent_item = "Settings"
+    navigation_sort = 11
+
+
+class _GalleryReportsPage(Page):
+    slug = "reports"
+    title = "Reports"
+    navigation_label = "Reports"
+    navigation_icon = "heroicon-o-chart-bar"
+    navigation_group = "Content"
+    navigation_subgroup = "Insights"
+    navigation_sort = 40
+    navigation_badge = "Live"
+    navigation_badge_color = "success"
+
+
+class _GallerySettingsCluster(Cluster):
+    navigation_icon = "heroicon-o-cog-6-tooth"
+    navigation_label = "Settings Hub"
+    navigation_group = "Platform"
+    navigation_sort = 5
+    slug = "settings"
+    sub_navigation_position = "start"
+    cluster_breadcrumb = "Settings"
+
+
+class _GalleryColorResource(Resource):
+    slug = "colors"
+    navigation_label = "Colors"
+    navigation_icon = "heroicon-o-swatch"
+    cluster = _GallerySettingsCluster
+    navigation_sort = 1
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return table.columns([TextColumn.make("name")])
+
+    @classmethod
+    def get_records(cls):
+        return [{"id": 1, "name": "Primary"}]
+
+
+class _GalleryFontResource(Resource):
+    slug = "fonts"
+    navigation_label = "Fonts"
+    navigation_icon = "heroicon-o-language"
+    cluster = _GallerySettingsCluster
+    navigation_sort = 2
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return table.columns([TextColumn.make("name")])
+
+    @classmethod
+    def get_records(cls):
+        return []
+
+
+def _nav_placeholder(title: str = "Posts") -> str:
+    return (
+        f'<div class="or-page"><h1 class="or-page-title">{title}</h1>'
+        '<p class="or-muted">Navigation gallery content.</p></div>'
+    )
+
+
+def _nav_shell(
+    panel: Panel,
+    content: str | None = None,
+    *,
+    active_path: str | None = None,
+    user: OrbitUser | None = None,
+) -> str:
+    """Panel chrome fragment for navigation screenshots (no full HTML document)."""
+    layout = normalize_nav_layout(panel._navigation_layout)
+    ctx = panel.menu_layout_context(active_path=active_path, user=user)
+    show_sidebar = panel._navigation_enabled and layout != "top"
+    show_topbar = panel._topbar_enabled
+    sidebar = (
+        panel._render_sidebar(ctx, panel._sidebar_collapsible, user=user) if show_sidebar else ""
+    )
+    topbar = (
+        panel._render_topbar(ctx, user=user, collapsible=panel._sidebar_collapsible)
+        if show_topbar
+        else ""
+    )
+    if (
+        user is not None
+        and panel._user_menu_enabled
+        and show_sidebar
+        and (panel._user_menu_position == "sidebar" or not show_topbar)
+    ):
+        sidebar = sidebar.replace(
+            "</aside>",
+            f'{panel._render_user_menu(user=user, placement="sidebar")}</aside>',
+            1,
+        )
+    cluster, cluster_items = panel.collect_cluster_sub_navigation(active_path, user=user)
+    cluster_nav = panel._render_cluster_sub_nav(cluster, cluster_items)
+    breadcrumbs = panel._render_breadcrumbs(active_path)
+    body = content if content is not None else _nav_placeholder()
+    if cluster_nav:
+        position = getattr(cluster, "sub_navigation_position", "start")
+        if position == "top":
+            body = (
+                '<div class="or-cluster-layout or-cluster-layout-top">'
+                f"{cluster_nav}<div class=\"or-cluster-body\">{body}</div></div>"
+            )
+        elif position == "end":
+            body = (
+                '<div class="or-cluster-layout or-cluster-layout-end">'
+                f'<div class="or-cluster-body">{body}</div>{cluster_nav}</div>'
+            )
+        else:
+            body = (
+                '<div class="or-cluster-layout or-cluster-layout-start">'
+                f"{cluster_nav}<div class=\"or-cluster-body\">{body}</div></div>"
+            )
+    app_class = "or-app or-shot-shell"
+    if layout == "sidebar_topbar":
+        app_class += " or-app-split or-app-apps"
+    elif layout == "top":
+        app_class += " or-app-top"
+    elif layout == "sidebar":
+        app_class += " or-app-sidebar"
+    if not show_sidebar:
+        app_class += " or-app-no-sidebar"
+    return (
+        f'<div class="{app_class}" x-data="{{ sidebarOpen: true, collapsed: false }}">'
+        f"{sidebar}"
+        f'<div class="or-main">{topbar}{breadcrumbs}'
+        f'<main class="or-content">{body}</main></div></div>'
+    )
+
+
+def _nav_demo_panel(*, layout: str = "apps") -> Panel:
+    return (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .navigation_layout(layout)  # type: ignore[arg-type]
+        .sidebar_collapsible()
+        .dashboard(False)
+        .navigation_groups(
+            [
+                NavigationGroup.make("Content")
+                .icon("heroicon-o-document-text")
+                .sort(10),
+                NavigationGroup.make("People").icon("heroicon-o-users").sort(20),
+                NavigationGroup.make("System")
+                .icon("heroicon-o-cog-6-tooth")
+                .sort(30),
+                NavigationGroup.make("Platform")
+                .icon("heroicon-o-squares-2x2")
+                .sort(40),
+            ]
+        )
+        .navigation_subgroups(
+            [
+                NavigationSubgroup.make("Writing")
+                .parent("Content")
+                .icon("heroicon-o-pencil-square")
+                .sort(5),
+                NavigationSubgroup.make("Insights")
+                .parent("Content")
+                .icon("heroicon-o-chart-bar")
+                .sort(10),
+            ]
+        )
+        .navigation_items(
+            [
+                NavigationItem.make("docs")
+                .label("Docs")
+                .url("https://orbit.almasix.com")
+                .icon("heroicon-o-book-open")
+                .group("Content")
+                .sort(100)
+                .open_url_in_new_tab(),
+            ]
+        )
+        .resources(
+            [
+                _GalleryInboxResource,
+                _GalleryPostResource,
+                _GalleryPageResource,
+                _GalleryAuthorResource,
+            ]
+        )
+        .pages([_GallerySettingsPage, _GalleryPreferencesPage, _GalleryReportsPage])
+        .default_user()
+    )
+
+
+def build_navigation_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for navigation / user-menu / cluster shots."""
+    user = OrbitUser.default()
+    apps = _nav_demo_panel(layout="apps")
+    sidebar = _nav_demo_panel(layout="sidebar")
+    top = _nav_demo_panel(layout="top")
+
+    badges_panel = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .apps_navigation()
+        .dashboard(False)
+        .navigation_group(
+            NavigationGroup.make("Content").icon("heroicon-o-document-text").sort(10)
+        )
+        .resources([_GalleryInboxResource, _GalleryPostResource])
+        .pages([_GalleryReportsPage])
+        .default_user()
+    )
+
+    parent_panel = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .sidebar_navigation()
+        .dashboard(False)
+        .navigation_group(
+            NavigationGroup.make("System").icon("heroicon-o-cog-6-tooth").sort(10)
+        )
+        .pages([_GallerySettingsPage, _GalleryPreferencesPage])
+        .default_user()
+    )
+
+    custom_panel = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .apps_navigation()
+        .dashboard(False)
+        .navigation_group(
+            NavigationGroup.make("Content").icon("heroicon-o-document-text").sort(10)
+        )
+        .navigation_items(
+            [
+                NavigationItem.make("docs")
+                .label("External docs")
+                .url("https://orbit.almasix.com")
+                .icon("heroicon-o-book-open")
+                .group("Content")
+                .sort(50)
+                .open_url_in_new_tab()
+                .badge("Ext", color="info"),
+            ]
+        )
+        .resources([_GalleryPostResource])
+        .default_user()
+    )
+
+    pages_panel = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .apps_navigation()
+        .dashboard(False)
+        .navigation_group(
+            NavigationGroup.make("Content").icon("heroicon-o-document-text").sort(10)
+        )
+        .pages([_GalleryReportsPage, _GallerySettingsPage])
+        .default_user()
+    )
+
+    user_menu_panel = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .apps_navigation()
+        .dashboard(False)
+        .resources([_GalleryPostResource])
+        .user_menu_items(
+            [
+                UserMenuItem.make("settings")
+                .label("Settings")
+                .url("/admin/settings")
+                .icon("heroicon-o-cog-6-tooth")
+                .group("Account")
+                .sort(10),
+                UserMenuItem.make("docs")
+                .label("Documentation")
+                .url("https://orbit.almasix.com")
+                .icon("heroicon-o-book-open")
+                .group("Help")
+                .sort(20),
+            ]
+        )
+        .user_menu_items(
+            {
+                "profile": lambda item: item.label("Edit profile")
+                .url("/admin/profile")
+                .icon("heroicon-o-user-circle"),
+                "logout": lambda item: item.label("Sign out").post_to_url(),
+            }
+        )
+        .default_user()
+    )
+
+    user_menu_sidebar = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .sidebar_navigation()
+        .dashboard(False)
+        .resources([_GalleryPostResource])
+        .user_menu(position="sidebar")
+        .user_menu_items(
+            [
+                UserMenuItem.make("settings")
+                .label("Settings")
+                .url("/admin/settings")
+                .icon("heroicon-o-cog-6-tooth"),
+            ]
+        )
+        .default_user()
+    )
+
+    cluster_panel = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .apps_navigation()
+        .dashboard(False)
+        .navigation_group(
+            NavigationGroup.make("Platform").icon("heroicon-o-squares-2x2").sort(10)
+        )
+        .clusters([_GallerySettingsCluster])
+        .resources([_GalleryColorResource, _GalleryFontResource, _GalleryPostResource])
+        .default_user()
+    )
+
+    cluster_top = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .sidebar_navigation()
+        .dashboard(False)
+        .clusters([_GallerySettingsCluster])
+        .resources([_GalleryColorResource, _GalleryFontResource])
+        .default_user()
+    )
+    # Force top sub-nav for the dedicated shot.
+    _GallerySettingsCluster.sub_navigation_position = "top"
+
+    collapse_panel = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .apps_navigation()
+        .sidebar_collapsible()
+        .sidebar_width("16rem")
+        .collapsed_sidebar_width("4.5rem")
+        .dashboard(False)
+        .navigation_group(
+            NavigationGroup.make("Content").icon("heroicon-o-document-text").sort(10)
+        )
+        .resources([_GalleryPostResource, _GalleryInboxResource])
+        .default_user()
+    )
+
+    overview_html = _nav_shell(apps, active_path="/admin/posts", user=user)
+    # Restore cluster position after top shot build prep.
+    cluster_top_html = _nav_shell(
+        cluster_top,
+        _nav_placeholder("Colors"),
+        active_path="/admin/settings/colors",
+        user=user,
+    )
+    _GallerySettingsCluster.sub_navigation_position = "start"
+    cluster_html = _nav_shell(
+        cluster_panel,
+        _nav_placeholder("Colors"),
+        active_path="/admin/settings/colors",
+        user=user,
+    )
+
+    return {
+        "navigation/overview": (
+            "Navigation overview",
+            overview_html,
+        ),
+        "navigation/overview/layouts-apps": (
+            "Navigation — apps layout",
+            _nav_shell(apps, active_path="/admin/posts", user=user),
+        ),
+        "navigation/overview/layouts-sidebar": (
+            "Navigation — sidebar layout",
+            _nav_shell(sidebar, active_path="/admin/posts", user=user),
+        ),
+        "navigation/overview/layouts-top": (
+            "Navigation — top layout",
+            _nav_shell(top, active_path="/admin/posts", user=user),
+        ),
+        "navigation/overview/groups": (
+            "Navigation — groups",
+            _nav_shell(apps, active_path="/admin/authors", user=user),
+        ),
+        "navigation/overview/subgroups": (
+            "Navigation — subgroups",
+            _nav_shell(apps, active_path="/admin/reports", user=user),
+        ),
+        "navigation/overview/badges": (
+            "Navigation — badges",
+            _nav_shell(badges_panel, active_path="/admin/inbox", user=user),
+        ),
+        "navigation/overview/parent-items": (
+            "Navigation — parent items",
+            _nav_shell(parent_panel, active_path="/admin/preferences", user=user),
+        ),
+        "navigation/overview/custom-items": (
+            "Navigation — custom items",
+            _nav_shell(custom_panel, active_path="/admin/posts", user=user),
+        ),
+        "navigation/overview/sidebar-collapse": (
+            "Navigation — sidebar collapse",
+            _nav_shell(collapse_panel, active_path="/admin/posts", user=user).replace(
+                "collapsed: false",
+                "collapsed: true",
+                1,
+            ),
+        ),
+        "navigation/custom-pages": (
+            "Custom pages",
+            _nav_shell(pages_panel, _nav_placeholder("Reports"), active_path="/admin/reports", user=user),
+        ),
+        "navigation/user-menu": (
+            "User menu",
+            _nav_shell(user_menu_panel, active_path="/admin/posts", user=user),
+        ),
+        "navigation/user-menu/groups": (
+            "User menu — groups",
+            _nav_shell(user_menu_panel, active_path="/admin/posts", user=user),
+        ),
+        "navigation/user-menu/position": (
+            "User menu — sidebar position",
+            _nav_shell(user_menu_sidebar, active_path="/admin/posts", user=user),
+        ),
+        "navigation/clusters": (
+            "Clusters",
+            cluster_html,
+        ),
+        "navigation/clusters/sub-nav": (
+            "Clusters — sub-navigation",
+            cluster_top_html,
         ),
     }

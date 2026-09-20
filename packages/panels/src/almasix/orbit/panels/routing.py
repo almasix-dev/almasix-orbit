@@ -425,28 +425,39 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
     for resource in resources:
         slug = resource.get_slug()
+        # Stamp panel path so get_pages() / page_url() include prefixes.
+        resource._panel_path = panel.get_path()  # type: ignore[attr-defined]
+        cluster = getattr(resource, "get_cluster", lambda: getattr(resource, "cluster", None))()
+        cluster_prefix = ""
+        if cluster is not None:
+            if isinstance(cluster, str):
+                cluster_prefix = cluster.strip().strip("/")
+            else:
+                cluster_prefix = str(cluster.path_prefix()).strip("/")
+        resource_base = f"{cluster_prefix}/{slug}" if cluster_prefix else slug
+
         list_host = ListRecordsHost.bind(panel=panel, resource=resource)
         create_host = CreateRecordHost.bind(panel=panel, resource=resource)
         edit_host = EditRecordHost.bind(panel=panel, resource=resource)
         view_host = ViewRecordHost.bind(panel=panel, resource=resource)
 
         _add(
-            f"{slug}",
+            f"{resource_base}",
             make_panel_page_action(panel, list_host),
             name=f"orbit.{panel.id}.{slug}.index",
         )
         _add(
-            f"{slug}/create",
+            f"{resource_base}/create",
             make_panel_page_action(panel, create_host),
             name=f"orbit.{panel.id}.{slug}.create",
         )
         _add(
-            f"{slug}/{{record_id}}/edit",
+            f"{resource_base}/{{record_id}}/edit",
             make_panel_page_action(panel, edit_host, pass_record_id=True),
             name=f"orbit.{panel.id}.{slug}.edit",
         )
         _add(
-            f"{slug}/{{record_id}}",
+            f"{resource_base}/{{record_id}}",
             make_panel_page_action(panel, view_host, pass_record_id=True),
             name=f"orbit.{panel.id}.{slug}.view",
         )
@@ -455,7 +466,16 @@ def mount_panel(router: Any, panel: Panel) -> None:
         # Dashboard home already owns ``/`` — skip a duplicate ``/dashboard`` mount.
         if dash_cls is not None and page is dash_cls:
             continue
+        page._panel_path = panel.get_path()  # type: ignore[attr-defined]
         slug = getattr(page, "get_slug", lambda p=page: p.__name__.lower())()
+        cluster = getattr(page, "get_cluster", lambda: getattr(page, "cluster", None))()
+        cluster_prefix = ""
+        if cluster is not None:
+            if isinstance(cluster, str):
+                cluster_prefix = cluster.strip().strip("/")
+            else:
+                cluster_prefix = str(cluster.path_prefix()).strip("/")
+        page_base = f"{cluster_prefix}/{slug}" if cluster_prefix else slug
 
         def _make_page_action(page_cls: Any) -> Any:
             async def page_action(request: Request) -> Any:
@@ -476,7 +496,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
             return page_action
 
         _add(
-            f"{slug}",
+            f"{page_base}",
             _make_page_action(page),
             name=f"orbit.{panel.id}.page.{slug}",
         )
