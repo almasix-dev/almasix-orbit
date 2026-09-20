@@ -9,16 +9,21 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 1–17 | Panel / Tables / Columns / Filters | (prior) | **closed** |
 | 18–30 | Schemas module | `docs/src/content/docs/schemas/*` | **closed** |
 | 31–65 | Forms module | `docs/src/content/docs/forms/*` | **closed** |
-| 66+ | Remaining Orbit doc features | docs nav | queued |
+| 66 | Infolists overview | `docs/src/content/docs/infolists/overview.md` | **closed** |
+| 67 | Text entry | `docs/src/content/docs/infolists/text-entry.md` | **closed** |
+| 68 | Icon entry | `docs/src/content/docs/infolists/icon-entry.md` | **closed** |
+| 69 | Image entry | `docs/src/content/docs/infolists/image-entry.md` | **closed** |
+| 70 | Color entry | `docs/src/content/docs/infolists/color-entry.md` | **closed** |
+| 71 | Code entry | `docs/src/content/docs/infolists/code-entry.md` | **closed** |
+| 72 | Key-value entry | `docs/src/content/docs/infolists/key-value-entry.md` | **closed** |
+| 73 | Repeatable entry | `docs/src/content/docs/infolists/repeatable-entry.md` | **closed** |
+| 74 | View entry / custom | `docs/src/content/docs/infolists/view-entry.md` | **closed** |
+| 75+ | Remaining Orbit doc features | docs nav | queued |
 
-## Forms — closed
+## Infolists autopilot — closed
 
-**Bar met:** Filament 5–equivalent Field chrome + validation fluent APIs, Filament-depth docs (explanation + code + light/dark screenshots per subsection), gallery variants + captures, 100% test coverage.
+**Bar:** 100% Filament 5 feature parity on the Orbit surface, Filament-depth docs (every subsection = explanation + code + light/dark screenshots), 100% test coverage, orbit-admin sample.
 
-### Shared Field APIs shipped
+### Shipped
 
-Content slots, `trim` / `strip_characters` / `length` / `tel_regex` / `autocapitalize`, `mark_as_required`, `disabled_on` / `hidden_on` / `visible_on`, validation fluent helpers, Select `boolean` / `disable_option_when` / `preload` / `wrap`, Toggle `on_color` / `off_color` / icons / `inline`.
-
-### Honest stubs (documented)
-
-TableSelect / ModalTableSelect (Select-based chrome), CodeEditor / MarkdownEditor (textarea chrome until Monaco/CodeMirror).
+Entry chrome (dot-state, placeholder, copyable, markdown/html/prose, date/time/money/numeric, hints), TextEntry depth, Icon/Image/Color/Code/KeyValue/Repeatable depth, ViewEntry, Schema layouts inside Infolist, orbit-admin `InfolistsOverviewResource`, gallery shots under `docs/public/examples/{light,dark}/infolists/`.

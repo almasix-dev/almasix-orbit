@@ -38,6 +38,17 @@ from almasix.orbit.forms.components import (
     ViewField,
 )
 from almasix.orbit.forms.form import Form
+from almasix.orbit.infolists import (
+    CodeEntry,
+    ColorEntry,
+    IconEntry,
+    ImageEntry,
+    Infolist,
+    KeyValueEntry,
+    RepeatableEntry,
+    TextEntry,
+    ViewEntry,
+)
 from almasix.orbit.schemas.layouts import (
     Callout,
     EmptyState,
@@ -1715,5 +1726,455 @@ def build_schema_variants() -> dict[str, tuple[str, str]]:
         "schemas/primes/list": (
             "Prime — list",
             UnorderedList.make().items(["Tables", "Forms", "Panels"]).bullet_size("sm").render(),
+        ),
+    }
+
+
+def _infolist(*components, record: dict | None = None, columns: int | None = None) -> str:
+    infolist = Infolist.make().schema(list(components))
+    if columns:
+        infolist.columns(columns)
+    return infolist.render(record or {})
+
+
+_AVATAR = "https://api.dicebear.com/9.x/shapes/svg?seed=orbit"
+_AVATAR_B = "https://api.dicebear.com/9.x/shapes/svg?seed=ada"
+_AVATAR_C = "https://api.dicebear.com/9.x/shapes/svg?seed=grace"
+
+
+def build_infolist_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for infolist entry shots."""
+    sample = {
+        "title": "Launch Orbit",
+        "slug": "launch-orbit",
+        "status": "published",
+        "email": "ada@orbit.test",
+        "website": "https://orbit.almasix.com",
+        "body": "Orbit infolists mirror Filament’s read-only entries for resource view pages.",
+        "md": "Ship **badges**, *icons*, and copyable slugs on the show page.",
+        "html": "<em>Trusted</em> HTML when you opt in.",
+        "bio": "Ada Lovelace wrote the first algorithm intended for a machine. "
+        "Her notes on Babbage’s Analytical Engine still inspire engineers.",
+        "tags": ["tables", "forms", "infolists"],
+        "skills": "Python,SQL,CSS",
+        "published_at": "2024-06-15T12:30:00",
+        "starts_at": "2000-01-01T00:00:00",
+        "price": 1999,
+        "qty": 3.5,
+        "active": True,
+        "featured": False,
+        "icon": "heroicon-o-rocket-launch",
+        "photo": _AVATAR,
+        "photos": [_AVATAR, _AVATAR_B, _AVATAR_C],
+        "accent": "#f1511b",
+        "payload": {"version": 1, "enabled": True},
+        "source": "def greet(name):\n    return f'Hello, {name}!'",
+        "meta": {"locale": "en", "timezone": "UTC"},
+        "items": [
+            {"name": "Tables", "status": "ready"},
+            {"name": "Forms", "status": "ready"},
+            {"name": "Infolists", "status": "shipping"},
+        ],
+        "author": {"name": "Ada Lovelace"},
+        "notes": None,
+    }
+
+    return {
+        "infolists/overview": (
+            "Infolists overview",
+            _infolist(
+                TextEntry.make("title").label("Title").weight("bold"),
+                TextEntry.make("status").label("Status").badge().color("success"),
+                TextEntry.make("slug").label("Slug").copyable(),
+                TextEntry.make("author.name").label("Author"),
+                ImageEntry.make("photo").label("Cover").circular().size(48),
+                columns=2,
+                record=sample,
+            ),
+        ),
+        "infolists/overview/labels": (
+            "Infolists — labels",
+            _infolist(
+                TextEntry.make("title")
+                .label("Post title")
+                .helper_text("Shown on the public page.")
+                .hint("Required for SEO")
+                .hint_icon("heroicon-m-information-circle"),
+                record=sample,
+            ),
+        ),
+        "infolists/overview/helper-hint": (
+            "Infolists — helper + hint",
+            _infolist(
+                TextEntry.make("email")
+                .label("Email")
+                .helper_text("Used for invoices and notifications.")
+                .hint("Primary")
+                .hint_icon("heroicon-m-envelope"),
+                record=sample,
+            ),
+        ),
+        "infolists/overview/placeholder": (
+            "Infolists — placeholder",
+            _infolist(
+                TextEntry.make("notes").label("Notes").placeholder("No notes yet"),
+                record=sample,
+            ),
+        ),
+        "infolists/overview/default": (
+            "Infolists — default",
+            _infolist(
+                TextEntry.make("locale").label("Locale").default("en"),
+                record={},
+            ),
+        ),
+        "infolists/overview/copyable": (
+            "Infolists — copyable",
+            _infolist(
+                TextEntry.make("slug")
+                .label("Slug")
+                .copyable()
+                .copy_message("Copied!")
+                .copy_message_duration(1500),
+                record=sample,
+            ),
+        ),
+        "infolists/overview/format-state": (
+            "Infolists — format state",
+            _infolist(
+                TextEntry.make("email")
+                .label("Email")
+                .format_state_using(lambda state, **_: str(state or "").upper()),
+                record=sample,
+            ),
+        ),
+        "infolists/overview/tooltip": (
+            "Infolists — tooltip",
+            _infolist(
+                TextEntry.make("status")
+                .label("Status")
+                .badge()
+                .color("success")
+                .tooltip("Visible on the public site"),
+                record=sample,
+            ),
+        ),
+        "infolists/overview/slots": (
+            "Infolists — content slots",
+            _infolist(
+                TextEntry.make("title")
+                .label("Title")
+                .above_label('<span class="or-muted">Above label</span>')
+                .below_content('<span class="or-muted">Below content</span>'),
+                record=sample,
+            ),
+        ),
+        "infolists/overview/affix": (
+            "Infolists — affix actions",
+            _infolist(
+                TextEntry.make("slug")
+                .label("Slug")
+                .prefix_action("edit")
+                .suffix_action("copy"),
+                record=sample,
+            ),
+        ),
+        "infolists/overview/columns": (
+            "Infolists — columns",
+            _infolist(
+                TextEntry.make("title").label("Title"),
+                TextEntry.make("status").label("Status").badge().color("success"),
+                TextEntry.make("email").label("Email"),
+                TextEntry.make("slug").label("Slug").copyable(),
+                columns=2,
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/basic": (
+            "Text entry — basic",
+            _infolist(TextEntry.make("title").label("Title"), record=sample),
+        ),
+        "infolists/text-entry/badge": (
+            "Text entry — badge",
+            _infolist(
+                TextEntry.make("status").label("Status").badge().color("success"),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/color": (
+            "Text entry — color",
+            _infolist(
+                TextEntry.make("status").label("Status").color("info").weight("medium"),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/icon": (
+            "Text entry — icon",
+            _infolist(
+                TextEntry.make("email")
+                .label("Email")
+                .icon("heroicon-o-envelope")
+                .icon_color("primary"),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/url": (
+            "Text entry — url",
+            _infolist(
+                TextEntry.make("website")
+                .label("Website")
+                .url(lambda state, **_: str(state))
+                .open_url_in_new_tab()
+                .color("primary"),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/size-weight": (
+            "Text entry — size + weight",
+            _infolist(
+                TextEntry.make("title").label("Title").size("lg").weight("bold"),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/font-family": (
+            "Text entry — font family",
+            _infolist(
+                TextEntry.make("slug").label("Slug").font_family("monospace"),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/line-clamp": (
+            "Text entry — line clamp",
+            _infolist(
+                TextEntry.make("bio").label("Bio").line_clamp(2).wrap(),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/list": (
+            "Text entry — list with line breaks",
+            _infolist(
+                TextEntry.make("tags").label("Tags").list_with_line_breaks(),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/bulleted": (
+            "Text entry — bulleted",
+            _infolist(
+                TextEntry.make("tags").label("Tags").bulleted(),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/separator": (
+            "Text entry — separator badges",
+            _infolist(
+                TextEntry.make("skills").label("Skills").separator(",").badge().color("gray"),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/date": (
+            "Text entry — date / time",
+            _infolist(
+                TextEntry.make("published_at").label("Published").date_time("%b %d, %Y %H:%M"),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/since": (
+            "Text entry — since",
+            _infolist(
+                TextEntry.make("starts_at").label("Started").since(),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/money": (
+            "Text entry — money",
+            _infolist(
+                TextEntry.make("price").label("Price").money("USD", divide_by=100),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/numeric": (
+            "Text entry — numeric",
+            _infolist(
+                TextEntry.make("qty").label("Quantity").numeric(2),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/markdown": (
+            "Text entry — markdown",
+            _infolist(
+                TextEntry.make("md").label("Summary").markdown(),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/html": (
+            "Text entry — html",
+            _infolist(
+                TextEntry.make("html").label("HTML").html(),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/prose": (
+            "Text entry — prose",
+            _infolist(
+                TextEntry.make("body").label("Body").prose().markdown(),
+                record=sample,
+            ),
+        ),
+        "infolists/text-entry/limit": (
+            "Text entry — limit / words",
+            _infolist(
+                TextEntry.make("bio").label("Bio").limit(48),
+                TextEntry.make("body").label("Body").words(8),
+                record=sample,
+            ),
+        ),
+        "infolists/icon-entry/basic": (
+            "Icon entry — basic",
+            _infolist(
+                IconEntry.make("icon").label("Icon").color("primary").size("lg"),
+                record=sample,
+            ),
+        ),
+        "infolists/icon-entry/boolean": (
+            "Icon entry — boolean",
+            _infolist(
+                IconEntry.make("active").label("Active").boolean(),
+                IconEntry.make("featured")
+                .label("Featured")
+                .boolean()
+                .false_color("gray")
+                .false_icon("heroicon-o-minus"),
+                record=sample,
+            ),
+        ),
+        "infolists/icon-entry/colors": (
+            "Icon entry — colors",
+            _infolist(
+                IconEntry.make("icon").label("Launch").color("warning").size("md"),
+                record=sample,
+            ),
+        ),
+        "infolists/image-entry/basic": (
+            "Image entry — basic",
+            _infolist(
+                ImageEntry.make("photo").label("Cover").width(96).height(96).alt("Cover"),
+                record=sample,
+            ),
+        ),
+        "infolists/image-entry/circular": (
+            "Image entry — circular",
+            _infolist(
+                ImageEntry.make("photo").label("Avatar").circular().size(56).alt("Avatar"),
+                record=sample,
+            ),
+        ),
+        "infolists/image-entry/stacked": (
+            "Image entry — stacked",
+            _infolist(
+                ImageEntry.make("photos")
+                .label("Team")
+                .stacked()
+                .circular()
+                .limit(2)
+                .overlap(10)
+                .ring(2)
+                .size(40),
+                record=sample,
+            ),
+        ),
+        "infolists/color-entry/basic": (
+            "Color entry — basic",
+            _infolist(
+                ColorEntry.make("accent").label("Accent"),
+                record=sample,
+            ),
+        ),
+        "infolists/color-entry/copyable": (
+            "Color entry — copyable",
+            _infolist(
+                ColorEntry.make("accent").label("Accent").copyable().copy_message("Hex copied"),
+                record=sample,
+            ),
+        ),
+        "infolists/code-entry/basic": (
+            "Code entry — basic",
+            _infolist(
+                CodeEntry.make("payload").label("Payload"),
+                record=sample,
+            ),
+        ),
+        "infolists/code-entry/grammar": (
+            "Code entry — grammar + copy",
+            _infolist(
+                CodeEntry.make("source").label("Source").grammar("python").copyable(),
+                record=sample,
+            ),
+        ),
+        "infolists/key-value-entry/basic": (
+            "Key-value entry — basic",
+            _infolist(
+                KeyValueEntry.make("meta").label("Meta"),
+                record=sample,
+            ),
+        ),
+        "infolists/key-value-entry/labels": (
+            "Key-value entry — labels",
+            _infolist(
+                KeyValueEntry.make("meta")
+                .label("Meta")
+                .key_label("Property")
+                .value_label("Content"),
+                record=sample,
+            ),
+        ),
+        "infolists/repeatable-entry/basic": (
+            "Repeatable entry — basic",
+            _infolist(
+                RepeatableEntry.make("items")
+                .label("Modules")
+                .schema(
+                    [
+                        TextEntry.make("name").label("Name"),
+                        TextEntry.make("status").label("Status").badge().color("info"),
+                    ]
+                ),
+                record=sample,
+            ),
+        ),
+        "infolists/repeatable-entry/columns": (
+            "Repeatable entry — columns",
+            _infolist(
+                RepeatableEntry.make("items")
+                .label("Modules")
+                .columns(2)
+                .contained(False)
+                .schema(
+                    [
+                        TextEntry.make("name").label("Name"),
+                        TextEntry.make("status").label("Status").badge(),
+                    ]
+                ),
+                record=sample,
+            ),
+        ),
+        "infolists/view-entry/basic": (
+            "View entry — basic",
+            _infolist(
+                ViewEntry.make("summary")
+                .label("Summary")
+                .content('<strong>3</strong> modules ready'),
+                record=sample,
+            ),
+        ),
+        "infolists/view-entry/callable": (
+            "View entry — callable",
+            _infolist(
+                ViewEntry.make("title")
+                .label("Headline")
+                .content(
+                    lambda state=None, **_: f'<span class="or-badge or-color-success">{state}</span>'
+                ),
+                record=sample,
+            ),
         ),
     }

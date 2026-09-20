@@ -44,8 +44,13 @@ A straight inventory of what ships today. For narrative guides, start at [Quick 
 
 ## Infolists
 
-- Text, icon, image, color, code, key-value, repeatable entries
-- Badge, copyable, prose, markdown helpers
+- Text, icon, image, color, code, key-value, repeatable, and view entries
+- Shared Entry chrome: labels, helpers, hints, placeholders, copyable, slots, affixes
+- Text formatters: badges, icons, URLs, dates / since, money, numeric, markdown / HTML / prose, lists
+- Image stacks, boolean icons, grammar-aware code blocks
+- Empty `infolist()` falls back to a readonly form projection
+
+See [Infolists overview](/infolists/overview/).
 
 ## Notifications & widgets
 

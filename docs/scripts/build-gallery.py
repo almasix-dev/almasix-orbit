@@ -87,7 +87,7 @@ from almasix.orbit.tables.layout import Grid, Split, Stack, View
 from almasix.orbit.tables.layout import Panel as LayoutPanel
 from almasix.orbit.tables.summaries import Average, Count, Sum
 from almasix.orbit.tables.table import Table
-from gallery_variants import build_form_variants, build_schema_variants
+from gallery_variants import build_form_variants, build_infolist_variants, build_schema_variants
 
 ROOT = Path(__file__).resolve().parents[1]
 CSS = (ROOT.parent / "packages/panels/src/almasix/orbit/resources/css/orbit.css").read_text(
@@ -248,6 +248,53 @@ SHOTS: list[tuple[str, str]] = [
     ("schemas/primes/icon", "Prime — icon"),
     ("schemas/primes/image", "Prime — image"),
     ("schemas/primes/list", "Prime — list"),
+    # Infolists
+    ("infolists/overview", "Infolists overview"),
+    ("infolists/overview/labels", "Infolists — labels"),
+    ("infolists/overview/helper-hint", "Infolists — helper + hint"),
+    ("infolists/overview/placeholder", "Infolists — placeholder"),
+    ("infolists/overview/default", "Infolists — default"),
+    ("infolists/overview/copyable", "Infolists — copyable"),
+    ("infolists/overview/format-state", "Infolists — format state"),
+    ("infolists/overview/tooltip", "Infolists — tooltip"),
+    ("infolists/overview/slots", "Infolists — content slots"),
+    ("infolists/overview/affix", "Infolists — affix actions"),
+    ("infolists/overview/columns", "Infolists — columns"),
+    ("infolists/text-entry/basic", "Text entry — basic"),
+    ("infolists/text-entry/badge", "Text entry — badge"),
+    ("infolists/text-entry/color", "Text entry — color"),
+    ("infolists/text-entry/icon", "Text entry — icon"),
+    ("infolists/text-entry/url", "Text entry — url"),
+    ("infolists/text-entry/size-weight", "Text entry — size + weight"),
+    ("infolists/text-entry/font-family", "Text entry — font family"),
+    ("infolists/text-entry/line-clamp", "Text entry — line clamp"),
+    ("infolists/text-entry/list", "Text entry — list with line breaks"),
+    ("infolists/text-entry/bulleted", "Text entry — bulleted"),
+    ("infolists/text-entry/separator", "Text entry — separator badges"),
+    ("infolists/text-entry/date", "Text entry — date / time"),
+    ("infolists/text-entry/since", "Text entry — since"),
+    ("infolists/text-entry/money", "Text entry — money"),
+    ("infolists/text-entry/numeric", "Text entry — numeric"),
+    ("infolists/text-entry/markdown", "Text entry — markdown"),
+    ("infolists/text-entry/html", "Text entry — html"),
+    ("infolists/text-entry/prose", "Text entry — prose"),
+    ("infolists/text-entry/limit", "Text entry — limit / words"),
+    ("infolists/icon-entry/basic", "Icon entry — basic"),
+    ("infolists/icon-entry/boolean", "Icon entry — boolean"),
+    ("infolists/icon-entry/colors", "Icon entry — colors"),
+    ("infolists/image-entry/basic", "Image entry — basic"),
+    ("infolists/image-entry/circular", "Image entry — circular"),
+    ("infolists/image-entry/stacked", "Image entry — stacked"),
+    ("infolists/color-entry/basic", "Color entry — basic"),
+    ("infolists/color-entry/copyable", "Color entry — copyable"),
+    ("infolists/code-entry/basic", "Code entry — basic"),
+    ("infolists/code-entry/grammar", "Code entry — grammar + copy"),
+    ("infolists/key-value-entry/basic", "Key-value entry — basic"),
+    ("infolists/key-value-entry/labels", "Key-value entry — labels"),
+    ("infolists/repeatable-entry/basic", "Repeatable entry — basic"),
+    ("infolists/repeatable-entry/columns", "Repeatable entry — columns"),
+    ("infolists/view-entry/basic", "View entry — basic"),
+    ("infolists/view-entry/callable", "View entry — callable"),
     ("panels/shell", "Panel shell"),
     ("users/login", "Login"),
 ]
@@ -1764,6 +1811,7 @@ def build() -> str:
 
     form_variants = build_form_variants()
     schema_variants = build_schema_variants()
+    infolist_variants = build_infolist_variants()
 
     parts = [
         shot("forms/overview", "Forms overview", form_overview.render()),
@@ -1789,6 +1837,10 @@ def build() -> str:
         *(
             shot(sid, label, html)
             for sid, (label, html) in schema_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in infolist_variants.items()
         ),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/overview-columns", "Overview — columns", table_overview_columns.render()),

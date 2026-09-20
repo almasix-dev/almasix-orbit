@@ -1,4 +1,3 @@
-
 from almasix.orbit.infolists.components import (
     CodeEntry,
     ColorEntry,
@@ -8,6 +7,7 @@ from almasix.orbit.infolists.components import (
     KeyValueEntry,
     RepeatableEntry,
     TextEntry,
+    ViewEntry,
 )
 from almasix.orbit.infolists.infolist import Infolist
 
@@ -21,4 +21,5 @@ __all__ = [
     "CodeEntry",
     "KeyValueEntry",
     "RepeatableEntry",
+    "ViewEntry",
 ]

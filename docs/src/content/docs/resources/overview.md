@@ -137,4 +137,4 @@ Resolution order looks for `can` / `has_permission` / `hasPermissionTo`, then ad
 
 Return relation manager classes from `get_relations()` — see [Relation managers](/resources/managing-relationships/).
 
-Next: [Pages](/navigation/custom-pages/), [Forms](/forms/overview/), [Tables](/tables/overview/).
+Next: [Pages](/navigation/custom-pages/), [Forms](/forms/overview/), [Tables](/tables/overview/), [Infolists](/infolists/overview/).
