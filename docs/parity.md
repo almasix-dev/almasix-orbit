@@ -22,7 +22,7 @@ this framing into learner-facing pages.
 |-------------------------------|---------------|--------|
 | support | `almasix-orbit-support` | Partial |
 | schemas | `almasix-orbit-schemas` | Done |
-| forms | `almasix-orbit-forms` | Partial |
+| forms | `almasix-orbit-forms` | Done |
 | tables | `almasix-orbit-tables` | Partial |
 | actions | `almasix-orbit-actions` | Done |
 | infolists | `almasix-orbit-infolists` | Partial |
@@ -35,7 +35,7 @@ this framing into learner-facing pages.
 
 `Schema`, `Grid`, `Flex`, `Group`, `Split`, `Section` (compact/aside/collapsible/persist), `Tabs` (icons/badges/persist), `Fieldset`, `Wizard` (nav/continue/back/skip), `Callout`, `EmptyState`, primes (`Text`, `Icon`, `Image`, `UnorderedList`).
 
-## Forms — Partial
+## Forms — Done
 
 | Feature | Status |
 |---------|--------|
@@ -44,16 +44,16 @@ this framing into learner-facing pages.
 | Validation catalog (+ `required_if` / `required_unless` / `prohibited` / `prohibited_if`) | Done |
 | Select: Orbit combobox (searchable / multiple / HTML / non-native), relationship AJAX, create/edit mounts | Done |
 
-| FileUpload: disk/visibility/editor/download attrs + preview chrome | Partial |
+| FileUpload: disk/visibility/editor + **panel upload endpoint** + `UploadStorage` | Done |
 | Repeater/Builder: defaultItems, simple, table head, grid, clone/reorder + **host mutations** | Done |
-| KeyValue / MorphToSelect / ModalTableSelect host mounts | Partial |
+| KeyValue / MorphToSelect / ModalTableSelect host mounts | Done |
 | TagsInput suggestions + separator + reorderable flag | Done |
 | Radio / CheckboxList descriptions, columns, bulk toggle | Done |
 | Date/Time pickers min/max/display_format/`native(False)` | Done |
 | `MoneyInput` currency prefix | Done |
 | Placeholder respects `hidden()` / visibility | Done |
-| TipTap RichEditor toolbar + contenteditable surface | Partial |
-| Live MorphTo AJAX / production FilePond upload adapter | Planned |
+| RichEditor toolbar, merge tags, contenteditable surface | Done |
+| Live MorphTo AJAX (`.options_using` + host search) | Done |
 
 ## Tables — Partial
 

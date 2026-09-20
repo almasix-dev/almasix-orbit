@@ -42,7 +42,11 @@ async function main() {
       document.body.classList.toggle("dark", t === "dark");
       document
         .querySelectorAll(".or-action-modal-host, .or-modal-backdrop, .or-modal")
-        .forEach((el) => el.remove());
+        .forEach((el) => {
+          // The modal table select shot is *about* the open picker — keep it.
+          if (el.closest('[data-shot="forms/modal-table-select/picker"]')) return;
+          el.remove();
+        });
     }, theme);
     await page.waitForFunction(() => window.Alpine?.version).catch(() => {});
     await page.waitForTimeout(500);

@@ -1,13 +1,24 @@
 ---
 title: Modal table select
-description: ModalTableSelect shows a readonly summary input and a Browse button that calls mountTableSelect — not an in-package modal table.
+description: ModalTableSelect opens a searchable table in a modal so the operator can pick a related record.
 ---
 
 ## Introduction
 
-**Honest scope:** `ModalTableSelect` does **not** embed an Orbit table or ship a modal. It renders a readonly text input bound with `wire:model` plus a Browse button that fires `wire:click="mountTableSelect('{name}')"`. The Conduit host must implement `mountTableSelect` (open a modal, table, or drawer) and write the chosen key back into form state. Fluent Select APIs exist on the class hierarchy but this render path ignores option HTML — document and use the display + Browse chrome.
+When a related record is easier to find in a table than in a dropdown, use `ModalTableSelect`. The field shows a readonly summary of the current choice and a **Browse** button. Browse opens a modal: search box plus either a compact list or a full Orbit `Table`. Choosing a row writes the record’s id into form state and closes the picker.
 
-Each variation below includes a detailed explanation, the fluent API to paste into your schema, and light/dark screenshots of the rendered control.
+```python title="app/orbit/resources/post_resource.py"
+ModalTableSelect.make("author_id")
+    .label("Author")
+    .records(AuthorResource.get_records)
+    .title_attribute("name")
+    .browse_label("Browse authors")
+    .modal_heading("Pick an author")
+```
+
+`.records(...)` accepts a list or a callable. `.table(Table.make(...))` renders that table inside the modal instead of the default list. The create/edit host implements `mountTableSelect`, `setTableSelectSearch`, `selectTableRecord`, and `closeTableSelect`.
+
+Each variation below includes the fluent API and light/dark screenshots of the rendered control.
 
 ## Basic modal table select
 
@@ -64,5 +75,24 @@ ModalTableSelect.make('invoice_id')
 ![Orbit Disabled on view (light)](/examples/light/forms/modal-table-select/disabled-on-view.png)
 
 ![Orbit Disabled on view (dark)](/examples/dark/forms/modal-table-select/disabled-on-view.png)
+
+## Open picker
+
+Pass picker state (the host does this when Browse is clicked) and the field renders the modal: heading, search, and matching rows. `.modal_heading()` labels the dialog.
+
+```python title="app/orbit/resources/example_resource.py"
+ModalTableSelect.make("author_id")
+    .label("Author")
+    .records([
+        {"id": "1", "name": "Ada Lovelace"},
+        {"id": "2", "name": "Grace Hopper"},
+    ])
+    .modal_heading("Pick an author")
+    .title_attribute("name")
+```
+
+![Orbit Open picker (light)](/examples/light/forms/modal-table-select/picker.png)
+
+![Orbit Open picker (dark)](/examples/dark/forms/modal-table-select/picker.png)
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

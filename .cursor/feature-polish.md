@@ -11,11 +11,16 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 100 | Infolists UI default layout + docs depth | `docs/src/content/docs/infolists/overview.md` | **closed** |
 | 101 | Plugins marketplace (v1) | `docs/src/content/docs/plugins/*` | **closed** |
 | 102 | Resources depth (relation managers, global search, record titles, soft deletes) | `docs/src/content/docs/resources/*` | **closed** |
-| 103+ | Remaining stability milestones (forms leftovers → support toolkit) | docs nav | queued |
+| 103 | Forms leftovers (FileUpload endpoint, RichEditor, MorphTo live search, ModalTableSelect / KeyValue hosts) | `docs/src/content/docs/forms/{file-upload,rich-editor,morph-to-select,modal-table-select,key-value}.md` | **closed** |
+| 104+ | Remaining stability milestones (import/export → support toolkit) | docs nav | queued |
 
 ## Infolists layout + docs depth — closed
 
 **Bar:** Stacked label-above-value default (`.or-entry-inline` for side-by-side), Orbit-first overview depth (hidden/inline labels, sections, extra attrs, utility injection) with unique gallery shots, 100% coverage on infolists surface, vendor CSS synced.
+
+## Forms leftovers — closed
+
+**Bar:** Panel `/orbit-upload` endpoint validates against the field and stores via `UploadStorage` (memory default, filesystem disks), FileUpload previews existing files and posts from the browser, RichEditor toolbar + merge tags + min-height, MorphToSelect `.options_using` live search, ModalTableSelect searchable picker + table mount, KeyValue host add/rename/remove, orbit-admin Posts form sample, Orbit-first docs + unique gallery shots, 100% coverage.
 
 ## Resources depth — closed
 

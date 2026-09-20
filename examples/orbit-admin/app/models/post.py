@@ -6,4 +6,4 @@ from almasix.orm import Model
 
 
 class Post(Model):
-    fillable = ("title", "status", "body", "amount")
+    fillable = ("title", "status", "body", "amount", "cover", "meta", "author_id")

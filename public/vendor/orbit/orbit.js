@@ -1666,6 +1666,188 @@
       },
     }));
 
+    const bootFileUploads = () => {
+      const fields = document.querySelectorAll('[data-upload-field]');
+      if (!fields.length) return;
+
+      const bytesFromKb = (kb) => Number(kb) * 1024;
+
+      const accepts = (file, accept) => {
+        if (!accept) return true;
+        return accept
+          .split(",")
+          .map((part) => part.trim().toLowerCase())
+          .filter(Boolean)
+          .some((rule) => {
+            if (rule.startsWith(".")) return file.name.toLowerCase().endsWith(rule);
+            if (rule.endsWith("/*")) return (file.type || "").startsWith(rule.slice(0, -1));
+            return (file.type || "").toLowerCase() === rule;
+          });
+      };
+
+      const initField = (root) => {
+        if (root.dataset.uploadBound === "1") return;
+        root.dataset.uploadBound = "1";
+
+        const input = root.querySelector("input.or-file");
+        const grid = root.querySelector("[data-preview-grid]");
+        const progress = root.querySelector("[data-upload-progress]");
+        const bar = root.querySelector("[data-upload-progress-bar]");
+        const endpoint = root.getAttribute("data-upload-url");
+        const field = root.getAttribute("data-upload-field") || "";
+        const resource = root.getAttribute("data-upload-resource") || "";
+        const multiple = Boolean(input && input.multiple);
+        const maxFiles = Number(root.getAttribute("data-max-files") || 0);
+        const maxSize = root.getAttribute("data-max-size");
+        const minSize = root.getAttribute("data-min-size");
+        const accept = input ? input.getAttribute("accept") : "";
+        if (!input || !endpoint) return;
+
+        const paths = () =>
+          Array.from(grid ? grid.querySelectorAll("[data-file-path]") : []).map((card) =>
+            card.getAttribute("data-file-path"),
+          );
+
+        const pushState = () => {
+          const wire = window.orbitWire?.(root);
+          if (!wire || typeof wire.set_property !== "function") return;
+          const list = paths();
+          wire.set_property(field, multiple ? list : list[0] || null);
+        };
+
+        const fail = (message) => {
+          root.setAttribute("data-upload-error", message);
+          window.dispatchEvent(
+            new CustomEvent("orbit-upload-failed", { detail: { field, message } }),
+          );
+        };
+
+        const card = (file) => {
+          const el = document.createElement("div");
+          el.className = "or-file-card";
+          el.setAttribute("data-file-path", file.path);
+          const isImage = (file.mime || "").startsWith("image/");
+          el.innerHTML = isImage
+            ? `<img class="or-file-thumb" src="${file.url}" alt="${file.name}" />`
+            : `<span class="or-file-name">${file.name}</span>`;
+          const actions = document.createElement("div");
+          actions.className = "or-file-card-actions";
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "or-file-remove";
+          remove.setAttribute("data-file-remove", "");
+          remove.setAttribute("aria-label", "Remove file");
+          remove.innerHTML = "&times;";
+          actions.appendChild(remove);
+          el.appendChild(actions);
+          return el;
+        };
+
+        const send = (file) =>
+          new Promise((resolve) => {
+            const body = new FormData();
+            body.append("file", file);
+            body.append("field", field);
+            body.append("resource", resource);
+            const request = new XMLHttpRequest();
+            request.open("POST", endpoint, true);
+            request.upload.addEventListener("progress", (event) => {
+              if (!bar || !event.lengthComputable) return;
+              progress?.removeAttribute("hidden");
+              bar.style.width = `${Math.round((event.loaded / event.total) * 100)}%`;
+            });
+            request.addEventListener("loadend", () => {
+              progress?.setAttribute("hidden", "hidden");
+              if (bar) bar.style.width = "0%";
+              try {
+                resolve(JSON.parse(request.responseText || "{}"));
+              } catch (_error) {
+                resolve({ ok: false, error: "Upload failed." });
+              }
+            });
+            request.send(body);
+          });
+
+        input.addEventListener("change", async () => {
+          root.removeAttribute("data-upload-error");
+          const files = Array.from(input.files || []);
+          for (const file of files) {
+            if (maxFiles && paths().length >= maxFiles) {
+              fail(`At most ${maxFiles} file(s).`);
+              break;
+            }
+            if (maxSize && file.size > bytesFromKb(maxSize)) {
+              fail(`${file.name} is larger than ${maxSize} KB.`);
+              continue;
+            }
+            if (minSize && file.size < bytesFromKb(minSize)) {
+              fail(`${file.name} is smaller than ${minSize} KB.`);
+              continue;
+            }
+            if (!accepts(file, accept)) {
+              fail(`${file.name} is not an accepted type.`);
+              continue;
+            }
+            const result = await send(file);
+            if (!result.ok) {
+              fail(result.error || "Upload failed.");
+              continue;
+            }
+            if (grid) {
+              if (!multiple) grid.innerHTML = "";
+              grid.appendChild(card(result.file));
+            }
+            pushState();
+          }
+          input.value = "";
+        });
+
+        root.addEventListener("click", (event) => {
+          const button =
+            event.target instanceof Element ? event.target.closest("[data-file-remove]") : null;
+          if (!button) return;
+          event.preventDefault();
+          const target = button.closest("[data-file-path]");
+          if (!target) return;
+          const body = new FormData();
+          body.append("intent", "delete");
+          body.append("path", target.getAttribute("data-file-path") || "");
+          body.append("field", field);
+          body.append("resource", resource);
+          fetch(endpoint, { method: "POST", body }).finally(() => {
+            target.remove();
+            pushState();
+          });
+        });
+
+        if (root.getAttribute("data-reorderable") === "true" && grid) {
+          grid.querySelectorAll("[data-file-path]").forEach((el) => {
+            el.setAttribute("draggable", "true");
+          });
+          let dragged = null;
+          grid.addEventListener("dragstart", (event) => {
+            dragged = event.target instanceof Element ? event.target.closest("[data-file-path]") : null;
+          });
+          grid.addEventListener("dragover", (event) => event.preventDefault());
+          grid.addEventListener("drop", (event) => {
+            const target =
+              event.target instanceof Element ? event.target.closest("[data-file-path]") : null;
+            if (!dragged || !target || dragged === target) return;
+            event.preventDefault();
+            grid.insertBefore(dragged, target);
+            pushState();
+          });
+        }
+      };
+
+      fields.forEach(initField);
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bootFileUploads);
+    } else {
+      bootFileUploads();
+    }
+
     const bootTipTap = () => {
       const nodes = document.querySelectorAll(".or-editor-rich[data-tiptap]");
       if (!nodes.length) return;
@@ -1693,17 +1875,44 @@
             const btn = event.target instanceof Element ? event.target.closest("[data-tool]") : null;
             if (!(btn instanceof HTMLElement)) return;
             event.preventDefault();
-            const tool = btn.getAttribute("data-tool");
+            const tool = btn.getAttribute("data-tool") || "";
+            const block = {
+              h1: "<h1>",
+              h2: "<h2>",
+              h3: "<h3>",
+              heading: "<h2>",
+              paragraph: "<p>",
+              blockquote: "<blockquote>",
+              codeBlock: "<pre>",
+            }[tool];
             const cmd = {
               bold: "bold",
               italic: "italic",
               underline: "underline",
               strike: "strikeThrough",
               link: "createLink",
-            }[tool || ""];
-            if (cmd === "createLink") {
+              unlink: "unlink",
+              bulletList: "insertUnorderedList",
+              orderedList: "insertOrderedList",
+              alignStart: "justifyLeft",
+              alignCenter: "justifyCenter",
+              alignEnd: "justifyRight",
+              undo: "undo",
+              redo: "redo",
+              clearFormat: "removeFormat",
+              horizontalRule: "insertHorizontalRule",
+            }[tool];
+            surface.focus();
+            if (block) {
+              document.execCommand("formatBlock", false, block);
+            } else if (cmd === "createLink") {
               const url = window.prompt("URL");
               if (url) document.execCommand(cmd, false, url);
+            } else if (tool === "image") {
+              const src = window.prompt("Image URL");
+              if (src) document.execCommand("insertImage", false, src);
+            } else if (tool.startsWith("mergeTag:")) {
+              document.execCommand("insertText", false, `{{ ${tool.slice(9)} }}`);
             } else if (cmd) {
               document.execCommand(cmd, false);
             }
@@ -1720,6 +1929,13 @@
         surface.addEventListener("input", sync);
         if (input && !surface.innerHTML) {
           surface.innerHTML = input.value || "";
+        }
+        const placeholder = root.getAttribute("data-placeholder");
+        if (placeholder) {
+          surface.setAttribute("data-placeholder", placeholder);
+        }
+        if (root.getAttribute("data-editor-disabled") === "true") {
+          surface.setAttribute("contenteditable", "false");
         }
       };
 

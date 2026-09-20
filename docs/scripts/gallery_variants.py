@@ -762,6 +762,33 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .image_preview_height(120)
             .render(),
         ),
+        "forms/file-upload/stored-files": (
+            "File upload — stored files",
+            FileUpload.make("gallery")
+            .label("Gallery")
+            .image()
+            .multiple()
+            .openable()
+            .downloadable()
+            .upload_url("/admin/orbit-upload")
+            .render(
+                [
+                    {
+                        "path": "post-covers/launch.png",
+                        "url": (
+                            "data:image/svg+xml;utf8,"
+                            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'>"
+                            "<rect width='120' height='120' fill='%236366f1'/>"
+                            "<circle cx='60' cy='48' r='22' fill='%23c7d2fe'/>"
+                            "<path d='M12 108 L48 64 L78 100 L96 82 L120 108 Z' fill='%234338ca'/>"
+                            "</svg>"
+                        ),
+                        "name": "launch.png",
+                    },
+                    {"path": "post-covers/press-kit.pdf", "name": "press-kit.pdf"},
+                ]
+            ),
+        ),
         "forms/file-upload/size-limits": (
             "File upload — size limits",
             FileUpload.make("attachment")
@@ -958,6 +985,16 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .toolbar_buttons(["bold", "italic"])
             .render("<p>Live updates on change.</p>"),
         ),
+        "forms/rich-editor/merge-tags": (
+            "Rich editor — merge tags",
+            RichEditor.make("message")
+            .label("Message")
+            .toolbar_buttons(["bold", "italic", "h2", "bulletList", "link"])
+            .merge_tags(["customer_name", "invoice_total"])
+            .placeholder("Write the message…")
+            .min_height("12rem")
+            .render(""),
+        ),
         "forms/rich-editor/toolbar": (
             "Rich editor — toolbar",
             RichEditor.make("body")
@@ -1029,6 +1066,26 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             KeyValue.make("meta")
             .label("Metadata")
             .render({"version": "1.0", "env": "production"}),
+        ),
+        "forms/key-value/editing": (
+            "Key-value — editing rows",
+            KeyValue.make("meta")
+            .label("Metadata")
+            .key_label("Attribute")
+            .value_label("Value")
+            .key_placeholder("e.g. reading_time")
+            .value_placeholder("e.g. 4 min")
+            .add_action_label("Add attribute")
+            .render({"reading_time": "4 min", "audience": "developers"}),
+        ),
+        "forms/key-value/locked-keys": (
+            "Key-value — locked keys",
+            KeyValue.make("limits")
+            .label("Plan limits")
+            .editable_keys(False)
+            .addable(False)
+            .deletable(False)
+            .render({"seats": "25", "projects": "10"}),
         ),
         "forms/key-value/required": (
             "Key-value — required",
@@ -1242,6 +1299,19 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .options({"1": "Ada", "2": "Grace", "10": "Engineering"})
             .render({"type": "App\\Models\\User", "id": "1"}),
         ),
+        "forms/morph-to-select/live-search": (
+            "Morph-to select — live search",
+            MorphToSelect.make("assignee")
+            .label("Assignee")
+            .searchable()
+            .types([{"type": "user", "label": "User"}, {"type": "team", "label": "Team"}])
+            .options_using(
+                lambda type="", search="": (
+                    {"1": "Ada Lovelace", "2": "Grace Hopper"} if type == "user" else {}
+                )
+            )
+            .render({"type": "user", "id": "2"}, morph_search={"assignee": "hopper"}),
+        ),
         "forms/morph-to-select/searchable": (
             "Morph-to select — searchable",
             MorphToSelect.make("assignee")
@@ -1306,6 +1376,22 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .label("Product")
             .disabled_on("view")
             .render("SKU-42", operation="view"),
+        ),
+        "forms/modal-table-select/picker": (
+            "Modal table select — picker open",
+            ModalTableSelect.make("author_id")
+            .label("Author")
+            .modal_heading("Pick an author")
+            .browse_label("Browse authors")
+            .title_attribute("name")
+            .records(
+                [
+                    {"id": "1", "name": "Ada Lovelace"},
+                    {"id": "2", "name": "Grace Hopper"},
+                    {"id": "3", "name": "Katherine Johnson"},
+                ]
+            )
+            .render(None, table_select={"field": "author_id", "search": ""}),
         ),
         "forms/modal-table-select/populated": (
             "Modal table select — populated",

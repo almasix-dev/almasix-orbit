@@ -1,13 +1,23 @@
 ---
 title: Rich editor
-description: RichEditor provides TipTap-oriented toolbar chrome over a contenteditable surface bound to a hidden input.
+description: RichEditor is a formatted writing surface with a toolbar, merge tags, and a hidden input that stores the HTML.
 ---
 
 ## Introduction
 
-`RichEditor` subclasses `Textarea` but renders a toolbar of tool buttons, a `data-tiptap` editor surface, and a hidden input that carries HTML/state via `wire:model` (or live binding when `.live()` is set). Default toolbar buttons are `bold`, `italic`, and `link`. Customize with `.toolbar_buttons([...])`. Actual TipTap bootstrapping lives in panel assets — Python owns the fluent config and markup shell.
+`RichEditor` is the field for long-form HTML: post bodies, product descriptions, email templates. The operator writes on a contenteditable surface; toolbar buttons run `document.execCommand` (and insert merge tags as `{{ name }}`); a hidden input holds the HTML that gets saved with the record.
 
-Each variation below includes a detailed explanation, the fluent API to paste into your schema, and light/dark screenshots of the rendered control.
+Default tools are **Bold**, **Italic**, and **Link**. Replace that list with `.toolbar_buttons([...])`, append one tool with `.toolbar_button("h2")`, and add insertable placeholders with `.merge_tags(["customer_name"])`.
+
+```python title="app/orbit/resources/post_resource.py"
+RichEditor.make("body")
+    .toolbar_buttons(["bold", "italic", "h2", "bulletList", "link"])
+    .placeholder("Write the post…")
+    .merge_tags(["author_name", "site_name"])
+    .min_height("16rem")
+```
+
+Each variation below includes the fluent API and light/dark screenshots of the rendered control.
 
 ## Basic rich editor
 
@@ -36,6 +46,21 @@ RichEditor.make('content')
 ![Orbit Custom toolbar (light)](/examples/light/forms/rich-editor/toolbar.png)
 
 ![Orbit Custom toolbar (dark)](/examples/dark/forms/rich-editor/toolbar.png)
+
+## Merge tags
+
+`.merge_tags([...])` adds extra toolbar buttons that insert `{{ tag }}` at the caret. Use them for mail-merge fields, contract tokens, or any placeholder your renderer later substitutes.
+
+```python title="app/orbit/resources/example_resource.py"
+RichEditor.make('template')
+    .label('Template')
+    .toolbar_buttons(['bold', 'italic'])
+    .merge_tags(['customer_name', 'order_total'])
+```
+
+![Orbit Merge tags (light)](/examples/light/forms/rich-editor/merge-tags.png)
+
+![Orbit Merge tags (dark)](/examples/dark/forms/rich-editor/merge-tags.png)
 
 ## Live updates
 

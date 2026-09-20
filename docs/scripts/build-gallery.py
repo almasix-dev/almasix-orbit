@@ -2118,6 +2118,19 @@ def build() -> str:
   width: min(22rem, 100%);
   min-height: 16rem;
 }}
+[data-shot="forms/modal-table-select/picker"] .or-modal-backdrop {{
+  display: block !important;
+  position: static;
+  background: transparent;
+  padding: 0;
+}}
+[data-shot="forms/modal-table-select/picker"] .or-modal {{
+  display: block !important;
+  position: static;
+  transform: none;
+  margin: 0.75rem 0 0;
+  width: 100%;
+}}
 [data-shot^="actions/"] .or-dropdown-menu {{
   display: block !important;
   position: static;

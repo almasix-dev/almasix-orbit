@@ -1,13 +1,28 @@
 ---
 title: File upload
-description: FileUpload wraps a native file input with disk, preview, avatar, size, and image-editor configuration attributes.
+description: FileUpload posts selected files to the panel upload endpoint, validates them against the field, and stores them through a pluggable disk.
 ---
 
 ## Introduction
 
-`FileUpload` renders `<input type="file">` inside Orbit field chrome. Most storage and preview options are fluent setters that emit `data-*` attributes for the Conduit host / Alpine assets — the Python package does not upload to S3 by itself. Multiple selection is enabled when `.multiple()` is set or `.max_files()` is greater than 1. Image and avatar presets configure MIME accept lists and preview grids for you.
+`FileUpload` is the field people use to attach files to a record. The operator picks a file; the browser posts it to the panel’s `/orbit-upload` endpoint; the endpoint looks up **this field** on the resource form and uses *its* disk, directory, size limits, and accepted types. The stored path is then written back into form state.
 
-Each variation below includes a detailed explanation, the fluent API to paste into your schema, and light/dark screenshots of the rendered control.
+That split matters: the field owns the rules, the panel owns the HTTP endpoint, and an `UploadStorage` owns where bytes land. Swap storage without touching the field.
+
+```python title="app/orbit/resources/post_resource.py"
+from almasix.orbit.forms import FileUpload, set_upload_storage, FilesystemUploadStorage
+
+set_upload_storage(FilesystemUploadStorage())  # default is in-memory
+
+FileUpload.make("cover")
+    .image()
+    .directory("post-covers")
+    .max_size(2048)
+```
+
+`panel.uploads(False)` turns the endpoint off for a panel that should not accept files.
+
+Each variation below includes the fluent API and light/dark screenshots of the rendered control.
 
 ## Basic file upload
 
@@ -67,7 +82,7 @@ FileUpload.make('contract')
 
 ## Disk, directory, and visibility
 
-`.disk()`, `.directory()`, and `.visibility()` emit `data-disk`, `data-directory`, and `data-visibility` for the storage driver your host wires up (for example public vs private disks). They do not change the browser input by themselves.
+`.disk()`, `.directory()`, and `.visibility()` tell the upload endpoint where to put the file. The default `MemoryUploadStorage` keeps files in a dict (tests and demos). `FilesystemUploadStorage` writes through `almasix.filesystem` disks — pass `.disk("s3")` once you have configured that disk.
 
 ```python title="app/orbit/resources/example_resource.py"
 FileUpload.make('logo')
@@ -81,6 +96,23 @@ FileUpload.make('logo')
 ![Orbit Disk, directory, and visibility (light)](/examples/light/forms/file-upload/disk.png)
 
 ![Orbit Disk, directory, and visibility (dark)](/examples/dark/forms/file-upload/disk.png)
+
+## Stored files
+
+When the record already has files, the field renders a preview grid of those paths. Images become thumbnails; everything else is a name chip. `.openable()` and `.downloadable()` add actions on each card; the × button posts `intent=delete` back to the same endpoint.
+
+```python title="app/orbit/resources/example_resource.py"
+FileUpload.make('assets')
+    .image()
+    .label('Assets')
+    .multiple()
+    .openable()
+    .downloadable()
+```
+
+![Orbit Stored files (light)](/examples/light/forms/file-upload/stored-files.png)
+
+![Orbit Stored files (dark)](/examples/dark/forms/file-upload/stored-files.png)
 
 ## Size limits
 
@@ -181,9 +213,9 @@ FileUpload.make('import')
 
 ![Orbit Storage behavior flags (dark)](/examples/dark/forms/file-upload/storage-flags.png)
 
-## Image editor stub
+## Image editor
 
-`.image_editor()` and `.image_editor_aspect_ratios([...])` render a hidden `or-file-image-editor` region and data attributes (`data-image-editor`, `data-aspect-ratios`). This is chrome for a host-provided editor — not a full crop UI inside the forms package.
+`.image_editor()` and `.image_editor_aspect_ratios([...])` reserve a crop region next to the preview (`or-file-image-editor`). Aspect-ratio buttons are data on the field so a host editor can read them; the forms package itself does not crop pixels.
 
 ```python title="app/orbit/resources/example_resource.py"
 FileUpload.make('hero')
@@ -192,8 +224,8 @@ FileUpload.make('hero')
     .image_editor_aspect_ratios(['1:1', '16:9'])
 ```
 
-![Orbit Image editor stub (light)](/examples/light/forms/file-upload/image-editor.png)
+![Orbit Image editor (light)](/examples/light/forms/file-upload/image-editor.png)
 
-![Orbit Image editor stub (dark)](/examples/dark/forms/file-upload/image-editor.png)
+![Orbit Image editor (dark)](/examples/dark/forms/file-upload/image-editor.png)
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).
