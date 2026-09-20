@@ -803,12 +803,15 @@
 
     window.Alpine.data("orbitLiveNotifications", () => ({
       channels: [],
+      cursor: 0,
+      _pollTimer: null,
       init() {
         const raw = this.$el.getAttribute("data-channels") || "";
         this.channels = raw
           .split(",")
           .map((c) => c.trim())
           .filter(Boolean);
+        this.cursor = Number(this.$el.getAttribute("data-cursor") || 0) || 0;
         window.addEventListener("orbit:broadcast", (event) => {
           const detail = event.detail || {};
           const channel = detail.channel;
@@ -817,6 +820,32 @@
           }
           window.dispatchEvent(new CustomEvent("orbit:notify", { detail }));
         });
+        const url = this.$el.getAttribute("data-orbit-live-url") || "";
+        const polling = Number(this.$el.getAttribute("data-polling") || 0);
+        if (url && polling > 0) {
+          this.pollLive(url);
+          this._pollTimer = setInterval(() => this.pollLive(url), polling);
+        }
+      },
+      destroy() {
+        if (this._pollTimer) clearInterval(this._pollTimer);
+      },
+      async pollLive(url) {
+        try {
+          const sep = url.includes("?") ? "&" : "?";
+          const res = await fetch(`${url}${sep}since=${this.cursor}`, {
+            headers: { Accept: "application/json" },
+            credentials: "same-origin",
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          const events = Array.isArray(data.events) ? data.events : [];
+          if (typeof data.cursor === "number") this.cursor = data.cursor;
+          else this.cursor += events.length;
+          for (const detail of events) {
+            window.dispatchEvent(new CustomEvent("orbit:broadcast", { detail }));
+          }
+        } catch (_) {}
       },
     }));
 
@@ -853,16 +882,49 @@
         this.notifications = this.notifications.map((n) =>
           n.id === id ? { ...n, read: true } : n
         );
+        this._sync({ id, read: true });
       },
       markUnread(id) {
         this.notifications = this.notifications.map((n) =>
           n.id === id ? { ...n, read: false } : n
         );
+        this._sync({ id, read: false });
       },
       markAllRead() {
         this.notifications = this.notifications.map((n) => ({ ...n, read: true }));
+        this._sync({ all: true });
       },
-      poll() {
+      async _sync(payload) {
+        const url = this.$el.getAttribute("data-orbit-notifications-url");
+        if (!url) return;
+        try {
+          await fetch(url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+        } catch (_) {}
+      },
+      async poll() {
+        const url = this.$el.getAttribute("data-orbit-notifications-url");
+        if (url) {
+          try {
+            const res = await fetch(url, {
+              credentials: "same-origin",
+              headers: { Accept: "application/json" },
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data.notifications)) {
+                this.notifications = data.notifications;
+              }
+            }
+          } catch (_) {}
+        }
         // Hook for Conduit / apps: replace list via custom event detail.
         window.dispatchEvent(
           new CustomEvent("orbit:database-notifications-poll", {

@@ -130,6 +130,10 @@ class Panel:
         self._database_notifications: list[dict[str, Any]] = []
         self._database_notifications_position: Literal["topbar", "sidebar"] = "topbar"
         self._database_notifications_polling: str | int | None = "30s"
+        self._database_notification_store: Any = None
+        self._live_broadcasts_enabled = False
+        self._live_broadcasts_polling: str | int | None = "2s"
+        self._broadcast_hub: Any = None
         self._uploads_enabled = True
         self._global_search_enabled = True
         self._global_search_debounce_ms = 300
@@ -652,7 +656,84 @@ class Panel:
             self._database_notifications.append(item.to_dict())
         else:
             self._database_notifications.append(dict(item))
+        store = self._database_notification_store
+        if store is not None:
+            try:
+                store.save(dict(self._database_notifications[-1]))
+            except Exception:
+                pass
         return self
+
+    def database_notifications_enabled(self) -> bool:
+        return bool(self._database_notifications_enabled)
+
+    def database_notifications_store(self, store: Any) -> Self:
+        """Use a :class:`~almasix.orbit.notifications.store.DatabaseNotificationStore`."""
+        self._database_notification_store = store
+        try:
+            from almasix.orbit.notifications import get_notifier
+
+            get_notifier().use_store(store)
+        except Exception:
+            pass
+        if store is not None:
+            for item in list(self._database_notifications):
+                try:
+                    store.save(dict(item))
+                except Exception:
+                    pass
+        return self
+
+    def get_notification_store(self) -> Any:
+        return self._database_notification_store
+
+    def sqlite_notifications(self, path: str = "orbit-notifications.sqlite") -> Self:
+        """Persist the database bell with stdlib SQLite (file path or ``:memory:``)."""
+        from almasix.orbit.notifications import SqliteNotificationStore
+
+        if not self._database_notifications_enabled:
+            self.database_notifications(True)
+        return self.database_notifications_store(SqliteNotificationStore(path))
+
+    def notifications_url(self) -> str:
+        from almasix.orbit.panels.notification_routes import panel_notifications_url
+
+        return panel_notifications_url(self)
+
+    def live_broadcasts(
+        self,
+        enabled: bool | Any = True,
+        *,
+        polling: str | int | None = "2s",
+        hub: Any = None,
+    ) -> Self:
+        """Enable the ``/orbit-live`` poll endpoint and bind a broadcast hub."""
+        from almasix.orbit.notifications import MemoryBroadcastHub, set_broadcast_hub
+
+        self._live_broadcasts_polling = polling
+        if enabled is False:
+            self._live_broadcasts_enabled = False
+            return self
+        if enabled is not True:
+            hub = enabled
+        self._live_broadcasts_enabled = True
+        if hub is not None:
+            self._broadcast_hub = hub
+        elif self._broadcast_hub is None:
+            self._broadcast_hub = MemoryBroadcastHub()
+        set_broadcast_hub(self._broadcast_hub)
+        return self
+
+    def live_broadcasts_enabled(self) -> bool:
+        return bool(self._live_broadcasts_enabled)
+
+    def get_broadcast_hub(self) -> Any:
+        return self._broadcast_hub
+
+    def live_url(self) -> str:
+        from almasix.orbit.panels.notification_routes import panel_live_url
+
+        return panel_live_url(self)
 
     def notifications(self, condition: bool = True) -> Self:
         """Enable the toast notification host (default on)."""
@@ -2123,7 +2204,7 @@ class Panel:
         ):
             db_notify = (
                 f'<div class="or-sidebar-notifications">'
-                f"{self._render_database_notifications_trigger()}</div>"
+                f"{self._render_database_notifications_trigger(user=user)}</div>"
             )
 
         collapse_btn = ""
@@ -2377,7 +2458,7 @@ class Panel:
             and self._database_notifications_enabled
             and self._database_notifications_position == "topbar"
         ):
-            parts.append(self._render_database_notifications_trigger())
+            parts.append(self._render_database_notifications_trigger(user=user))
 
         parts.append(render_hook("panels::user-menu.before", scope=scope, user=user))
         if (
@@ -2390,8 +2471,7 @@ class Panel:
         parts.append(render_hook("panels::user-menu.after", scope=scope, user=user))
         return "".join(parts)
 
-    def _polling_ms(self) -> int | None:
-        raw = self._database_notifications_polling
+    def _interval_ms(self, raw: str | int | None) -> int | None:
         if raw is None:
             return None
         if isinstance(raw, int):
@@ -2414,11 +2494,25 @@ class Panel:
         except ValueError:
             return None
 
-    def _render_database_notifications_trigger(self) -> str:
+    def _polling_ms(self) -> int | None:
+        return self._interval_ms(self._database_notifications_polling)
+
+    def _live_polling_ms(self) -> int | None:
+        return self._interval_ms(self._live_broadcasts_polling)
+
+    def _render_database_notifications_trigger(self, user: Any = None) -> str:
         import json
         from uuid import uuid4
 
+        from almasix.orbit.panels.notification_routes import panel_notifications_url
+
         notes = list(self._database_notifications)
+        store = self._database_notification_store
+        if store is not None:
+            try:
+                notes = [row.to_dict() for row in store.get_for_user(user)] or notes
+            except Exception:
+                pass
         normalized: list[dict[str, Any]] = []
         for note in notes:
             row = dict(note)
@@ -2430,6 +2524,7 @@ class Panel:
         unread = sum(1 for n in normalized if not n.get("read"))
         polling = self._polling_ms()
         polling_attr = f' data-polling="{polling}"' if polling else ' data-polling=""'
+        url_attr = f' data-orbit-notifications-url="{e(panel_notifications_url(self))}"'
         payload = e(json.dumps(normalized))
         bell = render_icon("heroicon-o-bell", size=_TOPBAR_ICON)
         badge = (
@@ -2440,7 +2535,7 @@ class Panel:
         )
         return (
             f'<div class="or-notify" x-data="orbitDatabaseNotifications" '
-            f'data-notifications="{payload}"{polling_attr} '
+            f'data-notifications="{payload}"{polling_attr}{url_attr} '
             f'@click.outside="open = false">'
             '<button type="button" class="or-icon-btn or-notify-btn" @click="toggle()" '
             f'aria-label="Notifications" aria-haspopup="true">{bell}{badge}</button>'
@@ -2469,7 +2564,17 @@ class Panel:
         try:
             from almasix.orbit.notifications import get_notifier
 
-            return get_notifier().render_toast_host(include_flash=True)
+            html = get_notifier().render_toast_host(include_flash=True)
+            if self._live_broadcasts_enabled:
+                from almasix.orbit.panels.notification_routes import panel_live_url
+
+                polling = self._live_polling_ms() or 0
+                return (
+                    f'<div class="or-live-notifier" x-data="orbitLiveNotifications" '
+                    f'data-orbit-live-url="{e(panel_live_url(self))}" '
+                    f'data-polling="{polling}">{html}</div>'
+                )
+            return html
         except ImportError:  # pragma: no cover
             from almasix.orbit.notifications.alignment import Notifications
 

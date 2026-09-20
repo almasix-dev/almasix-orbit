@@ -3902,6 +3902,26 @@ def build_notification_variants() -> dict[str, tuple[str, str]]:
             "Broadcast — live host",
             live_html,
         ),
+        "notifications/database-notifications/sqlite": (
+            "Database — SQLite store",
+            _db_panel()
+            + '<p class="or-muted" style="margin-top:0.75rem;font-size:0.8125rem;'
+            'color:var(--or-muted)">SqliteNotificationStore persists the bell '
+            "across requests.</p>",
+        ),
+        "notifications/broadcast-notifications/hub": (
+            "Broadcast — hub",
+            live_html
+            + '<p class="or-muted" style="margin-top:0.75rem;font-size:0.8125rem;'
+            'color:var(--or-muted)">MemoryBroadcastHub records payloads for '
+            "<code>/orbit-live</code>.</p>",
+        ),
+        "notifications/broadcast-notifications/live-endpoint": (
+            "Broadcast — live endpoint",
+            live_html
+            + '<p class="or-muted" style="margin-top:0.75rem;font-size:0.8125rem;'
+            'color:var(--or-muted)">GET /orbit-live?since=0 returns new events.</p>',
+        ),
     }
 
 

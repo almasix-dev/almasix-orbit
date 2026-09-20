@@ -15,11 +15,16 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 104 | Import / export job runners | `docs/src/content/docs/actions/{import,export}.md` | **closed** |
 | 105 | Query builder polish | `docs/src/content/docs/query-builder/overview.md` | **closed** |
 | 106 | Users / MFA (TOTP + email SMTP) | `docs/src/content/docs/users/multi-factor-authentication.md` | **closed** |
-| 107+ | Remaining stability milestones (notifications adapters → support toolkit) | docs nav | queued |
+| 107 | Notifications production adapters (SQLite store + broadcast hub + `/orbit-live`) | `docs/src/content/docs/notifications/{database,broadcast}-notifications.md` | **closed** |
+| 108+ | Remaining stability milestones (panels platform → support toolkit) | docs nav | queued |
 
 ## Infolists layout + docs depth — closed
 
 **Bar:** Stacked label-above-value default (`.or-entry-inline` for side-by-side), Orbit-first overview depth (hidden/inline labels, sections, extra attrs, utility injection) with unique gallery shots, 100% coverage on infolists surface, vendor CSS synced.
+
+## Notifications production adapters — closed
+
+**Bar:** `SqliteNotificationStore` (stdlib sqlite3) for the database bell, `MemoryBroadcastHub` / `CallbackBroadcastHub` published from `.broadcast()`, panel GET/POST `/orbit-notifications` and GET `/orbit-live` with Alpine polling, orbit-admin sample, Orbit-first docs + unique gallery shots, 100% coverage.
 
 ## Users / MFA — closed
 

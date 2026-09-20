@@ -118,3 +118,165 @@ class InMemoryDatabaseNotificationStore:
 
     def clear(self) -> None:
         self._rows.clear()
+
+
+def _decode_json(raw: Any, default: Any) -> Any:
+    if raw in (None, ""):
+        return default
+    if not isinstance(raw, str):
+        return default
+    try:
+        import json
+
+        value = json.loads(raw)
+    except (TypeError, ValueError):
+        return default
+    if isinstance(default, list):
+        return value if isinstance(value, list) else default
+    if isinstance(default, dict):
+        return value if isinstance(value, dict) else default
+    return value
+
+
+class SqliteNotificationStore:
+    """SQLite-backed :class:`DatabaseNotificationStore` (stdlib ``sqlite3``).
+
+    Pass ``':memory:'`` for tests, or a file path so the panel bell survives
+    process restarts. Rows upsert on ``id``.
+    """
+
+    def __init__(self, path: str = "orbit-notifications.sqlite") -> None:
+        import sqlite3
+
+        self.path = path
+        self._conn = sqlite3.connect(path, check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS orbit_notifications (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                body TEXT,
+                status TEXT,
+                icon TEXT,
+                icon_color TEXT,
+                color TEXT,
+                actions TEXT,
+                read INTEGER NOT NULL DEFAULT 0,
+                user_key TEXT,
+                data TEXT
+            )
+            """
+        )
+        self._conn.commit()
+
+    def save(self, payload: dict[str, Any], *, user: Any = None) -> StoredNotification:
+        import json
+
+        actions = payload.get("actions") or []
+        if not isinstance(actions, list):
+            actions = []
+        data = payload.get("data") or {}
+        if not isinstance(data, dict):
+            data = {}
+        row = StoredNotification(
+            id=str(payload.get("id") or uuid4()),
+            title=str(payload.get("title") or "Notification"),
+            body=payload.get("body"),
+            status=str(payload.get("status") or "info"),
+            icon=payload.get("icon"),
+            icon_color=payload.get("icon_color"),
+            color=payload.get("color"),
+            actions=list(actions),
+            read=bool(payload.get("read", False)),
+            user_key=user_key(user),
+            data=dict(data),
+        )
+        self._conn.execute(
+            """
+            INSERT OR REPLACE INTO orbit_notifications
+                (id, title, body, status, icon, icon_color, color, actions, read, user_key, data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row.id,
+                row.title,
+                row.body,
+                row.status,
+                row.icon,
+                row.icon_color,
+                row.color,
+                json.dumps(row.actions),
+                1 if row.read else 0,
+                row.user_key,
+                json.dumps(row.data),
+            ),
+        )
+        self._conn.commit()
+        return row
+
+    def mark_read(self, notification_id: str, *, user: Any = None) -> None:
+        self._set_read(notification_id, True, user=user)
+
+    def mark_unread(self, notification_id: str, *, user: Any = None) -> None:
+        self._set_read(notification_id, False, user=user)
+
+    def _set_read(self, notification_id: str, read: bool, *, user: Any = None) -> None:
+        key = user_key(user)
+        flag = 1 if read else 0
+        if key is None:
+            self._conn.execute(
+                "UPDATE orbit_notifications SET read = ? WHERE id = ?",
+                (flag, notification_id),
+            )
+        else:
+            self._conn.execute(
+                "UPDATE orbit_notifications SET read = ? WHERE id = ? AND user_key = ?",
+                (flag, notification_id, key),
+            )
+        self._conn.commit()
+
+    def mark_all_read(self, *, user: Any = None) -> None:
+        key = user_key(user)
+        if key is None:
+            self._conn.execute("UPDATE orbit_notifications SET read = 1")
+        else:
+            self._conn.execute(
+                "UPDATE orbit_notifications SET read = 1 WHERE user_key = ?",
+                (key,),
+            )
+        self._conn.commit()
+
+    def get_for_user(self, user: Any = None) -> list[StoredNotification]:
+        key = user_key(user)
+        if key is None:
+            records = self._conn.execute("SELECT * FROM orbit_notifications").fetchall()
+        else:
+            records = self._conn.execute(
+                "SELECT * FROM orbit_notifications WHERE user_key = ?",
+                (key,),
+            ).fetchall()
+        return [self._from_sql(record) for record in records]
+
+    def clear(self) -> None:
+        self._conn.execute("DELETE FROM orbit_notifications")
+        self._conn.commit()
+
+    def close(self) -> None:
+        self._conn.close()
+
+    def _from_sql(self, record: Any) -> StoredNotification:
+        return StoredNotification(
+            id=str(record["id"]),
+            title=str(record["title"] or "Notification"),
+            body=record["body"],
+            status=str(record["status"] or "info"),
+            icon=record["icon"],
+            icon_color=record["icon_color"],
+            color=record["color"],
+            actions=_decode_json(record["actions"], []),
+            read=bool(record["read"]),
+            user_key=record["user_key"],
+            data=_decode_json(record["data"], {}),
+        )
+

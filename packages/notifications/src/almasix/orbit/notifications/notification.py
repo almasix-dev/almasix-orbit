@@ -10,10 +10,12 @@ from uuid import uuid4
 
 from almasix.orbit.notifications.actions import NotificationAction
 from almasix.orbit.notifications.alignment import Notifications
+from almasix.orbit.notifications.broadcast import get_broadcast_hub
 from almasix.orbit.notifications.store import (
     DatabaseNotificationStore,
     InMemoryDatabaseNotificationStore,
     StoredNotification,
+    user_key,
 )
 from almasix.orbit.support.html import e
 
@@ -395,6 +397,10 @@ class Notifier:
         self._store = store
         return self
 
+    def use_hub(self, hub: Any | None) -> Self:
+        self._hub = hub
+        return self
+
     def send(self, notification: Notification) -> Notification:
         channel = notification._channel or "flash"
         if channel == "database":
@@ -444,6 +450,21 @@ class Notifier:
         if user is not None:
             object.__setattr__(notification, "_recipient", user)
         self._broadcast.append(notification)
+        hub = getattr(self, "_hub", None)
+        if hub is None:
+            try:
+                hub = get_broadcast_hub()
+            except Exception:
+                hub = None
+        publish = getattr(hub, "publish", None) if hub is not None else None
+        if callable(publish):
+            payload = dict(notification.to_dict())
+            if user is not None:
+                payload["user_key"] = user_key(user)
+            try:
+                publish(payload)
+            except Exception:
+                pass
         return notification
 
     def flash(self) -> list[Notification]:
@@ -528,8 +549,9 @@ def _toast_host_template() -> str:
 class LiveNotifier(Notifier):
     """Broadcast / live notification host (Alpine + channel subscriptions).
 
-    Real Laravel Echo / Redis broadcasting is intentionally out of scope — apps
-    can wrap this adapter or replace :meth:`broadcast_send`.
+    Pair with a :class:`~almasix.orbit.notifications.broadcast.BroadcastHub`
+    and the panel ``/orbit-live`` endpoint so the browser can poll new events
+    and dispatch ``orbit:broadcast``.
     """
 
     def __init__(
@@ -539,6 +561,9 @@ class LiveNotifier(Notifier):
     ) -> None:
         super().__init__(database_store=database_store)
         self._channels: set[str] = set()
+        self._hub: Any | None = None
+        self._live_url: str | None = None
+        self._polling_ms: int | None = None
 
     def channel(self, name: str) -> Self:
         self._channels.add(name)
@@ -547,9 +572,21 @@ class LiveNotifier(Notifier):
     def get_channels(self) -> list[str]:
         return sorted(self._channels)
 
+    def live_url(self, url: str | None) -> Self:
+        self._live_url = url
+        return self
+
+    def polling(self, milliseconds: int | None) -> Self:
+        self._polling_ms = milliseconds
+        return self
+
     def render_live(self) -> str:
         channels = ",".join(self.get_channels())
         attrs = f' data-channels="{e(channels)}"' if channels else ""
+        if self._live_url:
+            attrs += f' data-orbit-live-url="{e(self._live_url)}"'
+        if self._polling_ms:
+            attrs += f' data-polling="{int(self._polling_ms)}"'
         return (
             f'<div class="or-live-notifier"{attrs} x-data="orbitLiveNotifications">'
             f"{self.render_toast_host(include_flash=True)}"

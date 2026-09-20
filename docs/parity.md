@@ -155,7 +155,7 @@ Typed constraints (`Text` / `Select` / `Boolean` / `Date` / `Number`), operators
 | Render hooks + Plugin base | Done |
 | `discover_*` + `load_discovered` + scaffolding writes files | Done |
 | Multi-panel domains / SPA / billing adapters | Partial (domains Done; SPA/billing later) |
-| Real DB notification persistence / Echo | Partial |
+| Real DB notification persistence / live hub | Done (SQLite store + `BroadcastHub` + `/orbit-live`) |
 
 ## Docs / screenshots
 
