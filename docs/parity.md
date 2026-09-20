@@ -18,7 +18,7 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | schemas | `almasix-orbit-schemas` | Done |
 | forms | `almasix-orbit-forms` | Partial |
 | tables | `almasix-orbit-tables` | Partial |
-| actions | `almasix-orbit-actions` | Partial |
+| actions | `almasix-orbit-actions` | Done |
 | infolists | `almasix-orbit-infolists` | Partial |
 | notifications | `almasix-orbit-notifications` | Partial |
 | widgets | `almasix-orbit-widgets` | Partial |
@@ -78,16 +78,19 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | List tabs with live/callable badges | Done |
 | `Table.summaries(page=, all=)` + summary footer chrome | Done |
 
-## Actions — Partial
+## Actions — Done
 
 | Feature | Status |
 |---------|--------|
 | Create/Edit/View/Delete + modal URL modes | Done |
 | Modal forms (`Action.form()` in shell dialog) | Done |
 | Danger actions always confirm (Conduit-safe) | Done |
+| Trigger chrome (button/link/iconButton/badge, size, outlined, tooltip, keys, URL+tab) | Done |
+| Full modal API (slide-over, sticky, labels, icon, alignment, close behavior) | Done |
 | Replicate / ForceDelete / Restore / Import / Export | Done |
-| `ActionGroup` / `BulkActionGroup` + slide-over / modal width / sticky | Done |
-| Host job runners for import/export | Partial (config + docs) |
+| `ActionGroup` / `BulkActionGroup` + sections / placement | Done |
+| CRUD lifecycle hooks (mutate/using/before/after/halt/createAnother) | Done |
+| Host job runners for import/export | Partial (config + docs adapter contract) |
 
 ## Panels / platform — Partial
 

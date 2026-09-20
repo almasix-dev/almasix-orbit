@@ -87,7 +87,12 @@ from almasix.orbit.tables.layout import Grid, Split, Stack, View
 from almasix.orbit.tables.layout import Panel as LayoutPanel
 from almasix.orbit.tables.summaries import Average, Count, Sum
 from almasix.orbit.tables.table import Table
-from gallery_variants import build_form_variants, build_infolist_variants, build_schema_variants
+from gallery_variants import (
+    build_action_variants,
+    build_form_variants,
+    build_infolist_variants,
+    build_schema_variants,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 CSS = (ROOT.parent / "packages/panels/src/almasix/orbit/resources/css/orbit.css").read_text(
@@ -295,6 +300,35 @@ SHOTS: list[tuple[str, str]] = [
     ("infolists/repeatable-entry/columns", "Repeatable entry — columns"),
     ("infolists/view-entry/basic", "View entry — basic"),
     ("infolists/view-entry/callable", "View entry — callable"),
+    # Actions
+    ("actions/overview", "Actions overview"),
+    ("actions/overview/triggers", "Actions — trigger styles"),
+    ("actions/overview/sizes", "Actions — sizes"),
+    ("actions/overview/outlined", "Actions — outlined"),
+    ("actions/overview/icons", "Actions — icons"),
+    ("actions/overview/tooltip", "Actions — tooltip"),
+    ("actions/overview/badge", "Actions — badge indicator"),
+    ("actions/overview/url", "Actions — URL + new tab"),
+    ("actions/overview/authorize", "Actions — authorize"),
+    ("actions/overview/schema", "Actions — schema / form"),
+    ("actions/overview/notifications", "Actions — notifications"),
+    ("actions/modals/confirm", "Modals — confirmation"),
+    ("actions/modals/form", "Modals — form"),
+    ("actions/modals/slide-over", "Modals — slide over"),
+    ("actions/modals/labels", "Modals — custom labels"),
+    ("actions/modals/icon", "Modals — icon + alignment"),
+    ("actions/grouping/dropdown", "Grouping — dropdown"),
+    ("actions/grouping/button-group", "Grouping — button group"),
+    ("actions/grouping/sections", "Grouping — sections"),
+    ("actions/create", "Create action"),
+    ("actions/edit", "Edit action"),
+    ("actions/view", "View action"),
+    ("actions/delete", "Delete action"),
+    ("actions/replicate", "Replicate action"),
+    ("actions/force-delete", "Force-delete action"),
+    ("actions/restore", "Restore action"),
+    ("actions/import", "Import action"),
+    ("actions/export", "Export action"),
     ("panels/shell", "Panel shell"),
     ("users/login", "Login"),
 ]
@@ -1812,6 +1846,7 @@ def build() -> str:
     form_variants = build_form_variants()
     schema_variants = build_schema_variants()
     infolist_variants = build_infolist_variants()
+    action_variants = build_action_variants()
 
     parts = [
         shot("forms/overview", "Forms overview", form_overview.render()),
@@ -1841,6 +1876,10 @@ def build() -> str:
         *(
             shot(sid, label, html)
             for sid, (label, html) in infolist_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in action_variants.items()
         ),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/overview-columns", "Overview — columns", table_overview_columns.render()),
@@ -1981,6 +2020,26 @@ def build() -> str:
 .or-action-modal-host,
 .or-modal-backdrop,
 .or-modal {{ display: none !important; }} /* never capture confirm overlays */
+[data-shot^="actions/"] .or-gallery-modal .or-modal {{
+  display: block !important;
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  margin: 0 auto;
+}}
+[data-shot^="actions/"] .or-gallery-modal .or-modal-slide {{
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: min(22rem, 100%);
+  min-height: 16rem;
+}}
+[data-shot^="actions/"] .or-dropdown-menu {{
+  display: block !important;
+  position: static;
+  margin-top: 0.5rem;
+}}
 html, body {{
   margin: 0;
   font-family: var(--or-font);

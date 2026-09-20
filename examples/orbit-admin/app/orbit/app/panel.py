@@ -5,6 +5,7 @@ from __future__ import annotations
 from almasix.orbit import Panel, PanelRegistry
 from almasix.orbit.panels.navigation import NavigationGroup
 from app.orbit.app.plugins import BrandingPlugin
+from app.orbit.app.resources.actions_overview_resource import ActionsOverviewResource
 from app.orbit.app.resources.author_resource import AuthorResource
 from app.orbit.app.resources.columns_overview_resource import ColumnsOverviewResource
 from app.orbit.app.resources.editable_columns_resource import EditableColumnsResource
@@ -66,6 +67,11 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
             .sort(6)
         )
         .navigation_group(
+            NavigationGroup.make("Actions")
+            .icon("heroicon-o-check")
+            .sort(7)
+        )
+        .navigation_group(
             NavigationGroup.make("Demos")
             .icon("heroicon-o-beaker")
             .sort(8)
@@ -80,6 +86,7 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
                 TablesOverviewResource,
                 ColumnsOverviewResource,
                 InfolistsOverviewResource,
+                ActionsOverviewResource,
                 PostResource,
                 AuthorResource,
                 SettingsResource,

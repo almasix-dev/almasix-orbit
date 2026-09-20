@@ -9,21 +9,25 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 1–17 | Panel / Tables / Columns / Filters | (prior) | **closed** |
 | 18–30 | Schemas module | `docs/src/content/docs/schemas/*` | **closed** |
 | 31–65 | Forms module | `docs/src/content/docs/forms/*` | **closed** |
-| 66 | Infolists overview | `docs/src/content/docs/infolists/overview.md` | **closed** |
-| 67 | Text entry | `docs/src/content/docs/infolists/text-entry.md` | **closed** |
-| 68 | Icon entry | `docs/src/content/docs/infolists/icon-entry.md` | **closed** |
-| 69 | Image entry | `docs/src/content/docs/infolists/image-entry.md` | **closed** |
-| 70 | Color entry | `docs/src/content/docs/infolists/color-entry.md` | **closed** |
-| 71 | Code entry | `docs/src/content/docs/infolists/code-entry.md` | **closed** |
-| 72 | Key-value entry | `docs/src/content/docs/infolists/key-value-entry.md` | **closed** |
-| 73 | Repeatable entry | `docs/src/content/docs/infolists/repeatable-entry.md` | **closed** |
-| 74 | View entry / custom | `docs/src/content/docs/infolists/view-entry.md` | **closed** |
-| 75+ | Remaining Orbit doc features | docs nav | queued |
+| 66–74 | Infolists module | `docs/src/content/docs/infolists/*` | **closed** |
+| 75 | Actions overview | `docs/src/content/docs/actions/overview.md` | **closed** |
+| 76 | Modals | `docs/src/content/docs/actions/modals.md` | **closed** |
+| 77 | Grouping actions | `docs/src/content/docs/actions/grouping-actions.md` | **closed** |
+| 78 | Create action | `docs/src/content/docs/actions/create.md` | **closed** |
+| 79 | Edit action | `docs/src/content/docs/actions/edit.md` | **closed** |
+| 80 | View action | `docs/src/content/docs/actions/view.md` | **closed** |
+| 81 | Delete action | `docs/src/content/docs/actions/delete.md` | **closed** |
+| 82 | Replicate action | `docs/src/content/docs/actions/replicate.md` | **closed** |
+| 83 | Force-delete action | `docs/src/content/docs/actions/force-delete.md` | **closed** |
+| 84 | Restore action | `docs/src/content/docs/actions/restore.md` | **closed** |
+| 85 | Import action | `docs/src/content/docs/actions/import.md` | **closed** |
+| 86 | Export action | `docs/src/content/docs/actions/export.md` | **closed** |
+| 87+ | Remaining Orbit doc features | docs nav | queued |
 
-## Infolists autopilot — closed
+## Actions autopilot — closed
 
-**Bar:** 100% Filament 5 feature parity on the Orbit surface, Filament-depth docs (every subsection = explanation + code + light/dark screenshots), 100% test coverage, orbit-admin sample.
+**Bar:** 100% Filament 5 feature parity on the Orbit Actions surface (API + UX + DX), Filament-depth docs (every subsection = explanation + code + light/dark screenshots), 100% test coverage, orbit-admin sample.
 
 ### Shipped
 
-Entry chrome (dot-state, placeholder, copyable, markdown/html/prose, date/time/money/numeric, hints), TextEntry depth, Icon/Image/Color/Code/KeyValue/Repeatable depth, ViewEntry, Schema layouts inside Infolist, orbit-admin `InfolistsOverviewResource`, gallery shots under `docs/public/examples/{light,dark}/infolists/`.
+Trigger chrome (button/link/iconButton/badge, size, outlined, tooltip, keybindings, url+new-tab), full modal API, ActionGroup depth, CRUD preset hooks (mutate/using/before/after/halt/cancel/createAnother/notifications/redirects), Replicate persistence, BulkAction helpers, Import/Export config + documented adapter contract, orbit-admin `ActionsOverviewResource`, gallery shots under `docs/public/examples/{light,dark}/actions/`.
