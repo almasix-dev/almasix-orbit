@@ -28,7 +28,7 @@ this framing into learner-facing pages.
 | infolists | `almasix-orbit-infolists` | Partial |
 | notifications | `almasix-orbit-notifications` | Done |
 | widgets | `almasix-orbit-widgets` | Done |
-| query-builder | `almasix-orbit-query-builder` | Partial |
+| query-builder | `almasix-orbit-query-builder` | Done |
 | panels | `almasix-orbit` (panels) | Partial |
 
 ## Schemas — Done
@@ -135,6 +135,10 @@ this framing into learner-facing pages.
 | `LiveNotifier` + `orbit:broadcast` / `orbitLiveNotifications` | Done |
 | Testing helpers (`assert_notified` / `assert_not_notified` / `reset_notifications`) | Done |
 | Docs + light/dark gallery shots + orbit-admin sample | Done |
+
+## Query builder — Done
+
+Typed constraints (`Text` / `Select` / `Boolean` / `Date` / `Number`), operators, `.add_rule()` / `.logic("and"|"or")`, hydrate-from-state render, `QueryBuilderFilter` table chrome + `{logic, rules}` apply, docs + gallery shots.
 
 ## Panels / platform — Partial
 

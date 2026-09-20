@@ -4872,9 +4872,13 @@ html.dark .or-login-logo-dark {
 
 .or-file-preview {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
   gap: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+.or-file-preview:empty {
+  display: none;
 }
 
 .or-file-avatar .or-file-preview {
@@ -4917,11 +4921,37 @@ html.dark .or-login-logo-dark {
   background: color-mix(in srgb, var(--or-primary) 6%, transparent);
 }
 
-.or-query-builder,
+.or-query-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius-lg);
+  background: color-mix(in srgb, var(--or-primary) 5%, var(--or-surface));
+}
+
 .or-qb-rows {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.55rem;
+}
+
+.or-qb-logic {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.or-qb-logic-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--or-muted);
+}
+
+.or-qb-logic-select {
+  width: auto;
+  min-width: 8rem;
 }
 
 .or-qb-row {
@@ -4929,10 +4959,21 @@ html.dark .or-login-logo-dark {
   grid-template-columns: minmax(6rem, 1fr) minmax(7rem, 1fr) minmax(8rem, 1.4fr);
   gap: 0.5rem;
   align-items: center;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--or-radius);
+  background: var(--or-surface);
 }
 
 .or-qb-label {
   font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.or-table-filter-query {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: min(36rem, 100%);
 }
 
 .or-repeatable,
@@ -5366,4 +5407,180 @@ html.dark .or-login-logo-dark {
   border-top: 1px solid var(--or-line);
   margin-top: 0.25rem;
   padding-top: 0.5rem;
+}
+
+/* File uploads — previews, actions, progress */
+.or-file-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: var(--or-surface);
+  font-size: 0.75rem;
+}
+
+.or-file-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: calc(var(--or-radius) - 2px);
+  display: block;
+}
+
+.or-file-name {
+  word-break: break-all;
+  text-align: center;
+  color: var(--or-ink-soft);
+}
+
+.or-file-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.or-file-action {
+  color: var(--or-primary);
+  text-decoration: none;
+  font-size: 0.7rem;
+}
+
+.or-file-action:hover {
+  text-decoration: underline;
+}
+
+.or-file-remove {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--or-ink-soft);
+  cursor: pointer;
+  line-height: 1;
+  font-size: 1rem;
+  padding: 0 0.15rem;
+}
+
+.or-file-remove:hover {
+  color: var(--or-danger, #dc2626);
+}
+
+.or-file-progress {
+  height: 0.35rem;
+  margin-top: 0.4rem;
+  border-radius: 999px;
+  background: var(--or-line);
+  overflow: hidden;
+}
+
+.or-file-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--or-primary);
+  transition: width 0.15s linear;
+}
+
+.or-file-error {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--or-danger, #dc2626);
+}
+
+/* Key-value editor */
+.or-key-value-editor {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+.or-key-value-head {
+  display: flex;
+  width: 100%;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--or-ink-soft);
+}
+
+.or-key-value-head span {
+  flex: 1;
+}
+
+.or-key-value-head-spacer {
+  flex: 0 0 2.1rem;
+}
+
+.or-field-KeyValue > .or-btn {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+}
+
+.or-key-value-row {
+  align-items: center;
+}
+
+.or-key-value-key,
+.or-key-value-value {
+  flex: 1;
+  min-width: 0;
+}
+
+.or-key-value-remove {
+  flex: 0 0 auto;
+}
+
+/* Modal table select */
+.or-table-select-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.or-table-select-row {
+  text-align: left;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: var(--or-surface);
+  color: var(--or-ink);
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.or-table-select-row:hover {
+  border-color: var(--or-primary);
+  background: var(--or-surface-2, var(--or-surface));
+}
+
+/* Morph-to select */
+.or-morph-to-select {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.or-morph-search {
+  width: 100%;
+}
+
+/* Rich editor placeholder */
+.or-tiptap-surface[data-placeholder]:empty::before,
+.or-editor-rich[data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--or-ink-soft);
+  pointer-events: none;
 }

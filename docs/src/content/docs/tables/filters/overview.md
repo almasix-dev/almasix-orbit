@@ -52,6 +52,24 @@ By default, filters are **live**: changing a control updates the table immediate
 | `FilterGroup` | Fieldset section | Nest filters under a labeled group |
 | `QueryBuilderFilter` | Builder UI | See [Query builder](/query-builder/overview/) |
 
+## Query builder filter
+
+When one select is not enough, drop a `QueryBuilderFilter` into `.filters()`. Operators pick typed value widgets (text, number, date, checkbox, select) and the Match control chooses AND vs OR. Filter state is a list of `{constraint, operator, value}` rules, or `{logic, rules}`.
+
+```python
+from almasix.orbit.query_builder import QueryBuilder, TextConstraint
+from almasix.orbit.tables import QueryBuilderFilter
+
+QueryBuilderFilter.make("query")
+    .label("Rules")
+    .builder(QueryBuilder.make().constraints([
+        TextConstraint.make("title").label("Title"),
+    ]))
+```
+
+![Query builder filter (light)](/examples/light/query-builder/overview/table-filter.png)
+![Query builder filter (dark)](/examples/dark/query-builder/overview/table-filter.png)
+
 `.apply()` is a no-op when the value is inactive (`None`, `""`, `[]`, or off for boolean filters), unless a custom `.query()` / ternary `queries()` handles empty on purpose.
 
 ## Checkbox and toggle filters

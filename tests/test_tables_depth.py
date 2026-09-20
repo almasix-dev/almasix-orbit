@@ -799,6 +799,24 @@ def test_table_render_summaries_grouping_layout_filters() -> None:
     )
     assert applied == [records[1]]
 
+    qb_filter_table = (
+        Table.make()
+        .columns([TextColumn.make("name")])
+        .filters(
+            [
+                QueryBuilderFilter.make("query")
+                .label("Rules")
+                .builder(QueryBuilder.make().constraints([TextConstraint.make("name").label("Name")]))
+            ]
+        )
+        .records(records)
+        .filter_state({"query": [{"constraint": "name", "operator": "equals", "value": "A"}]})
+    )
+    qb_filter_html = qb_filter_table.render()
+    assert "or-table-filter-query" in qb_filter_html
+    assert "or-query-builder" in qb_filter_html
+    assert qb_filter_table.get_records() == [records[0]]
+
     only = (
         Table.make()
         .columns([TextColumn.make("name"), TextColumn.make("status")])

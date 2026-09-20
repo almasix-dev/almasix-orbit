@@ -13,11 +13,16 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 102 | Resources depth (relation managers, global search, record titles, soft deletes) | `docs/src/content/docs/resources/*` | **closed** |
 | 103 | Forms leftovers (FileUpload endpoint, RichEditor, MorphTo live search, ModalTableSelect / KeyValue hosts) | `docs/src/content/docs/forms/{file-upload,rich-editor,morph-to-select,modal-table-select,key-value}.md` | **closed** |
 | 104 | Import / export job runners | `docs/src/content/docs/actions/{import,export}.md` | **closed** |
-| 105+ | Remaining stability milestones (query builder → support toolkit) | docs nav | queued |
+| 105 | Query builder polish | `docs/src/content/docs/query-builder/overview.md` | **closed** |
+| 106+ | Remaining stability milestones (users/MFA → support toolkit) | docs nav | queued |
 
 ## Infolists layout + docs depth — closed
 
 **Bar:** Stacked label-above-value default (`.or-entry-inline` for side-by-side), Orbit-first overview depth (hidden/inline labels, sections, extra attrs, utility injection) with unique gallery shots, 100% coverage on infolists surface, vendor CSS synced.
+
+## Query builder polish — closed
+
+**Bar:** Typed constraint widgets, AND/OR logic, `.add_rule()` / hydrate-from-state, `QueryBuilderFilter` chrome + `{logic, rules}` apply, orbit-admin Posts sample, Orbit-first docs with unique gallery shots, 100% coverage.
 
 ## Import / export runners — closed
 

@@ -746,6 +746,13 @@ class Table(Component):
         label = e(f.get_label(**ctx) or name)
         current = self._filter_state.get(name)
 
+        if hasattr(f, "get_builder") and f.get_builder() is not None:
+            return (
+                f'<div class="or-table-filter or-table-filter-query" data-filter="{name_e}">'
+                f'<span class="or-filter-label">{label}</span>'
+                f"{f.render(current, **ctx)}</div>"
+            )
+
         if f.is_boolean_filter():
             checked = " checked" if _filter_value_on(current) else ""
             css = "or-toggle" if f.is_toggle() else "or-checkbox"

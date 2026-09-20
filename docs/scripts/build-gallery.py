@@ -93,6 +93,7 @@ from gallery_variants import (
     build_infolist_variants,
     build_navigation_variants,
     build_notification_variants,
+    build_query_builder_variants,
     build_resource_variants,
     build_schema_variants,
     build_tenancy_variants,
@@ -389,6 +390,11 @@ SHOTS: list[tuple[str, str]] = [
     ("users/tenancy/switcher", "Tenancy — switcher"),
     ("users/tenancy/menu", "Tenancy — switcher menu"),
     ("users/tenancy/scoped-list", "Tenancy — scoped list"),
+    ("query-builder/overview", "Query builder — overview"),
+    ("query-builder/overview/constraints", "Query builder — constraints"),
+    ("query-builder/overview/rules", "Query builder — populated rules"),
+    ("query-builder/overview/or-logic", "Query builder — any rule"),
+    ("query-builder/overview/table-filter", "Query builder — table filter"),
 ]
 
 
@@ -1910,6 +1916,7 @@ def build() -> str:
     notification_variants = build_notification_variants()
     tenancy_variants = build_tenancy_variants()
     resource_variants = build_resource_variants()
+    query_builder_variants = build_query_builder_variants()
 
     parts = [
         shot("forms/overview", "Forms overview", form_overview.render()),
@@ -1963,6 +1970,10 @@ def build() -> str:
         *(
             shot(sid, label, html)
             for sid, (label, html) in resource_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in query_builder_variants.items()
         ),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/overview-columns", "Overview — columns", table_overview_columns.render()),
