@@ -700,6 +700,84 @@ class {class_name}(Field):
         return self.SUCCESS
 
 
+class MakeOrbitPluginCommand(Command):
+    """Scaffold a publishable third-party plugin package and listing YAML."""
+
+    signature = (
+        "make:orbit-plugin {name? : Plugin name (e.g. AuditLog or acme-orbit-audit-log)}"
+        " {--author= : Author slug for the listing YAML}"
+        " {--vendor= : Vendor prefix for the PyPI name}"
+        " {--package= : PyPI package name}"
+        " {--category=developer-tool : Marketplace category}"
+        " {--path= : Directory to write into (defaults to the current working directory)}"
+        " {--paid : Paid listing stub}"
+        " {--listing-only : Only write marketplace YAML stubs}"
+        " {--no-listing : Skip marketplace YAML}"
+        " {--force : Overwrite existing files}"
+    )
+    description = "Scaffold a publishable third-party Orbit plugin and marketplace YAML"
+    aliases: ClassVar[tuple[str, ...]] = ("orbit:plugin",)
+    boots_application: ClassVar[bool] = False
+
+    def handle(self, *args: Any, **kwargs: Any) -> int:
+        from almasix.orbit.panels.plugin_scaffold import (
+            PluginScaffoldError,
+            parse_plugin_spec,
+            resolve_root,
+            write_scaffold,
+        )
+
+        raw = _resolve_name(self, *args, **kwargs) or _prompt_name(
+            self, label="Plugin name (e.g. AuditLog)"
+        )
+        if not raw:
+            self.error("name is required")
+            return self.INVALID
+        listing_only = bool(
+            self.option("listing-only")
+            or self.option("listing_only")
+            or kwargs.get("listing_only")
+            or kwargs.get("listing-only")
+        )
+        no_listing = bool(
+            self.option("no-listing")
+            or self.option("no_listing")
+            or kwargs.get("no_listing")
+            or kwargs.get("no-listing")
+        )
+        dest = str(self.option("path") or kwargs.get("path") or "").strip() or "."
+        try:
+            spec = parse_plugin_spec(
+                raw,
+                author=str(self.option("author") or kwargs.get("author") or ""),
+                vendor=str(self.option("vendor") or kwargs.get("vendor") or ""),
+                package=str(self.option("package") or kwargs.get("package") or ""),
+                category=str(
+                    self.option("category") or kwargs.get("category") or "developer-tool"
+                ),
+                paid=bool(self.option("paid") or kwargs.get("paid")),
+            )
+            written = write_scaffold(
+                spec,
+                path=dest,
+                listing_only=listing_only,
+                no_listing=no_listing,
+                force=bool(self.option("force") or kwargs.get("force")),
+            )
+        except PluginScaffoldError as exc:
+            self.error(str(exc))
+            return self.FAILURE
+        root = resolve_root(dest, spec, listing_only=listing_only)
+        self.info(f"plugin → {root}")
+        for path in written:
+            self.comment(str(path))
+        self.success(
+            "Next: implement register/boot, then copy marketplace/*.yaml into "
+            "the Orbit repo (see orbit.almasix.com/plugins/get-listed/)"
+        )
+        return self.SUCCESS
+
+
 class MakeOrbitUserCommand(Command):
     """Create an application user for Orbit panel auth (Filament ``make:filament-user``)."""
 
@@ -897,4 +975,5 @@ ORBIT_COMMANDS: list[type[Command]] = [
     MakeOrbitWidgetCommand,
     MakeOrbitFieldCommand,
     MakeOrbitUserCommand,
+    MakeOrbitPluginCommand,
 ]

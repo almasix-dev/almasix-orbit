@@ -51,6 +51,13 @@ immutable.
 smith make:orbit-resource GeneratedPost --panel=app --model=Post --generate --force
 ```
 
+**Third-party plugin scaffold** (standalone package + draft marketplace YAML, not an in-app module):
+
+```bash
+smith make:orbit-plugin AuditLog --vendor=acme --author=you
+# or: python -m almasix.orbit plugin new AuditLog --vendor=acme --author=you
+```
+
 **Demos → Generated posts** is that stub wired into the app panel (same `Post`
 model as Content → Posts) so you can compare auto-mapped form/table fields with
 the hand-tuned Posts resource.
