@@ -203,6 +203,8 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
             ]
         )
         .database_notifications_polling("30s")
+        .sqlite_notifications("orbit-notifications.sqlite")
+        .live_broadcasts(polling="2s")
         .widgets(
             [
                 WelcomeWidget,

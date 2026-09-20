@@ -7,7 +7,7 @@ description: Persist notifications to the panel bell — enable, seed, send, pol
 
 **Database notifications** stay in a panel **bell** until the user marks them read. Unlike flash toasts (which disappear after a few seconds), these messages accumulate so someone can catch up later.
 
-Enable the feature on the panel, optionally seed demo rows, then send new items with `.send_to_database(...)`. Orbit ships an in-memory store by default; swap in a `DatabaseNotificationStore` when you need real persistence.
+Enable the feature on the panel, optionally seed demo rows, then send new items with `.send_to_database(...)`. Orbit ships an in-memory store by default. For a process that restarts (or multiple workers sharing a file), call `.sqlite_notifications(...)` — that uses stdlib SQLite and implements the same `DatabaseNotificationStore` contract.
 
 ```python title="app/providers/orbit_panel_provider.py"
 from almasix.orbit import Panel
@@ -24,6 +24,7 @@ Panel.make("admin")
             .status("info")
             .read(),
     ])
+    .sqlite_notifications("orbit-notifications.sqlite")
 ```
 
 ![Orbit Database notifications (light)](/examples/light/notifications/database-notifications.png)
@@ -51,6 +52,8 @@ Panel.make("admin")
 | `.database_notifications` | `True` / `False`, or a sequence of seeds |
 | `.database_notifications_position` | `topbar` (default) or `sidebar` |
 | `.database_notifications_polling` | `'30s'`, ms int, or `None` to disable |
+| `.sqlite_notifications` | SQLite file path or `':memory:'` (also enables the bell) |
+| `.database_notifications_store` | Plug in any `DatabaseNotificationStore` |
 | `.notification` | Append one seed (also enables the feature) |
 
 ![Orbit Database notifications enable (light)](/examples/light/notifications/database-notifications/enable.png)
@@ -75,7 +78,13 @@ Notification.make()
 
 ![Orbit Database notifications send (dark)](/examples/dark/notifications/database-notifications/send.png)
 
-The default `InMemoryDatabaseNotificationStore` is enough for demos and tests. Swap it with `Notifier.use_store(...)` implementing `DatabaseNotificationStore` (`save`, `mark_read`, `mark_unread`, `mark_all_read`, `get_for_user`).
+The default `InMemoryDatabaseNotificationStore` is enough for demos and tests. `.sqlite_notifications("orbit-notifications.sqlite")` persists rows with stdlib SQLite (upsert on `id`). Swap in any `DatabaseNotificationStore` via `.database_notifications_store(...)` or `Notifier.use_store(...)` (`save`, `mark_read`, `mark_unread`, `mark_all_read`, `get_for_user`).
+
+![Orbit Database notifications SQLite store (light)](/examples/light/notifications/database-notifications/sqlite.png)
+
+![Orbit Database notifications SQLite store (dark)](/examples/dark/notifications/database-notifications/sqlite.png)
+
+When the bell is enabled, Orbit also mounts **GET/POST** `{panel}/orbit-notifications`. The Alpine `orbitDatabaseNotifications` component polls that URL and posts mark-read updates so the store stays in sync without a full page reload.
 
 ## Position
 
@@ -96,7 +105,7 @@ Panel.make("admin")
 
 ## Polling
 
-Without a websocket or SSE bridge, the Alpine `orbitDatabaseNotifications` component polls on an interval (default **30s**). Pass `'15s'`, a millisecond int, or `None`.
+The Alpine `orbitDatabaseNotifications` component polls on an interval (default **30s**). Pass `'15s'`, a millisecond int, or `None`. When the panel bell is on, each poll hits `{panel}/orbit-notifications` and replaces the list from the store.
 
 ```python title="app/providers/orbit_panel_provider.py"
 from almasix.orbit import Panel
@@ -105,9 +114,10 @@ Panel.make("admin")
     .path("admin")
     .database_notifications(True)
     .database_notifications_polling("15s")
+    .sqlite_notifications("orbit-notifications.sqlite")
 ```
 
-Apps can listen for `orbit:database-notifications-poll` / dispatch `orbit:database-notifications-refresh` to replace or refresh the list.
+Apps can still listen for `orbit:database-notifications-poll` / dispatch `orbit:database-notifications-refresh` to replace or refresh the list.
 
 ## Marking as read
 

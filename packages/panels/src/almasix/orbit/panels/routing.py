@@ -19,6 +19,13 @@ from almasix.orbit.panels.global_search import (
     collect_global_search_results,
     render_global_search_groups,
 )
+from almasix.orbit.panels.notification_routes import (
+    handle_database_notifications,
+    handle_live_broadcasts,
+    panel_live_url,
+    panel_notifications_url,
+    read_json_body,
+)
 from almasix.orbit.panels.panel import Panel, PanelRegistry
 from almasix.orbit.panels.uploads import (
     handle_upload,
@@ -611,6 +618,47 @@ def mount_panel(router: Any, panel: Panel) -> None:
             panel_upload_url(panel),
             upload_action,
             name=f"orbit.{panel.id}.upload",
+            middleware=auth_middleware,
+            domain=domain,
+        )
+
+    if panel.database_notifications_enabled():
+
+        async def database_notifications_action(request: Request, **_extra: Any) -> Any:
+            method = str(getattr(request, "method", "GET") or "GET")
+            payload: dict[str, Any] = {}
+            if method.upper() == "POST":
+                payload = await read_json_body(request)
+            return _json_response(
+                handle_database_notifications(
+                    panel,
+                    user=_current_user(panel),
+                    method=method,
+                    payload=payload,
+                )
+            )
+
+        router.add(
+            ["GET", "POST"],
+            panel_notifications_url(panel),
+            database_notifications_action,
+            name=f"orbit.{panel.id}.database-notifications",
+            middleware=auth_middleware,
+            domain=domain,
+        )
+
+    if panel.live_broadcasts_enabled():
+
+        async def live_broadcasts_action(request: Request, **_extra: Any) -> Any:
+            return _json_response(
+                handle_live_broadcasts(panel, since=_query_param(request, "since"))
+            )
+
+        router.add(
+            ["GET"],
+            panel_live_url(panel),
+            live_broadcasts_action,
+            name=f"orbit.{panel.id}.live",
             middleware=auth_middleware,
             domain=domain,
         )

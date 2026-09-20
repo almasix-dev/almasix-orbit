@@ -1,6 +1,6 @@
 ---
 title: Broadcast notifications
-description: Live / broadcast toasts — LiveNotifier, channels, and the orbit:broadcast client event.
+description: Live toasts — broadcast hub, /orbit-live polling, LiveNotifier, and orbit:broadcast.
 ---
 
 ## Introduction
@@ -10,13 +10,15 @@ description: Live / broadcast toasts — LiveNotifier, channels, and the orbit:b
 Orbit provides:
 
 1. A fluent `.broadcast(...)` channel on `Notification`
-2. A `LiveNotifier` adapter that records channel names for the client
-3. An Alpine `orbitLiveNotifications` host that listens for the browser event `orbit:broadcast`
-
-Wire your own transport (websockets, SSE, or a push service) to dispatch that event — Orbit stays transport-agnostic.
+2. A `BroadcastHub` that records payloads in-process (`MemoryBroadcastHub`) or fans them to a callback (`CallbackBroadcastHub`)
+3. Panel `.live_broadcasts()` which mounts **GET** `{panel}/orbit-live` and binds the hub
+4. Alpine `orbitLiveNotifications`, which polls that URL and dispatches the browser event `orbit:broadcast`
 
 ```python title="app/orbit/notifications/broadcast.py"
+from almasix.orbit import Panel
 from almasix.orbit.notifications import Notification
+
+Panel.make("admin").path("admin").live_broadcasts(polling="2s")
 
 Notification.make()
     .title("Deploy finished")
@@ -31,12 +33,13 @@ Notification.make()
 
 ## Sending broadcast notifications
 
-`.broadcast(user=None)` sets the channel and enqueues on the notifier’s broadcast bag. `.to_broadcast()` only marks the channel for a later `.send()`.
+`.broadcast(user=None)` sets the channel, enqueues on the notifier’s broadcast bag, and **publishes** to the process broadcast hub (the one `.live_broadcasts()` registered, or `Notifier.use_hub(...)`). `.to_broadcast()` only marks the channel for a later `.send()`.
 
 ```python title="app/orbit/notifications/broadcast_send.py"
-from almasix.orbit.notifications import LiveNotifier, Notification, set_notifier
+from almasix.orbit.notifications import LiveNotifier, MemoryBroadcastHub, Notification, set_notifier
 
-live = LiveNotifier().channel("App.Models.User.1")
+hub = MemoryBroadcastHub()
+live = LiveNotifier().channel("orders").use_hub(hub)
 set_notifier(live)
 
 Notification.make()
@@ -66,15 +69,44 @@ html = (
 )
 ```
 
-Markup is `<div class="or-live-notifier" data-channels="…" x-data="orbitLiveNotifications">` around the usual toast host.
+Markup is `<div class="or-live-notifier" data-channels="…" data-orbit-live-url="…" x-data="orbitLiveNotifications">` around the usual toast host. The panel shell does this automatically when `.live_broadcasts()` is on.
 
 ![Orbit Broadcast live host (light)](/examples/light/notifications/broadcast-notifications/live-host.png)
 
 ![Orbit Broadcast live host (dark)](/examples/dark/notifications/broadcast-notifications/live-host.png)
 
-## Client bridge
+## Broadcast hub
 
-From your websocket or SSE callback, dispatch a `CustomEvent`. Optional `channel` is filtered against `data-channels` when set.
+`MemoryBroadcastHub` keeps an in-process log. `CallbackBroadcastHub` wraps another hub (memory by default) and calls your function on every publish — use that to forward events to Redis, a queue, or a websocket server.
+
+```python title="app/orbit/notifications/hub.py"
+from almasix.orbit.notifications import CallbackBroadcastHub, MemoryBroadcastHub
+
+hub = CallbackBroadcastHub(lambda event: print(event["title"]))
+# or: MemoryBroadcastHub()
+```
+
+![Orbit Broadcast hub (light)](/examples/light/notifications/broadcast-notifications/hub.png)
+
+![Orbit Broadcast hub (dark)](/examples/dark/notifications/broadcast-notifications/hub.png)
+
+## Live endpoint
+
+`.live_broadcasts()` registers **GET** `{panel}/orbit-live?since={cursor}`. The JSON payload is `{ "events": [...], "cursor": N }`. The Alpine host polls that URL (default **2s**) and turns each event into `orbit:broadcast`.
+
+```python title="app/providers/orbit_panel_provider.py"
+from almasix.orbit import Panel
+
+Panel.make("admin")
+    .path("admin")
+    .live_broadcasts(polling="2s")
+```
+
+![Orbit Broadcast live endpoint (light)](/examples/light/notifications/broadcast-notifications/live-endpoint.png)
+
+![Orbit Broadcast live endpoint (dark)](/examples/dark/notifications/broadcast-notifications/live-endpoint.png)
+
+You can still dispatch `orbit:broadcast` yourself from any other transport:
 
 ```js title="resources/js/broadcast-bridge.js"
 window.dispatchEvent(
@@ -89,13 +121,13 @@ window.dispatchEvent(
 );
 ```
 
-That re-dispatches `orbit:notify` for the toast host — same shape as `OrbitNotification.send()`.
+That re-dispatches `orbit:notify` for the toast host — same shape as `OrbitNotification.send()`. Optional `channel` is filtered against `data-channels` when set.
 
 ## Panel setup notes
 
 1. Keep the panel toast host enabled (`.notifications()` is on by default).
-2. Optionally mount `LiveNotifier.render_live()` via a render hook if you need channel filtering.
-3. Point your broadcast driver at `orbit:broadcast` (or call `new OrbitNotification()…send()` from the client).
-4. For database rows that should appear immediately, prefer `.send_to_database(..., is_event_dispatched=True)` and refresh the bell — see [Database notifications](/notifications/database-notifications/).
+2. Call `.live_broadcasts()` so the shell wraps the toast host and mounts `/orbit-live`.
+3. Send with `.broadcast()` from actions, jobs, or services.
+4. For database rows that should appear immediately, prefer `.send_to_database(...)` plus the bell endpoint — see [Database notifications](/notifications/database-notifications/).
 
 Related: [Overview](/notifications/overview/), [Database notifications](/notifications/database-notifications/).
