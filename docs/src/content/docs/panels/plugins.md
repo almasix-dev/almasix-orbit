@@ -186,7 +186,7 @@ Use those helpers from resources or from non-panel Conduit hosts. Render hooks a
 ## Related
 
 - [Plugin marketplace](/plugins/) — browse listings
-- [How listings work](/plugins/overview/)
+- [How the marketplace works](/plugins/overview/)
 - [Using a plugin](/plugins/using/)
 - [Get listed](/plugins/get-listed/)
 - [Listing guidelines](/plugins/guidelines/)

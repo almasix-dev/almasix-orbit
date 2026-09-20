@@ -65,6 +65,7 @@ test('reserved slugs include marketplace routes', () => {
 	assert.ok(RESERVED_SLUGS.has('categories'));
 	assert.ok(RESERVED_SLUGS.has('feed'));
 	assert.ok(RESERVED_SLUGS.has('paid'));
+	assert.ok(RESERVED_SLUGS.has('develop'));
 });
 
 test('unknown author, category, reserved slug, and paid checkout', () => {

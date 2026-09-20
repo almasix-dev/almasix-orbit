@@ -1,0 +1,185 @@
+---
+/** Machine-readable catalog — JSON feed and listing URLs for tooling. */
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import '../../styles/marketplace.css';
+---
+
+<StarlightPage
+	frontmatter={{
+		title: 'Catalog API',
+		description:
+			'Consume the Orbit plugin marketplace from scripts — JSON feed, listing URLs, and shareable browse filters.',
+		tableOfContents: false,
+		prev: false,
+		next: false,
+	}}
+>
+	<div class="market" data-marketplace>
+		<p class="market-lede">
+			The marketplace is a static catalog. Browse it in the browser, or pull the same listings from
+			the JSON feed when you are writing installers, dashboards, or CI checks. Building a
+			<code>Plugin</code> class and submitting a listing stay in the
+			<a href="/plugins/overview/">plugin guides</a>.
+		</p>
+
+		<section class="market-section" aria-labelledby="market-feed">
+			<h2 id="market-feed">JSON feed</h2>
+			<p>
+				<code>GET</code>
+				<a href="/plugins/feed.json"><code>/plugins/feed.json</code></a>
+				returns every <strong>published</strong> listing. The body is regenerated with the docs
+				site. Cache it for a few minutes; it is not a live search API.
+			</p>
+			<pre class="market-install" tabindex="0"><code>{`{
+  "generated_at": "2026-09-20T18:00:00.000Z",
+  "count": 1,
+  "plugins": [
+    {
+      "slug": "orbit-branding",
+      "name": "Orbit Branding",
+      "summary": "…",
+      "url": "https://orbit.almasix.com/plugins/orbit-branding/",
+      "author": { "slug": "almasix", "name": "Almasix" },
+      "categories": ["theme"],
+      "orbit_versions": ["0.3"],
+      "price": "free",
+      "package": "almasix-orbit",
+      "repository": "https://github.com/almasix-dev/almasix-orbit",
+      "docs_url": null,
+      "license": "MIT",
+      "keywords": ["branding", "theme"],
+      "official": true,
+      "featured": true,
+      "stars": 1,
+      "installs": null,
+      "github_url": "https://github.com/almasix-dev/almasix-orbit",
+      "pypi_url": "https://pypi.org/project/almasix-orbit/",
+      "published_at": "2026-04-01"
+    }
+  ]
+}`}</code></pre>
+			<ul class="market-api-facts">
+				<li><code>price</code> is <code>"free"</code> or a display string such as <code>"$29"</code>.</li>
+				<li><code>stars</code> and <code>installs</code> may be <code>null</code> when GitHub or PyPI has no figure.</li>
+				<li>Draft and archived registry entries never appear.</li>
+			</ul>
+			<p>
+				<a class="market-button is-primary" href="/plugins/feed.json">Open feed.json</a>
+			</p>
+		</section>
+
+		<section class="market-section" aria-labelledby="market-urls">
+			<h2 id="market-urls">HTML routes</h2>
+			<div class="market-table-wrap">
+				<table>
+					<thead>
+						<tr>
+							<th>URL</th>
+							<th>What it is</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><a href="/plugins/"><code>/plugins/</code></a></td>
+							<td>Browse grid (all published listings)</td>
+						</tr>
+						<tr>
+							<td><a href="/plugins/paid/"><code>/plugins/paid/</code></a></td>
+							<td>Paid listings only</td>
+						</tr>
+						<tr>
+							<td><a href="/plugins/authors/"><code>/plugins/authors/</code></a></td>
+							<td>Authors with at least one published plugin</td>
+						</tr>
+						<tr>
+							<td><code>/plugins/authors/&lt;slug&gt;/</code></td>
+							<td>One author’s listings</td>
+						</tr>
+						<tr>
+							<td><a href="/plugins/categories/"><code>/plugins/categories/</code></a></td>
+							<td>Category index</td>
+						</tr>
+						<tr>
+							<td><code>/plugins/categories/&lt;slug&gt;/</code></td>
+							<td>One category</td>
+						</tr>
+						<tr>
+							<td><code>/plugins/&lt;slug&gt;/</code></td>
+							<td>A single listing (same <code>slug</code> as the feed)</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</section>
+
+		<section class="market-section" aria-labelledby="market-filters">
+			<h2 id="market-filters">Shareable browse filters</h2>
+			<p>
+				The browse grid writes filters into the query string so a search is a URL you can store or
+				open from a script. Missing keys mean “no filter.”
+			</p>
+			<div class="market-table-wrap">
+				<table>
+					<thead>
+						<tr>
+							<th>Param</th>
+							<th>Meaning</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code>q</code></td>
+							<td>Case-insensitive match on name, author, package, or summary</td>
+						</tr>
+						<tr>
+							<td><code>price</code></td>
+							<td><code>free</code> or <code>paid</code> (ignored on <code>/plugins/paid/</code>)</td>
+						</tr>
+						<tr>
+							<td><code>category</code></td>
+							<td>Category slug, e.g. <code>theme</code></td>
+						</tr>
+						<tr>
+							<td><code>version</code></td>
+							<td>Orbit line, e.g. <code>0.3</code></td>
+						</tr>
+						<tr>
+							<td><code>sort</code></td>
+							<td>
+								<code>newest</code> (default), <code>oldest</code>, <code>stars</code>,
+								<code>installs</code>, <code>name-asc</code>, <code>name-desc</code>
+							</td>
+						</tr>
+						<tr>
+							<td><code>official</code></td>
+							<td><code>1</code> to keep Almasix listings only</td>
+						</tr>
+						<tr>
+							<td><code>dark</code></td>
+							<td><code>1</code> to keep dark-mode-ready listings</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<p>
+				Example:
+				<a href="/plugins/?q=branding&amp;category=theme&amp;official=1"
+					><code>/plugins/?q=branding&amp;category=theme&amp;official=1</code></a
+				>
+			</p>
+		</section>
+
+		<section class="market-section" aria-labelledby="market-next">
+			<h2 id="market-next">Write a plugin, then list it</h2>
+			<p>
+				The catalog does not compile Python. Subclass <code>Plugin</code>, publish the package, then
+				open a registry pull request.
+			</p>
+			<p class="market-cta-row">
+				<a class="market-button" href="/panels/plugins/">Building a plugin</a>
+				<a class="market-button" href="/plugins/get-listed/">Listing a plugin</a>
+				<a class="market-button" href="/plugins/">Browse listings</a>
+			</p>
+		</section>
+	</div>
+</StarlightPage>
