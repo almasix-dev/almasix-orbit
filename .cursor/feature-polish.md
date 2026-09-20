@@ -12,21 +12,16 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 66–74 | Infolists module | `docs/src/content/docs/infolists/*` | **closed** |
 | 75–86 | Actions module | `docs/src/content/docs/actions/*` | **closed** |
 | 87–91 | Widgets + Dashboard | `docs/src/content/docs/widgets/*`, `panels/dashboard.md` | **closed** |
-| 92 | Navigation overview | `docs/src/content/docs/navigation/overview.md` | **closed** |
-| 93 | Custom pages | `docs/src/content/docs/navigation/custom-pages.md` | **closed** |
-| 94 | User menu | `docs/src/content/docs/navigation/user-menu.md` | **closed** |
-| 95 | Clusters | `docs/src/content/docs/navigation/clusters.md` | **closed** |
-| 96+ | Remaining Orbit doc features | docs nav | queued |
+| 92–95 | Navigation | `docs/src/content/docs/navigation/*` | **closed** |
+| 96 | Notifications overview | `docs/src/content/docs/notifications/overview.md` | **closed** |
+| 97 | Database notifications | `docs/src/content/docs/notifications/database-notifications.md` | **closed** |
+| 98 | Broadcast notifications | `docs/src/content/docs/notifications/broadcast-notifications.md` | **closed** |
+| 99+ | Remaining Orbit doc features | docs nav | queued |
 
-## Navigation autopilot — closed
+## Notifications autopilot — closed
 
-**Bar:** 100% Filament 5 Navigation parity (API + UX + DX), Filament-depth docs + light/dark screenshots, 100% coverage on touched surface, orbit-admin sample.
+**Bar:** 100% Filament 5 Notifications parity (API + UX + DX), toast host + JS client, database bell, broadcast adapter, Filament-depth docs + light/dark screenshots, 100% coverage, orbit-admin sample.
 
-### Delivered
+### Scope
 
-- Overview: layouts, groups, subgroups, badges, parent items, custom items, builder, sidebar collapse/width
-- Custom pages: nav knobs + `can_access` / `should_register_navigation`
-- User menu: `UserMenuItem` depth, groups, profile/logout, disable, position
-- Clusters: discover/register, `$cluster`, sub-nav positions, URL prefix, breadcrumbs
-- Gallery: `build_navigation_variants` + `capture-navigation.mjs` → `docs/public/examples/{light,dark}/navigation/`
-- orbit-admin: focused Navigation showcase (badges, subgroup/parent, custom item, user menu, small cluster)
+Fluent API (title/body/icon/color/duration/persistent/actions/send), Alpine toast host, OrbitNotification JS client, action→toast wiring, database notifications panel UI, broadcast/live notifier, testing helpers.

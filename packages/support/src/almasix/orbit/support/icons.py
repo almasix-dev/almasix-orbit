@@ -132,6 +132,21 @@ _ICONS: dict[str, str] = {
         '<path stroke-linecap="round" stroke-linejoin="round" '
         'd="m4.5 12.75 6 6 9-13.5"/>'
     ),
+    "heroicon-o-check-circle": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>'
+    ),
+    "heroicon-o-exclamation-triangle": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 '
+        "0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 "
+        '0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>'
+    ),
+    "heroicon-o-x-circle": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 '
+        '18 0Z"/>'
+    ),
     "heroicon-o-information-circle": (
         '<path stroke-linecap="round" stroke-linejoin="round" '
         'd="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 '

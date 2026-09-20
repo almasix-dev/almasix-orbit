@@ -124,7 +124,10 @@ class Panel:
         self._user_menu_specials: dict[str, dict[str, Any]] = {}
         self._clusters: list[type[Any]] = []
         self._notifications_enabled = True
+        self._database_notifications_enabled = False
         self._database_notifications: list[dict[str, Any]] = []
+        self._database_notifications_position: Literal["topbar", "sidebar"] = "topbar"
+        self._database_notifications_polling: str | int | None = "30s"
         self._panel_user: Any = None
         self._content_max_width: str = DEFAULT_CONTENT_MAX_WIDTH
         self._simple_page_max_content_width: str = DEFAULT_SIMPLE_PAGE_MAX_CONTENT_WIDTH
@@ -512,13 +515,43 @@ class Panel:
 
     def database_notifications(
         self,
-        items: Sequence[PanelNotification | dict[str, Any]],
+        enabled: bool | Sequence[PanelNotification | dict[str, Any]] = True,
+        *,
+        position: Literal["topbar", "sidebar"] | str | None = None,
     ) -> Self:
-        for item in items:
-            self.notification(item)
+        """Enable the database notifications bell (Filament ``databaseNotifications``).
+
+        Pass ``True``/``False`` to toggle the feature, or a sequence of seed items
+        (enables the feature and registers demo notifications). Optional
+        ``position`` moves the trigger to ``topbar`` (default) or ``sidebar``.
+        """
+        if isinstance(enabled, bool):
+            self._database_notifications_enabled = enabled
+        else:
+            self._database_notifications_enabled = True
+            for item in enabled:
+                self.notification(item)
+        if position is not None:
+            self.database_notifications_position(position)
+        return self
+
+    def database_notifications_position(
+        self,
+        position: Literal["topbar", "sidebar"] | str,
+    ) -> Self:
+        value = str(position).strip().lower()
+        self._database_notifications_position = (
+            "sidebar" if value == "sidebar" else "topbar"
+        )
+        return self
+
+    def database_notifications_polling(self, interval: str | int | None) -> Self:
+        """Polling interval for the database bell (``'30s'``, ms int, or ``None``)."""
+        self._database_notifications_polling = interval
         return self
 
     def notification(self, item: PanelNotification | dict[str, Any]) -> Self:
+        self._database_notifications_enabled = True
         if isinstance(item, PanelNotification):
             self._database_notifications.append(item.to_dict())
         else:
@@ -526,6 +559,7 @@ class Panel:
         return self
 
     def notifications(self, condition: bool = True) -> Self:
+        """Enable the toast notification host (default on)."""
         self._notifications_enabled = bool(condition)
         return self
 
@@ -1247,6 +1281,7 @@ class Panel:
                 f'<div class="or-card or-auth-card">{content}</div></div>'
                 f'{render_hook("panels::body.end", scope=scope, user=user)}'
                 f"{_action_modal_html()}"
+                f"{self._render_toast_host()}"
             )
             app_wrap = body_inner
         else:
@@ -1332,6 +1367,7 @@ class Panel:
                 "  </div>\n"
                 "</div>\n"
                 f"{modal_html}"
+                f"{self._render_toast_host()}"
                 f'{render_hook("panels::body.end", scope=scope, user=user)}'
             )
 
@@ -1846,6 +1882,20 @@ class Panel:
                 f'Signed in as <strong>{label}</strong></div>'
             )
 
+        db_notify = ""
+        if (
+            self._notifications_enabled
+            and self._database_notifications_enabled
+            and (
+                self._database_notifications_position == "sidebar"
+                or not self._topbar_enabled
+            )
+        ):
+            db_notify = (
+                f'<div class="or-sidebar-notifications">'
+                f"{self._render_database_notifications_trigger()}</div>"
+            )
+
         collapse_btn = ""
         if collapsible:
             chev_left = render_icon("heroicon-o-chevron-left", size=_TOPBAR_ICON)
@@ -1880,6 +1930,7 @@ class Panel:
             f'    <nav class="or-sidebar-nav or-nav-desktop" aria-label="Applications">{nav}</nav>\n'
             f"{mobile_nav}\n"
             f'    {render_hook("panels::sidebar.nav.end", scope=scope, user=user)}\n'
+            f"{db_notify}\n"
             f"{footer}\n"
             "  </aside>\n"
         )
@@ -2076,25 +2127,12 @@ class Panel:
                 "</span></button>"
             )
 
-        if self._notifications_enabled:
-            notes = self._database_notifications
-            if notes:
-                items_html = "".join(
-                    f'<li class="or-notify-item"><span class="or-notify-title">'
-                    f'{e(n.get("title") or "Notification")}</span>'
-                    f'<span class="or-notify-body">{e(n.get("body") or "")}</span></li>'
-                    for n in notes
-                )
-            else:
-                items_html = '<li class="or-notify-empty">No notifications</li>'
-            bell = render_icon("heroicon-o-bell", size=_TOPBAR_ICON)
-            parts.append(
-                '<div class="or-notify" x-data="{ open: false }" @click.outside="open = false">'
-                '<button type="button" class="or-icon-btn or-notify-btn" @click="open = !open" '
-                f'aria-label="Notifications">{bell}</button>'
-                '<div class="or-notify-panel" x-show="open" x-cloak role="menu">'
-                f'<ul class="or-notify-list">{items_html}</ul></div></div>'
-            )
+        if (
+            self._notifications_enabled
+            and self._database_notifications_enabled
+            and self._database_notifications_position == "topbar"
+        ):
+            parts.append(self._render_database_notifications_trigger())
 
         parts.append(render_hook("panels::user-menu.before", scope=scope, user=user))
         if (
@@ -2106,6 +2144,95 @@ class Panel:
             parts.append(self._render_user_menu(user=user, placement="topbar"))
         parts.append(render_hook("panels::user-menu.after", scope=scope, user=user))
         return "".join(parts)
+
+    def _polling_ms(self) -> int | None:
+        raw = self._database_notifications_polling
+        if raw is None:
+            return None
+        if isinstance(raw, int):
+            return raw if raw > 0 else None
+        text = str(raw).strip().lower()
+        if not text or text in {"null", "none", "false"}:
+            return None
+        if text.endswith("ms"):
+            try:
+                return int(text[:-2])
+            except ValueError:
+                return None
+        if text.endswith("s"):
+            try:
+                return int(float(text[:-1]) * 1000)
+            except ValueError:
+                return None
+        try:
+            return int(text)
+        except ValueError:
+            return None
+
+    def _render_database_notifications_trigger(self) -> str:
+        import json
+        from uuid import uuid4
+
+        notes = list(self._database_notifications)
+        normalized: list[dict[str, Any]] = []
+        for note in notes:
+            row = dict(note)
+            row.setdefault("id", str(uuid4()))
+            row.setdefault("read", False)
+            row.setdefault("title", "Notification")
+            row.setdefault("body", "")
+            normalized.append(row)
+        unread = sum(1 for n in normalized if not n.get("read"))
+        polling = self._polling_ms()
+        polling_attr = f' data-polling="{polling}"' if polling else ' data-polling=""'
+        payload = e(json.dumps(normalized))
+        bell = render_icon("heroicon-o-bell", size=_TOPBAR_ICON)
+        badge = (
+            f'<span class="or-notify-badge" x-text="unreadCount" '
+            f'x-show="unreadCount > 0" x-cloak>{unread}</span>'
+            if normalized
+            else '<span class="or-notify-badge" x-text="unreadCount" x-show="unreadCount > 0" x-cloak></span>'
+        )
+        return (
+            f'<div class="or-notify" x-data="orbitDatabaseNotifications" '
+            f'data-notifications="{payload}"{polling_attr} '
+            f'@click.outside="open = false">'
+            '<button type="button" class="or-icon-btn or-notify-btn" @click="toggle()" '
+            f'aria-label="Notifications" aria-haspopup="true">{bell}{badge}</button>'
+            '<div class="or-notify-panel" x-show="open" x-cloak role="menu">'
+            '<div class="or-notify-header">'
+            '<span class="or-notify-heading">Notifications</span>'
+            '<button type="button" class="or-notify-mark-all" @click="markAllRead()" '
+            'x-show="unreadCount > 0">Mark all as read</button>'
+            "</div>"
+            '<ul class="or-notify-list">'
+            '<template x-for="n in notifications" :key="n.id">'
+            '<li class="or-notify-item" :class="{ \'is-unread\': !n.read }" '
+            '@click="markRead(n.id)">'
+            '<span class="or-notify-title" x-text="n.title"></span>'
+            '<span class="or-notify-body" x-text="n.body || \'\'"></span>'
+            "</li>"
+            "</template>"
+            '<li class="or-notify-empty" x-show="notifications.length === 0">'
+            "No notifications</li>"
+            "</ul></div></div>"
+        )
+
+    def _render_toast_host(self) -> str:
+        if not self._notifications_enabled:
+            return ""
+        try:
+            from almasix.orbit.notifications import get_notifier
+
+            return get_notifier().render_toast_host(include_flash=True)
+        except ImportError:  # pragma: no cover
+            from almasix.orbit.notifications.alignment import Notifications
+
+            classes = Notifications.host_classes()
+            return (
+                f'<div class="{classes}" x-data="orbitNotifications" '
+                f'role="region" aria-label="Notifications"></div>'
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {

@@ -345,7 +345,11 @@ export default defineConfig({
 				{
 					label: 'Notifications',
 					collapsed: true,
-					items: [{ label: 'Overview', slug: 'notifications/overview' }],
+					items: [
+						{ label: 'Overview', slug: 'notifications/overview' },
+						{ label: 'Database notifications', slug: 'notifications/database-notifications' },
+						{ label: 'Broadcast notifications', slug: 'notifications/broadcast-notifications' },
+					],
 				},
 				{
 					label: 'Widgets',
