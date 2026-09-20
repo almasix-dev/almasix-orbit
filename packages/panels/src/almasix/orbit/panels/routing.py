@@ -955,6 +955,73 @@ def mount_panel(router: Any, panel: Panel) -> None:
                 name=f"orbit.{panel.id}.tenant.profile",
             )
 
+        billing_page = tenancy.billing_page()
+        if billing_page is not None:
+            billing_slug = getattr(billing_page, "get_slug", lambda: "billing")()
+            tenant_prefix = _tenant_path_prefix(panel)
+            billing_uri = (
+                f"{tenant_prefix}/{billing_slug}" if tenant_prefix else billing_slug
+            )
+
+            async def tenant_billing_action(
+                request: Request,
+                tenant: str | None = None,
+                **_e: Any,
+            ) -> Any:
+                path = _request_path(request)
+                user = _current_user(panel)
+                gated = _auth_gate(panel, path, user)
+                if gated is not None:
+                    return gated
+                _apply_tenant_slug(panel, tenant, user)
+                method = str(getattr(request, "method", "GET") or "GET")
+                if method.upper() == "POST":
+                    payload = await read_json_body(request)
+                    plan_id = str(
+                        payload.get("plan_id")
+                        or payload.get("plan")
+                        or _form_param(request, "plan_id")
+                        or _query_param(request, "plan_id")
+                        or ""
+                    )
+                    handler = getattr(billing_page, "handle_subscribe", None)
+                    if callable(handler) and plan_id:
+                        try:
+                            handler(
+                                plan_id,
+                                panel=panel,
+                                user=user,
+                                tenant=panel.get_tenant(),
+                            )
+                        except Exception:
+                            pass
+                html_body = billing_page.render(
+                    panel=panel, user=user, tenant=panel.get_tenant()
+                )
+                return _html_response(
+                    panel.render_shell(
+                        html_body,
+                        user=user,
+                        active_path=path,
+                        extra_head=_conduit_assets(),
+                    )
+                )
+
+            if billing_uri.startswith("/") or billing_uri == "":
+                billing_full = f"{prefix}{billing_uri}"
+            else:
+                billing_full = f"{prefix}/{billing_uri}" if prefix else f"/{billing_uri}"
+            if billing_full == "":
+                billing_full = "/"
+            router.add(
+                ["GET", "POST"],
+                billing_full,
+                tenant_billing_action,
+                name=f"orbit.{panel.id}.tenant.billing",
+                middleware=auth_middleware,
+                domain=domain,
+            )
+
 
 def mount_orbit_assets(router: Any) -> None:
     """Serve Orbit CSS/JS from the package.

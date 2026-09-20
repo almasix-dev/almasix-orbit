@@ -94,6 +94,9 @@ class Panel:
         self._dashboard: PageOption = True
         self._auth_guard: str | None = None
         self._mfa_providers: list[Any] = []
+        self._spa_enabled = False
+        self._spa_url_exceptions: list[str] = []
+        self._billing_provider: Any = None
         self._plugin_callbacks: list[Callable[[Panel], Any]] = []
         self._plugins: list[Any] = []
         self._boot_callbacks: list[Callable[[Panel], Any]] = []
@@ -424,7 +427,59 @@ class Panel:
     def tenant_billing(self, page: PageOption | type[Any] | bool = True) -> Self:
         tenancy = self._ensure_tenancy()
         tenancy.billing(page)  # type: ignore[arg-type]
+        if page is not False and self._billing_provider is None:
+            from almasix.orbit.panels.billing import MemoryBillingProvider
+
+            self._billing_provider = MemoryBillingProvider()
         return self
+
+    def billing_provider(self, provider: Any) -> Self:
+        """Set the :class:`~almasix.orbit.panels.billing.BillingProvider` for this panel."""
+        self._billing_provider = provider
+        return self
+
+    def get_billing_provider(self) -> Any:
+        return self._billing_provider
+
+    def spa(self, condition: bool = True) -> Self:
+        """Navigate panel links without a full document reload (Alpine fetch + history)."""
+        self._spa_enabled = bool(condition)
+        return self
+
+    def spa_enabled(self) -> bool:
+        return bool(self._spa_enabled)
+
+    def spa_url_exceptions(self, urls: str | Sequence[str], *more: str) -> Self:
+        """Paths that always do a full page load (login/logout are excluded automatically)."""
+        items: list[str] = []
+        if isinstance(urls, str):
+            items.append(urls)
+        else:
+            items.extend(str(u) for u in urls)
+        items.extend(str(u) for u in more)
+        self._spa_url_exceptions.extend(item for item in items if item)
+        return self
+
+    def spa_exceptions(self) -> list[str]:
+        built: list[str] = []
+        if self.login_enabled():
+            built.append(self.url("login"))
+            built.append(self.url("logout"))
+        if self.signup_enabled():
+            built.append(self.url("register"))
+        if self.has_mfa_providers():
+            built.append(self.url("mfa-challenge"))
+        return built + list(self._spa_url_exceptions)
+
+    def _spa_html_attrs(self) -> str:
+        if not self._spa_enabled:
+            return ""
+        exceptions = ",".join(e(item) for item in self.spa_exceptions())
+        root = e(self.get_path() or "/")
+        return (
+            f' data-orbit-spa="true" data-orbit-spa-root="{root}" '
+            f'data-orbit-spa-exceptions="{exceptions}"'
+        )
 
     def tenant_middleware(
         self,
@@ -1691,7 +1746,8 @@ class Panel:
 
         return (
             "<!DOCTYPE html>\n"
-            f'<html lang="en" translate="no" data-orbit-panel="{e(self.id)}" data-theme="light">\n'
+            f'<html lang="en" translate="no" data-orbit-panel="{e(self.id)}" '
+            f'data-theme="light"{self._spa_html_attrs()}>\n'
             "<head>\n"
             '  <meta charset="utf-8" />\n'
             '  <meta name="viewport" content="width=device-width, initial-scale=1" />\n'
@@ -2612,6 +2668,7 @@ class Panel:
             "mfa_providers": [
                 p.get_id() if hasattr(p, "get_id") else type(p).__name__ for p in self._mfa_providers
             ],
+            "spa": self._spa_enabled,
         }
 
 
@@ -2686,3 +2743,29 @@ class PanelRegistry:
 
     def all(self) -> list[Panel]:
         return list(self._panels.values())
+
+    def get_by_path(self, path: str | None) -> Panel | None:
+        """Find a registered panel whose path matches ``path``."""
+        cleaned = (path or "").strip() or "/"
+        if not cleaned.startswith("/"):
+            cleaned = f"/{cleaned}"
+        if cleaned != "/":
+            cleaned = cleaned.rstrip("/")
+        for panel in self.all():
+            candidate = panel.get_path() or "/"
+            if candidate != "/":
+                candidate = candidate.rstrip("/")
+            if candidate == cleaned:
+                return panel
+        return None
+
+    def get_by_domain(self, domain: str | None) -> Panel | None:
+        """Find a registered panel bound to ``domain`` (host, no port)."""
+        host = str(domain or "").split("/")[0].split(":")[0].strip().lower()
+        if not host:
+            return None
+        for panel in self.all():
+            bound = (panel.get_domain() or "").split(":")[0].strip().lower()
+            if bound and bound == host:
+                return panel
+        return None

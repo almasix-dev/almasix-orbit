@@ -154,7 +154,7 @@ Typed constraints (`Text` / `Select` / `Boolean` / `Date` / `Number`), operators
 | Multi-tenancy (`Tenancy`, switcher, scoping, HasTenants, RegisterTenant / EditTenantProfile, middleware, route prefix, docs + gallery + orbit-admin) | Done |
 | Render hooks + Plugin base | Done |
 | `discover_*` + `load_discovered` + scaffolding writes files | Done |
-| Multi-panel domains / SPA / billing adapters | Partial (domains Done; SPA/billing later) |
+| Multi-panel domains / SPA / billing adapters | Done |
 | Real DB notification persistence / live hub | Done (SQLite store + `BroadcastHub` + `/orbit-live`) |
 
 ## Docs / screenshots
@@ -166,6 +166,6 @@ Typed constraints (`Text` / `Select` / `Boolean` / `Date` / `Number`), operators
 | Gallery build + Playwright capture scripts | Done |
 | Every field page with PNG (not HTML fence) | Partial |
 
-Host-only concerns (SMTP MFA delivery, Spark billing, production queues) remain **interfaces + documented adapters**.
+Host-only concerns (SMTP MFA delivery, production queues, third-party billing processors) remain **interfaces + documented adapters**.
 
 Keywords for smoke tests: resources, pages, relation managers, TextInput, Select, Repeater.

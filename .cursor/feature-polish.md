@@ -16,11 +16,16 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 105 | Query builder polish | `docs/src/content/docs/query-builder/overview.md` | **closed** |
 | 106 | Users / MFA (TOTP + email SMTP) | `docs/src/content/docs/users/multi-factor-authentication.md` | **closed** |
 | 107 | Notifications production adapters (SQLite store + broadcast hub + `/orbit-live`) | `docs/src/content/docs/notifications/{database,broadcast}-notifications.md` | **closed** |
-| 108+ | Remaining stability milestones (panels platform → support toolkit) | docs nav | queued |
+| 108 | Panels platform (SPA mode, billing adapters, multi-panel registry) | `docs/src/content/docs/panels/configuration.md` | **closed** |
+| 109+ | Remaining stability milestones (docs completeness → support toolkit) | docs nav | queued |
 
 ## Infolists layout + docs depth — closed
 
 **Bar:** Stacked label-above-value default (`.or-entry-inline` for side-by-side), Orbit-first overview depth (hidden/inline labels, sections, extra attrs, utility injection) with unique gallery shots, 100% coverage on infolists surface, vendor CSS synced.
+
+## Panels platform — closed
+
+**Bar:** `.spa()` + `.spa_url_exceptions()` (Alpine fetch of `main.or-content`), default `ManageBilling` + `MemoryBillingProvider` for `.tenant_billing(True)`, `PanelRegistry.get_by_path` / `get_by_domain`, orbit-admin sample, Orbit-first docs + unique gallery shots, 100% coverage.
 
 ## Notifications production adapters — closed
 
