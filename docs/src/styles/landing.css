@@ -838,44 +838,40 @@ html.motion .orbit-landing-hero .term {
 .filament-callout {
 	--filament-honey: #efaf5d;
 	--filament-cocoa: #46341c;
-	--filament-serenade: #fff1e3;
-	--filament-off-white: #faf9f5;
-	--filament-off-black: #292524;
-	--filament-powder: #aec6f4;
 }
 
-.filament-callout .starlight-aside {
+.filament-callout .starlight-aside.starlight-aside--tip {
 	--sl-color-asides-text-accent: var(--filament-cocoa);
-	--sl-color-asides-border: var(--filament-honey);
-	background-color: var(--filament-serenade);
+	--sl-color-asides-border: var(--filament-cocoa);
+	background-color: var(--filament-honey);
 	color: var(--filament-cocoa);
 	border-inline-start-width: 0.35rem;
-	border-inline-start-color: var(--filament-honey);
-	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--filament-honey) 55%, transparent);
+	border-inline-start-color: var(--filament-cocoa);
 }
 
 .filament-callout .starlight-aside__title,
+.filament-callout .starlight-aside__content,
 .filament-callout .starlight-aside__content a {
 	color: var(--filament-cocoa);
 }
 
 .filament-callout .starlight-aside__content a:hover {
-	color: color-mix(in srgb, var(--filament-cocoa) 70%, var(--filament-honey));
+	color: color-mix(in srgb, var(--filament-cocoa) 72%, #000);
 }
 
-html[data-theme='dark'] .filament-callout .starlight-aside {
-	--sl-color-asides-text-accent: var(--filament-honey);
-	background-color: color-mix(in srgb, var(--filament-off-black) 82%, var(--filament-cocoa));
-	color: var(--filament-off-white);
-	border-inline-start-color: var(--filament-honey);
-	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--filament-honey) 35%, transparent);
+html[data-theme='dark'] .filament-callout .starlight-aside.starlight-aside--tip {
+	--sl-color-asides-text-accent: var(--filament-cocoa);
+	background-color: var(--filament-honey);
+	color: var(--filament-cocoa);
+	border-inline-start-color: var(--filament-cocoa);
 }
 
 html[data-theme='dark'] .filament-callout .starlight-aside__title,
+html[data-theme='dark'] .filament-callout .starlight-aside__content,
 html[data-theme='dark'] .filament-callout .starlight-aside__content a {
-	color: var(--filament-honey);
+	color: var(--filament-cocoa);
 }
 
 html[data-theme='dark'] .filament-callout .starlight-aside__content a:hover {
-	color: var(--filament-powder);
+	color: color-mix(in srgb, var(--filament-cocoa) 60%, #000);
 }
