@@ -70,6 +70,15 @@ See [Infolists overview](/infolists/overview/).
 
 See [Notifications overview](/notifications/overview/).
 
+## Users & tenancy
+
+- Login / Register / Profile auth pages
+- MFA provider protocol (`MfaProvider` / `AppAuthentication`)
+- Multi-tenancy: `Panel.tenant` / `Tenancy`, switcher, `HasTenants`, query scoping, resource opt-out
+- Tenant registration / profile / billing page slots, route prefix, tenant middleware
+
+See [Users overview](/users/overview/) and [Multi-tenancy](/users/tenancy/).
+
 ## Widgets & dashboard
 
 - Stats overview with fluent `Stat` cards and Chart.js sparklines

@@ -94,6 +94,7 @@ from gallery_variants import (
     build_navigation_variants,
     build_notification_variants,
     build_schema_variants,
+    build_tenancy_variants,
     build_widget_variants,
 )
 
@@ -380,6 +381,9 @@ SHOTS: list[tuple[str, str]] = [
     ("navigation/clusters/sub-nav", "Clusters — sub-navigation"),
     ("panels/shell", "Panel shell"),
     ("users/login", "Login"),
+    ("users/tenancy/switcher", "Tenancy — switcher"),
+    ("users/tenancy/menu", "Tenancy — switcher menu"),
+    ("users/tenancy/scoped-list", "Tenancy — scoped list"),
 ]
 
 
@@ -1899,6 +1903,7 @@ def build() -> str:
     widget_variants = build_widget_variants()
     navigation_variants = build_navigation_variants()
     notification_variants = build_notification_variants()
+    tenancy_variants = build_tenancy_variants()
 
     parts = [
         shot("forms/overview", "Forms overview", form_overview.render()),
@@ -1944,6 +1949,10 @@ def build() -> str:
         *(
             shot(sid, label, html)
             for sid, (label, html) in notification_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in tenancy_variants.items()
         ),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/overview-columns", "Overview — columns", table_overview_columns.render()),
@@ -2105,6 +2114,14 @@ def build() -> str:
   margin-top: 0.5rem;
 }}
 [data-shot^="navigation/user-menu"] .or-user-menu-panel {{
+  display: block !important;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 40;
+  min-width: 14rem;
+}}
+[data-shot="users/tenancy/menu"] .or-tenant-menu {{
   display: block !important;
   position: absolute;
   right: 0;

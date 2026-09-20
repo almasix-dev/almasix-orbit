@@ -79,8 +79,9 @@ class Page:
 
     @classmethod
     def get_url_path_prefix(cls) -> str:
-        """Panel path + optional cluster slug prefix (no trailing slash)."""
+        """Panel path + optional tenant + cluster slug prefix (no trailing slash)."""
         panel_path = str(getattr(cls, "_panel_path", "") or "").rstrip("/")
+        tenant_path = str(getattr(cls, "_tenant_path", "") or "").strip("/")
         cluster = cls.get_cluster()
         cluster_prefix = ""
         if cluster is not None:
@@ -97,9 +98,16 @@ class Page:
                     slug_fn = getattr(cluster, "get_slug", None)
                     slug = slug_fn() if callable(slug_fn) else ""
                     cluster_prefix = f"/{slug}" if slug else ""
-        if panel_path and cluster_prefix:
-            return f"{panel_path}{cluster_prefix}"
-        return panel_path or cluster_prefix or ""
+        parts: list[str] = []
+        if panel_path and panel_path != "/":
+            parts.append(panel_path.lstrip("/"))
+        if tenant_path:
+            parts.append(tenant_path)
+        if cluster_prefix:
+            parts.append(cluster_prefix.strip("/"))
+        if not parts:
+            return panel_path if panel_path == "/" else ""
+        return "/" + "/".join(parts)
 
     @classmethod
     def can_access(cls, user: Any) -> bool:

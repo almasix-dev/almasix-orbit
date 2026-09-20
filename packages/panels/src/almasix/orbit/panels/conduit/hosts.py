@@ -293,6 +293,7 @@ class OrbitPageHost(ConduitHost):
     resource_slug: ClassVar[str] = ""
     _resource: ClassVar[type[Any] | None] = None
     _panel: ClassVar[Any] = None
+    tenant: str = ""
 
     @classmethod
     def bind(cls, *, panel: Any, resource: type[Any] | None = None) -> type[OrbitPageHost]:
@@ -310,6 +311,11 @@ class OrbitPageHost(ConduitHost):
         if resource is not None:
             # So Resource.page_url / get_pages include the panel path prefix.
             resource._panel_path = panel.get_path()
+            tenancy = getattr(panel, "get_tenancy", lambda: None)()
+            if tenancy is not None and tenancy.is_enabled() and tenancy.get_tenant_route_prefix():
+                current = tenancy.get_current()
+                slug = current.slug if current else None
+                resource._tenant_path = tenancy.path_prefix_for(slug)
         reg = f"orbit.{panel.id}.{getattr(resource, '__name__', 'page')}.{cls.__name__}"
         Conduit.register(reg, host)
         return host
@@ -321,6 +327,60 @@ class OrbitPageHost(ConduitHost):
 
     def get_panel(self) -> Any:
         return type(self)._panel
+
+    def setTenant(self, slug: str = "") -> None:
+        """Switch the active tenant (wire:click / switcher)."""
+        self.tenant = str(slug or "")
+        panel = self.get_panel()
+        if panel is None:
+            return
+        get_tenancy = getattr(panel, "get_tenancy", None)
+        tenancy = get_tenancy() if callable(get_tenancy) else None
+        if tenancy is None:
+            return
+        found = tenancy.find_by_slug(self.tenant)
+        if found is not None:
+            tenancy.current(found)
+            stamp = getattr(panel, "_stamp_tenant_paths", None)
+            if callable(stamp):
+                stamp(found)
+
+    def updatedTenant(self, value: Any = None) -> None:
+        self.setTenant(str(value if value is not None else self.tenant))
+
+    def _sync_tenant_from_panel(self) -> None:
+        panel = self.get_panel()
+        if panel is None:
+            return
+        get_tenancy = getattr(panel, "get_tenancy", None)
+        tenancy = get_tenancy() if callable(get_tenancy) else None
+        if tenancy is None:
+            return
+        current = tenancy.get_current()
+        if current is not None:
+            self.tenant = current.slug
+        elif self.tenant:
+            found = tenancy.find_by_slug(self.tenant)
+            if found is not None:
+                tenancy.current(found)
+
+    def _apply_tenant_scope(self, records: list[Any], resource: type[Any] | None = None) -> list[Any]:
+        panel = self.get_panel()
+        if panel is None:
+            return list(records)
+        get_tenancy = getattr(panel, "get_tenancy", None)
+        tenancy = get_tenancy() if callable(get_tenancy) else None
+        if tenancy is None or not tenancy.is_enabled():
+            return list(records)
+        res = resource or (type(self)._resource)
+        if res is not None:
+            scoped = getattr(res, "is_tenant_scoped", None)
+            if callable(scoped) and not scoped():
+                return list(records)
+            if not getattr(res, "is_scoped_to_tenant", True):
+                return list(records)
+        scoped_rows = tenancy.scope_query(records)
+        return list(scoped_rows) if isinstance(scoped_rows, list) else scoped_rows
 
 
 class ListRecordsHost(OrbitPageHost):
@@ -342,6 +402,9 @@ class ListRecordsHost(OrbitPageHost):
     reordering: bool = False
 
     def mount(self, **kwargs: Any) -> Any:
+        self._sync_tenant_from_panel()
+        if kwargs.get("tenant"):
+            self.setTenant(str(kwargs["tenant"]))
         resource = self.get_resource()
         if "records" in kwargs and kwargs["records"] is not None:
             self.records = list(kwargs["records"])
@@ -356,12 +419,15 @@ class ListRecordsHost(OrbitPageHost):
                 stored = getattr(resource, "records", None)
                 if isinstance(stored, list):
                     self.records = list(stored)
+        self.records = self._apply_tenant_scope(self.records, resource)
         self._mount_list_page(resource)
         return None
 
     async def _mount_orm(self, model: type[Any], *, resource: type[Any] | None = None) -> None:
         self.records = await _orm_fetch_all(model)
-        self._mount_list_page(resource or self.get_resource())
+        res = resource or self.get_resource()
+        self.records = self._apply_tenant_scope(self.records, res)
+        self._mount_list_page(res)
 
     def _mount_list_page(self, resource: type[Any]) -> None:
         from almasix.orbit.panels.pages.resource_pages import ListRecords
@@ -1001,6 +1067,9 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
     created_id: str | None = None
 
     def mount(self, **kwargs: Any) -> None:
+        self._sync_tenant_from_panel()
+        if kwargs.get("tenant"):
+            self.setTenant(str(kwargs["tenant"]))
         if isinstance(kwargs.get("data"), dict):
             self.data = dict(kwargs["data"])
 
@@ -1019,6 +1088,11 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
         next_id = _next_record_id(records)
         payload = dict(self.data or {})
         payload.pop("id", None)
+        panel = self.get_panel()
+        tenancy = getattr(panel, "get_tenancy", lambda: None)() if panel else None
+        if tenancy is not None and tenancy.is_enabled():
+            if getattr(resource, "is_tenant_scoped", lambda: True)():
+                payload = tenancy.associate_record(payload)
         row = {"id": next_id, **payload}
         records = [*records, row]
         _save_resource_records(resource, records)
@@ -1029,7 +1103,13 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
         return None
 
     async def _create_orm(self, model: type[Any], resource: type[Any]) -> None:
-        row = await _orm_create(model, dict(self.data or {}))
+        payload = dict(self.data or {})
+        panel = self.get_panel()
+        tenancy = getattr(panel, "get_tenancy", lambda: None)() if panel else None
+        if tenancy is not None and tenancy.is_enabled():
+            if getattr(resource, "is_tenant_scoped", lambda: True)():
+                payload = tenancy.associate_record(payload)
+        row = await _orm_create(model, payload)
         self.created_id = str(row.get("id") or "")
         self.data = dict(row)
         self.dispatch("orbit-record-created", data=dict(row))
