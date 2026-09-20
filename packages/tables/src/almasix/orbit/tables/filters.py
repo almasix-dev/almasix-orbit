@@ -381,11 +381,36 @@ class QueryBuilderFilter(Filter):
             return Filter.apply(self, query, value)
         if self._builder is None:
             return query
-        if isinstance(value, list) and hasattr(self._builder, "rules"):
+        if isinstance(value, dict):
+            logic = value.get("logic")
+            if logic is not None and hasattr(self._builder, "logic"):
+                self._builder.logic(logic)
+            rules = value.get("rules")
+            if isinstance(rules, list) and hasattr(self._builder, "rules"):
+                self._builder.rules(rules)
+        elif isinstance(value, list) and hasattr(self._builder, "rules"):
             self._builder.rules(value)
         if hasattr(self._builder, "apply"):
             return self._builder.apply(list(query))
         return query
+
+    def resolve_indicator(self, value: Any, **ctx: Any) -> str | None:
+        if self._indicate_using is not None:
+            return Filter.resolve_indicator(self, value, **ctx)
+        if isinstance(value, dict):
+            rules = value.get("rules") or []
+            n = len(rules) if isinstance(rules, list) else 0
+            if n == 0:
+                return None
+            logic = value.get("logic") or "and"
+            word = "rule" if n == 1 else "rules"
+            return f"{n} {word} ({logic})"
+        if isinstance(value, list):
+            if not value:
+                return None
+            word = "rule" if len(value) == 1 else "rules"
+            return f"{len(value)} {word}"
+        return Filter.resolve_indicator(self, value, **ctx)
 
     def render(self, state: Any = None, **ctx: Any) -> str:
         if self._builder is not None and hasattr(self._builder, "render"):

@@ -4119,6 +4119,92 @@ class _GalleryArchiveResource(Resource):
         )
 
 
+def build_query_builder_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for the Query builder docs shots."""
+    from almasix.orbit.query_builder import (
+        BooleanConstraint,
+        DateConstraint,
+        NumberConstraint,
+        QueryBuilder,
+        SelectConstraint,
+        TextConstraint,
+    )
+    from almasix.orbit.tables import QueryBuilderFilter, Table, TextColumn
+
+    constraints = [
+        TextConstraint.make("title").label("Title"),
+        SelectConstraint.make("status")
+        .label("Status")
+        .options({"draft": "Draft", "published": "Published"}),
+        NumberConstraint.make("views").label("Views"),
+        DateConstraint.make("published_at").label("Published"),
+        BooleanConstraint.make("featured").label("Featured"),
+    ]
+    records = [
+        {"title": "Launch Orbit", "status": "published", "views": 120},
+        {"title": "Draft note", "status": "draft", "views": 3},
+    ]
+
+    basic = QueryBuilder.make().constraints(constraints).render()
+    populated = (
+        QueryBuilder.make()
+        .constraints(constraints)
+        .add_rule("title", "contains", "orbit")
+        .add_rule("status", "equals", "published")
+        .add_rule("views", "greater_than", 10)
+        .render()
+    )
+    or_logic = (
+        QueryBuilder.make()
+        .constraints(constraints)
+        .logic("or")
+        .add_rule("status", "equals", "draft")
+        .add_rule("featured", "equals", True)
+        .render()
+    )
+    table = (
+        Table.make("posts")
+        .columns(
+            [
+                TextColumn.make("title").label("Title"),
+                TextColumn.make("status").label("Status"),
+            ]
+        )
+        .filters(
+            [
+                QueryBuilderFilter.make("query")
+                .label("Rules")
+                .builder(
+                    QueryBuilder.make()
+                    .constraints(constraints)
+                    .add_rule("title", "contains", "orbit")
+                )
+            ]
+        )
+        .records(records)
+        .filter_state(
+            {
+                "query": [
+                    {"constraint": "title", "operator": "contains", "value": "orbit"},
+                ]
+            }
+        )
+    )
+    table_html = table.render().replace(
+        'class="or-filters-panel" x-show="filtersOpen" x-cloak',
+        'class="or-filters-panel"',
+        1,
+    )
+
+    return {
+        "query-builder/overview": ("Query builder — overview", populated),
+        "query-builder/overview/constraints": ("Query builder — constraints", basic),
+        "query-builder/overview/rules": ("Query builder — populated rules", populated),
+        "query-builder/overview/or-logic": ("Query builder — any rule", or_logic),
+        "query-builder/overview/table-filter": ("Query builder — table filter", table_html),
+    }
+
+
 def build_resource_variants() -> dict[str, tuple[str, str]]:
     """Return ``{shot_id: (label, html)}`` for the Resources docs shots."""
     from almasix.orbit.panels.global_search import render_global_search_groups

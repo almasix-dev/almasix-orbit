@@ -100,9 +100,12 @@ See [Navigation overview](/navigation/overview/).
 
 ## Query builder & support
 
-- Text / select / boolean / date / number constraints
+- Text / select / boolean / date / number constraints with typed value widgets
 - Operators: equals, contains, comparisons, set checks, `in`
+- AND / OR rule logic, `.add_rule()`, table `QueryBuilderFilter`
 - Fluent `Component` base, colors, Heroicons, `e` / `tag` helpers
+
+See [Query builder](/query-builder/overview/).
 
 ## Rendering stack
 

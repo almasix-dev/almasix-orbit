@@ -16,7 +16,24 @@ from almasix.orbit.forms import (
     TextInput,
 )
 from almasix.orbit.panels.pages import Tab
-from almasix.orbit.tables import Average, Count, Filter, FilterGroup, SelectFilter, Sum, Table, TextColumn
+from almasix.orbit.query_builder import (
+    BooleanConstraint,
+    NumberConstraint,
+    QueryBuilder,
+    SelectConstraint,
+    TextConstraint,
+)
+from almasix.orbit.tables import (
+    Average,
+    Count,
+    Filter,
+    FilterGroup,
+    QueryBuilderFilter,
+    SelectFilter,
+    Sum,
+    Table,
+    TextColumn,
+)
 
 from app.models.post import Post
 from app.orbit.app.relations.comments_relation_manager import CommentsRelationManager
@@ -162,6 +179,27 @@ class PostResource(Resource):
                                 ]
                             ),
                         ]
+                    ),
+                    QueryBuilderFilter.make("query")
+                    .label("Rules")
+                    .builder(
+                        QueryBuilder.make()
+                        .constraints(
+                            [
+                                TextConstraint.make("title").label("Title"),
+                                SelectConstraint.make("status")
+                                .label("Status")
+                                .options(
+                                    {
+                                        "draft": "Draft",
+                                        "review": "Review",
+                                        "published": "Published",
+                                    }
+                                ),
+                                NumberConstraint.make("amount").label("Amount"),
+                                BooleanConstraint.make("featured").label("Featured"),
+                            ]
+                        )
                     ),
                 ]
             )
