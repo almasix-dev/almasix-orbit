@@ -73,7 +73,7 @@ See [Notifications overview](/notifications/overview/).
 ## Users & tenancy
 
 - Login / Register / Profile auth pages
-- MFA provider protocol (`MfaProvider` / `AppAuthentication`)
+- MFA: authenticator TOTP + email codes (`AppAuthentication` / `EmailAuthentication`)
 - Multi-tenancy: `Panel.tenant` / `Tenancy`, switcher, `HasTenants`, query scoping, resource opt-out
 - Tenant registration / profile / billing page slots, route prefix, tenant middleware
 

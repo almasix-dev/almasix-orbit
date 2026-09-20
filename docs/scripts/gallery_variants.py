@@ -4259,3 +4259,46 @@ def build_resource_variants() -> dict[str, tuple[str, str]]:
         "resources/global-search": ("Resources — global search", search),
         "resources/soft-deletes": ("Resources — soft deletes", trashed),
     }
+
+
+def build_mfa_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for MFA docs shots."""
+    from types import SimpleNamespace
+
+    from almasix.orbit.panels.auth import MfaChallenge
+    from almasix.orbit.panels.mfa import AppAuthentication, EmailAuthentication
+
+    user = SimpleNamespace(
+        email="ada@orbit.test",
+        mfa_app_secret="JBSWY3DPEHPK3PXP",
+        mfa_recovery_codes=["a1b2c3d4", "deadbeef"],
+        mfa_app_enabled=True,
+        mfa_email_enabled=True,
+    )
+    app = AppAuthentication(brand_name="Orbit")
+    email = EmailAuthentication()
+    challenge = MfaChallenge.render(
+        providers=[app, email],
+        provider="app",
+        user=user,
+        data={"code": ""},
+    )
+    setup = MfaChallenge.render(
+        providers=[app],
+        provider="app",
+        user=user,
+        show_setup=True,
+        data={"code": ""},
+    )
+    mailed = MfaChallenge.render(
+        providers=[app, email],
+        provider="email",
+        user=user,
+        sent=True,
+        data={"code": ""},
+    )
+    return {
+        "users/mfa/challenge": ("MFA — challenge", challenge),
+        "users/mfa/app-setup": ("MFA — authenticator setup", setup),
+        "users/mfa/email": ("MFA — email code", mailed),
+    }

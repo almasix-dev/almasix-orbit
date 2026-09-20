@@ -1,5 +1,6 @@
-from almasix.orbit.panels.auth import Login, Register
+from almasix.orbit.panels.auth import Login, MfaChallenge, Register
 from almasix.orbit.panels.cluster import Cluster
+from almasix.orbit.panels.mfa import AppAuthentication, EmailAuthentication
 from almasix.orbit.panels.navigation import (
     NavigationBuilder,
     NavigationGroup,
@@ -22,6 +23,9 @@ __all__ = [
     "Dashboard",
     "Login",
     "Register",
+    "MfaChallenge",
+    "AppAuthentication",
+    "EmailAuthentication",
     "Resource",
     "RelationManager",
     "Cluster",

@@ -408,6 +408,9 @@ def test_auth_empty_brand_and_protocol_methods() -> None:
     assert MfaProvider.is_enabled(_T(), object()) is None  # type: ignore[arg-type]
     assert MfaProvider.get_management_schema(_T()) is None  # type: ignore[arg-type]
     assert MfaProvider.get_challenge_form(_T()) is None  # type: ignore[arg-type]
+    assert MfaProvider.verify(_T(), object(), "1") is None  # type: ignore[arg-type]
+    assert MfaProvider.send_code(_T(), object()) is None  # type: ignore[arg-type]
+    assert MfaProvider.provision(_T(), object()) is None  # type: ignore[arg-type]
     assert AppAuthentication().get_id() == "app"
 
 

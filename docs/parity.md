@@ -150,7 +150,7 @@ Typed constraints (`Text` / `Select` / `Boolean` / `Date` / `Number`), operators
 | Relation managers rendered on view/edit (+ create/delete actions) | Done |
 | Record titles in page headings and breadcrumbs | Done |
 | Resource soft deletes (trashed filter, restore, force delete) | Done |
-| Clusters / auth pages / MFA protocol | Done |
+| Clusters / auth pages / MFA protocol + TOTP/email runners | Done |
 | Multi-tenancy (`Tenancy`, switcher, scoping, HasTenants, RegisterTenant / EditTenantProfile, middleware, route prefix, docs + gallery + orbit-admin) | Done |
 | Render hooks + Plugin base | Done |
 | `discover_*` + `load_discovered` + scaffolding writes files | Done |

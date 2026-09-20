@@ -6,6 +6,7 @@ from almasix.orbit.panels.conduit.hosts import (
     FormHost,
     ListRecordsHost,
     LoginHost,
+    MfaChallengeHost,
     OrbitPageHost,
     RegisterHost,
     TableHost,
@@ -21,5 +22,6 @@ __all__ = [
     "FormHost",
     "TableHost",
     "LoginHost",
+    "MfaChallengeHost",
     "RegisterHost",
 ]
