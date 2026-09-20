@@ -129,6 +129,7 @@ class Panel:
         self._database_notifications: list[dict[str, Any]] = []
         self._database_notifications_position: Literal["topbar", "sidebar"] = "topbar"
         self._database_notifications_polling: str | int | None = "30s"
+        self._uploads_enabled = True
         self._global_search_enabled = True
         self._global_search_debounce_ms = 300
         self._global_search_placeholder = "Search…"
@@ -632,6 +633,20 @@ class Panel:
         """Enable the toast notification host (default on)."""
         self._notifications_enabled = bool(condition)
         return self
+
+    def uploads(self, condition: bool = True) -> Self:
+        """Toggle this panel's file-upload endpoint (on by default)."""
+        self._uploads_enabled = bool(condition)
+        return self
+
+    def uploads_enabled(self) -> bool:
+        return bool(self._uploads_enabled)
+
+    def upload_url(self) -> str:
+        """URL ``FileUpload`` fields post to on this panel."""
+        from almasix.orbit.panels.uploads import panel_upload_url
+
+        return panel_upload_url(self)
 
     def global_search(
         self,

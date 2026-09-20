@@ -1,4 +1,4 @@
-"""Kitchen-sink Forms + Schemas demo for Filament-parity QA."""
+"""Kitchen-sink Forms + Schemas demo for QA of every field family."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from almasix.orbit.forms import (
     Form,
     KeyValue,
     MoneyInput,
+    MorphToSelect,
     Radio,
     Repeater,
     RichEditor,
@@ -152,6 +153,23 @@ class KitchenSinkResource(Resource):
                                     .min_date("2020-01-01")
                                     .label("Joined"),
                                     FileUpload.make("avatar").image().label("Avatar"),
+                                    MorphToSelect.make("owner")
+                                    .label("Owner")
+                                    .searchable()
+                                    .types(
+                                        [
+                                            {
+                                                "type": "user",
+                                                "label": "User",
+                                                "options": {"1": "Ada Lovelace", "2": "Alan Turing"},
+                                            },
+                                            {
+                                                "type": "team",
+                                                "label": "Team",
+                                                "options": {"10": "Platform"},
+                                            },
+                                        ]
+                                    ),
                                 ]
                             ),
                             Split.make()

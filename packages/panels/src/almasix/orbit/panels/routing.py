@@ -19,6 +19,11 @@ from almasix.orbit.panels.global_search import (
     render_global_search_groups,
 )
 from almasix.orbit.panels.panel import Panel, PanelRegistry
+from almasix.orbit.panels.uploads import (
+    handle_upload,
+    handle_upload_delete,
+    panel_upload_url,
+)
 
 _ASSETS = Path(__file__).resolve().parent.parent / "resources"
 
@@ -319,6 +324,71 @@ def make_panel_page_action(
     return action
 
 
+async def _upload_payload(request: Request | None) -> dict[str, Any]:
+    """Normalize an upload (multipart) or delete (form field) request."""
+    out: dict[str, Any] = {
+        "resource": _form_param(request, "resource") or _query_param(request, "resource"),
+        "field": _form_param(request, "field") or _query_param(request, "field"),
+    }
+    path = _form_param(request, "path") or _query_param(request, "path")
+    intent = _form_param(request, "intent") or _query_param(request, "intent")
+    if intent == "delete" or (path and not _request_file(request)):
+        out["_delete"] = True
+        out["path"] = path
+        return out
+    upload = _request_file(request)
+    if upload is None:
+        out["filename"] = ""
+        out["data"] = b""
+        return out
+    out["filename"] = str(getattr(upload, "filename", "") or "file")
+    read = getattr(upload, "read", None)
+    data = await read() if callable(read) else b""
+    out["data"] = data if isinstance(data, (bytes, bytearray)) else bytes(str(data), "utf-8")
+    return out
+
+
+def _request_file(request: Request | None) -> Any:
+    if request is None:
+        return None
+    getter = getattr(request, "file", None)
+    if not callable(getter):
+        return None
+    try:
+        found = getter("file")
+    except Exception:
+        return None
+    if isinstance(found, list):
+        return found[0] if found else None
+    return found
+
+
+def _form_param(request: Request | None, name: str) -> str:
+    """Read a submitted form value without assuming a single request API."""
+    if request is None:
+        return ""
+    getter = getattr(request, "input", None)
+    if callable(getter):
+        try:
+            value = getter(name)
+        except Exception:
+            value = None
+        if value not in (None, ""):
+            return str(value)
+    return ""
+
+
+def _json_response(payload: dict[str, Any]) -> Any:
+    try:
+        from almasix.http import json as json_response
+
+        return json_response(payload)
+    except Exception:  # pragma: no cover - framework fallback
+        from starlette.responses import JSONResponse
+
+        return JSONResponse(payload)
+
+
 def _host_record_title(instance: Any) -> str | None:
     """Record title from a mounted view/edit host, for the breadcrumb leaf."""
     record = getattr(instance, "record", None)
@@ -492,6 +562,36 @@ def mount_panel(router: Any, panel: Panel) -> None:
             return _html_response(body)
 
         _add(home_uri, empty_home, name=f"orbit.{panel.id}.home")
+
+    if panel.uploads_enabled():
+
+        async def upload_action(request: Request, **_extra: Any) -> Any:
+            payload = await _upload_payload(request)
+            if payload.get("_delete"):
+                result = await handle_upload_delete(
+                    panel,
+                    resource=payload.get("resource", ""),
+                    field=payload.get("field", ""),
+                    path=payload.get("path", ""),
+                )
+            else:
+                result = await handle_upload(
+                    panel,
+                    resource=payload.get("resource", ""),
+                    field=payload.get("field", ""),
+                    filename=payload.get("filename", ""),
+                    data=payload.get("data", b""),
+                )
+            return _json_response(result)
+
+        router.add(
+            ["POST"],
+            panel_upload_url(panel),
+            upload_action,
+            name=f"orbit.{panel.id}.upload",
+            middleware=auth_middleware,
+            domain=domain,
+        )
 
     if panel.has_global_search():
 

@@ -998,6 +998,8 @@ class FormDataMutations:
 
     data: dict[str, Any]
     select_search: dict[str, str] = {}
+    morph_search: dict[str, str] = {}
+    table_select: dict[str, Any] = {}
 
     @classmethod
     def _public_property_names(cls) -> set[str]:
@@ -1145,8 +1147,75 @@ class FormDataMutations:
         data = {**data, f"key{n}": ""}
         self._form_path_set(key, data)
 
+    def removeKeyValueRow(self, name: str, key: str) -> None:
+        """Drop one key from a key-value field."""
+        field = str(name or "")
+        data = self._form_path_get(field)
+        if not isinstance(data, dict):
+            return
+        self._form_path_set(field, {k: v for k, v in data.items() if str(k) != str(key)})
+
+    def setKeyValueKey(self, name: str, key: str, new_key: str) -> None:
+        """Rename a key in place, keeping the row's position and value."""
+        field = str(name or "")
+        data = self._form_path_get(field)
+        if not isinstance(data, dict) or str(key) not in data:
+            return
+        renamed = str(new_key or "").strip()
+        if not renamed or renamed == str(key):
+            return
+        out: dict[str, Any] = {}
+        for existing, value in data.items():
+            if str(existing) == str(key):
+                out[renamed] = value
+            elif str(existing) != renamed:
+                out[str(existing)] = value
+        self._form_path_set(field, out)
+
+    def setKeyValueValue(self, name: str, key: str, value: Any = "") -> None:
+        field = str(name or "")
+        data = self._form_path_get(field)
+        if not isinstance(data, dict):
+            data = {}
+        self._form_path_set(field, {**data, str(key): value})
+
+    def setMorphType(self, name: str, morph_type: str = "") -> None:
+        """Switch a MorphToSelect's type and clear the stale record id."""
+        field = str(name or "")
+        current = self._form_path_get(field)
+        state = dict(current) if isinstance(current, dict) else {}
+        state["type"] = str(morph_type or "")
+        state["id"] = None
+        self._form_path_set(field, state)
+        searches = dict(getattr(self, "morph_search", None) or {})
+        searches.pop(field, None)
+        self.morph_search = searches
+
+    def searchMorphOptions(self, name: str, search: str = "") -> None:
+        """Server-side search for the record leg of a MorphToSelect."""
+        field = str(name or "")
+        searches = dict(getattr(self, "morph_search", None) or {})
+        searches[field] = str(search or "")
+        self.morph_search = searches
+
     def mountTableSelect(self, name: str, **kwargs: Any) -> None:
-        self.dispatch("orbit-mount-table-select", name=str(name or ""), **kwargs)
+        """Open the record picker for a ModalTableSelect field."""
+        field = str(name or "")
+        self.table_select = {"field": field, "search": ""}
+        self.dispatch("orbit-mount-table-select", name=field, **kwargs)
+
+    def closeTableSelect(self) -> None:
+        self.table_select = {}
+
+    def setTableSelectSearch(self, name: str, search: str = "") -> None:
+        self.table_select = {"field": str(name or ""), "search": str(search or "")}
+
+    def selectTableRecord(self, name: str, record_id: Any = None) -> None:
+        """Write the picked record into form state and close the picker."""
+        field = str(name or "")
+        self._form_path_set(field, record_id)
+        self.table_select = {}
+        self.dispatch("orbit-table-record-selected", name=field, record_id=record_id)
 
     def mountCreateOption(self, name: str, **kwargs: Any) -> None:
         self.dispatch("orbit-mount-create-option", name=str(name or ""), **kwargs)
@@ -1165,6 +1234,8 @@ class FormDataMutations:
 class CreateRecordHost(FormDataMutations, OrbitPageHost):
     data: dict[str, Any] = {}
     select_search: dict[str, str] = {}
+    morph_search: dict[str, str] = {}
+    table_select: dict[str, Any] = {}
     created_id: str | None = None
 
     def mount(self, **kwargs: Any) -> None:
@@ -1242,6 +1313,8 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
         return Bound.render(
             state=dict(self.data),
             select_search=dict(self.select_search or {}),
+            morph_search=dict(self.morph_search or {}),
+            table_select=dict(self.table_select or {}),
             model=model,
             resource=resource,
         )
@@ -1314,6 +1387,8 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
     record_id: str = ""
     data: dict[str, Any] = {}
     select_search: dict[str, str] = {}
+    morph_search: dict[str, str] = {}
+    table_select: dict[str, Any] = {}
     relations: dict[str, list[dict[str, Any]]] = {}
 
     def mount(self, **kwargs: Any) -> Any:
@@ -1460,6 +1535,8 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
             record=record,
             state=dict(self.data) if self.data else None,
             select_search=dict(self.select_search or {}),
+            morph_search=dict(self.morph_search or {}),
+            table_select=dict(self.table_select or {}),
             model=model,
             resource=resource,
             relation_records=dict(self.relations or {}),
@@ -1564,6 +1641,8 @@ class FormHost(FormDataMutations, ConduitHost):
 
     data: dict[str, Any] = {}
     select_search: dict[str, str] = {}
+    morph_search: dict[str, str] = {}
+    table_select: dict[str, Any] = {}
     _form_factory: ClassVar[Any] = None
     _title: ClassVar[str] = "Form"
 
@@ -1593,7 +1672,7 @@ class FormHost(FormDataMutations, ConduitHost):
         title = type(self)._title
         return (
             f'<div class="or-page or-page-form"><h1 class="or-page-title">{title}</h1>'
-            f'<form class="or-form"{conduit_attr("submit", "save")}>{form.render(self.data, select_search=dict(self.select_search or {}))}'
+            f'<form class="or-form"{conduit_attr("submit", "save")}>{form.render(self.data, select_search=dict(self.select_search or {}), morph_search=dict(self.morph_search or {}), table_select=dict(self.table_select or {}))}'
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Save</button>'
             f"</div></form></div>"

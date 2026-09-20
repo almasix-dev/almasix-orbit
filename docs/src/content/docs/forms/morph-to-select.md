@@ -1,13 +1,26 @@
 ---
 title: Morph-to select
-description: MorphToSelect pairs a type select with an id select for polymorphic assignments.
+description: MorphToSelect lets the operator pick a type and then a record of that type — live-search included.
 ---
 
 ## Introduction
 
-`MorphToSelect` subclasses `Select` but renders two `<select>` elements inside `or-morph-to-select` (type + id), with Alpine `orbitMorphToSelect`. State may be a dict `{type, id}`, a `"Type:id"` string, or an id-only value. Configure types via `.types([...])` as model class strings or maps with `type` / `label` / `options`. `.type_attribute()` / `.id_attribute()` rename the keys used when state is a dict.
+A **morph-to** field is two questions: *what kind of record?* and *which one?* `MorphToSelect` renders a type `<select>` next to a record `<select>`. Changing the type clears the chosen id and asks the server for that type’s options; typing in the search box filters those options.
 
-Each variation below includes a detailed explanation, the fluent API to paste into your schema, and light/dark screenshots of the rendered control.
+State is a dict `{type, id}` (or a `"type:id"` string). `.type_attribute()` / `.id_attribute()` rename the keys when your columns are not `type` / `id`.
+
+For large lists, skip static `options` and give Orbit a loader:
+
+```python title="app/orbit/resources/comment_resource.py"
+MorphToSelect.make("commentable")
+    .searchable()
+    .types([{"type": "post", "label": "Post"}, {"type": "video", "label": "Video"}])
+    .options_using(lambda type="", search="", **_: load_commentables(type, search))
+```
+
+The create/edit host calls that loader as `callback(type=..., search=...)` whenever the type changes or the operator types.
+
+Each variation below includes the fluent API and light/dark screenshots of the rendered control.
 
 ## Basic morph-to select
 
@@ -85,5 +98,30 @@ MorphToSelect.make('subject')
 ![Orbit Class-string types (light)](/examples/light/forms/morph-to-select/class-strings.png)
 
 ![Orbit Class-string types (dark)](/examples/dark/forms/morph-to-select/class-strings.png)
+
+## Live search
+
+`.searchable()` plus `.options_using(...)` is the production path. The host keeps `morph_search` per field, re-renders the id select with the filtered map, and clears the search when the type changes.
+
+```python title="app/orbit/resources/example_resource.py"
+def load_owners(type: str = "", search: str = "", **_: object) -> dict[str, str]:
+    rows = users() if type == "user" else teams()
+    needle = search.casefold()
+    return {
+        str(row["id"]): row["name"]
+        for row in rows
+        if not needle or needle in row["name"].casefold()
+    }
+
+MorphToSelect.make("owner")
+    .label("Owner")
+    .searchable()
+    .types([{"type": "user", "label": "User"}, {"type": "team", "label": "Team"}])
+    .options_using(load_owners)
+```
+
+![Orbit Live search (light)](/examples/light/forms/morph-to-select/live-search.png)
+
+![Orbit Live search (dark)](/examples/dark/forms/morph-to-select/live-search.png)
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

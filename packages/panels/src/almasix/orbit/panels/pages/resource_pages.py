@@ -105,6 +105,13 @@ def _resource_is_mutable(resource: type[Any]) -> bool:
     return bool(getattr(resource, "records_mutable", False))
 
 
+def _upload_url(resource: type[Any]) -> str:
+    """Panel upload endpoint that ``FileUpload`` fields on this page post to."""
+    from almasix.orbit.panels.uploads import resource_upload_url
+
+    return resource_upload_url(resource)
+
+
 def _create_heading(resource: type[Any]) -> str:
     """Singular label for the create page — ``Create post``, not ``Create Posts``."""
     label_fn = getattr(resource, "get_model_label", None)
@@ -342,7 +349,7 @@ class CreateRecord(ResourcePage):
         form = resource.get_form()
         if state:
             form.fill(state)
-        ctx = {**ctx, "resource": resource}
+        ctx = {**ctx, "resource": resource, "upload_url": _upload_url(resource)}
         if "model" not in ctx:
             try:
                 ctx["model"] = resource.get_model()
@@ -383,7 +390,7 @@ class EditRecord(ResourcePage):
             "edit",
             relation_records if isinstance(relation_records, dict) else None,
         )
-        ctx = {**ctx, "resource": resource}
+        ctx = {**ctx, "resource": resource, "upload_url": _upload_url(resource)}
         if "model" not in ctx:
             try:
                 ctx["model"] = resource.get_model()
