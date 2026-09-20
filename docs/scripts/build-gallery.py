@@ -93,6 +93,7 @@ from gallery_variants import (
     build_infolist_variants,
     build_navigation_variants,
     build_notification_variants,
+    build_resource_variants,
     build_schema_variants,
     build_tenancy_variants,
     build_widget_variants,
@@ -1908,6 +1909,7 @@ def build() -> str:
     navigation_variants = build_navigation_variants()
     notification_variants = build_notification_variants()
     tenancy_variants = build_tenancy_variants()
+    resource_variants = build_resource_variants()
 
     parts = [
         shot("forms/overview", "Forms overview", form_overview.render()),
@@ -1957,6 +1959,10 @@ def build() -> str:
         *(
             shot(sid, label, html)
             for sid, (label, html) in tenancy_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in resource_variants.items()
         ),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/overview-columns", "Overview — columns", table_overview_columns.render()),

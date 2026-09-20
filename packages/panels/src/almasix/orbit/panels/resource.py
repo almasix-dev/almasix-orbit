@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from typing import Any, ClassVar
 
 from almasix.orbit.actions.action import (
@@ -12,12 +13,17 @@ from almasix.orbit.actions.action import (
     EditAction,
     ViewAction,
 )
-from almasix.orbit.actions.presets import BulkActionGroup
+from almasix.orbit.actions.presets import (
+    BulkActionGroup,
+    ForceDeleteAction,
+    RestoreAction,
+)
 from almasix.orbit.forms.form import Form
 from almasix.orbit.forms.walk import iter_fields
 from almasix.orbit.infolists.components import TextEntry
 from almasix.orbit.infolists.infolist import Infolist
 from almasix.orbit.support.component import Component
+from almasix.orbit.tables.filters import TrashedFilter, is_trashed
 from almasix.orbit.tables.table import Table
 
 # Back-compat for tests/importers that used the private helper name.
@@ -44,6 +50,18 @@ class Resource:
     should_register_navigation: ClassVar[bool] = True
     cluster: ClassVar[type[Any] | str | None] = None
     record_title_attribute: ClassVar[str] = "id"
+    #: Human labels for a single record / a collection (defaults derive from the slug).
+    model_label: ClassVar[str | None] = None
+    plural_model_label: ClassVar[str | None] = None
+    #: Record attributes matched by the panel's global search box.
+    global_search_attributes: ClassVar[Sequence[str]] = ()
+    #: Attributes shown underneath a global search result.
+    global_search_result_details: ClassVar[Sequence[str]] = ()
+    #: Most results this resource may contribute to one search.
+    global_search_result_limit: ClassVar[int] = 5
+    #: When True, the default table gains a trashed filter plus restore /
+    #: force-delete actions, and hosts honour ``restore``.
+    soft_deletes: ClassVar[bool] = False
     permission_prefix: ClassVar[str | None] = None
     content_max_width: ClassVar[str | None] = None
     #: Max width for create/edit/view pages (list keeps panel / content_max_width).
@@ -102,6 +120,98 @@ class Resource:
         if cls.navigation_label:
             return cls.navigation_label
         return cls.get_slug().replace("_", " ").replace("-", " ").title()
+
+    @classmethod
+    def get_model_label(cls) -> str:
+        """Singular human label for one record — ``Blog post``."""
+        if cls.model_label:
+            return cls.model_label
+        slug = cls.get_slug().replace("_", " ").replace("-", " ")
+        return _singularize(slug).capitalize()
+
+    @classmethod
+    def get_plural_model_label(cls) -> str:
+        """Plural human label — ``Blog posts``."""
+        if cls.plural_model_label:
+            return cls.plural_model_label
+        return cls.get_navigation_label()
+
+    @classmethod
+    def get_record_title_attribute(cls) -> str:
+        return cls.record_title_attribute or "id"
+
+    @classmethod
+    def get_record_title(cls, record: Any) -> str:
+        """Title for one record — used in page headings and breadcrumbs.
+
+        Reads :attr:`record_title_attribute`; falls back to ``Label #id`` when the
+        attribute is missing or empty.
+        """
+        if record is None:
+            return cls.get_model_label()
+        value = _record_value(record, cls.get_record_title_attribute())
+        if value not in (None, ""):
+            return str(value)
+        record_id = _record_value(record, "id")
+        if record_id not in (None, ""):
+            return f"{cls.get_model_label()} #{record_id}"
+        return cls.get_model_label()
+
+    @classmethod
+    def get_globally_searchable_attributes(cls) -> list[str]:
+        """Attributes the panel's global search matches on."""
+        attributes = [str(attr) for attr in cls.global_search_attributes if str(attr)]
+        return attributes
+
+    @classmethod
+    def is_globally_searchable(cls) -> bool:
+        """True once at least one searchable attribute is declared."""
+        return bool(cls.get_globally_searchable_attributes())
+
+    @classmethod
+    def get_global_search_result_title(cls, record: Any) -> str:
+        return cls.get_record_title(record)
+
+    @classmethod
+    def get_global_search_result_details(cls, record: Any) -> dict[str, Any]:
+        details: dict[str, Any] = {}
+        for attr in cls.global_search_result_details:
+            value = _record_value(record, str(attr))
+            if value in (None, ""):
+                continue
+            details[str(attr).replace("_", " ").title()] = value
+        return details
+
+    @classmethod
+    def get_global_search_result_url(cls, record: Any) -> str:
+        return cls.page_url("view", record)
+
+    @classmethod
+    def get_global_search_results(
+        cls,
+        term: str,
+        records: Sequence[Any],
+        *,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Match ``records`` against ``term`` and build result rows."""
+        from almasix.orbit.panels.global_search import build_result, search_records
+
+        attributes = cls.get_globally_searchable_attributes()
+        if not attributes or not str(term).strip():
+            return []
+        matches = search_records(records, term, attributes=attributes)
+        cap = cls.global_search_result_limit if limit is None else limit
+        rows: list[dict[str, Any]] = []
+        for record in matches[: max(0, cap)]:
+            rows.append(
+                build_result(
+                    title=cls.get_global_search_result_title(record),
+                    url=cls.get_global_search_result_url(record),
+                    details=cls.get_global_search_result_details(record),
+                )
+            )
+        return rows
 
     @classmethod
     def get_should_register_navigation(cls, **ctx: Any) -> bool:
@@ -246,7 +356,20 @@ class Resource:
                     )
                 )
                 actions.append(DeleteAction.make())
+                if cls.soft_deletes:
+                    actions.append(
+                        RestoreAction.make().visible(
+                            lambda record=None, **_: is_trashed(record)
+                        )
+                    )
+                    actions.append(
+                        ForceDeleteAction.make().visible(
+                            lambda record=None, **_: is_trashed(record)
+                        )
+                    )
             table.actions(actions)
+        if cls.soft_deletes and not table._filters:
+            table.filters([TrashedFilter()])
         if not table._bulk_actions and mutable:
             table.bulk_actions(
                 [
@@ -282,6 +405,24 @@ class Resource:
     @classmethod
     def get_relations(cls) -> list[type[Any]]:
         return []
+
+
+def _record_value(record: Any, attribute: str) -> Any:
+    if isinstance(record, dict):
+        return record.get(attribute)
+    return getattr(record, attribute, None)
+
+
+def _singularize(value: str) -> str:
+    """Singular form of a URL segment — ``stories`` → ``story``."""
+    lower = value.lower()
+    if lower.endswith("ies"):
+        return value[:-3] + "y"
+    if lower.endswith("es") and re.search(r"(s|x|z|ch|sh)es$", lower):
+        return value[:-2]
+    if lower.endswith("s") and not lower.endswith("ss"):
+        return value[:-1]
+    return value
 
 
 def _snake(name: str) -> str:

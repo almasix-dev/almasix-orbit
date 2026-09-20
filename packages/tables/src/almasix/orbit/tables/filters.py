@@ -312,6 +312,11 @@ class TrashedFilter(SelectFilter):
         return query
 
 
+def is_trashed(record: Any) -> bool:
+    """True when a record carries a ``deleted_at`` timestamp or a ``trashed`` flag."""
+    return _is_trashed(record)
+
+
 def _is_trashed(record: Any) -> bool:
     if isinstance(record, dict):
         if record.get("deleted_at") is not None:

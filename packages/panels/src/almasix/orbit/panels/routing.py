@@ -14,6 +14,10 @@ from almasix.orbit.panels.conduit.hosts import (
     RegisterHost,
     ViewRecordHost,
 )
+from almasix.orbit.panels.global_search import (
+    collect_global_search_results,
+    render_global_search_groups,
+)
 from almasix.orbit.panels.panel import Panel, PanelRegistry
 
 _ASSETS = Path(__file__).resolve().parent.parent / "resources"
@@ -281,6 +285,7 @@ def make_panel_page_action(
                 active_path=path,
                 extra_head=_conduit_assets(),
                 bare=not auth_shell,
+                record_title=_host_record_title(instance),
             )
             return _html_response(body)
 
@@ -312,6 +317,74 @@ def make_panel_page_action(
         return _html_response(body)
 
     return action
+
+
+def _host_record_title(instance: Any) -> str | None:
+    """Record title from a mounted view/edit host, for the breadcrumb leaf."""
+    record = getattr(instance, "record", None)
+    if not isinstance(record, dict) or not record:
+        record = getattr(instance, "data", None)
+    if not isinstance(record, dict) or not record:
+        return None
+    get_resource = getattr(instance, "get_resource", None)
+    if not callable(get_resource):
+        return None
+    try:
+        resource = get_resource()
+        title = resource.get_record_title(record)
+    except Exception:
+        return None
+    return str(title) if title else None
+
+
+def _query_param(request: Request | None, name: str) -> str:
+    """Read one query-string value across the supported request objects."""
+    if request is None:
+        return ""
+    params = getattr(request, "query_params", None)
+    if params is None:
+        params = getattr(request, "query", None)
+    if params is None:
+        return ""
+    getter = getattr(params, "get", None)
+    value = getter(name) if callable(getter) else None
+    return str(value or "")
+
+
+async def _global_search_groups(panel: Panel, term: str, user: Any) -> list[dict[str, Any]]:
+    """Load searchable records per resource, then group the matches."""
+    from almasix.orbit.panels.conduit.hosts import (
+        _orm_fetch_all,
+        _resource_model,
+        _resource_records,
+    )
+
+    records_by_resource: dict[Any, list[Any]] = {}
+    for resource in panel.get_resources():
+        searchable = getattr(resource, "is_globally_searchable", None)
+        if not callable(searchable) or not searchable():
+            continue
+        model = _resource_model(resource)
+        if model is not None:
+            records_by_resource[resource] = await _orm_fetch_all(model)
+        else:
+            records_by_resource[resource] = _resource_records(resource)
+    groups = collect_global_search_results(
+        panel,
+        term,
+        user=user,
+        records_by_resource=records_by_resource,
+    )
+    limit = getattr(panel, "_global_search_limit", 10)
+    remaining = int(limit)
+    trimmed: list[dict[str, Any]] = []
+    for group in groups:
+        if remaining <= 0:
+            break
+        results = list(group["results"])[:remaining]
+        remaining -= len(results)
+        trimmed.append({**group, "results": results})
+    return trimmed
 
 
 def mount_panel(router: Any, panel: Panel) -> None:
@@ -419,6 +492,20 @@ def mount_panel(router: Any, panel: Panel) -> None:
             return _html_response(body)
 
         _add(home_uri, empty_home, name=f"orbit.{panel.id}.home")
+
+    if panel.has_global_search():
+
+        async def global_search_action(request: Request, **_extra: Any) -> Any:
+            user = _current_user(panel)
+            term = _query_param(request, "search")
+            groups = await _global_search_groups(panel, term, user)
+            return _html_response(render_global_search_groups(groups))
+
+        _add(
+            "/global-search",
+            global_search_action,
+            name=f"orbit.{panel.id}.global-search",
+        )
 
     if panel.login_enabled():
         from almasix.conduit import Conduit

@@ -10,6 +10,7 @@ from almasix.orbit.panels.pages import Tab
 from almasix.orbit.tables import Average, Count, Filter, FilterGroup, SelectFilter, Sum, Table, TextColumn
 
 from app.models.post import Post
+from app.orbit.app.relations.comments_relation_manager import CommentsRelationManager
 
 
 class PostResource(Resource):
@@ -19,6 +20,13 @@ class PostResource(Resource):
     navigation_icon = "heroicon-o-pencil-square"
     navigation_sort = 1
     record_title_attribute = "title"
+    model_label = "Post"
+    global_search_attributes = ("title", "body")
+    global_search_result_details = ("status",)
+
+    @classmethod
+    def get_relations(cls) -> list[type[Any]]:
+        return [CommentsRelationManager]
 
     @classmethod
     def get_tabs(cls) -> list[Tab]:

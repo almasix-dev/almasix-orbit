@@ -142,7 +142,10 @@ this framing into learner-facing pages.
 |---------|--------|
 | List/Create/Edit/View page hosts + list tabs | Done |
 | Dashboard home + multi-dashboard `route_path` | Done |
-| Global search helpers | Done |
+| Global search (resource attributes, grouped results, panel endpoint) | Done |
+| Relation managers rendered on view/edit (+ create/delete actions) | Done |
+| Record titles in page headings and breadcrumbs | Done |
+| Resource soft deletes (trashed filter, restore, force delete) | Done |
 | Clusters / auth pages / MFA protocol | Done |
 | Multi-tenancy (`Tenancy`, switcher, scoping, HasTenants, RegisterTenant / EditTenantProfile, middleware, route prefix, docs + gallery + orbit-admin) | Done |
 | Render hooks + Plugin base | Done |

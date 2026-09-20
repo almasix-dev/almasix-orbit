@@ -112,5 +112,5 @@ See [Navigation overview](/navigation/overview/).
 - Publishable `orbit-assets` tag
 
 :::note[Still cooking]
-SPA mode and deeper relation-manager tooling are still landing. Resource scaffolding with `--generate` is available — see [Resources](/resources/overview/).
+SPA mode is still landing. Relation managers, global search, record titles, and soft deletes ship today — see [Resources](/resources/overview/).
 :::

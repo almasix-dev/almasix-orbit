@@ -15,6 +15,9 @@ class AuthorResource(Resource):
     navigation_group = "Content"
     navigation_icon = "heroicon-o-user-group"
     navigation_sort = 2
+    record_title_attribute = "name"
+    global_search_attributes = ("name", "email")
+    global_search_result_details = ("email",)
 
     records: ClassVar[list[dict[str, Any]]] = [
         {"id": 1, "name": "Ada Lovelace", "email": "ada@orbit.test"},
