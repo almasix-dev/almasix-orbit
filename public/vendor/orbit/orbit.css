@@ -1629,6 +1629,38 @@ html.dark .or-login-logo-dark {
   font-weight: 600;
 }
 
+.or-mfa-providers {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+.or-mfa-setup {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius-lg);
+  background: color-mix(in srgb, var(--or-primary) 5%, var(--or-surface));
+}
+
+.or-mfa-setup-lead,
+.or-mfa-sent {
+  margin: 0 0 0.65rem;
+  font-size: 0.875rem;
+  color: var(--or-muted);
+}
+
+.or-mfa-secret code,
+.or-mfa-uri code {
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.or-mfa-recovery {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
 .or-drawer-backdrop {
   display: none;
 }

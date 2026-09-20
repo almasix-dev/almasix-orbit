@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any
 
 from almasix.orbit.forms.components import Checkbox, TextInput
 from almasix.orbit.forms.form import Form
+from almasix.orbit.panels.mfa import (
+    AppAuthentication as AppAuthentication,
+)
+from almasix.orbit.panels.mfa import (
+    EmailAuthentication as EmailAuthentication,
+)
+from almasix.orbit.panels.mfa import (
+    MfaProvider as MfaProvider,
+)
+from almasix.orbit.panels.mfa import (
+    render_app_setup,
+)
 from almasix.orbit.panels.page import Page
 from almasix.orbit.support.conduit_attrs import conduit_attr
 from almasix.orbit.support.html import e
@@ -239,37 +251,55 @@ class Profile(Page):
         )
 
 
-class MfaProvider(Protocol):
-    """Host implements TOTP/email MFA; Orbit supplies challenge schema hooks."""
+class MfaChallenge(Page):
+    title = "Two-factor authentication"
+    slug = "mfa-challenge"
 
-    def get_id(self) -> str: ...
-
-    def is_enabled(self, user: Any) -> bool: ...
-
-    def get_management_schema(self) -> Form: ...
-
-    def get_challenge_form(self) -> Form: ...
-
-
-class AppAuthentication:
-    """Built-in TOTP-shaped MFA provider (host verifies codes)."""
-
-    def __init__(self, *, brand_name: str = "Orbit", code_expiry_seconds: int = 30) -> None:
-        self.brand_name = brand_name
-        self.code_expiry_seconds = code_expiry_seconds
-
-    def get_id(self) -> str:
-        return "app"
-
-    def is_enabled(self, user: Any) -> bool:
-        return bool(getattr(user, "mfa_app_enabled", False))
-
-    def get_management_schema(self) -> Form:
-        return Form.make("mfa_app").schema(
-            [TextInput.make("code").label("Authenticator code").required()]
-        )
-
-    def get_challenge_form(self) -> Form:
-        return Form.make("mfa_challenge").schema(
-            [TextInput.make("code").label("Authentication code").required()]
+    @classmethod
+    def render(cls, **ctx: Any) -> str:
+        brand = str(ctx.get("brand") or "Orbit")
+        error = ctx.get("error")
+        providers = list(ctx.get("providers") or [])
+        user = ctx.get("user")
+        selected_id = str(ctx.get("provider") or (providers[0].get_id() if providers else "app"))
+        selected = next((p for p in providers if p.get_id() == selected_id), providers[0] if providers else None)
+        error_html = ""
+        if error:
+            error_html = f'<div class="or-login-alert" role="alert">{e(str(error))}</div>'
+        tabs = ""
+        if len(providers) > 1:
+            buttons = []
+            for provider in providers:
+                pid = e(provider.get_id())
+                label = "Authenticator" if provider.get_id() == "app" else "Email"
+                current = " aria-current=\"page\"" if provider.get_id() == selected_id else ""
+                buttons.append(
+                    f'<button type="button" class="or-btn or-btn-sm or-btn-gray" '
+                    f'{conduit_attr("click", "selectProvider")}'
+                    f' data-provider="{pid}"{current}>{e(label)}</button>'
+                )
+            tabs = f'<div class="or-mfa-providers">{"".join(buttons)}</div>'
+        form_html = ""
+        resend = ""
+        if selected is not None:
+            form_html = selected.get_challenge_form().render(ctx.get("data") or {})
+            if selected.get_id() == "email":
+                resend = (
+                    f'<button type="button" class="or-link-btn" '
+                    f'{conduit_attr("click", "resendCode")}>Resend code</button>'
+                )
+        setup = ""
+        if selected is not None and selected.get_id() == "app" and ctx.get("show_setup"):
+            setup = render_app_setup(selected.provision(user))
+        sent = ""
+        if ctx.get("sent"):
+            sent = '<p class="or-mfa-sent">A new code is on its way.</p>'
+        return (
+            f'<div class="or-page or-page-auth or-page-mfa">'
+            f"{_login_header_html(title=cls.get_title(), subtitle='Enter the code from your authenticator or email.', brand=brand, brand_logo=ctx.get('brand_logo'), brand_logo_dark=ctx.get('brand_logo_dark'), brand_logo_only=bool(ctx.get('brand_logo_only')))}"
+            f"{error_html}{tabs}{setup}{sent}"
+            f'<form class="or-form or-login-form"{conduit_attr("submit", "verifyMfa")}>'
+            f"{form_html}"
+            f'<button type="submit" class="or-btn or-btn-primary or-btn-block">Verify</button>'
+            f"</form>{resend}</div>"
         )

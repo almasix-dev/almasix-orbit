@@ -1834,6 +1834,23 @@ class LoginHost(FormDataMutations, ConduitHost):
             pass
 
         panel = type(self)._panel
+        user = None
+        try:
+            from almasix.auth import auth as auth_fn
+
+            user = auth_fn().user()
+        except Exception:
+            user = None
+        if panel is not None and user is not None and hasattr(panel, "enabled_mfa_providers"):
+            enabled = panel.enabled_mfa_providers(user)
+            if enabled:
+                from almasix.orbit.panels.mfa import set_mfa_pending
+
+                set_mfa_pending(True)
+                self.data = {**payload, "password": ""}
+                self.redirect(panel.url("mfa-challenge"))
+                return
+
         home = "/"
         if panel is not None:
             home = panel.url() if hasattr(panel, "url") else str(panel.get_path() or "/")
@@ -2086,3 +2103,112 @@ class RegisterHost(FormDataMutations, ConduitHost):
             if msgs:
                 return str(msgs[0])
         return None
+
+
+class MfaChallengeHost(FormDataMutations, ConduitHost):
+    """Second-factor challenge after a successful password login."""
+
+    data: dict[str, Any] = {}
+    error: str = ""
+    provider: str = ""
+    sent: bool = False
+    panel_id: ClassVar[str] = "admin"
+    _panel: ClassVar[Any] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        data = dict(kwargs.pop("data", None) or {})
+        if "code" in kwargs and "code" not in data:
+            data["code"] = kwargs.pop("code")
+        super().__init__(**kwargs)
+        self.data = dict(data)
+
+    def _user(self) -> Any:
+        try:
+            from almasix.auth import auth
+
+            return auth().user()
+        except Exception:
+            panel = type(self)._panel
+            return getattr(panel, "_panel_user", None) if panel is not None else None
+
+    def _providers(self) -> list[Any]:
+        panel = type(self)._panel
+        user = self._user()
+        if panel is None or not hasattr(panel, "enabled_mfa_providers"):
+            return []
+        return panel.enabled_mfa_providers(user)
+
+    def _selected(self) -> Any | None:
+        providers = self._providers()
+        if not providers:
+            return None
+        current = self.provider or providers[0].get_id()
+        return next((p for p in providers if p.get_id() == current), providers[0])
+
+    def selectProvider(self, provider_id: str | None = None) -> None:
+        self.provider = str(provider_id or "")
+        self.error = ""
+        self.sent = False
+
+    def resendCode(self) -> None:
+        selected = self._selected()
+        if selected is None or not hasattr(selected, "send_code"):
+            return
+        selected.send_code(self._user())
+        self.sent = True
+        self.error = ""
+
+    def verifyMfa(self) -> None:
+        self.error = ""
+        selected = self._selected()
+        code = str((self.data or {}).get("code") or "")
+        if selected is None:
+            self.error = "No multi-factor method is available."
+            return
+        if not code:
+            self.error = "Enter the authentication code."
+            return
+        if not selected.verify(self._user(), code):
+            self.error = "That code is not valid."
+            return
+        from almasix.orbit.panels.mfa import clear_mfa_pending
+
+        clear_mfa_pending()
+        panel = type(self)._panel
+        home = panel.url() if panel is not None else "/"
+        self.data = {**(self.data or {}), "code": ""}
+        self.redirect(home)
+
+    def render(self) -> str:
+        from almasix.orbit.panels.auth import MfaChallenge
+
+        panel = type(self)._panel
+        brand = "Orbit"
+        brand_logo = None
+        brand_logo_dark = None
+        brand_logo_only = False
+        if panel is not None:
+            brand = str(getattr(panel, "_brand", None) or brand)
+            getter = getattr(panel, "get_brand_logo_url", None)
+            if callable(getter):
+                brand_logo = getter(dark=False)
+                brand_logo_dark = getter(dark=True)
+            else:
+                brand_logo = getattr(panel, "_brand_logo", None)
+                brand_logo_dark = getattr(panel, "_brand_logo_dark", None) or brand_logo
+            brand_logo_only = bool(getattr(panel, "_brand_logo_only", False))
+        providers = self._providers()
+        selected = self._selected()
+        return MfaChallenge.render(
+            data=dict(self.data or {}),
+            brand=brand,
+            brand_logo=brand_logo,
+            brand_logo_dark=brand_logo_dark,
+            brand_logo_only=brand_logo_only,
+            error=self.error,
+            providers=providers,
+            provider=selected.get_id() if selected is not None else self.provider,
+            user=self._user(),
+            sent=self.sent,
+            show_setup=False,
+        )

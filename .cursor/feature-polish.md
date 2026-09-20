@@ -14,11 +14,16 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 103 | Forms leftovers (FileUpload endpoint, RichEditor, MorphTo live search, ModalTableSelect / KeyValue hosts) | `docs/src/content/docs/forms/{file-upload,rich-editor,morph-to-select,modal-table-select,key-value}.md` | **closed** |
 | 104 | Import / export job runners | `docs/src/content/docs/actions/{import,export}.md` | **closed** |
 | 105 | Query builder polish | `docs/src/content/docs/query-builder/overview.md` | **closed** |
-| 106+ | Remaining stability milestones (users/MFA → support toolkit) | docs nav | queued |
+| 106 | Users / MFA (TOTP + email SMTP) | `docs/src/content/docs/users/multi-factor-authentication.md` | **closed** |
+| 107+ | Remaining stability milestones (notifications adapters → support toolkit) | docs nav | queued |
 
 ## Infolists layout + docs depth — closed
 
 **Bar:** Stacked label-above-value default (`.or-entry-inline` for side-by-side), Orbit-first overview depth (hidden/inline labels, sections, extra attrs, utility injection) with unique gallery shots, 100% coverage on infolists surface, vendor CSS synced.
+
+## Users / MFA — closed
+
+**Bar:** `AppAuthentication` RFC 6238 TOTP + recovery codes, `EmailAuthentication` with `MemoryMailer` / `SmtpMailer`, panel `.multi_factor_authentication()`, login → pending session → `/mfa-challenge` host, Orbit-admin sample, Orbit-first docs + unique gallery shots, 100% coverage.
 
 ## Query builder polish — closed
 

@@ -93,6 +93,7 @@ class Panel:
         self._signup: PageOption = False
         self._dashboard: PageOption = True
         self._auth_guard: str | None = None
+        self._mfa_providers: list[Any] = []
         self._plugin_callbacks: list[Callable[[Panel], Any]] = []
         self._plugins: list[Any] = []
         self._boot_callbacks: list[Callable[[Panel], Any]] = []
@@ -357,6 +358,30 @@ class Panel:
     def auth_guard(self, guard: str) -> Self:
         self._auth_guard = guard
         return self
+
+    def multi_factor_authentication(self, *providers: Any) -> Self:
+        """Register MFA providers (authenticator TOTP, email codes, or custom)."""
+        flat: list[Any] = []
+        for item in providers:
+            if item is None or item is False:
+                continue
+            if isinstance(item, (list, tuple)):
+                flat.extend(item)
+            else:
+                flat.append(item)
+        self._mfa_providers = flat
+        return self
+
+    def get_mfa_providers(self) -> list[Any]:
+        return list(self._mfa_providers)
+
+    def has_mfa_providers(self) -> bool:
+        return bool(self._mfa_providers)
+
+    def enabled_mfa_providers(self, user: Any) -> list[Any]:
+        from almasix.orbit.panels.mfa import enabled_providers
+
+        return enabled_providers(self._mfa_providers, user)
 
     def tenant(
         self,
@@ -2479,6 +2504,9 @@ class Panel:
             "default_theme_mode": self._default_theme_mode,
             "breadcrumbs": self._breadcrumbs_enabled,
             "tenancy": self._tenancy.to_dict() if self._tenancy is not None else None,
+            "mfa_providers": [
+                p.get_id() if hasattr(p, "get_id") else type(p).__name__ for p in self._mfa_providers
+            ],
         }
 
 

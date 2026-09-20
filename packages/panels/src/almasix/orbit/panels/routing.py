@@ -11,6 +11,7 @@ from almasix.orbit.panels.conduit.hosts import (
     EditRecordHost,
     ListRecordsHost,
     LoginHost,
+    MfaChallengeHost,
     RegisterHost,
     ViewRecordHost,
 )
@@ -84,11 +85,32 @@ def _is_guest_path(panel: Panel, path: str | None) -> bool:
     return False
 
 
+def _mfa_challenge_path(panel: Panel) -> str:
+    return panel.url("mfa-challenge")
+
+
+def _is_mfa_path(panel: Panel, path: str | None) -> bool:
+    if not path:
+        return False
+    challenge = _mfa_challenge_path(panel).rstrip("/") or "/"
+    normalized = path.rstrip("/") or "/"
+    return normalized == challenge or path.endswith("/mfa-challenge")
+
+
 def _auth_gate(panel: Panel, path: str | None, user: Any) -> Any | None:
     """Redirect to login when the panel requires auth and the path is not guest."""
     if not panel.login_enabled():
         return None
     if user is not None:
+        from almasix.orbit.panels.mfa import is_mfa_pending
+
+        if (
+            panel.has_mfa_providers()
+            and is_mfa_pending()
+            and not _is_mfa_path(panel, path)
+            and not _is_guest_path(panel, path)
+        ):
+            return _redirect(_mfa_challenge_path(panel))
         return None
     if _is_guest_path(panel, path):
         return None
@@ -630,7 +652,47 @@ def mount_panel(router: Any, panel: Panel) -> None:
             mw=["web"],
         )
 
+        if panel.has_mfa_providers():
+            mfa_host = type(
+                f"MfaChallengeHost_{panel.id}",
+                (MfaChallengeHost,),
+                {
+                    "panel_id": panel.id,
+                    "_panel": panel,
+                },
+            )
+            Conduit.register(f"orbit.{panel.id}.mfa", mfa_host)
+
+            async def mfa_action(request: Request, **_extra: Any) -> Any:
+                path = _request_path(request)
+                user = _current_user(panel)
+                if user is None:
+                    return _redirect(_login_path(panel))
+                instance = _instantiate_host(mfa_host, {})
+                slot = await _embed_async(instance)
+                body = panel.render_shell(
+                    slot,
+                    user=user,
+                    active_path=path,
+                    extra_head=_conduit_assets(),
+                    bare=True,
+                )
+                return _html_response(body)
+
+            _add(
+                "/mfa-challenge",
+                mfa_action,
+                name=f"orbit.{panel.id}.mfa",
+                mw=["web"],
+            )
+
         async def logout_action(request: Request) -> Any:
+            try:
+                from almasix.orbit.panels.mfa import clear_mfa_pending
+
+                clear_mfa_pending()
+            except Exception:
+                pass
             try:
                 from almasix.auth import auth
 
