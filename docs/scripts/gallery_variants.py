@@ -81,6 +81,16 @@ from almasix.orbit.schemas.layouts import (
     Split as SchemaSplit,
 )
 from almasix.orbit.schemas.primes import Icon, Image, Text, UnorderedList
+from almasix.orbit.tables import BadgeColumn, Table, TextColumn
+from almasix.orbit.widgets import (
+    ChartLibrary,
+    ChartWidget,
+    Stat,
+    StatsOverviewWidget,
+    TableWidget,
+    Widget,
+)
+from almasix.orbit.panels.pages.dashboard import Dashboard
 
 
 class _Status(Enum):
@@ -2525,6 +2535,397 @@ def build_action_variants() -> dict[str, tuple[str, str]]:
                 .formats(["csv", "json"])
                 .filename("posts-export")
                 .columns(["title", "status"])
+            ),
+        ),
+    }
+
+
+def _dashboard(*widgets: Widget | type[Widget], columns: int = 2) -> str:
+    return Dashboard.render(
+        widgets=list(widgets),
+        columns=columns,
+        brand="Orbit",
+    )
+
+
+def build_widget_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for widget + dashboard shots."""
+    stats = (
+        StatsOverviewWidget.make("overview")
+        .heading("Overview")
+        .stats(
+            [
+                Stat.make("Users")
+                .value(1280)
+                .description("+4% this week")
+                .description_icon("heroicon-m-arrow-trending-up")
+                .color("success")
+                .icon("heroicon-o-users")
+                .chart([820, 932, 901, 1034, 1190, 1280]),
+                Stat.make("Posts")
+                .value(342)
+                .color("primary")
+                .icon("heroicon-o-document-text")
+                .chart([210, 240, 280, 310, 330, 342]),
+                Stat.make("Revenue")
+                .value("$12.4k")
+                .color("warning")
+                .icon("heroicon-o-banknotes")
+                .chart([8.1, 9.2, 9.8, 10.4, 11.2, 12.4]),
+            ]
+        )
+    )
+    chart_js = (
+        ChartWidget.make("signups")
+        .heading("Signups")
+        .description("Last 7 days")
+        .chart_library(ChartLibrary.CHARTJS)
+        .chart_type("line")
+        .labels(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
+        .datasets([{"label": "Users", "data": [12, 19, 14, 22, 18, 25, 30]}])
+        .color("primary")
+        .max_height("240px")
+    )
+    chart_apex = (
+        ChartWidget.make("revenue")
+        .heading("Revenue")
+        .chart_library(ChartLibrary.APEX)
+        .chart_type("area")
+        .labels(["Jan", "Feb", "Mar", "Apr", "May", "Jun"])
+        .datasets([{"label": "MRR", "data": [12, 15, 14, 18, 22, 26]}])
+        .color("success")
+        .max_height("240px")
+    )
+    table_widget = (
+        TableWidget.make("recent")
+        .heading("Recent posts")
+        .description("Latest drafts and publications")
+        .column_span("full")
+        .table(
+            Table.make()
+            .columns(
+                [
+                    TextColumn.make("title").label("Title"),
+                    BadgeColumn.make("status").label("Status"),
+                ]
+            )
+            .records(
+                [
+                    {"title": "Launch Orbit", "status": "published"},
+                    {"title": "Conduit hosts", "status": "draft"},
+                    {"title": "Widget polish", "status": "published"},
+                ]
+            )
+            .paginated(False)
+        )
+    )
+    custom_cls_body = '<p class="or-muted">Hello from Orbit Admin.</p>'
+
+    class _Welcome(Widget):
+        def render_body(self, state=None, **ctx):  # type: ignore[no-untyped-def]
+            return custom_cls_body
+
+    custom = _Welcome.make("welcome").heading("Welcome").description("Custom widget body")
+
+    return {
+        "widgets/overview": (
+            "Widgets overview",
+            _dashboard(stats, chart_js, chart_apex, table_widget, columns=2),
+        ),
+        "widgets/overview/heading": (
+            "Widgets — heading",
+            Widget.make("notes")
+            .heading("Release notes")
+            .description("Latest shipping updates for the team.")
+            .render(),
+        ),
+        "widgets/overview/sort": (
+            "Widgets — sort",
+            _dashboard(
+                ChartWidget.make("later")
+                .heading("Sort 20")
+                .sort(20)
+                .labels(["A", "B"])
+                .datasets([{"label": "N", "data": [1, 2]}])
+                .max_height("160px"),
+                ChartWidget.make("earlier")
+                .heading("Sort 5")
+                .sort(5)
+                .labels(["A", "B"])
+                .datasets([{"label": "N", "data": [2, 1]}])
+                .max_height("160px"),
+            ),
+        ),
+        "widgets/overview/column-span": (
+            "Widgets — column span",
+            _dashboard(
+                ChartWidget.make("wide")
+                .heading("Full width")
+                .column_span_full()
+                .labels(["Mon", "Tue", "Wed"])
+                .datasets([{"label": "Hits", "data": [4, 6, 5]}])
+                .max_height("180px"),
+                columns=2,
+            ),
+        ),
+        "widgets/overview/visibility": (
+            "Widgets — visibility",
+            _dashboard(
+                Widget.make("shown").heading("Visible").can_view_when(True),
+                Widget.make("hidden").heading("Hidden").can_view_when(False),
+            ),
+        ),
+        "widgets/overview/custom": (
+            "Widgets — custom",
+            custom.render(),
+        ),
+        "widgets/stats-overview": (
+            "Stats overview",
+            stats.render(),
+        ),
+        "widgets/stats-overview/value": (
+            "Stats — value",
+            StatsOverviewWidget.make("v")
+            .stats(
+                [
+                    Stat.make("Open tickets").value(12),
+                    Stat.make("Queued jobs").placeholder("—"),
+                ]
+            )
+            .render(),
+        ),
+        "widgets/stats-overview/description": (
+            "Stats — description",
+            Stat.make("Signups")
+            .value(86)
+            .description("vs last week")
+            .description_icon("heroicon-m-arrow-trending-up")
+            .icon("heroicon-o-user-plus")
+            .color("success")
+            .render(),
+        ),
+        "widgets/stats-overview/colors": (
+            "Stats — colors",
+            StatsOverviewWidget.make("c")
+            .stats(
+                [
+                    Stat.make("Healthy").value("OK").color("success"),
+                    Stat.make("Attention").value(3).color("warning"),
+                    Stat.make("Failed").value(1).color("danger"),
+                ]
+            )
+            .render(),
+        ),
+        "widgets/stats-overview/chart": (
+            "Stats — sparklines",
+            StatsOverviewWidget.make("trends")
+            .stats(
+                [
+                    Stat.make("Users")
+                    .value(1280)
+                    .color("success")
+                    .chart([820, 932, 901, 1034, 1190, 1280]),
+                    Stat.make("Sessions")
+                    .value("4.2k")
+                    .color("primary")
+                    .chart([2.1, 2.4, 2.8, 3.1, 3.6, 4.2]),
+                ]
+            )
+            .render(),
+        ),
+        "widgets/stats-overview/url": (
+            "Stats — URL",
+            Stat.make("Users")
+            .value(1280)
+            .url("#users")
+            .icon("heroicon-o-users")
+            .color("primary")
+            .render(),
+        ),
+        "widgets/charts": (
+            "Charts — Chart.js",
+            chart_js.render(),
+        ),
+        "widgets/charts/libraries": (
+            "Charts — libraries",
+            _dashboard(
+                ChartWidget.make("js")
+                .heading("Chart.js")
+                .chart_library(ChartLibrary.CHARTJS)
+                .chart_type("bar")
+                .labels(["A", "B", "C"])
+                .datasets([{"label": "Series", "data": [3, 7, 4]}])
+                .max_height("200px"),
+                ChartWidget.make("apex")
+                .heading("ApexCharts")
+                .chart_library(ChartLibrary.APEX)
+                .chart_type("area")
+                .labels(["A", "B", "C"])
+                .datasets([{"label": "Series", "data": [3, 7, 4]}])
+                .max_height("200px"),
+            ),
+        ),
+        "widgets/charts/types": (
+            "Charts — types",
+            _dashboard(
+                ChartWidget.make("bars")
+                .heading("By channel")
+                .chart_type("bar")
+                .labels(["Organic", "Ads", "Referral"])
+                .datasets([{"label": "Visits", "data": [40, 28, 17]}])
+                .max_height("200px"),
+                ChartWidget.make("share")
+                .heading("Share")
+                .chart_type("doughnut")
+                .labels(["Pro", "Free", "Trial"])
+                .datasets([{"data": [55, 30, 15]}])
+                .max_height("200px"),
+            ),
+        ),
+        "widgets/charts/datasets": (
+            "Charts — datasets",
+            ChartWidget.make("multi")
+            .heading("Revenue vs costs")
+            .chart_type("line")
+            .labels(["Jan", "Feb", "Mar", "Apr"])
+            .datasets(
+                [
+                    {"label": "Revenue", "data": [12, 19, 14, 22]},
+                    {"label": "Costs", "data": [8, 11, 9, 13]},
+                ]
+            )
+            .max_height("220px")
+            .render(),
+        ),
+        "widgets/charts/chrome": (
+            "Charts — chrome",
+            ChartWidget.make("compact")
+            .heading("Compact")
+            .color("success")
+            .max_height("200px")
+            .labels(["Mon", "Tue", "Wed"])
+            .datasets([{"label": "Hits", "data": [4, 6, 5]}])
+            .render(),
+        ),
+        "widgets/charts/filters": (
+            "Charts — filters",
+            ChartWidget.make("range")
+            .heading("Traffic")
+            .filters({"7d": "7 days", "30d": "30 days", "90d": "90 days"})
+            .filter("7d")
+            .labels(["Mon", "Tue", "Wed"])
+            .datasets([{"label": "Views", "data": [10, 14, 12]}])
+            .max_height("200px")
+            .render(),
+        ),
+        "widgets/charts/empty": (
+            "Charts — empty",
+            ChartWidget.make("empty")
+            .heading("Conversions")
+            .empty_state_heading("No data yet")
+            .empty_state_description("Publish a campaign to see conversion trends.")
+            .render(),
+        ),
+        "widgets/tables": (
+            "Table widget",
+            table_widget.render(),
+        ),
+        "widgets/tables/basic": (
+            "Table widget — basic",
+            TableWidget.make("queue")
+            .heading("Job queue")
+            .table(
+                Table.make()
+                .heading("Pending jobs")
+                .columns(
+                    [
+                        TextColumn.make("name"),
+                        TextColumn.make("attempts"),
+                    ]
+                )
+                .records(
+                    [
+                        {"name": "SendNewsletter", "attempts": 0},
+                        {"name": "RebuildSearch", "attempts": 1},
+                    ]
+                )
+                .paginated(False)
+            )
+            .render(),
+        ),
+        "widgets/tables/full-span": (
+            "Table widget — full span",
+            _dashboard(
+                TableWidget.make("activity")
+                .heading("Activity")
+                .column_span_full()
+                .table(
+                    Table.make()
+                    .columns([TextColumn.make("event"), TextColumn.make("at")])
+                    .records(
+                        [
+                            {"event": "User signed up", "at": "09:14"},
+                            {"event": "Post published", "at": "10:02"},
+                        ]
+                    )
+                    .paginated(False)
+                ),
+            ),
+        ),
+        "widgets/tables/empty": (
+            "Table widget — empty",
+            TableWidget.make("empty")
+            .heading("Mentions")
+            .table(
+                Table.make()
+                .columns([TextColumn.make("author"), TextColumn.make("body")])
+                .records([])
+                .paginated(False)
+            )
+            .render(),
+        ),
+        "panels/dashboard": (
+            "Dashboard",
+            _dashboard(stats, chart_js, chart_apex, table_widget, columns=2),
+        ),
+        "panels/dashboard/widgets": (
+            "Dashboard — widgets",
+            _dashboard(stats, chart_js, columns=2),
+        ),
+        "panels/dashboard/columns": (
+            "Dashboard — columns",
+            _dashboard(stats, chart_js, chart_apex, columns=3),
+        ),
+        "panels/dashboard/filters": (
+            "Dashboard — filters",
+            (
+                '<div class="or-page or-page-dashboard">'
+                '<div class="or-dashboard-heading">'
+                '<h1 class="or-page-title">Dashboard</h1></div>'
+                '<div class="or-dashboard-filters">'
+                '<label class="or-field"><span class="or-label">Range</span>'
+                '<select class="or-input"><option>7 days</option>'
+                "<option>30 days</option></select></label></div>"
+                f'{stats.render()}'
+                "</div>"
+            ),
+        ),
+        "panels/dashboard/route-path": (
+            "Dashboard — route path",
+            Dashboard.render(
+                widgets=[
+                    ChartWidget.make("analytics")
+                    .heading("Analytics")
+                    .labels(["W1", "W2", "W3", "W4"])
+                    .datasets([{"label": "Sessions", "data": [120, 140, 160, 190]}])
+                    .max_height("220px")
+                ],
+                columns=1,
+                brand="Orbit",
+            ).replace(
+                '<h1 class="or-page-title">Dashboard</h1>',
+                '<h1 class="or-page-title">Analytics</h1>',
+                1,
             ),
         ),
     }

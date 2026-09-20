@@ -21,7 +21,7 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | actions | `almasix-orbit-actions` | Done |
 | infolists | `almasix-orbit-infolists` | Partial |
 | notifications | `almasix-orbit-notifications` | Partial |
-| widgets | `almasix-orbit-widgets` | Partial |
+| widgets | `almasix-orbit-widgets` | Done |
 | query-builder | `almasix-orbit-query-builder` | Partial |
 | panels | `almasix-orbit` (panels) | Partial |
 
@@ -92,11 +92,23 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | CRUD lifecycle hooks (mutate/using/before/after/halt/createAnother) | Done |
 | Host job runners for import/export | Partial (config + docs adapter contract) |
 
+## Widgets — Done
+
+| Feature | Status |
+|---------|--------|
+| Base `Widget` (sort / column_span / polling / lazy / can_view) | Done |
+| `StatsOverviewWidget` + fluent `Stat` + sparklines | Done |
+| `ChartWidget` Chart.js default + ApexCharts via `.chart_library` | Done |
+| `TableWidget` embedding `Table` | Done |
+| Dashboard mount (`get_widgets` / `get_columns` / filters / `route_path`) | Done |
+| Docs + light/dark gallery shots + orbit-admin sample | Done |
+
 ## Panels / platform — Partial
 
 | Feature | Status |
 |---------|--------|
 | List/Create/Edit/View page hosts + list tabs | Done |
+| Dashboard home + multi-dashboard `route_path` | Done |
 | Global search helpers | Done |
 | Clusters / auth pages / MFA protocol / tenancy | Done |
 | Render hooks + Plugin base | Done |

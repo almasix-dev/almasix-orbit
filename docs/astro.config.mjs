@@ -350,13 +350,19 @@ export default defineConfig({
 				{
 					label: 'Widgets',
 					collapsed: true,
-					items: [{ label: 'Overview', slug: 'widgets/overview' }],
+					items: [
+						{ label: 'Overview', slug: 'widgets/overview' },
+						{ label: 'Stats overview', slug: 'widgets/stats-overview' },
+						{ label: 'Charts', slug: 'widgets/charts' },
+						{ label: 'Tables', slug: 'widgets/tables' },
+					],
 				},
 				{
 					label: 'Panel configuration',
 					collapsed: true,
 					items: [
 						{ label: 'Overview', slug: 'panels/configuration' },
+						{ label: 'Dashboard', slug: 'panels/dashboard' },
 						{ label: 'Actions in the panel', slug: 'panels/actions' },
 						{ label: 'Render hooks', slug: 'panels/render-hooks' },
 						{ label: 'Plugin development', slug: 'panels/plugins' },

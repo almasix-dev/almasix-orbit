@@ -10,24 +10,29 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 18–30 | Schemas module | `docs/src/content/docs/schemas/*` | **closed** |
 | 31–65 | Forms module | `docs/src/content/docs/forms/*` | **closed** |
 | 66–74 | Infolists module | `docs/src/content/docs/infolists/*` | **closed** |
-| 75 | Actions overview | `docs/src/content/docs/actions/overview.md` | **closed** |
-| 76 | Modals | `docs/src/content/docs/actions/modals.md` | **closed** |
-| 77 | Grouping actions | `docs/src/content/docs/actions/grouping-actions.md` | **closed** |
-| 78 | Create action | `docs/src/content/docs/actions/create.md` | **closed** |
-| 79 | Edit action | `docs/src/content/docs/actions/edit.md` | **closed** |
-| 80 | View action | `docs/src/content/docs/actions/view.md` | **closed** |
-| 81 | Delete action | `docs/src/content/docs/actions/delete.md` | **closed** |
-| 82 | Replicate action | `docs/src/content/docs/actions/replicate.md` | **closed** |
-| 83 | Force-delete action | `docs/src/content/docs/actions/force-delete.md` | **closed** |
-| 84 | Restore action | `docs/src/content/docs/actions/restore.md` | **closed** |
-| 85 | Import action | `docs/src/content/docs/actions/import.md` | **closed** |
-| 86 | Export action | `docs/src/content/docs/actions/export.md` | **closed** |
-| 87+ | Remaining Orbit doc features | docs nav | queued |
+| 75–86 | Actions module | `docs/src/content/docs/actions/*` | **closed** |
+| 87 | Widgets overview | `docs/src/content/docs/widgets/overview.md` | **closed** |
+| 88 | Stats overview | `docs/src/content/docs/widgets/stats-overview.md` | **closed** |
+| 89 | Chart widgets | `docs/src/content/docs/widgets/charts.md` | **closed** |
+| 90 | Table widgets | `docs/src/content/docs/widgets/tables.md` | **closed** |
+| 91 | Dashboard / Home | `docs/src/content/docs/panels/dashboard.md` | **closed** |
+| 92+ | Remaining Orbit doc features | docs nav | queued |
 
-## Actions autopilot — closed
+## Widgets + Dashboard autopilot — closed
 
-**Bar:** 100% Filament 5 feature parity on the Orbit Actions surface (API + UX + DX), Filament-depth docs (every subsection = explanation + code + light/dark screenshots), 100% test coverage, orbit-admin sample.
+**Bar:** 100% Filament 5 Widgets + Dashboard parity (API + UX + DX), Chart.js **or** ApexCharts selectable on chart widgets, Filament-depth docs + light/dark screenshots, 100% test coverage, orbit-admin sample.
 
-### Shipped
+### Delivered
 
-Trigger chrome (button/link/iconButton/badge, size, outlined, tooltip, keybindings, url+new-tab), full modal API, ActionGroup depth, CRUD preset hooks (mutate/using/before/after/halt/cancel/createAnother/notifications/redirects), Replicate persistence, BulkAction helpers, Import/Export config + documented adapter contract, orbit-admin `ActionsOverviewResource`, gallery shots under `docs/public/examples/{light,dark}/actions/`.
+- Dashboard mount pipeline (panel widgets → home grid)
+- Widget class API (sort / span / can_view / polling / lazy)
+- Fluent Stat + sparklines (`orbitSparkline`)
+- ChartWidget dual libraries (Chart.js default + ApexCharts via `.chart_library`)
+- TableWidget + custom widgets
+- Dashboard filters / columns / multi-dashboard `route_path`
+- Docs pages + gallery shots (light/dark)
+- orbit-admin home Dashboard sample (stats, Chart.js, Apex, table, custom)
+
+## Next
+
+Open the next queued feature only after confirming 87–91 stay closed.

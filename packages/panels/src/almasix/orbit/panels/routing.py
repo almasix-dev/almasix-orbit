@@ -167,6 +167,34 @@ def _conduit_assets() -> str:
         return ""
 
 
+def _dashboard_page_filters(request: Request, page_cls: type) -> dict[str, Any]:
+    """Collect dashboard filter values from query string (and optional session)."""
+    filters: dict[str, Any] = {}
+    try:
+        qp = getattr(request, "query_params", None) or getattr(
+            getattr(request, "url", None), "query", None
+        )
+        if hasattr(qp, "multi_items"):
+            for key, value in qp.multi_items():
+                filters[str(key)] = value
+        elif hasattr(qp, "items") and not isinstance(qp, str):
+            for key, value in qp.items():
+                filters[str(key)] = value
+    except Exception:
+        pass
+    if getattr(page_cls, "persists_filters_in_session", False):
+        try:
+            session = getattr(request, "session", None)
+            if session is not None:
+                stored = session.get("orbit_dashboard_filters")
+                if isinstance(stored, dict):
+                    filters = {**stored, **filters}
+                    session["orbit_dashboard_filters"] = filters
+        except Exception:
+            pass
+    return filters
+
+
 def _instantiate_host(host_cls: type, extras: dict[str, Any] | None = None) -> Any:
     from almasix.conduit import Conduit
 
@@ -292,9 +320,13 @@ def mount_panel(router: Any, panel: Panel) -> None:
             gated = _auth_gate(panel, path, user)
             if gated is not None:
                 return gated
+            page_filters = _dashboard_page_filters(request, page_cls)
             html_body = page_cls.render(
                 brand=getattr(panel, "_brand", "Orbit"),
                 user=user,
+                panel=panel,
+                page_filters=page_filters,
+                request=request,
             )
             body = panel.render_shell(
                 html_body,
@@ -459,6 +491,7 @@ def mount_orbit_assets(router: Any) -> None:
     """
     css_path = _ASSETS / "css" / "orbit.css"
     js_path = _ASSETS / "js" / "orbit.js"
+    vendor_dir = _ASSETS / "vendor"
 
     async def orbit_css() -> Any:
         from almasix.http import Response
@@ -472,6 +505,16 @@ def mount_orbit_assets(router: Any) -> None:
         body = js_path.read_text(encoding="utf-8") if js_path.is_file() else "/* missing orbit.js */"
         return Response(body, media_type="application/javascript; charset=utf-8")
 
+    def _vendor_js(filename: str):
+        async def serve() -> Any:
+            from almasix.http import Response
+
+            path = vendor_dir / filename
+            body = path.read_text(encoding="utf-8") if path.is_file() else f"/* missing {filename} */"
+            return Response(body, media_type="application/javascript; charset=utf-8")
+
+        return serve
+
     try:
         uris = {getattr(r, "uri", None) for r in getattr(router, "routes", [])}
     except Exception:
@@ -480,6 +523,20 @@ def mount_orbit_assets(router: Any) -> None:
         router.add(["GET"], "/vendor/orbit/orbit.css", orbit_css, name="orbit.assets.css")
     if "/vendor/orbit/orbit.js" not in uris:
         router.add(["GET"], "/vendor/orbit/orbit.js", orbit_js, name="orbit.assets.js")
+    if "/vendor/orbit/chart.umd.min.js" not in uris:
+        router.add(
+            ["GET"],
+            "/vendor/orbit/chart.umd.min.js",
+            _vendor_js("chart.umd.min.js"),
+            name="orbit.assets.chartjs",
+        )
+    if "/vendor/orbit/apexcharts.min.js" not in uris:
+        router.add(
+            ["GET"],
+            "/vendor/orbit/apexcharts.min.js",
+            _vendor_js("apexcharts.min.js"),
+            name="orbit.assets.apex",
+        )
 
 
 def mount_registered_panels(app: Any) -> None:
