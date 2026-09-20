@@ -973,8 +973,8 @@ def test_user_menu_item_visible_hidden() -> None:
 
 
 def test_mount_panel_clustered_resources_and_pages() -> None:
-    from almasix.routing.router import Router
     from almasix.orbit.panels.routing import mount_panel
+    from almasix.routing.router import Router
 
     class Hub(Cluster):
         slug = "hub"
