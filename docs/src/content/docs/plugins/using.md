@@ -13,7 +13,7 @@ Open the [marketplace](/plugins/). Filter by price, category, Orbit version, Off
 
 ![Orbit plugin marketplace (dark)](/examples/dark/plugins/browse.png)
 
-Each card shows the price, author, Orbit versions, last-month installs, GitHub stars, and links to GitHub and PyPI when those exist. **Official** means Almasix maintains it. Everything else is third-party.
+Each card shows the price, author, Orbit versions, last-month installs, GitHub stars, and links to GitHub and PyPI when those exist. **Official** means Almasix maintains it — start with [Orbit Permission](/plugins/orbit-permission/) if you need Users, Roles, and Permissions. Everything else is third-party.
 
 Click through to the listing for the long description, screenshots, license, and install command. **Star on GitHub** stars the plugin’s repository on your GitHub account (GitHub asks you to authorize the first time). If starring is not configured on the site, the button opens the repository instead.
 
