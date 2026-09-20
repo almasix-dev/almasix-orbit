@@ -11,6 +11,7 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 100 | Infolists UI default layout + docs depth | `docs/src/content/docs/infolists/overview.md` | **closed** |
 | 101 | Plugins marketplace | `docs/src/content/docs/plugins/*` | **closed** |
 | 111 | Marketplace catalog layout | `docs/src/pages/plugins/**` | **closed** |
+| 112 | Header Docs + Plugins menus | `docs/src/components/SiteTitle.astro` | **closed** |
 | 102 | Resources depth (relation managers, global search, record titles, soft deletes) | `docs/src/content/docs/resources/*` | **closed** |
 | 103 | Forms leftovers (FileUpload endpoint, RichEditor, MorphTo live search, ModalTableSelect / KeyValue hosts) | `docs/src/content/docs/forms/{file-upload,rich-editor,morph-to-select,modal-table-select,key-value}.md` | **closed** |
 | 104 | Import / export job runners | `docs/src/content/docs/actions/{import,export}.md` | **closed** |
@@ -20,6 +21,10 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 108 | Panels platform (SPA mode, billing adapters, multi-panel registry) | `docs/src/content/docs/panels/configuration.md` | **closed** |
 | 109 | Docs completeness pass (thin pages, unique shots, alignment) | `docs/src/content/docs/**` | **closed** |
 | 110 | Support toolkit polish | `docs/src/content/docs/support/*` | **closed** |
+
+## Header Docs + Plugins menus — closed
+
+**Bar:** Persistent top-bar `Docs` + `Plugins` menus next to the Almasix mark (visible on the splash landing and every inner page), current-state highlighting, marketplace shots recaptured.
 
 ## Marketplace catalog layout — closed
 

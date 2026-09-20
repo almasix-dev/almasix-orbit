@@ -1,45 +1,52 @@
 ---
 /**
- * Almasix mark plus a persistent Plugins link in the top bar.
- * Wraps the theme SiteTitle so marketplace chrome is visible on every viewport.
+ * Almasix mark plus the primary top-bar menus: Docs and Plugins.
  */
 import ThemeSiteTitle from '@almasix/starlight-theme/components/SiteTitle.astro';
-import { isMarketplacePath } from '../../scripts/marketplace-lib.mjs';
+import { isDocsPath, isMarketplacePath } from '../../scripts/marketplace-lib.mjs';
 
-const onMarketplace = isMarketplacePath(Astro.url.pathname);
+const path = Astro.url.pathname;
+const onDocs = isDocsPath(path);
+const onMarketplace = isMarketplacePath(path);
 ---
 
 <ThemeSiteTitle />
-<a
-	class="header-plugins"
-	href="/plugins/"
-	aria-current={onMarketplace ? 'page' : undefined}
->
-	Plugins
-</a>
+<nav class="header-menus" aria-label="Primary">
+	<a href="/getting-started/installation/" aria-current={onDocs ? 'page' : undefined}>Docs</a>
+	<a href="/plugins/" aria-current={onMarketplace ? 'page' : undefined}>Plugins</a>
+</nav>
 
 <style>
-	.header-plugins {
+	:global(.title-wrapper) {
+		overflow: visible;
+	}
+	.header-menus {
+		display: flex;
+		align-items: center;
+		gap: 0.1rem;
+		margin-inline-start: 0.35rem;
+		padding-inline-start: 0.65rem;
+		border-inline-start: 1px solid var(--sl-color-gray-5);
+		flex-shrink: 0;
+	}
+	.header-menus a {
 		display: inline-flex;
 		align-items: center;
-		margin-inline-start: 0.15rem;
 		padding: 0.3rem 0.7rem;
-		border-radius: 999px;
+		border-radius: 0.4rem;
 		font-size: var(--sl-text-sm);
 		font-weight: 650;
 		letter-spacing: 0.01em;
 		text-decoration: none;
 		color: var(--sl-color-gray-2);
-		border: 1px solid transparent;
 		white-space: nowrap;
 	}
-	.header-plugins:hover {
+	.header-menus a:hover {
 		color: var(--sl-color-white);
-		background: color-mix(in srgb, var(--sl-color-accent) 14%, transparent);
+		background: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
 	}
-	.header-plugins[aria-current='page'] {
+	.header-menus a[aria-current='page'] {
 		color: var(--sl-color-white);
-		border-color: var(--sl-color-gray-5);
 		background: color-mix(in srgb, var(--sl-color-accent) 16%, transparent);
 	}
 </style>

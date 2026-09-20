@@ -5,6 +5,8 @@ import {
 	authorStarsTotal,
 	formatStat,
 	githubRepoUrl,
+	isDocsPath,
+	isHomePath,
 	isMarketplacePath,
 	isNavCurrent,
 	normalizePath,
@@ -22,6 +24,17 @@ test('marketplace paths include catalog, listings, and plugin development', () =
 	assert.equal(isMarketplacePath('/'), false);
 	assert.equal(isMarketplacePath('/forms/overview/'), false);
 	assert.equal(isMarketplacePath('/panels/configuration/'), false);
+});
+
+test('docs vs home vs marketplace for the top-bar menus', () => {
+	assert.equal(isHomePath('/'), true);
+	assert.equal(isHomePath('/index.html'), true);
+	assert.equal(isHomePath('/getting-started/installation/'), false);
+	assert.equal(isDocsPath('/'), false);
+	assert.equal(isDocsPath('/getting-started/installation/'), true);
+	assert.equal(isDocsPath('/forms/overview/'), true);
+	assert.equal(isDocsPath('/plugins/'), false);
+	assert.equal(isDocsPath('/panels/plugins/'), false);
 });
 
 test('nav current is exact for catalog roots and nested for indexes', () => {
