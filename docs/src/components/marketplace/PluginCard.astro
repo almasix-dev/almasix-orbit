@@ -1,6 +1,7 @@
 ---
-/** Listing card used on the browse grid and author pages. */
+/** Listing card used on the browse grid, author pages, and related plugins. */
 import type { MarketplacePlugin } from '../../data/marketplace';
+import { formatStat } from '../../../scripts/marketplace-lib.mjs';
 
 interface Props {
 	plugin: MarketplacePlugin;
@@ -36,6 +37,8 @@ const haystack = [
 	data-official={String(plugin.official)}
 	data-dark-mode={String(plugin.darkMode)}
 	data-published={plugin.publishedAt.toISOString()}
+	data-stars={plugin.stars ?? ''}
+	data-installs={plugin.installs ?? ''}
 >
 	<a class="market-thumb" href={plugin.url} aria-hidden="true" tabindex="-1">
 		{
@@ -57,6 +60,34 @@ const haystack = [
 			{plugin.featured && <li class="market-chip is-featured">Featured</li>}
 			{plugin.categories.map((category) => <li class="market-chip">{category.label}</li>)}
 			{plugin.darkMode && <li class="market-chip">Dark mode</li>}
+		</ul>
+		<ul class="market-stats">
+			<li title="PyPI downloads in the last 30 days">
+				<span class="market-stats-label">Installs</span>
+				<strong>{formatStat(plugin.installs)}</strong>
+			</li>
+			<li title="GitHub stars">
+				<span class="market-stats-label">Stars</span>
+				<strong>{formatStat(plugin.stars)}</strong>
+			</li>
+			{
+				plugin.githubUrl && (
+					<li>
+						<a href={plugin.githubUrl} rel="noopener noreferrer">
+							GitHub
+						</a>
+					</li>
+				)
+			}
+			{
+				plugin.pypiUrl && (
+					<li>
+						<a href={plugin.pypiUrl} rel="noopener noreferrer">
+							PyPI
+						</a>
+					</li>
+				)
+			}
 		</ul>
 		<p class="market-meta">
 			<span>

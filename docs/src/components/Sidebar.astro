@@ -1,0 +1,31 @@
+---
+/**
+ * Docs tree on ordinary pages; marketplace nav under /plugins and plugin development.
+ */
+import Default from '@astrojs/starlight/components/Sidebar.astro';
+import { isMarketplacePath } from '../../scripts/marketplace-lib.mjs';
+import MarketplaceNav from './marketplace/MarketplaceNav.astro';
+import '../styles/marketplace.css';
+
+const marketplace = isMarketplacePath(Astro.url.pathname);
+---
+
+{
+	marketplace ? (
+		<MarketplaceNav />
+	) : (
+		<Default>
+			<slot />
+		</Default>
+	)
+}
+
+{
+	marketplace && (
+		<style is:global>
+			:root {
+				--sl-content-width: 96rem;
+			}
+		</style>
+	)
+}

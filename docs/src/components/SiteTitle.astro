@@ -1,0 +1,45 @@
+---
+/**
+ * Almasix mark plus a persistent Plugins link in the top bar.
+ * Wraps the theme SiteTitle so marketplace chrome is visible on every viewport.
+ */
+import ThemeSiteTitle from '@almasix/starlight-theme/components/SiteTitle.astro';
+import { isMarketplacePath } from '../../scripts/marketplace-lib.mjs';
+
+const onMarketplace = isMarketplacePath(Astro.url.pathname);
+---
+
+<ThemeSiteTitle />
+<a
+	class="header-plugins"
+	href="/plugins/"
+	aria-current={onMarketplace ? 'page' : undefined}
+>
+	Plugins
+</a>
+
+<style>
+	.header-plugins {
+		display: inline-flex;
+		align-items: center;
+		margin-inline-start: 0.15rem;
+		padding: 0.3rem 0.7rem;
+		border-radius: 999px;
+		font-size: var(--sl-text-sm);
+		font-weight: 650;
+		letter-spacing: 0.01em;
+		text-decoration: none;
+		color: var(--sl-color-gray-2);
+		border: 1px solid transparent;
+		white-space: nowrap;
+	}
+	.header-plugins:hover {
+		color: var(--sl-color-white);
+		background: color-mix(in srgb, var(--sl-color-accent) 14%, transparent);
+	}
+	.header-plugins[aria-current='page'] {
+		color: var(--sl-color-white);
+		border-color: var(--sl-color-gray-5);
+		background: color-mix(in srgb, var(--sl-color-accent) 16%, transparent);
+	}
+</style>

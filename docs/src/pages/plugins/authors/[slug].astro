@@ -9,6 +9,7 @@ import {
 	type MarketplaceAuthor,
 	type MarketplacePlugin,
 } from '../../../data/marketplace';
+import { authorStarsTotal, formatStat } from '../../../../scripts/marketplace-lib.mjs';
 import '../../../styles/marketplace.css';
 
 export const getStaticPaths: GetStaticPaths = async () => {
@@ -32,7 +33,7 @@ const { author, plugins } = Astro.props as {
 		tableOfContents: false,
 	}}
 >
-	<div class="market">
+	<div class="market" data-marketplace>
 		<a class="market-back" href="/plugins/authors/">← All authors</a>
 
 		<div class="market-author-head">
@@ -43,6 +44,8 @@ const { author, plugins } = Astro.props as {
 					{author.website && <a href={author.website}>Website</a>}
 					{author.github && <a href={authorGithubHref(author.github)}>GitHub</a>}
 					{author.sponsorUrl && <a href={author.sponsorUrl}>Sponsor</a>}
+					<span>·</span>
+					<span>{formatStat(authorStarsTotal(plugins))} stars across listings</span>
 				</p>
 			</div>
 		</div>

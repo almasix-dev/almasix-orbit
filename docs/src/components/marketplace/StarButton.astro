@@ -1,0 +1,28 @@
+---
+/**
+ * Star on GitHub — opens the repo so the visitor can star it, and remembers
+ * the click locally (static docs cannot star on the visitor's behalf).
+ */
+import { formatStat } from '../../../scripts/marketplace-lib.mjs';
+
+interface Props {
+	slug: string;
+	githubUrl: string;
+	stars: number | null;
+	primary?: boolean;
+}
+
+const { slug, githubUrl, stars, primary = true } = Astro.props;
+---
+
+<button
+	type="button"
+	class:list={['market-button', 'market-star-btn', { 'is-primary': primary }]}
+	data-star-slug={slug}
+	data-star-href={githubUrl}
+	data-star-base={stars ?? ''}
+>
+	<span class="market-star-icon" aria-hidden="true">★</span>
+	<span data-star-label>Star on GitHub</span>
+	<span class="market-star-num" data-star-count>{formatStat(stars)}</span>
+</button>

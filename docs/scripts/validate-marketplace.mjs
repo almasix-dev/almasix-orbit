@@ -21,6 +21,7 @@ export const RESERVED_SLUGS = new Set([
 	'get-listed',
 	'guidelines',
 	'overview',
+	'paid',
 	'paid-vs-free',
 	'using',
 ]);
@@ -185,6 +186,14 @@ export function validateMarketplace(root = defaultRoot) {
 
 		if (plugin.keywords !== undefined && !Array.isArray(plugin.keywords)) {
 			failFile(file, 'keywords must be a list of strings');
+		}
+		if (plugin.github_repo !== undefined && !/^[\w.-]+\/[\w.-]+$/.test(plugin.github_repo)) {
+			failFile(file, 'github_repo must be owner/repo');
+		}
+		for (const field of ['stars', 'installs']) {
+			if (plugin[field] !== undefined && (typeof plugin[field] !== 'number' || plugin[field] < 0)) {
+				failFile(file, `${field} must be a non-negative number`);
+			}
 		}
 
 		checkUrl(errors, file, root, 'checkout_url', plugin.checkout_url);

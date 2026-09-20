@@ -40,7 +40,7 @@ const { category, plugins } = Astro.props as {
 		tableOfContents: false,
 	}}
 >
-	<div class="market">
+	<div class="market" data-marketplace>
 		<a class="market-back" href="/plugins/categories/">← All categories</a>
 		<p class="market-lede">{category.description}</p>
 		<p class="market-meta">{plugins.length} {plugins.length === 1 ? 'plugin' : 'plugins'}</p>

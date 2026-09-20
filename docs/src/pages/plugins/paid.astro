@@ -1,0 +1,22 @@
+---
+/** Paid marketplace listings. */
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import MarketplaceBrowse from '../../components/marketplace/MarketplaceBrowse.astro';
+import '../../styles/marketplace.css';
+---
+
+<StarlightPage
+	frontmatter={{
+		title: 'Paid plugins',
+		description:
+			'Commercial Orbit plugins sold by their authors. Orbit never takes a cut or processes a payment.',
+		tableOfContents: false,
+	}}
+>
+	<MarketplaceBrowse heading="Paid plugins" priceLocked="paid">
+		<p class="market-lede" slot="intro">
+			Paid listings send you to the author’s store. Licensing, invoices, and support stay with them —
+			Orbit only hosts the catalog page.
+		</p>
+	</MarketplaceBrowse>
+</StarlightPage>

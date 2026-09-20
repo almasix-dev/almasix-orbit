@@ -122,6 +122,9 @@ checkout_url: https://store.example.com/acme-audit-log-pro
 | `license` | recommended | SPDX id such as `MIT` or `LicenseRef-Proprietary`. |
 | `keywords` | no | Extra search tokens on the browse grid. |
 | `requires_python` | no | e.g. `>=3.11`. |
+| `github_repo` | no | `owner/repo` if stars should be scraped from a repo that is not `repository`. |
+| `stars` | no | Override GitHub star count (otherwise fetched at build from GitHub). |
+| `installs` | no | Override install count (otherwise last-month PyPI downloads). |
 | `thumbnail` | recommended | 16:9, at least 1280×720, JPEG or PNG. |
 | `screenshots` | no | Each needs `src` and descriptive `alt` text. |
 | `features.dark_mode` | no | Set `true` only if you have verified both themes. |

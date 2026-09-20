@@ -1,0 +1,249 @@
+---
+/** Shared browse grid with filters. Used by All plugins and Paid plugins. */
+import PluginCard from './PluginCard.astro';
+import {
+	collectOrbitVersions,
+	getMarketplaceCategories,
+	getMarketplacePlugins,
+	type MarketplacePlugin,
+} from '../../data/marketplace';
+
+interface Props {
+	heading: string;
+	priceLocked?: 'paid' | 'free';
+}
+
+const { heading, priceLocked } = Astro.props;
+const plugins = await getMarketplacePlugins();
+const listed = priceLocked
+	? plugins.filter((plugin: MarketplacePlugin) =>
+			priceLocked === 'paid' ? plugin.isPaid : !plugin.isPaid,
+		)
+	: plugins;
+const categories = await getMarketplaceCategories();
+const versions = collectOrbitVersions(plugins);
+const usedCategories = categories.filter((category) =>
+	listed.some((plugin) => plugin.categories.some((item) => item.slug === category.slug)),
+);
+const featured = priceLocked ? [] : listed.filter((plugin) => plugin.featured);
+---
+
+<div class="market" data-marketplace>
+	<slot name="intro" />
+	{
+		listed.length === 0 ? (
+			<div class="market-empty">
+				<h2>No plugins listed yet</h2>
+				<p>
+					The directory is open
+					{priceLocked === 'paid' ? ' — no paid listings have been published.' : ' and empty — the first listing could be yours.'}
+				</p>
+				<p>
+					<a class="market-button is-primary" href="/plugins/get-listed/">
+						Read the listing guide
+					</a>
+				</p>
+			</div>
+		) : (
+			<>
+				{featured.length > 0 && (
+					<section class="market-section" aria-labelledby="market-featured">
+						<h2 id="market-featured">Featured</h2>
+						<ul class="market-grid">
+							{featured.map((plugin) => (
+								<PluginCard plugin={plugin} />
+							))}
+						</ul>
+					</section>
+				)}
+
+				<section class="market-section" aria-labelledby="market-all">
+					<h2 id="market-all">{heading}</h2>
+
+					<form class="market-filters" id="market-filters" role="search">
+						<div class="market-filter-grid">
+							<div class="market-field">
+								<label for="market-search">Search</label>
+								<input
+									type="search"
+									id="market-search"
+									name="search"
+									placeholder="Name, author, package…"
+									autocomplete="off"
+								/>
+							</div>
+							{
+								!priceLocked && (
+									<div class="market-field">
+										<label for="market-price">Price</label>
+										<select id="market-price" name="price">
+											<option value="">All</option>
+											<option value="free">Free</option>
+											<option value="paid">Paid</option>
+										</select>
+									</div>
+								)
+							}
+							{priceLocked && <input type="hidden" id="market-price" name="price" value={priceLocked} />}
+							<div class="market-field">
+								<label for="market-category">Category</label>
+								<select id="market-category" name="category">
+									<option value="">All</option>
+									{usedCategories.map((category) => (
+										<option value={category.slug}>{category.label}</option>
+									))}
+								</select>
+							</div>
+							<div class="market-field">
+								<label for="market-version">Orbit version</label>
+								<select id="market-version" name="version">
+									<option value="">All</option>
+									{versions.map((version) => (
+										<option value={version}>{version}</option>
+									))}
+								</select>
+							</div>
+							<div class="market-field">
+								<label for="market-sort">Sort by</label>
+								<select id="market-sort" name="sort">
+									<option value="newest">Newest</option>
+									<option value="oldest">Oldest</option>
+									<option value="stars">Most stars</option>
+									<option value="installs">Most installs</option>
+									<option value="name-asc">Name A–Z</option>
+									<option value="name-desc">Name Z–A</option>
+								</select>
+							</div>
+						</div>
+						<div class="market-toggles">
+							<label>
+								<input type="checkbox" name="official" id="market-official" /> Official only
+							</label>
+							<label>
+								<input type="checkbox" name="dark" id="market-dark" /> Dark mode ready
+							</label>
+						</div>
+						<div class="market-filter-footer">
+							<span id="market-count" aria-live="polite">
+								{listed.length} plugins
+							</span>
+							<button type="button" class="market-reset" id="market-reset">
+								Reset filters
+							</button>
+						</div>
+					</form>
+
+					<ul class="market-grid" id="market-results">
+						{listed.map((plugin) => (
+							<PluginCard plugin={plugin} />
+						))}
+					</ul>
+
+					<p class="market-empty" id="market-no-results" hidden>
+						No plugin matches those filters. Try clearing the search box or picking a different
+						category.
+					</p>
+				</section>
+			</>
+		)
+	}
+</div>
+
+<script>
+	const form = document.querySelector<HTMLFormElement>('#market-filters');
+	const results = document.querySelector<HTMLUListElement>('#market-results');
+	if (form && results) {
+		const cards = Array.from(results.querySelectorAll<HTMLLIElement>('[data-plugin]'));
+		const count = document.querySelector<HTMLElement>('#market-count');
+		const noResults = document.querySelector<HTMLElement>('#market-no-results');
+		const field = <T extends HTMLElement>(id: string) => document.querySelector<T>(id);
+		const search = field<HTMLInputElement>('#market-search');
+		const price = field<HTMLInputElement | HTMLSelectElement>('#market-price');
+		const category = field<HTMLSelectElement>('#market-category');
+		const version = field<HTMLSelectElement>('#market-version');
+		const sort = field<HTMLSelectElement>('#market-sort');
+		const official = field<HTMLInputElement>('#market-official');
+		const dark = field<HTMLInputElement>('#market-dark');
+		const priceLocked = price instanceof HTMLInputElement && price.type === 'hidden';
+
+		const matches = (card: HTMLLIElement) => {
+			const term = (search?.value ?? '').trim().toLowerCase();
+			if (term && !(card.dataset.search ?? '').includes(term)) return false;
+			if (price?.value && card.dataset.price !== price.value) return false;
+			if (category?.value && !(card.dataset.categories ?? '').split(' ').includes(category.value)) {
+				return false;
+			}
+			if (version?.value && !(card.dataset.versions ?? '').split(' ').includes(version.value)) {
+				return false;
+			}
+			if (official?.checked && card.dataset.official !== 'true') return false;
+			if (dark?.checked && card.dataset.darkMode !== 'true') return false;
+			return true;
+		};
+
+		const numeric = (card: HTMLLIElement, key: 'stars' | 'installs') => {
+			const raw = card.dataset[key] ?? '';
+			const value = Number(raw);
+			return Number.isFinite(value) ? value : -1;
+		};
+
+		const order = (a: HTMLLIElement, b: HTMLLIElement) => {
+			const mode = sort?.value ?? 'newest';
+			if (mode === 'stars' || mode === 'installs') {
+				return numeric(b, mode) - numeric(a, mode);
+			}
+			if (mode === 'name-asc' || mode === 'name-desc') {
+				const compared = (a.dataset.name ?? '').localeCompare(b.dataset.name ?? '');
+				return mode === 'name-asc' ? compared : -compared;
+			}
+			const left = Date.parse(a.dataset.published ?? '');
+			const right = Date.parse(b.dataset.published ?? '');
+			return mode === 'oldest' ? left - right : right - left;
+		};
+
+		const apply = () => {
+			let visible = 0;
+			for (const card of cards) {
+				const shown = matches(card);
+				card.hidden = !shown;
+				if (shown) visible += 1;
+			}
+			for (const card of [...cards].sort(order)) results.append(card);
+			if (count) count.textContent = `${visible} ${visible === 1 ? 'plugin' : 'plugins'}`;
+			if (noResults) noResults.hidden = visible > 0;
+			const next = new URLSearchParams();
+			const q = (search?.value ?? '').trim();
+			if (q) next.set('q', q);
+			if (!priceLocked && price?.value) next.set('price', price.value);
+			if (category?.value) next.set('category', category.value);
+			if (version?.value) next.set('version', version.value);
+			if (sort?.value && sort.value !== 'newest') next.set('sort', sort.value);
+			if (official?.checked) next.set('official', '1');
+			if (dark?.checked) next.set('dark', '1');
+			const qs = next.toString();
+			const url = qs ? `${location.pathname}?${qs}` : location.pathname;
+			history.replaceState(null, '', url);
+		};
+
+		const params = new URLSearchParams(location.search);
+		if (search && params.has('q')) search.value = params.get('q') ?? '';
+		if (!priceLocked && price instanceof HTMLSelectElement && params.has('price')) {
+			price.value = params.get('price') ?? '';
+		}
+		if (category && params.has('category')) category.value = params.get('category') ?? '';
+		if (version && params.has('version')) version.value = params.get('version') ?? '';
+		if (sort && params.has('sort')) sort.value = params.get('sort') ?? 'newest';
+		if (official) official.checked = params.get('official') === '1';
+		if (dark) dark.checked = params.get('dark') === '1';
+
+		form.addEventListener('input', apply);
+		form.addEventListener('change', apply);
+		form.addEventListener('submit', (event) => event.preventDefault());
+		document.querySelector('#market-reset')?.addEventListener('click', () => {
+			form.reset();
+			if (priceLocked && price) price.value = price.getAttribute('value') ?? price.value;
+			apply();
+		});
+		apply();
+	}
+</script>

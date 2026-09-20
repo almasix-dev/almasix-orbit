@@ -13,7 +13,7 @@ A marketplace listing is a catalog page — the plugin itself is a Python packag
 
 Open the [marketplace](/plugins/). Filter by price, category, Orbit version, Official-only, or dark-mode ready. Filters write into the URL (`?q=branding&category=theme`) so you can share a search.
 
-Each card shows the price, author, and the Orbit versions the author claims to support. **Official** means Almasix maintains it. Everything else is third-party.
+Each card shows the price, author, Orbit versions, last-month installs, GitHub stars, and links to GitHub and PyPI when those exist. **Official** means Almasix maintains it. Everything else is third-party.
 
 Click through to the listing for the long description, screenshots, license, and install command.
 

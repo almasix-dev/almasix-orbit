@@ -1,6 +1,13 @@
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import { getCollection, type CollectionEntry } from 'astro:content';
 
+import {
+	githubRepoUrl,
+	parseGithubRepo,
+	pypiProjectUrl,
+} from '../../scripts/marketplace-lib.mjs';
+import { fetchGithubStars, fetchPypiInstalls } from './marketplace-stats';
+
 /** Docs pages that live under `/plugins/` — a listing may not claim these. */
 export const RESERVED_PLUGIN_SLUGS = [
 	'authors',
@@ -10,6 +17,7 @@ export const RESERVED_PLUGIN_SLUGS = [
 	'get-listed',
 	'guidelines',
 	'overview',
+	'paid',
 	'paid-vs-free',
 	'using',
 ];
@@ -57,6 +65,11 @@ export interface MarketplacePlugin {
 	featured: boolean;
 	publishedAt: Date;
 	url: string;
+	stars: number | null;
+	installs: number | null;
+	githubUrl?: string;
+	pypiUrl?: string;
+	githubRepo?: string;
 }
 
 function formatPrice(price: CollectionEntry<'plugins'>['data']['price']): string {
@@ -114,55 +127,67 @@ export async function getMarketplacePlugins(): Promise<MarketplacePlugin[]> {
 		getCollection('plugins'),
 	]);
 
-	const plugins = entries
-		.filter((entry) => entry.data.status === 'published')
-		.map((entry) => {
-			const data = entry.data;
-			const author = authors.get(data.author);
-			if (!author) {
-				throw new Error(
-					`Plugin "${data.slug}" references unknown author "${data.author}". ` +
-						'Add src/data/marketplace/authors/<slug>.yaml first.',
-				);
-			}
-			return {
-				slug: data.slug,
-				name: data.name,
-				summary: data.summary,
-				description: data.description,
-				author,
-				categories: data.categories.map((slug) => {
-					const category = categories.get(slug);
-					if (!category) {
-						throw new Error(
-							`Plugin "${data.slug}" uses unknown category "${slug}". ` +
-								'Pick one from src/data/marketplace/categories.yaml.',
-						);
-					}
-					return category;
-				}),
-				orbitVersions: data.orbit_versions,
-				isPaid: data.price !== 'free',
-				priceLabel: formatPrice(data.price),
-				checkoutUrl: data.checkout_url,
-				package: data.package,
-				installCommand: data.package ? `pip install ${data.package}` : undefined,
-				repository: data.repository,
-				docsUrl: data.docs_url,
-				homepage: data.homepage,
-				changelogUrl: data.changelog_url,
-				license: data.license,
-				keywords: data.keywords ?? [],
-				requiresPython: data.requires_python,
-				thumbnail: data.thumbnail,
-				screenshots: data.screenshots,
-				darkMode: data.features.dark_mode,
-				official: data.features.official,
-				featured: data.features.featured,
-				publishedAt: data.published_at,
-				url: `/plugins/${data.slug}/`,
-			} satisfies MarketplacePlugin;
-		});
+	const plugins = await Promise.all(
+		entries
+			.filter((entry) => entry.data.status === 'published')
+			.map(async (entry) => {
+				const data = entry.data;
+				const author = authors.get(data.author);
+				if (!author) {
+					throw new Error(
+						`Plugin "${data.slug}" references unknown author "${data.author}". ` +
+							'Add src/data/marketplace/authors/<slug>.yaml first.',
+					);
+				}
+				const githubRepo = data.github_repo || parseGithubRepo(data.repository ?? '');
+				const [fetchedStars, fetchedInstalls] = await Promise.all([
+					data.stars == null ? fetchGithubStars(githubRepo) : Promise.resolve(data.stars),
+					data.installs == null ? fetchPypiInstalls(data.package) : Promise.resolve(data.installs),
+				]);
+				return {
+					slug: data.slug,
+					name: data.name,
+					summary: data.summary,
+					description: data.description,
+					author,
+					categories: data.categories.map((slug) => {
+						const category = categories.get(slug);
+						if (!category) {
+							throw new Error(
+								`Plugin "${data.slug}" uses unknown category "${slug}". ` +
+									'Pick one from src/data/marketplace/categories.yaml.',
+							);
+						}
+						return category;
+					}),
+					orbitVersions: data.orbit_versions,
+					isPaid: data.price !== 'free',
+					priceLabel: formatPrice(data.price),
+					checkoutUrl: data.checkout_url,
+					package: data.package,
+					installCommand: data.package ? `pip install ${data.package}` : undefined,
+					repository: data.repository,
+					docsUrl: data.docs_url,
+					homepage: data.homepage,
+					changelogUrl: data.changelog_url,
+					license: data.license,
+					keywords: data.keywords ?? [],
+					requiresPython: data.requires_python,
+					thumbnail: data.thumbnail,
+					screenshots: data.screenshots,
+					darkMode: data.features.dark_mode,
+					official: data.features.official,
+					featured: data.features.featured,
+					publishedAt: data.published_at,
+					url: `/plugins/${data.slug}/`,
+					stars: fetchedStars,
+					installs: fetchedInstalls,
+					githubRepo: githubRepo ?? undefined,
+					githubUrl: githubRepo ? githubRepoUrl(githubRepo) : data.repository,
+					pypiUrl: data.package ? pypiProjectUrl(data.package) : undefined,
+				} satisfies MarketplacePlugin;
+			}),
+	);
 
 	return plugins.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
 }
@@ -243,6 +268,10 @@ export function pluginToFeedItem(plugin: MarketplacePlugin) {
 		keywords: plugin.keywords,
 		official: plugin.official,
 		featured: plugin.featured,
+		stars: plugin.stars,
+		installs: plugin.installs,
+		github_url: plugin.githubUrl ?? null,
+		pypi_url: plugin.pypiUrl ?? null,
 		published_at: plugin.publishedAt.toISOString().slice(0, 10),
 	};
 }

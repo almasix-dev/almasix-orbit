@@ -1,0 +1,39 @@
+---
+/**
+ * Marketplace sidebar — catalog links instead of the docs tree.
+ * Static groups (not <details>) so the theme accordion cannot collapse them.
+ */
+import MobileMenuFooter from 'virtual:starlight/components/MobileMenuFooter';
+import { MARKETPLACE_NAV, isNavCurrent } from '../../../scripts/marketplace-lib.mjs';
+
+const pathname = Astro.url.pathname;
+---
+
+<nav class="market-nav" aria-label="Plugin marketplace">
+	{
+		MARKETPLACE_NAV.map((group) => (
+			<div class="market-nav-group">
+				<p class="market-nav-summary">{group.label}</p>
+				<ul class="market-nav-list">
+					{group.items.map((item) => (
+						<li>
+							<a
+								href={item.href}
+								aria-current={isNavCurrent(item.href, pathname) ? 'page' : undefined}
+							>
+								{item.label}
+							</a>
+						</li>
+					))}
+				</ul>
+			</div>
+		))
+	}
+	<p class="market-nav-foot">
+		<a href="/getting-started/installation/">Documentation</a>
+	</p>
+</nav>
+
+<div class="md:sl-hidden">
+	<MobileMenuFooter />
+</div>

@@ -35,5 +35,8 @@ features:
 # keywords: [example]
 # homepage: https://example.com
 # changelog_url: https://github.com/example/example-orbit-plugin/releases
+# github_repo: example/example-orbit-plugin
+# stars: 12
+# installs: 340
 status: draft
 published_at: 2026-01-01

@@ -64,6 +64,7 @@ test('reserved slugs include marketplace routes', () => {
 	assert.ok(RESERVED_SLUGS.has('using'));
 	assert.ok(RESERVED_SLUGS.has('categories'));
 	assert.ok(RESERVED_SLUGS.has('feed'));
+	assert.ok(RESERVED_SLUGS.has('paid'));
 });
 
 test('unknown author, category, reserved slug, and paid checkout', () => {
@@ -268,6 +269,35 @@ test('paid price shape and category labels', () => {
 		assert.match(errors, /orbit_versions must list at least one/);
 		assert.match(errors, /price.amount must be a positive number/);
 		assert.match(errors, /ISO 4217/);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test('github_repo and stats must be well-shaped', () => {
+	const root = fixture({
+		'src/data/marketplace/plugins/orbit-branding.yaml': [
+			'name: Orbit Branding',
+			'slug: orbit-branding',
+			'summary: Sample.',
+			'description: Body',
+			'author: almasix',
+			'categories: [theme]',
+			'orbit_versions: ["0.3"]',
+			'price: free',
+			'repository: https://github.com/almasix-dev/almasix-orbit',
+			'github_repo: not a repo',
+			'stars: -1',
+			'installs: nope',
+			'published_at: 2026-09-20',
+			'',
+		].join('\n'),
+	});
+	try {
+		const errors = validateMarketplace(root).join('\n');
+		assert.match(errors, /github_repo must be owner\/repo/);
+		assert.match(errors, /stars must be a non-negative number/);
+		assert.match(errors, /installs must be a non-negative number/);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}

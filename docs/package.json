@@ -9,7 +9,7 @@
     "build": "astro build",
     "prebuild": "npm run validate:marketplace",
     "validate:marketplace": "node scripts/validate-marketplace.mjs",
-    "test": "node --test scripts/validate-marketplace.test.mjs",
+    "test": "node --test scripts/validate-marketplace.test.mjs scripts/marketplace-lib.test.mjs",
     "preview": "astro preview",
     "deploy": "npm run build && wrangler deploy",
     "astro": "astro"

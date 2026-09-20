@@ -103,8 +103,8 @@ See [Navigation overview](/navigation/overview/).
 
 - `Plugin` base with `register` / `boot` hooks and `panel.plugin(...)` / `.plugins([...])`
 - Publishable package layout, optional `ServiceProvider` entry-point auto-boot
-- Community [plugin marketplace](/plugins/) — browse, filter, JSON feed, authors, and categories
-- Registry-backed listings with author profiles, screenshots, free or paid distribution
+- Community [plugin marketplace](/plugins/) — wide catalog layout, dedicated sidebar, JSON feed, authors, and categories
+- Registry-backed listings with install/star stats, GitHub/PyPI links, author aside, and related plugins
 - Submission path via pull request: [Get listed](/plugins/get-listed/), [Using a plugin](/plugins/using/)
 
 ## Query builder & support
