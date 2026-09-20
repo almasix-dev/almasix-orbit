@@ -5,13 +5,13 @@ description: Find an Orbit plugin on the marketplace, install it, and register i
 
 A marketplace listing is a catalog page — the plugin itself is a Python package you install into your app. This page walks from the directory to a running panel.
 
-![Registering an Orbit plugin on a panel (light)](/examples/light/plugins/using.png)
-
-![Registering an Orbit plugin on a panel (dark)](/examples/dark/plugins/using.png)
-
 ## 1. Find a listing
 
 Open the [marketplace](/plugins/). Filter by price, category, Orbit version, Official-only, or dark-mode ready. Filters write into the URL (`?q=branding&category=theme`) so you can share a search.
+
+![Orbit plugin marketplace (light)](/examples/light/plugins/browse.png)
+
+![Orbit plugin marketplace (dark)](/examples/dark/plugins/browse.png)
 
 Each card shows the price, author, Orbit versions, last-month installs, GitHub stars, and links to GitHub and PyPI when those exist. **Official** means Almasix maintains it. Everything else is third-party.
 

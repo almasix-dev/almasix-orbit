@@ -18,6 +18,10 @@ The marketplace lists both kinds of plugin side by side, and visitors can filter
 
 Orbit does not process payments, hold funds, issue licenses, or take a commission. A paid listing is a well-presented link to your own store.
 
+![Paid plugin listings (light)](/examples/light/plugins/paid.png)
+
+![Paid plugin listings (dark)](/examples/dark/plugins/paid.png)
+
 ## Listing a free plugin
 
 Publish to PyPI, then set:
