@@ -833,3 +833,49 @@ html.motion .orbit-landing-hero .term {
 		display: none;
 	}
 }
+
+/* Filament media kit — https://filamentphp.com/media-kit */
+.filament-callout {
+	--filament-honey: #efaf5d;
+	--filament-cocoa: #46341c;
+	--filament-serenade: #fff1e3;
+	--filament-off-white: #faf9f5;
+	--filament-off-black: #292524;
+	--filament-powder: #aec6f4;
+}
+
+.filament-callout .starlight-aside {
+	--sl-color-asides-text-accent: var(--filament-cocoa);
+	--sl-color-asides-border: var(--filament-honey);
+	background-color: var(--filament-serenade);
+	color: var(--filament-cocoa);
+	border-inline-start-width: 0.35rem;
+	border-inline-start-color: var(--filament-honey);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--filament-honey) 55%, transparent);
+}
+
+.filament-callout .starlight-aside__title,
+.filament-callout .starlight-aside__content a {
+	color: var(--filament-cocoa);
+}
+
+.filament-callout .starlight-aside__content a:hover {
+	color: color-mix(in srgb, var(--filament-cocoa) 70%, var(--filament-honey));
+}
+
+html[data-theme='dark'] .filament-callout .starlight-aside {
+	--sl-color-asides-text-accent: var(--filament-honey);
+	background-color: color-mix(in srgb, var(--filament-off-black) 82%, var(--filament-cocoa));
+	color: var(--filament-off-white);
+	border-inline-start-color: var(--filament-honey);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--filament-honey) 35%, transparent);
+}
+
+html[data-theme='dark'] .filament-callout .starlight-aside__title,
+html[data-theme='dark'] .filament-callout .starlight-aside__content a {
+	color: var(--filament-honey);
+}
+
+html[data-theme='dark'] .filament-callout .starlight-aside__content a:hover {
+	color: var(--filament-powder);
+}
