@@ -879,6 +879,77 @@ html:not([data-theme-preference]) .or-theme-icon-system {
   position: relative;
 }
 
+.or-notify-btn {
+  position: relative;
+}
+
+.or-notify-badge {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--or-danger);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.or-notify-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem 0.35rem;
+  border-bottom: 1px solid var(--or-line);
+}
+
+.or-notify-heading {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--or-ink);
+}
+
+.or-notify-mark-all {
+  border: 0;
+  background: transparent;
+  color: var(--or-primary);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.or-notify-mark-all:hover {
+  text-decoration: underline;
+}
+
+.or-notify-item.is-unread {
+  background: color-mix(in srgb, var(--or-primary) 8%, transparent);
+}
+
+.or-notify-item.is-unread .or-notify-title::before {
+  content: "";
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-right: 0.35rem;
+  border-radius: 999px;
+  background: var(--or-primary);
+  vertical-align: middle;
+}
+
+.or-sidebar-notifications {
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  justify-content: flex-start;
+}
+
 .or-user-menu {
   position: relative;
   display: inline-flex;
@@ -3535,32 +3606,155 @@ html.dark .or-login-logo-dark {
   padding: 1.1rem;
 }
 
+.or-notifications {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: min(24rem, calc(100vw - 1.5rem));
+  pointer-events: none;
+  padding: 0.75rem;
+}
+
+.or-notifications-align-start {
+  left: 0.5rem;
+  right: auto;
+}
+
+.or-notifications-align-center {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+.or-notifications-align-end {
+  right: 0.5rem;
+  left: auto;
+}
+
+.or-notifications-valign-start {
+  top: 0.5rem;
+  bottom: auto;
+}
+
+.or-notifications-valign-center {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+.or-notifications-align-center.or-notifications-valign-center {
+  transform: translate(-50%, -50%);
+}
+
+.or-notifications-valign-end {
+  bottom: 0.5rem;
+  top: auto;
+}
+
 .or-notification {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
   border-radius: var(--or-radius);
   padding: 0.85rem 1rem;
-  margin-bottom: 0.5rem;
   border: 1px solid var(--or-line);
-  background: var(--or-cream);
+  background: var(--or-card);
+  box-shadow: var(--or-shadow-card);
+}
+
+.or-notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.or-notification-title {
+  display: block;
+  font-weight: 650;
+  color: var(--or-ink);
+  font-size: 0.9rem;
+}
+
+.or-notification-body {
+  margin-top: 0.2rem;
+  font-size: 0.8125rem;
+  color: var(--or-muted);
+}
+
+.or-notification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.or-notification-action {
+  font-size: 0.75rem;
+}
+
+.or-notification-dismiss {
+  border: 0;
+  background: transparent;
+  color: var(--or-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.1rem;
+  border-radius: var(--or-radius);
+}
+
+.or-notification-dismiss:hover {
+  color: var(--or-ink);
+  background: var(--or-surface-hover);
+}
+
+.or-notification-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--or-muted);
+}
+
+.or-notification-icon-success,
+.or-notification-color-success.or-notification .or-notification-icon {
+  color: var(--or-success);
+}
+
+.or-notification-icon-warning {
+  color: var(--or-warning);
+}
+
+.or-notification-icon-danger {
+  color: var(--or-danger);
+}
+
+.or-notification-icon-info {
+  color: var(--or-info);
 }
 
 .or-notification-success {
   border-color: color-mix(in srgb, var(--or-success) 45%, var(--or-line));
-  background: color-mix(in srgb, var(--or-success) 10%, var(--or-cream));
+  background: color-mix(in srgb, var(--or-success) 10%, var(--or-card));
 }
 
 .or-notification-danger {
   border-color: color-mix(in srgb, var(--or-danger) 45%, var(--or-line));
-  background: color-mix(in srgb, var(--or-danger) 10%, var(--or-cream));
+  background: color-mix(in srgb, var(--or-danger) 10%, var(--or-card));
 }
 
 .or-notification-warning {
   border-color: color-mix(in srgb, var(--or-warning) 45%, var(--or-line));
-  background: color-mix(in srgb, var(--or-warning) 12%, var(--or-cream));
+  background: color-mix(in srgb, var(--or-warning) 12%, var(--or-card));
 }
 
 .or-notification-info {
   border-color: color-mix(in srgb, var(--or-info) 45%, var(--or-line));
-  background: color-mix(in srgb, var(--or-info) 10%, var(--or-cream));
+  background: color-mix(in srgb, var(--or-info) 10%, var(--or-card));
+}
+
+.or-live-notifier {
+  display: contents;
 }
 
 .or-icon {

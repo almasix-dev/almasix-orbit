@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from almasix.orbit import Panel, PanelRegistry
 from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem, NavigationSubgroup
-from almasix.orbit.panels.users import UserMenuItem
+from almasix.orbit.panels.users import PanelNotification, UserMenuItem
 from app.orbit.app.clusters.settings_hub_cluster import SettingsHubCluster
 from app.orbit.app.pages.nav_account_pages import NavAccountPage, NavPreferencesPage
 from app.orbit.app.plugins import BrandingPlugin
@@ -22,6 +22,7 @@ from app.orbit.app.resources.modal_tasks_resource import ModalTasksResource
 from app.orbit.app.resources.nav_colors_resource import NavColorsResource
 from app.orbit.app.resources.nav_fonts_resource import NavFontsResource
 from app.orbit.app.resources.navigation_overview_resource import NavigationOverviewResource
+from app.orbit.app.resources.notifications_overview_resource import NotificationsOverviewResource
 from app.orbit.app.resources.post_resource import PostResource
 from app.orbit.app.resources.settings_resource import SettingsResource
 from app.orbit.app.resources.tables_overview_resource import TablesOverviewResource
@@ -90,14 +91,19 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
             .sort(8)
         )
         .navigation_group(
+            NavigationGroup.make("Notifications")
+            .icon("heroicon-o-bell")
+            .sort(9)
+        )
+        .navigation_group(
             NavigationGroup.make("Demos")
             .icon("heroicon-o-beaker")
-            .sort(9)
+            .sort(10)
         )
         .navigation_group(
             NavigationGroup.make("System")
             .icon("heroicon-o-cog-6-tooth")
-            .sort(10)
+            .sort(11)
         )
         .navigation_subgroup(
             NavigationSubgroup.make("Samples")
@@ -134,6 +140,24 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
         )
         .clusters([SettingsHubCluster])
         .pages([NavAccountPage, NavPreferencesPage])
+        .database_notifications(
+            [
+                PanelNotification.make("Welcome to Orbit")
+                .body("Database notifications are enabled on this panel.")
+                .status("success")
+                .id("seed-welcome"),
+                PanelNotification.make("Deploy finished")
+                .body("v1.4.2 is live on production.")
+                .status("info")
+                .id("seed-deploy"),
+                PanelNotification.make("Backup complete")
+                .body("Nightly backup finished without errors.")
+                .status("success")
+                .read()
+                .id("seed-backup"),
+            ]
+        )
+        .database_notifications_polling("30s")
         .widgets(
             [
                 WelcomeWidget,
@@ -150,6 +174,7 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
                 InfolistsOverviewResource,
                 ActionsOverviewResource,
                 NavigationOverviewResource,
+                NotificationsOverviewResource,
                 NavColorsResource,
                 NavFontsResource,
                 PostResource,

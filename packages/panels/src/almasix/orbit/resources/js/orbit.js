@@ -715,14 +715,337 @@
     }));
 
     window.Alpine.data("orbitNotifications", () => ({
-      init() {},
-      dismiss(id) {
-        const el = this.$el?.querySelector?.(`[data-id="${id}"]`);
-        if (el) {
+      notifications: [],
+      _timers: {},
+      init() {
+        const seed = Array.from(this.$el.querySelectorAll(".or-notification[data-id]"));
+        seed.forEach((el) => {
+          const id = el.getAttribute("data-id");
+          if (!id) return;
+          this.notifications.push({
+            id,
+            title: el.querySelector(".or-notification-title")?.textContent || "",
+            body: el.querySelector(".or-notification-body")?.textContent || "",
+            status: (el.className.match(/or-notification-(success|warning|danger|info)/) || [])[1] || "info",
+            duration: Number(el.getAttribute("data-duration")) || 6000,
+            persistent: el.getAttribute("data-persistent") === "true",
+            html: el.outerHTML,
+          });
           el.remove();
+        });
+        this.notifications.forEach((n) => this._schedule(n));
+
+        const onNotify = (event) => {
+          const detail = event.detail || {};
+          this.push(detail);
+        };
+        const onClose = (event) => {
+          const id = event.detail?.id;
+          if (id) this.dismiss(id);
+        };
+        window.addEventListener("orbit:notify", onNotify);
+        window.addEventListener("close-notification", onClose);
+        this.$el.addEventListener("close-notification", onClose);
+        this._cleanup = () => {
+          window.removeEventListener("orbit:notify", onNotify);
+          window.removeEventListener("close-notification", onClose);
+        };
+      },
+      destroy() {
+        this._cleanup?.();
+        Object.values(this._timers).forEach((t) => clearTimeout(t));
+      },
+      push(detail) {
+        const id = detail.id || `n-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const item = {
+          id,
+          title: detail.title || "",
+          body: detail.body || "",
+          status: detail.status || "info",
+          icon: detail.icon || "",
+          iconColor: detail.iconColor || detail.icon_color || detail.status || "info",
+          color: detail.color || detail.status || "",
+          duration: detail.persistent ? 0 : Number(detail.duration ?? 6000),
+          persistent: Boolean(detail.persistent),
+          actions: detail.actions || [],
+        };
+        this.notifications = [...this.notifications.filter((n) => n.id !== id), item];
+        this._schedule(item);
+      },
+      dismiss(id) {
+        if (this._timers[id]) {
+          clearTimeout(this._timers[id]);
+          delete this._timers[id];
         }
+        this.notifications = this.notifications.filter((n) => n.id !== id);
+      },
+      _schedule(item) {
+        if (item.persistent || !item.duration) return;
+        if (this._timers[item.id]) clearTimeout(this._timers[item.id]);
+        this._timers[item.id] = setTimeout(() => this.dismiss(item.id), item.duration);
+      },
+      runAction(notificationId, action) {
+        if (action?.url) {
+          if (action.openUrlInNewTab || action.open_url_in_new_tab) {
+            window.open(action.url, "_blank", "noopener,noreferrer");
+          } else {
+            window.location.href = action.url;
+          }
+        }
+        if (action?.dispatch) {
+          window.dispatchEvent(
+            new CustomEvent(action.dispatch, { detail: action.dispatchPayload || action.dispatch_payload || [] })
+          );
+        }
+        if (action?.close) this.dismiss(notificationId);
       },
     }));
+
+    window.Alpine.data("orbitLiveNotifications", () => ({
+      channels: [],
+      init() {
+        const raw = this.$el.getAttribute("data-channels") || "";
+        this.channels = raw
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean);
+        window.addEventListener("orbit:broadcast", (event) => {
+          const detail = event.detail || {};
+          const channel = detail.channel;
+          if (channel && this.channels.length && !this.channels.includes(channel)) {
+            return;
+          }
+          window.dispatchEvent(new CustomEvent("orbit:notify", { detail }));
+        });
+      },
+    }));
+
+    window.Alpine.data("orbitDatabaseNotifications", () => ({
+      open: false,
+      notifications: [],
+      _pollTimer: null,
+      get unreadCount() {
+        return this.notifications.filter((n) => !n.read).length;
+      },
+      init() {
+        try {
+          const raw = this.$el.getAttribute("data-notifications") || "[]";
+          this.notifications = JSON.parse(raw);
+        } catch (_) {
+          this.notifications = [];
+        }
+        const polling = Number(this.$el.getAttribute("data-polling") || 0);
+        if (polling > 0) {
+          this._pollTimer = setInterval(() => this.poll(), polling);
+        }
+        window.addEventListener("orbit:database-notifications-refresh", () => this.poll());
+        window.addEventListener("open-modal", (event) => {
+          if (event.detail?.id === "database-notifications") this.open = true;
+        });
+      },
+      destroy() {
+        if (this._pollTimer) clearInterval(this._pollTimer);
+      },
+      toggle() {
+        this.open = !this.open;
+      },
+      markRead(id) {
+        this.notifications = this.notifications.map((n) =>
+          n.id === id ? { ...n, read: true } : n
+        );
+      },
+      markUnread(id) {
+        this.notifications = this.notifications.map((n) =>
+          n.id === id ? { ...n, read: false } : n
+        );
+      },
+      markAllRead() {
+        this.notifications = this.notifications.map((n) => ({ ...n, read: true }));
+      },
+      poll() {
+        // Hook for Conduit / apps: replace list via custom event detail.
+        window.dispatchEvent(
+          new CustomEvent("orbit:database-notifications-poll", {
+            detail: { notifications: this.notifications },
+          })
+        );
+      },
+    }));
+
+    // Filament-style JS client
+    class OrbitNotificationAction {
+      constructor(name) {
+        this._name = name || "action";
+        this._label = null;
+        this._button = false;
+        this._url = null;
+        this._openUrlInNewTab = false;
+        this._dispatch = null;
+        this._dispatchPayload = [];
+        this._close = false;
+        this._color = null;
+      }
+      button(v = true) {
+        this._button = Boolean(v);
+        return this;
+      }
+      label(v) {
+        this._label = v;
+        return this;
+      }
+      url(v) {
+        this._url = v;
+        return this;
+      }
+      openUrlInNewTab(v = true) {
+        this._openUrlInNewTab = Boolean(v);
+        return this;
+      }
+      dispatch(event, payload = []) {
+        this._dispatch = event;
+        this._dispatchPayload = payload;
+        return this;
+      }
+      close(v = true) {
+        this._close = Boolean(v);
+        return this;
+      }
+      color(v) {
+        this._color = v;
+        return this;
+      }
+      toJSON() {
+        return {
+          name: this._name,
+          label: this._label || this._name,
+          button: this._button,
+          url: this._url,
+          openUrlInNewTab: this._openUrlInNewTab,
+          dispatch: this._dispatch,
+          dispatchPayload: this._dispatchPayload,
+          close: this._close,
+          color: this._color,
+        };
+      }
+    }
+
+    class OrbitNotification {
+      constructor(id) {
+        this._id = id || null;
+        this._title = "";
+        this._body = "";
+        this._status = "info";
+        this._icon = null;
+        this._iconColor = null;
+        this._color = null;
+        this._duration = 6000;
+        this._persistent = false;
+        this._actions = [];
+      }
+      title(v) {
+        this._title = v;
+        return this;
+      }
+      body(v) {
+        this._body = v;
+        return this;
+      }
+      icon(v) {
+        this._icon = v;
+        return this;
+      }
+      iconColor(v) {
+        this._iconColor = v;
+        return this;
+      }
+      color(v) {
+        this._color = v;
+        return this;
+      }
+      status(v) {
+        this._status = v;
+        return this;
+      }
+      success() {
+        return this.status("success");
+      }
+      warning() {
+        return this.status("warning");
+      }
+      danger() {
+        return this.status("danger");
+      }
+      info() {
+        return this.status("info");
+      }
+      duration(ms) {
+        this._duration = Number(ms);
+        return this;
+      }
+      seconds(n) {
+        this._duration = Number(n) * 1000;
+        return this;
+      }
+      persistent(v = true) {
+        this._persistent = Boolean(v);
+        return this;
+      }
+      actions(list) {
+        this._actions = (list || []).map((a) =>
+          a && typeof a.toJSON === "function" ? a.toJSON() : a
+        );
+        return this;
+      }
+      getId() {
+        return this._id;
+      }
+      send() {
+        const id = this._id || `n-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        this._id = id;
+        window.dispatchEvent(
+          new CustomEvent("orbit:notify", {
+            detail: {
+              id,
+              title: this._title,
+              body: this._body,
+              status: this._status,
+              icon: this._icon,
+              iconColor: this._iconColor,
+              color: this._color,
+              duration: this._duration,
+              persistent: this._persistent,
+              actions: this._actions,
+            },
+          })
+        );
+        return this;
+      }
+    }
+
+    window.OrbitNotification = OrbitNotification;
+    window.OrbitNotificationAction = OrbitNotificationAction;
+
+    const toastFromActionEl = (el) => {
+      if (!(el instanceof HTMLElement)) return;
+      if (!el.hasAttribute("data-success-notification")) return;
+      const body = el.getAttribute("data-success-notification");
+      if (body === "") return; // explicitly disabled
+      const title = el.getAttribute("data-success-notification-title") || body || "Success";
+      const note = new OrbitNotification().title(title).success();
+      if (body && body !== title) note.body(body);
+      note.send();
+    };
+
+    const toastFailureFromActionEl = (el) => {
+      if (!(el instanceof HTMLElement)) return;
+      if (!el.hasAttribute("data-failure-notification")) return;
+      const body = el.getAttribute("data-failure-notification");
+      if (!body) return;
+      const title = el.getAttribute("data-failure-notification-title") || body || "Error";
+      const note = new OrbitNotification().title(title).danger();
+      if (body && body !== title) note.body(body);
+      note.send();
+    };
 
     window.Alpine.data("orbitActionModal", () => ({
       open: false,
@@ -837,6 +1160,7 @@
           wire.$call("mountAction", payload.name, payload.recordId || null, { data: payload.data });
         }
         this.$dispatch("orbit:action-confirmed", payload);
+        toastFromActionEl(el);
         this.close();
       },
     }));
@@ -853,6 +1177,10 @@
         }
         const needsConfirm = btn.getAttribute("data-confirm") === "true";
         const hasForm = btn.getAttribute("data-has-form") === "true";
+        // Immediate actions (no modal): toast success notification after click.
+        if (!needsConfirm && !hasForm && btn.hasAttribute("data-success-notification")) {
+          queueMicrotask(() => toastFromActionEl(btn));
+        }
         const click = btn.getAttribute("wire:click") || "";
         if (!needsConfirm && !hasForm) {
           return;

@@ -20,7 +20,7 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | tables | `almasix-orbit-tables` | Partial |
 | actions | `almasix-orbit-actions` | Done |
 | infolists | `almasix-orbit-infolists` | Partial |
-| notifications | `almasix-orbit-notifications` | Partial |
+| notifications | `almasix-orbit-notifications` | Done |
 | widgets | `almasix-orbit-widgets` | Done |
 | query-builder | `almasix-orbit-query-builder` | Partial |
 | panels | `almasix-orbit` (panels) | Partial |
@@ -114,6 +114,20 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | Custom pages nav knobs + `can_access` | Done |
 | User menu items / groups / profile+logout specials / position / disable | Done |
 | Clusters discover/register, URL prefix, sub-nav positions, breadcrumbs | Done |
+| Docs + light/dark gallery shots + orbit-admin sample | Done |
+
+## Notifications — Done
+
+| Feature | Status |
+|---------|--------|
+| Fluent `Notification` (title / body / icon / color / status / duration / persistent / actions) | Done |
+| Flash `.send()` + panel toast host (`orbitNotifications`) | Done |
+| `OrbitNotification` / `OrbitNotificationAction` JS client + close-by-id | Done |
+| Toast alignment (`Notifications.alignment` / `vertical_alignment`) | Done |
+| Database bell (panel enable / seeds / position / polling / mark read) | Done |
+| Pluggable `DatabaseNotificationStore` + in-memory default | Done |
+| `LiveNotifier` + `orbit:broadcast` / `orbitLiveNotifications` | Done |
+| Testing helpers (`assert_notified` / `assert_not_notified` / `reset_notifications`) | Done |
 | Docs + light/dark gallery shots + orbit-admin sample | Done |
 
 ## Panels / platform — Partial

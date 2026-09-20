@@ -63,8 +63,12 @@ See [Infolists overview](/infolists/overview/).
 
 ## Notifications
 
-- Success / danger / warning / info notifications
-- Flash, database, and broadcast channels
+- Fluent flash toasts — title / body / icon / color / status / duration / persistent / actions
+- `OrbitNotification` JS client + `close-notification` by id + toast alignment
+- Database bell (panel seeds, polling, topbar/sidebar position, pluggable store)
+- Broadcast / live adapter (`LiveNotifier` + `orbit:broadcast`)
+
+See [Notifications overview](/notifications/overview/).
 
 ## Widgets & dashboard
 

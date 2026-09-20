@@ -90,6 +90,13 @@ from almasix.orbit.widgets import (
     TableWidget,
     Widget,
 )
+from almasix.orbit.notifications import (
+    Alignment,
+    Notification,
+    NotificationAction,
+    Notifications,
+    VerticalAlignment,
+)
 from almasix.orbit.panels.cluster import Cluster
 from almasix.orbit.panels.navigation import (
     NavigationGroup,
@@ -101,7 +108,7 @@ from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.pages.dashboard import Dashboard
 from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.resource import Resource
-from almasix.orbit.panels.users import OrbitUser, UserMenuItem
+from almasix.orbit.panels.users import OrbitUser, PanelNotification, UserMenuItem
 
 
 class _Status(Enum):
@@ -3471,5 +3478,239 @@ def build_navigation_variants() -> dict[str, tuple[str, str]]:
         "navigation/clusters/sub-nav": (
             "Clusters — sub-navigation",
             cluster_top_html,
+        ),
+    }
+
+
+_STATIC_TOAST_HOST = (
+    "position:relative;inset:auto;transform:none;width:min(24rem,100%);"
+    "pointer-events:auto;padding:0;left:auto;right:auto;top:auto;bottom:auto;"
+)
+
+
+def _toast_frame(*notes: Notification, alignment: str = "end", valign: str = "start") -> str:
+    """Static toast stack for screenshots (relative, not fixed viewport)."""
+    parts: list[str] = []
+    for n in notes:
+        if not n._persistent:
+            object.__setattr__(n, "_persistent", True)
+            object.__setattr__(n, "persistent", True)
+        parts.append(n.render())
+    body = "".join(parts)
+    return (
+        f'<div class="or-notifications or-notifications-align-{alignment} '
+        f'or-notifications-valign-{valign}" style="{_STATIC_TOAST_HOST}">{body}</div>'
+    )
+
+
+def _db_panel(*, position: str = "topbar", open_panel: bool = True) -> str:
+    seeds = [
+        PanelNotification.make("Welcome")
+        .body("Database notifications are on.")
+        .status("success")
+        .id("n-welcome"),
+        PanelNotification.make("Deploy finished")
+        .body("v1.4.2 is live on production.")
+        .status("info")
+        .id("n-deploy"),
+        PanelNotification.make("Backup complete")
+        .body("Nightly backup finished.")
+        .status("success")
+        .read()
+        .id("n-backup"),
+    ]
+    panel = (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .apps_navigation()
+        .dashboard(False)
+        .database_notifications(seeds, position=position)  # type: ignore[arg-type]
+        .database_notifications_polling("30s")
+        .resources([_GalleryPostResource])
+        .default_user()
+    )
+    user = OrbitUser.default()
+    html = _nav_shell(panel, active_path="/admin/posts", user=user)
+    if open_panel:
+        # Force the Alpine panel open for static screenshots.
+        html = html.replace(
+            'class="or-notify-panel" x-show="open" x-cloak',
+            'class="or-notify-panel" style="display:block"',
+            1,
+        )
+    return html
+
+
+def build_notification_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for notification docs shots."""
+    overview = _toast_frame(
+        Notification.make()
+        .title("Saved successfully")
+        .success()
+        .body("Changes to the post have been saved."),
+        Notification.make()
+        .title("Storage almost full")
+        .warning()
+        .body("Free up space or upgrade your plan."),
+        Notification.make()
+        .title("Export failed")
+        .danger()
+        .body("Could not write the CSV file."),
+    )
+
+    actions_note = (
+        Notification.make()
+        .title("Saved successfully")
+        .success()
+        .body("Changes to the post have been saved.")
+        .actions(
+            [
+                NotificationAction.make("view").button().url("/admin/posts/1"),
+                NotificationAction.make("undo").color("gray").close(),
+            ]
+        )
+    )
+
+    # Alignment shot: temporarily set process-wide alignment for host classes.
+    Notifications.reset()
+    Notifications.alignment(Alignment.START)
+    Notifications.vertical_alignment(VerticalAlignment.END)
+    alignment_html = _toast_frame(
+        Notification.make().title("Aligned start / end").info().body("Toast host corner."),
+        alignment="start",
+        valign="end",
+    )
+    Notifications.reset()
+
+    broadcast = _toast_frame(
+        Notification.make()
+        .title("Deploy finished")
+        .success()
+        .body("v1.4.2 is live on production."),
+    )
+    live_html = (
+        '<div class="or-live-notifier" data-channels="App.Models.User.1,orders" '
+        'style="display:block">'
+        f"{broadcast}"
+        '<p class="or-muted" style="margin-top:0.75rem;font-size:0.8125rem;'
+        'color:var(--or-muted)">Listening: App.Models.User.1, orders</p></div>'
+    )
+
+    return {
+        "notifications/overview": (
+            "Notifications overview",
+            overview,
+        ),
+        "notifications/overview/title": (
+            "Notifications — title",
+            _toast_frame(Notification.make().title("Saved successfully").info()),
+        ),
+        "notifications/overview/icon": (
+            "Notifications — icon",
+            _toast_frame(
+                Notification.make()
+                .title("Saved successfully")
+                .icon("heroicon-o-document-text")
+                .icon_color("success")
+                .color("success")
+            ),
+        ),
+        "notifications/overview/status": (
+            "Notifications — status",
+            _toast_frame(
+                Notification.make().title("Success").success(),
+                Notification.make().title("Warning").warning(),
+                Notification.make().title("Danger").danger(),
+                Notification.make().title("Info").info(),
+            ),
+        ),
+        "notifications/overview/color": (
+            "Notifications — color",
+            _toast_frame(
+                Notification.make().title("Saved successfully").color("success").info()
+            ),
+        ),
+        "notifications/overview/duration": (
+            "Notifications — duration",
+            _toast_frame(
+                Notification.make()
+                .title("Saved successfully")
+                .success()
+                .seconds(5)
+                .body("Closes after 5 seconds.")
+            ),
+        ),
+        "notifications/overview/persistent": (
+            "Notifications — persistent",
+            _toast_frame(
+                Notification.make()
+                .title("Review required")
+                .warning()
+                .persistent()
+                .body("Dismiss manually when finished.")
+            ),
+        ),
+        "notifications/overview/body": (
+            "Notifications — body",
+            _toast_frame(
+                Notification.make()
+                .title("Saved successfully")
+                .success()
+                .body("Changes to the post have been saved.")
+            ),
+        ),
+        "notifications/overview/actions": (
+            "Notifications — actions",
+            _toast_frame(actions_note),
+        ),
+        "notifications/overview/alignment": (
+            "Notifications — alignment",
+            alignment_html,
+        ),
+        "notifications/database-notifications": (
+            "Database notifications",
+            _db_panel(),
+        ),
+        "notifications/database-notifications/enable": (
+            "Database — enable",
+            _db_panel(),
+        ),
+        "notifications/database-notifications/send": (
+            "Database — send",
+            _toast_frame(
+                Notification.make()
+                .title("New comment")
+                .info()
+                .body("Alex replied on Launch Orbit.")
+            )
+            + '<p style="margin-top:0.75rem;font-size:0.8125rem;color:var(--or-muted)">'
+            "Also stored for the panel bell via "
+            "<code>.send_to_database()</code>.</p>",
+        ),
+        "notifications/database-notifications/position": (
+            "Database — sidebar position",
+            _db_panel(position="sidebar"),
+        ),
+        "notifications/database-notifications/mark-read": (
+            "Database — mark read",
+            _db_panel(),
+        ),
+        "notifications/broadcast-notifications": (
+            "Broadcast notifications",
+            broadcast,
+        ),
+        "notifications/broadcast-notifications/send": (
+            "Broadcast — send",
+            _toast_frame(
+                Notification.make()
+                .title("Processing complete")
+                .success()
+                .body("Queued job finished.")
+            ),
+        ),
+        "notifications/broadcast-notifications/live-host": (
+            "Broadcast — live host",
+            live_html,
         ),
     }

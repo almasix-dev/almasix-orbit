@@ -92,6 +92,7 @@ from gallery_variants import (
     build_form_variants,
     build_infolist_variants,
     build_navigation_variants,
+    build_notification_variants,
     build_schema_variants,
     build_widget_variants,
 )
@@ -1897,6 +1898,7 @@ def build() -> str:
     action_variants = build_action_variants()
     widget_variants = build_widget_variants()
     navigation_variants = build_navigation_variants()
+    notification_variants = build_notification_variants()
 
     parts = [
         shot("forms/overview", "Forms overview", form_overview.render()),
@@ -1938,6 +1940,10 @@ def build() -> str:
         *(
             shot(sid, label, html)
             for sid, (label, html) in navigation_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in notification_variants.items()
         ),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/overview-columns", "Overview — columns", table_overview_columns.render()),

@@ -180,11 +180,19 @@ class UserMenuItem:
 
 
 class PanelNotification:
-    """Fluent notification seed for demos / shell chrome."""
+    """Fluent notification seed for demos / shell chrome.
+
+    Aligns with :class:`almasix.orbit.notifications.Notification` field names so
+    panel seeds and the package API stay interchangeable via :meth:`to_dict`.
+    """
 
     def __init__(self) -> None:
         self._title: str = "Notification"
         self._body: str = ""
+        self._status: str = "info"
+        self._icon: str | None = None
+        self._read: bool = False
+        self._id: str | None = None
 
     @classmethod
     def make(cls, title: str | None = None) -> Self:
@@ -201,5 +209,30 @@ class PanelNotification:
         self._body = value
         return self
 
-    def to_dict(self) -> dict[str, str]:
-        return {"title": self._title, "body": self._body}
+    def status(self, value: str) -> Self:
+        self._status = value
+        return self
+
+    def icon(self, value: str | None) -> Self:
+        self._icon = value
+        return self
+
+    def read(self, condition: bool = True) -> Self:
+        self._read = bool(condition)
+        return self
+
+    def id(self, value: str) -> Self:
+        self._id = value
+        return self
+
+    def to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {"title": self._title, "body": self._body}
+        if self._status and self._status != "info":
+            data["status"] = self._status
+        if self._icon:
+            data["icon"] = self._icon
+        if self._id:
+            data["id"] = self._id
+        if self._read:
+            data["read"] = True
+        return data
