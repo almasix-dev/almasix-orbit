@@ -37,6 +37,16 @@ export function isMarketplacePath(pathname) {
 	return path === '/plugins' || path.startsWith('/plugins/') || path === '/panels/plugins';
 }
 
+export function isHomePath(pathname) {
+	const path = (pathname ?? '/').split('?')[0].replace(/\/+$/, '') || '/';
+	return path === '/' || path === '/index' || path === '/index.html';
+}
+
+/** Documentation pages (not the splash home, not the plugin catalog). */
+export function isDocsPath(pathname) {
+	return !isHomePath(pathname) && !isMarketplacePath(pathname);
+}
+
 /**
  * Highlight a sidebar link. Catalog roots stay exact; nested indexes
  * (`/plugins/authors/almasix/`) keep their parent current. Listing pages
