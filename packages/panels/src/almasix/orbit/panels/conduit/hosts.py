@@ -910,8 +910,77 @@ class ListRecordsHost(OrbitPageHost):
             self.records = out
             self._sync_resource_records()
             return None
+        if action_name == "import":
+            return self.runImport(data or payload or kwargs)
+        if action_name == "export":
+            return self.runExport(data or payload or kwargs)
         self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
         return None
+
+    def _header_action(self, name: str) -> Any:
+        resource = self.get_resource()
+        getter = getattr(resource, "get_table", None)
+        if not callable(getter):
+            return None
+        try:
+            table = getter()
+        except Exception:
+            return None
+        for action in getattr(table, "_header_actions", []) or []:
+            if str(getattr(action, "get_name", lambda: "")()) == name:
+                return action
+        return None
+
+    def runImport(self, payload: Any = None) -> dict[str, Any]:
+        """Parse an uploaded CSV/JSON payload and append rows to this list."""
+        from almasix.orbit.actions.import_export import ImportAction
+        from almasix.orbit.actions.jobs import get_job_runner
+
+        data = dict(payload or {}) if isinstance(payload, dict) else {}
+        action = self._header_action("import") or ImportAction.make()
+        source = data.get("content") or data.get("file") or data.get("body") or ""
+        filename = str(data.get("filename") or data.get("name") or "import.csv")
+        options = {
+            key: value
+            for key, value in data.items()
+            if key not in {"content", "file", "body", "filename", "name"}
+        }
+
+        def writer(chunk: list[dict[str, Any]]) -> None:
+            next_id = 1
+            for row in self.records:
+                try:
+                    next_id = max(next_id, int(self._record_key(row) or 0) + 1)
+                except (TypeError, ValueError):
+                    pass
+            appended: list[Any] = []
+            for row in chunk:
+                record = dict(row)
+                record.setdefault("id", next_id)
+                next_id += 1
+                appended.append(record)
+            self.records = [*self.records, *appended]
+            self._sync_resource_records()
+
+        report = get_job_runner().run_import(
+            action, source, filename=filename, options=options, writer=writer
+        )
+        payload_out = report.to_dict() if hasattr(report, "to_dict") else dict(report)
+        self.dispatch("orbit-import-finished", **payload_out)
+        return payload_out
+
+    def runExport(self, payload: Any = None) -> dict[str, Any]:
+        """Export the current (filtered) records and fire a download event."""
+        from almasix.orbit.actions.import_export import ExportAction
+        from almasix.orbit.actions.jobs import get_job_runner
+
+        data = dict(payload or {}) if isinstance(payload, dict) else {}
+        action = self._header_action("export") or ExportAction.make()
+        fmt = str(data.get("format") or data.get("fmt") or "")
+        report = get_job_runner().run_export(action, list(self.records), fmt=fmt or None)
+        payload_out = report.to_dict() if hasattr(report, "to_dict") else dict(report)
+        self.dispatch("orbit-export-ready", **payload_out)
+        return payload_out
 
     async def _mount_action_orm(
         self,

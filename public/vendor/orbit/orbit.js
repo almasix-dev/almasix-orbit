@@ -2115,4 +2115,23 @@
       });
     });
   }
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("orbit-export-ready", (event) => {
+      const detail = event.detail || {};
+      const content = detail.content;
+      if (content == null || content === "") return;
+      const mime = detail.mime || "text/csv";
+      const filename = detail.filename || "export.csv";
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    });
+  }
 })();

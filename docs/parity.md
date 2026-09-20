@@ -96,7 +96,7 @@ this framing into learner-facing pages.
 | Replicate / ForceDelete / Restore / Import / Export | Done |
 | `ActionGroup` / `BulkActionGroup` + sections / placement | Done |
 | CRUD lifecycle hooks (mutate/using/before/after/halt/createAnother) | Done |
-| Host job runners for import/export | Partial (config + docs adapter contract) |
+| Host job runners for import/export | Done (in-process default; pluggable `JobRunner`) |
 
 ## Widgets — Done
 

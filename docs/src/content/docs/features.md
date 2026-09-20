@@ -47,7 +47,7 @@ A straight inventory of what ships today. For narrative guides, start at [Quick 
 - Full modal API: confirmation, form schema, slide-over, width, sticky chrome, labels, icons
 - `ActionGroup` / `BulkActionGroup` dropdowns, button groups, and sections
 - Create / edit / view / delete / replicate / force-delete / restore presets
-- Import / export config bags with documented host-owned `Importer` / `Exporter` adapters
+- Import / export in-process job runner (`ImmediateJobRunner`, pluggable queues) with CSV/JSON parse, column maps, and browser download
 
 See [Actions overview](/actions/overview/).
 
