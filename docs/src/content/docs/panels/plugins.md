@@ -12,6 +12,10 @@ Subclass `Plugin` and implement two hooks:
 
 That split keeps config changes separate from “do something when the panel mounts.”
 
+![Orbit plugin-branded panel (light)](/examples/light/panels/plugins.png)
+
+![Orbit plugin-branded panel (dark)](/examples/dark/panels/plugins.png)
+
 ## Anatomy
 
 ```python title="my_orbit_plugin/plugin.py"
@@ -181,3 +185,4 @@ Use those helpers from resources or from non-panel Conduit hosts. Render hooks a
 - [Render hooks](/panels/render-hooks/) — positions and scoping
 - [Panel configuration](/panels/configuration/) — fluent panel API
 - [Packages](/packages/) — Orbit’s own PyPI map
+- [Plugin marketplace](/plugins/) — list and submit community packages

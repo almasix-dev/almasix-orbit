@@ -7,6 +7,10 @@ The list page is the front door of a [resource](/resources/overview/). It render
 
 You get a working list page for free: register a resource on a panel and the index route exists. Everything below is about shaping it.
 
+![Orbit list page (light)](/examples/light/resources/listing.png)
+
+![Orbit list page (dark)](/examples/dark/resources/listing.png)
+
 ## The table is the page
 
 The list page renders whatever `Resource.table()` returns, so columns, filters, summaries, grouping, and row actions are all configured there:

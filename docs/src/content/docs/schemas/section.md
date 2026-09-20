@@ -55,4 +55,37 @@ Section.make('profile')
 
 ![Orbit Compact section (dark)](/examples/dark/schemas/section/compact.png)
 
+## Description
+
+`.description(...)` is supporting copy under the heading — use it for “why this group exists” rather than field-level helpers.
+
+```python
+Section.make("billing")
+    .heading("Billing")
+    .description("Shown on invoices sent to the tenant owner.")
+    .schema([TextInput.make("legal_name").required()])
+```
+
+![Orbit Section with description (light)](/examples/light/schemas/section/description.png)
+
+![Orbit Section with description (dark)](/examples/dark/schemas/section/description.png)
+
+## Aside
+
+`.aside()` moves the heading into a side column so the fields sit beside the title on wide screens.
+
+```python
+Section.make("profile")
+    .heading("Profile")
+    .description("Public author details.")
+    .aside()
+    .schema([TextInput.make("name").required()])
+```
+
+![Orbit Aside section (light)](/examples/light/schemas/section/aside.png)
+
+![Orbit Aside section (dark)](/examples/dark/schemas/section/aside.png)
+
+`.secondary()` mutes the chrome. `.persist_collapsed()` keeps the open/closed state in the browser for collapsible sections.
+
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

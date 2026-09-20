@@ -24,6 +24,10 @@ archive = (
 
 Rendered buttons speak Conduit: `wire:click="mountAction('archive')"`. Link-style actions use `href` instead.
 
+![Orbit panel action trigger (light)](/examples/light/panels/actions.png)
+
+![Orbit panel action trigger (dark)](/examples/dark/panels/actions.png)
+
 ## Modal vs page URL
 
 An action becomes a **link** when it has a URL and is not modal-ish:
@@ -51,6 +55,10 @@ DeleteAction.make()                              # confirm modal by default
 ```
 
 `is_modal()` is the boolean behind that choice.
+
+![Orbit confirmation modal (light)](/examples/light/panels/actions/modal.png)
+
+![Orbit confirmation modal (dark)](/examples/dark/panels/actions/modal.png)
 
 ## Resource defaults
 

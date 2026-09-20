@@ -17,11 +17,16 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 106 | Users / MFA (TOTP + email SMTP) | `docs/src/content/docs/users/multi-factor-authentication.md` | **closed** |
 | 107 | Notifications production adapters (SQLite store + broadcast hub + `/orbit-live`) | `docs/src/content/docs/notifications/{database,broadcast}-notifications.md` | **closed** |
 | 108 | Panels platform (SPA mode, billing adapters, multi-panel registry) | `docs/src/content/docs/panels/configuration.md` | **closed** |
-| 109+ | Remaining stability milestones (docs completeness → support toolkit) | docs nav | queued |
+| 109 | Docs completeness pass (thin pages, unique shots, alignment) | `docs/src/content/docs/**` | **closed** |
+| 110 | Support toolkit polish | `docs/src/content/docs/support/*` | queued |
 
 ## Infolists layout + docs depth — closed
 
 **Bar:** Stacked label-above-value default (`.or-entry-inline` for side-by-side), Orbit-first overview depth (hidden/inline labels, sections, extra attrs, utility injection) with unique gallery shots, 100% coverage on infolists surface, vendor CSS synced.
+
+## Docs completeness — closed
+
+**Bar:** Thin learner pages expanded Orbit-first (`resources/pages`, `testing`, `components/form`+`table`, `configuration`, schemas empty-state/wizard/callout/section, infolist extras), unique light/dark shots for previously shot-less pages, scaffolding/SPA notes aligned with shipped APIs, 100% coverage unchanged (docs-only).
 
 ## Panels platform — closed
 

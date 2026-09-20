@@ -92,7 +92,7 @@ See [Widgets overview](/widgets/overview/).
 ## Navigation
 
 - Sorted nav from resources, pages, clusters, and custom items
-- Layout modes: sidebar, top, and Shamar-style `apps` (sidebar roots + topbar secondary)
+- Layout modes: sidebar, top, and `apps` (sidebar roots + topbar secondary)
 - Groups / subgroups, badges, active icons, parent items, builder override
 - User menu with icons, groups, profile / logout hooks, topbar or sidebar
 - Clusters: discover/register, sub-nav `start` / `end` / `top`, breadcrumbs
@@ -114,7 +114,6 @@ See [Query builder](/query-builder/overview/).
 - Semantic `.or-*` CSS (Outfit + Almasix orange by default)
 - `@orbitStyles` / `@orbitScripts` Prism directives
 - Publishable `orbit-assets` tag
+- `.spa()` in-panel navigation (fetch-and-swap of `main.or-content`)
 
-:::note[Still cooking]
-SPA mode ships as `.spa()` — in-panel links swap `main.or-content` without a full reload. Relation managers, global search, record titles, and soft deletes are documented under [Resources](/resources/overview/).
-:::
+See [Configuration](/configuration/) and [Panel configuration](/panels/configuration/).

@@ -34,6 +34,10 @@ table.bulk_actions([
 ])
 ```
 
+![Orbit ForceDeleteBulkAction (light)](/examples/light/actions/force-delete/bulk.png)
+
+![Orbit ForceDeleteBulkAction (dark)](/examples/dark/actions/force-delete/bulk.png)
+
 ## Soft-delete workflow
 
 Typical trashed-table row actions:
