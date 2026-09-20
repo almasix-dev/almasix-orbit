@@ -397,38 +397,39 @@ html.motion .orbit-landing-hero .term {
 .orbit-landing-hero .term-code.od {
 	margin-top: 0.45rem;
 	padding: 0.75rem 0.85rem;
-	border-radius: 0.45rem;
-	background: #282c34;
-	color: #abb2bf;
+	border-radius: 0.85rem;
+	background: #1d2021;
+	color: #ebdbb2;
 	font-size: 0.82em;
 	line-height: 1.55;
-	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
 }
 
+/* Token colors match @almasix/starlight-theme gruvbox-dark-hard (docs code blocks). */
 .orbit-landing-hero .od-k {
-	color: #c678dd;
+	color: #fc6351;
 }
 .orbit-landing-hero .od-s {
-	color: #98c379;
+	color: #b8bb26;
 }
 .orbit-landing-hero .od-f {
-	color: #61afef;
+	color: #83a598;
 }
 .orbit-landing-hero .od-t {
-	color: #e5c07b;
+	color: #fabd2f;
 }
 .orbit-landing-hero .od-n {
-	color: #d19a66;
+	color: #d3869b;
 }
 .orbit-landing-hero .od-c {
-	color: #5c6370;
+	color: #928374;
 	font-style: italic;
 }
 .orbit-landing-hero .od-d {
-	color: #e06c75;
+	color: #fabd2f;
 }
 .orbit-landing-hero .od-p {
-	color: #abb2bf;
+	color: #a89984;
 }
 
 .orbit-landing-hero .term-cursor {
