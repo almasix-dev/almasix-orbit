@@ -1,11 +1,11 @@
 ---
 title: Overview
-description: CRUD resources — forms, tables, infolists, permissions, and page routes.
+description: CRUD resources — forms, tables, infolists, permissions, and page routes for one model.
 ---
 
-A **resource** is one admin surface for a model: form, table, infolist, permissions, and the usual index / create / edit / view routes.
+A **resource** is one admin surface for a model. It owns the form (create/edit), table (index), optional infolist (view), permissions, and the usual index / create / edit / view routes. Register the resource class on a [panel](/panels/configuration/); Orbit mounts the pages under the panel path.
 
-```python
+```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit import Resource
 from almasix.orbit.forms import Form, TextInput
 from almasix.orbit.tables import Table, TextColumn
@@ -70,7 +70,7 @@ Call `Resource.get_form()`, `get_table()`, or `get_infolist()` when you need the
 
 ## Scaffolding (`make:orbit-resource`)
 
-```bash
+```bash title="terminal"
 smith make:orbit-resource Post --panel=admin
 smith make:orbit-resource Post --model=Post --generate
 # or: smith orbit:resource Post -G --model=app.models.post.Post
@@ -80,7 +80,7 @@ smith make:orbit-resource Post --model=Post --generate
 |--------|------|
 | `--panel=` | Target panel package (`app/orbit/{id}/resources/`) |
 | `--model=` | ORM model (bare `Post` or `app.models.post.Post`); also guessed from the resource name |
-| `--generate` / `-G` | Reflect `Schema.columns` on the model’s table and stub form fields + table columns (Filament parity) |
+| `--generate` / `-G` | Reflect `Schema.columns` on the model’s table and stub form fields + table columns |
 | `--force` | Overwrite an existing file |
 
 Without `--generate`, the stub still uses a `title` TextInput / TextColumn. When a model resolves and the CLI is interactive, Orbit asks whether to generate from the database. Review and adjust the guessed types afterward (especially enums and relationships).
@@ -95,7 +95,7 @@ If you leave action slots empty, `get_table()` wires:
 
 Override anytime:
 
-```python
+```python title="app/orbit/resources/post_resource.py"
 @classmethod
 def table(cls, table: Table) -> Table:
     return (
@@ -108,7 +108,7 @@ def table(cls, table: Table) -> Table:
 
 ## Pages map
 
-```python
+```python title="app/orbit/resources/post_resource.py"
 PostResource.get_pages()
 # {
 #   "index":  "/posts",
@@ -124,7 +124,7 @@ Wire these into your router however your app mounts Orbit. The resource owns the
 
 Abilities are `{prefix}.view_any`, `.view`, `.create`, `.update`, `.delete`.
 
-```python
+```python title="app/orbit/resources/post_resource.py"
 PostResource.can_view_any(user)
 PostResource.can_create(user)
 PostResource.can_update(user, record)

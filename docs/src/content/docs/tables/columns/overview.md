@@ -1,9 +1,13 @@
 ---
 title: Columns overview
-description: Shared Orbit table column APIs — state, sort, search, tooltips, toggleable columns, and the type catalog.
+description: Shared Orbit table column APIs — state, sort, search, tooltips, toggleable columns, and the full type catalog.
 ---
 
-Columns define how each field is displayed or edited in a table. Choose a type, then chain fluent helpers on the shared `Column` base.
+## Introduction
+
+**Columns** are the cells of an Orbit table. Each column has a name (usually a record attribute path), a type that controls how the value renders, and optional fluent helpers for sort, search, alignment, links, and visibility.
+
+Start with a type from the [catalog](#catalog) below (`TextColumn`, `ImageColumn`, `BooleanColumn`, …), then chain shared helpers from the `Column` base — for example `.searchable()`, `.sortable()`, or `.toggleable()`.
 
 ```python
 from almasix.orbit.tables import Table, TextColumn, BadgeColumn, ImageColumn
@@ -27,7 +31,7 @@ Live sample: **Columns overview** in `examples/orbit-admin` (`ColumnsOverviewRes
 |--------|-----------|------|
 | **TextColumn** | Default cell — search, sort, money, dates, badges, links, markdown | [Text](/tables/columns/text/) |
 | **BadgeColumn** | Text that always renders as a badge | [Badge](/tables/columns/badge/) |
-| **BooleanColumn** | Check / X icons (Filament `IconColumn.boolean` alias) | [Boolean](/tables/columns/boolean/) |
+| **BooleanColumn** | Check / X icons for truthy / falsy state | [Boolean](/tables/columns/boolean/) |
 | **IconColumn** | Icon from state, or boolean icons via `.boolean()` | [Icon](/tables/columns/icon/) |
 | **ImageColumn** | Avatars — circular, stacked, sized, default URL | [Image](/tables/columns/image/) |
 | **ColorColumn** | Hex swatch, optionally copyable | [Color](/tables/columns/color/) |

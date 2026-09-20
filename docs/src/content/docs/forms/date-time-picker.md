@@ -40,7 +40,7 @@ DateTimePicker.make('scheduled_at')
 
 ## Display format hint
 
-`.display_format()` stores a Filament-style format string on `data-display-format`. Orbit does not reformat the stored value on the server — the attribute is a hint for client scripts or future non-native chrome. Keep dehydrating the native `datetime-local` string unless you transform it in `.dehydrate_state_using()`.
+`.display_format()` stores a format hint on the `data-display-format` attribute (for example `Y-m-d H:i`). Orbit does not reformat the stored value on the server — the attribute is a hint for client scripts or future non-native chrome. Keep dehydrating the native `datetime-local` string unless you transform it in `.dehydrate_state_using()`.
 
 ```python title="app/orbit/resources/example_resource.py"
 DateTimePicker.make('starts_at')

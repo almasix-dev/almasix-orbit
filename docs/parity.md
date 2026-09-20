@@ -1,19 +1,25 @@
-# Filament 5.x ↔ Orbit parity matrix (maintainer)
+# Orbit feature completeness matrix (maintainer only)
 
-Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
+> **Not learner docs.** This file tracks internal completeness against a historical API checklist.
+> Public teaching copy lives under `docs/src/content/docs/` and must stay Orbit-first
+> (see `.cursor/rules/orbit-first-docs.mdc`).
+
+Orbit’s public packages aim for a rich admin surface on Almasix (Conduit + Alpine).
+Maintainers may use the columns below when comparing against prior art; **do not** copy
+this framing into learner-facing pages.
 
 **Status values**
 
 | Status | Meaning |
 |--------|---------|
 | **Done** | Fluent API + distinct `or-*` render + tests + docs (with screenshots where UI-heavy) |
-| **Partial** | API exists; some Filament knobs / host adapters remain |
+| **Partial** | API exists; some knobs / host adapters remain |
 | **Planned** | Not started |
 
 ## Packages
 
-| Filament package | Orbit package | Status |
-|------------------|---------------|--------|
+| Prior-art package (reference) | Orbit package | Status |
+|-------------------------------|---------------|--------|
 | support | `almasix-orbit-support` | Partial |
 | schemas | `almasix-orbit-schemas` | Done |
 | forms | `almasix-orbit-forms` | Partial |
@@ -36,7 +42,7 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | Nested `validate()` / `dehydrate()` via layout walk | Done |
 | Field chrome (hint / prefix / suffix / prefix+suffix actions / helper / autofocus) | Done |
 | Validation catalog (+ `required_if` / `required_unless` / `prohibited` / `prohibited_if`) | Done |
-| Select: Filament combobox (searchable / multiple / HTML / non-native), relationship AJAX, create/edit mounts | Done |
+| Select: Orbit combobox (searchable / multiple / HTML / non-native), relationship AJAX, create/edit mounts | Done |
 
 | FileUpload: disk/visibility/editor/download attrs + preview chrome | Partial |
 | Repeater/Builder: defaultItems, simple, table head, grid, clone/reorder + **host mutations** | Done |
@@ -67,10 +73,10 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | Empty state Create CTA + `record_url` row click | Done |
 | Bulk selection + `BulkActionGroup` Actions dropdown | Done |
 | Select all matching results (across pages) | Done |
-| Filament-style Bulk actions + selection indicator | Done |
-| Filament-style Filters icon dropdown (Apply/Reset) | Done |
+| Bulk actions + selection indicator | Done |
+| Filters icon dropdown (Apply/Reset) | Done |
 | Column `alignment` / `align_end` mirrored on headers | Done |
-| Filament-style numbered pagination + per-page dropup + 3-zone footer | Done |
+| numbered pagination + per-page dropup + 3-zone footer | Done |
 | Filters/Columns above search with toolbar divider | Done |
 | Default row actions as ⋮ dropdown | Done |
 | Content-grid cards (title + stacked fields) | Done |

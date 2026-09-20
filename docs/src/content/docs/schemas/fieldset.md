@@ -33,7 +33,7 @@ Fieldset.make("shipping")
     .schema([TextInput.make("line1")])
 ```
 
-Contained is the Filament default; bare is useful inside dense sections where an extra card would feel heavy.
+Contained is Orbit’s default; bare is useful inside dense sections where an extra card would feel heavy.
 
 ![Fieldset (light)](/examples/light/schemas/fieldset.png)
 ![Fieldset (dark)](/examples/dark/schemas/fieldset.png)

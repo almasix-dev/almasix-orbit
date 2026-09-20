@@ -5,7 +5,7 @@ description: Inject HTML into the Orbit panel shell at named positions — head,
 
 **Render hooks** let you inject HTML into the panel shell without forking Orbit’s templates. Register a callback for a named position; when the shell renders, Orbit concatenates every matching callback’s return value into that slot.
 
-This is the same idea as Filament’s panel render hooks: small, targeted HTML (scripts, meta tags, banners, third-party widgets) at well-known points in the document.
+Use them for small, targeted HTML — scripts, meta tags, banners, analytics snippets, or third-party widgets — at well-known points in the document (`panels::head.end`, `panels::content.start`, and so on).
 
 ## How they work
 

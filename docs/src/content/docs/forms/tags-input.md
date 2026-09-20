@@ -30,7 +30,7 @@ TagsInput.make('tags')
 ```python title="app/orbit/resources/example_resource.py"
 TagsInput.make('topics')
     .label('Topics')
-    .suggestions(['orbit', 'filament', 'forms', 'tables'])
+    .suggestions(['orbit', 'schemas', 'forms', 'tables'])
 ```
 
 ![Orbit Suggestions (light)](/examples/light/forms/tags-input/suggestions.png)

@@ -3,7 +3,7 @@ title: Panel configuration
 description: Register an Orbit panel — brand, path, colors, resources, middleware, plugins, and the HTML shell.
 ---
 
-A **panel** is the admin shell: brand, path, navigation, middleware, and the list of resources / pages / widgets it owns.
+A **panel** is the admin shell for your app: brand, URL path, navigation, middleware, and the list of resources / pages / widgets it owns. One Almasix app can register several panels (for example `admin` and `docs`) with different paths and contents.
 
 ## Where panels live
 
@@ -75,9 +75,15 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
 
 Toggle-style methods take `condition: bool = True` (e.g. `.dark_mode()`, `.sidebar_collapsible()`, `.theme_switcher()`).
 
-Auth and home pages accept Filament-style `True | False | Page` subclasses:
+Auth and home pages accept `True`, `False`, or a custom `Page` subclass:
 
-```python
+| Value | Meaning |
+|-------|---------|
+| `True` / no args | Use Orbit’s built-in page (`Login`, `Register`, or `Dashboard`) |
+| `False` | Disable that page |
+| A `Page` subclass | Use your custom page instead |
+
+```python title="app/orbit/admin/panel.py"
 from almasix.orbit import Login, Register, Dashboard
 
 class MyLogin(Login):

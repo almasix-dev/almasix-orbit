@@ -5,7 +5,9 @@ description: Group resources and pages under a shared URL prefix with cluster su
 
 ## Introduction
 
-**Clusters** group related resources and pages into a hierarchical section of the panel. Orbit mirrors Filament 5:
+**Clusters** group related resources and pages into one hierarchical section of the panel. Use them when several admin surfaces belong together — for example Settings → Colors, Fonts, and Integrations.
+
+What a cluster does:
 
 - One main-nav entry points at the first visible member
 - Member items leave the main nav and appear in cluster sub-navigation

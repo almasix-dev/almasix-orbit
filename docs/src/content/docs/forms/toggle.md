@@ -24,7 +24,7 @@ Toggle.make('active')
 
 ## On and off colors
 
-`.on_color()` and `.off_color()` map to Orbit/Filament color tokens (`success`, `danger`, `warning`, `primary`, …) so the track communicates state beyond position alone.
+`.on_color()` and `.off_color()` take Orbit color tokens (`success`, `danger`, `warning`, `primary`, and the rest of the panel palette) so the track communicates state beyond position alone.
 
 ```python title="app/orbit/resources/user_resource.py"
 Toggle.make('is_admin')

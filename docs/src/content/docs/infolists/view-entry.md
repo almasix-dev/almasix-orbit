@@ -5,7 +5,7 @@ description: ViewEntry is the escape hatch for custom HTML inside an Infolist �
 
 ## Introduction
 
-`ViewEntry` mirrors Filament’s `ViewEntry` / form `ViewField`: supply HTML via `.view(...)` or `.content(...)` (aliases). Content is not auto-escaped — sanitize untrusted data yourself. Shared [Entry chrome](/infolists/overview/) (label, helper, hidden label) still wraps the custom markup.
+`ViewEntry` is the escape hatch for custom HTML inside an infolist. Supply markup with `.view(...)` or `.content(...)` (aliases). Content is not auto-escaped — sanitize untrusted data yourself. Shared [Entry chrome](/infolists/overview/) (label, helper, hidden label) still wraps the custom markup.
 
 ## Basic view entry
 

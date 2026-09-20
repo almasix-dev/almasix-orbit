@@ -138,7 +138,7 @@ smith make:orbit-widget StatsOverview --panel=admin
 smith make:orbit-field MoneyInput             # app/orbit/shared/fields/
 ```
 
-`--generate` (Filament parity) fills form/table stubs from the model’s database columns when the table exists.
+`--generate` inspects the model’s database columns (when the table exists) and stubs matching form fields and table columns for you.
 With more than one panel, omit `--panel` in an interactive terminal and Smith asks which panel to use. Under `--no-interaction` / CI it picks `admin` when present, otherwise the first panel id.
 
 ## Troubleshooting 404s

@@ -1,6 +1,6 @@
 ---
 title: Icon entry
-description: IconEntry renders a Heroicon from state, or boolean true/false icons with Filament-parity colors and sizes.
+description: IconEntry renders a Heroicon from state, or boolean true/false icons with configurable colors and sizes.
 ---
 
 ## Introduction

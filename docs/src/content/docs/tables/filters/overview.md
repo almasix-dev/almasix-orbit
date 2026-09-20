@@ -1,9 +1,13 @@
 ---
 title: Table filters
-description: Select, ternary, checkbox/toggle, trashed, and grouped filters for Orbit tables — Filament-style chrome, indicators, and session persist.
+description: Select, ternary, checkbox/toggle, trashed, and grouped filters for Orbit tables — live or deferred apply, indicator chips, and session persist.
 ---
 
-Filters narrow which rows appear in a table. Put them on `Table.filters([...])`; the index host keeps `table_filters` and applies them when rendering.
+## Introduction
+
+**Filters** let users narrow which rows appear without typing into the search box — by status, boolean flags, soft-delete state, or any custom rule you define. Attach them with `Table.filters([...])`. The list host keeps the current values in `table_filters` and re-applies them whenever the table renders.
+
+A funnel **Filters** control appears in the toolbar. Opening it shows each filter’s chrome (checkbox, select, and so on). Active values also show as indicator chips under the toolbar so users can see what is applied at a glance.
 
 ```python
 from almasix.orbit.tables import (
@@ -35,7 +39,7 @@ table = (
 ![Filters (light)](/examples/light/tables/filters.png)
 ![Filters (dark)](/examples/dark/tables/filters.png)
 
-Live selects call `setTableFilter(name, value)` on the host (Conduit only supports top-level props, so nested `table_filters.*` model paths are not used). Orbit defaults to **live** filters; call `.defer_filters()` when you want an Apply button instead (Filament defaults the other way).
+By default, filters are **live**: changing a control updates the table immediately. Live selects call `setTableFilter(name, value)` on the host (Conduit only supports top-level props, so nested `table_filters.*` model paths are not used). Call `.defer_filters()` when you prefer an **Apply filters** button instead — useful when several controls should change together before the query runs.
 
 ## Available filters
 
@@ -52,7 +56,7 @@ Live selects call `setTableFilter(name, value)` on the host (Conduit only suppor
 
 ## Checkbox and toggle filters
 
-A plain `Filter` without `.options()` renders a checkbox. When checked, `.query()` scopes the rows — same idea as Filament’s default filter:
+A plain `Filter` without `.options()` renders a checkbox. When the box is checked, Orbit calls your `.query()` callback to scope the rows:
 
 ```python
 from almasix.orbit.tables import Filter

@@ -1,17 +1,17 @@
 ---
 title: Tables overview
-description: Define Orbit tables — columns, search, sort, filters, actions, pagination, and more — with Filament-familiar fluent APIs.
+description: Define Orbit tables — columns, search, sort, filters, actions, pagination, and empty states — with a fluent Python API.
 ---
 
 ## Introduction
 
-Tables are the standard UI for lists of records. Orbit gives you a Python fluent API for columns, filters, actions, pagination, and empty states — then renders HTML that Conduit list hosts hydrate (search, sort, page, bulk select).
+A **table** is how Orbit lists records in the admin UI: one row per record, columns for fields, and toolbar chrome for search, filters, and actions. You configure the table in Python with a fluent API (`Table.make(...).columns([...]).filters([...])` and so on). Orbit renders HTML; the Conduit list host hydrates interactivity (typing in search, clicking sort headers, changing page, bulk-selecting rows).
+
+You usually attach a table to a [Resource](/resources/listing-records/) so list / create / edit pages stay wired together. You can also embed a [standalone table](/components/table/) on a custom page. Column types, filters, actions, grouping, summaries, and cell layouts each have dedicated guides (see [Guides](#guides) below).
 
 ![Table overview (light)](/examples/light/tables/overview.png)
 
 ![Table overview (dark)](/examples/dark/tables/overview.png)
-
-Prefer a [Resource](/resources/listing-records/) for CRUD wiring, or embed a [standalone table](/components/table/) on a custom page. Column types, filters, actions, grouping, summaries, and cell layouts each have dedicated guides (see [Guides](#guides) below).
 
 ## Defining table columns
 
@@ -62,7 +62,7 @@ TextColumn.make("title").sortable()
 
 ![Sortable column (dark)](/examples/dark/tables/overview-sortable.png)
 
-Use `.default_sort("title", "desc")` on the table for the initial sort until the user picks another column. For Scout-style or custom search, call `.search_using(callback)` or mark the whole table `.searchable()` when no column is searchable yet.
+Use `.default_sort("title", "desc")` on the table for the initial sort until the user picks another column. For full-text or otherwise custom search, call `.search_using(callback)` or mark the whole table `.searchable()` when no column is searchable yet.
 
 ### Accessing related data from columns
 
@@ -120,13 +120,13 @@ A filter icon appears in the toolbar. Opening it shows each filter’s control (
 
 ## Defining table actions
 
-Actions are buttons on each row, in the table header, or in the bulk toolbar when rows are selected. Filament v5 names map cleanly:
+Actions are buttons that run a callback (or open a URL / modal). On a table they live in three places:
 
-| Filament | Orbit |
-|----------|-------|
-| `recordActions` | `.record_actions([...])` (alias of `.actions([...])`) |
-| `toolbarActions` | `.toolbar_actions([...])` (alias of `.bulk_actions([...])`) |
-| header create/etc. | `.header_actions([...])` |
+| Placement | Method | When to use |
+|-----------|--------|-------------|
+| Per row | `.record_actions([...])` (alias `.actions([...])`) | Edit, view, delete, or custom verbs for one record |
+| Header | `.header_actions([...])` | Create and other table-wide shortcuts |
+| Bulk toolbar | `.toolbar_actions([...])` (alias `.bulk_actions([...])`) | Operate on every selected row at once |
 
 ```python
 from almasix.orbit.actions import Action, CreateAction, DeleteBulkAction, EditAction

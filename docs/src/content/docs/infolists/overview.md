@@ -1,11 +1,13 @@
 ---
 title: Infolists overview
-description: Build Filament-familiar read-only record views with Orbit entries — labels, placeholders, copyable state, formatters, and schema layouts.
+description: Build read-only record views with Orbit entries — labels, placeholders, copyable state, formatters, and schema layouts.
 ---
 
 ## Introduction
 
-**Infolists** are the show side of a resource — a definition list of typed entries over a record. An `Infolist` is a [`Schema`](/schemas/overview/) specialized for display: compose with `.schema([...])`, nest [Sections](/schemas/sections/) / [Grids](/schemas/grid/), and render with `.render(record)`.
+**Infolists** are Orbit’s show / detail UI: a definition list of typed **entries** over one record. Where a [form](/forms/overview/) collects input, an infolist only displays — titles, badges, images, copyable slugs, and so on.
+
+An `Infolist` is a [`Schema`](/schemas/overview/) specialized for display. Compose entries with `.schema([...])`, nest [Sections](/schemas/sections/) / [Grids](/schemas/grid/) for layout, and render with `.render(record)`. On a resource, wire `infolist()` and the view page (or `ViewAction`) shows it automatically.
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.infolists import Infolist, TextEntry, ImageEntry
@@ -192,7 +194,7 @@ TextEntry.make("status")
 
 ## Above / below / before / after content
 
-Slot helpers inject HTML around the label or value — Filament’s entry content slots:
+Slot helpers inject HTML around the label or value so you can decorate an entry without changing its state:
 
 | Method | Placement |
 |--------|-----------|

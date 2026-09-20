@@ -24,7 +24,7 @@ Default modal copy:
 
 ## Bulk force-delete
 
-`ForceDeleteBulkAction` mirrors the single-record preset for selection sets.
+`ForceDeleteBulkAction` is the same preset for selected rows (bulk toolbar).
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.actions import ForceDeleteBulkAction

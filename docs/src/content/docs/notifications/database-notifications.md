@@ -5,7 +5,9 @@ description: Persist notifications to the panel bell — enable, seed, send, pol
 
 ## Introduction
 
-**Database notifications** stay in a panel bell until the user marks them read. Orbit mirrors Filament’s `databaseNotifications` panel API and `sendToDatabase` channel, with an in-memory store by default and a pluggable `DatabaseNotificationStore` for real persistence.
+**Database notifications** stay in a panel **bell** until the user marks them read. Unlike flash toasts (which disappear after a few seconds), these messages accumulate so someone can catch up later.
+
+Enable the feature on the panel, optionally seed demo rows, then send new items with `.send_to_database(...)`. Orbit ships an in-memory store by default; swap in a `DatabaseNotificationStore` when you need real persistence.
 
 ```python title="app/providers/orbit_panel_provider.py"
 from almasix.orbit import Panel
@@ -57,7 +59,7 @@ Panel.make("admin")
 
 ## Sending database notifications
 
-Use the fluent API’s `.send_to_database(...)` (or `.to_database()` then `.send()`). Pass a user/recipient when your store keys by principal. Set `is_event_dispatched=True` to record a `DatabaseNotificationsSent`-style event for immediate refresh hooks.
+Use the fluent API’s `.send_to_database(...)` (or `.to_database()` then `.send()`). Pass a user/recipient when your store keys by principal. Set `is_event_dispatched=True` when you want an immediate refresh signal for the bell UI (for example after a live write).
 
 ```python title="app/orbit/notifications/database_send.py"
 from almasix.orbit.notifications import Notification
@@ -94,7 +96,7 @@ Panel.make("admin")
 
 ## Polling
 
-Without websockets, the Alpine `orbitDatabaseNotifications` component polls on an interval (default **30s**). Pass `'15s'`, a millisecond int, or `None`.
+Without a websocket or SSE bridge, the Alpine `orbitDatabaseNotifications` component polls on an interval (default **30s**). Pass `'15s'`, a millisecond int, or `None`.
 
 ```python title="app/providers/orbit_panel_provider.py"
 from almasix.orbit import Panel

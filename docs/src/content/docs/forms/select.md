@@ -1,11 +1,11 @@
 ---
 title: Select
-description: Select fields render native selects or a Filament-parity combobox for searchable, multiple, HTML, and non-native modes.
+description: Select fields render native selects or Orbit’s searchable combobox for multiple, HTML, and non-native modes.
 ---
 
 ## Introduction
 
-Select is the primary control for choosing one value (or many, when `multiple` is enabled) from a known set. Orbit mirrors Filament’s fluent API: static maps, nested option groups, Python enums, BelongsTo-style relationships, AJAX search, and modal create/edit flows. Pair Select with [Multi select](/forms/multi-select/) when the field always stores a list, or call `.multiple()` on Select itself.
+`Select` is Orbit’s control for choosing one value (or many, when `multiple` is enabled) from a known set. You can feed it a static value → label map, nested option groups, a Python `Enum`, or options loaded from a related model. Advanced modes add client-side or AJAX search, create/edit modals for related records, and limits on how many options appear. Pair Select with [Multi select](/forms/multi-select/) when the field always stores a list, or call `.multiple()` on Select itself.
 
 Each variation below includes a short explanation, the fluent API to paste into your schema, and light/dark screenshots of the rendered control.
 
@@ -29,7 +29,7 @@ Select.make('status')
 
 ## Native vs custom select
 
-`.native(True)` (the default) keeps the browser `<select>` for short, simple lists. Orbit switches to a **Filament-style combobox** when you call `.searchable()`, `.multiple()`, `.allow_html()`, or `.native(False)` — the same rule Filament uses.
+`.native(True)` (the default) keeps the browser `<select>` for short, simple lists. Orbit switches to its **combobox** UI when you call `.searchable()`, `.multiple()`, `.allow_html()`, or `.native(False)`.
 
 The combobox is one control: trigger, optional search field, listbox dropdown, keyboard navigation (↑/↓/Enter/Esc), a clear button, and chips for multi-select. A visually hidden `<select>` stays wired to Conduit/`wire:model` so dehydration is unchanged.
 
@@ -174,7 +174,7 @@ Select.make('technologies')
 
 ## Relationship selects
 
-`.relationship()` loads options from a related model (Filament BelongsTo / BelongsToMany style). Pass the relationship name and title attribute, or `option_label='{name} - {country}'` for multi-column labels. Without `.preload()`, searchable relationship selects fetch pages of `.options_limit()` results (default **50**) as the user types.
+`.relationship()` loads options from a related model on the record (for example an album’s artist, or many tags). Pass the relationship name and title attribute, or `option_label='{name} - {country}'` for multi-column labels. The dehydrated value is typically the related record’s primary key (or a list of keys when `.multiple()` is on). Without `.preload()`, searchable relationship selects fetch pages of `.options_limit()` results (default **50**) as the user types.
 
 ```python title="app/orbit/resources/album_resource.py"
 Select.make('artist_id')
@@ -312,7 +312,7 @@ Select.make('artist_id')
 
 ## Editing the selected option
 
-`.edit_option_action()` exposes an action to open the selected related record for editing (Filament-style edit-option chrome). Pass `True` to enable the default action, or a named action string when you wire a custom handler.
+`.edit_option_action()` exposes an action beside the select so users can open the currently selected related record for editing without leaving the form. Pass `True` to enable the default action, or a named action string when you wire a custom handler.
 
 ```python title="app/orbit/resources/album_resource.py"
 Select.make('artist_id')

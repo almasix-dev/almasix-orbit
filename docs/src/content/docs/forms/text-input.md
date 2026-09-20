@@ -288,7 +288,7 @@ TextInput.make('sku')
 
 ## Exact length
 
-`.length(n)` records an exact character length and appends a `size:n` validation rule (Filament `length`). Pair it with `.mask()` or OTP-style inputs when the UI already constrains width. Prefer `.min_length()` / `.max_length()` (mapped to enforced `min:` / `max:` rules) when you need a range — `Form.validate` currently enforces `min`/`max`/`between`/`regex`, while `size:` is registered by the fluent helper for Filament parity.
+`.length(n)` records an exact character length and appends a `size:n` validation rule. Pair it with `.mask()` or OTP-style inputs when the UI already constrains width. Prefer `.min_length()` / `.max_length()` (mapped to enforced `min:` / `max:` rules) when you need a range — `Form.validate` currently enforces `min`/`max`/`between`/`regex`, while `size:` is registered by the fluent helper so hosts and future rule coverage can pick it up.
 
 ```python title="app/orbit/resources/auth_resource.py"
 TextInput.make('pin')

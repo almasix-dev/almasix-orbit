@@ -24,7 +24,7 @@ Checkbox.make('terms')
 
 ## Inline label
 
-`.inline()` keeps the label adjacent to the control (Filament’s default). Pass `.inline(False)` to stack the label above the checkbox when the copy is long or you want field alignment with stacked text inputs.
+`.inline()` is the default: the label sits beside the checkbox on one row. Pass `.inline(False)` to stack the label above the checkbox when the copy is long or you want field alignment with stacked text inputs.
 
 ```python title="app/orbit/resources/user_resource.py"
 Checkbox.make('is_admin')

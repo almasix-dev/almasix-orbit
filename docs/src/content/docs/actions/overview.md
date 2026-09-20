@@ -5,7 +5,7 @@ description: Buttons, links, icon buttons, badges, modals, notifications, and CR
 
 ## Introduction
 
-**Actions** are the verbs in your admin UI — save, delete, “archive selected”, anything that should feel like a button with a story. Orbit mirrors Filament 5’s fluent action API: configure chrome, optional modal / form, authorize, then run a callback.
+**Actions** are the verbs in your admin UI — save, delete, “archive selected”, or any custom operation that should feel like a button with a story. In Orbit you build an `Action` with a fluent API: set chrome (label, color, icon), optionally require confirmation or open a modal / form, authorize who may run it, then attach a callback with `.action(...)` or `.using(...)`.
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.actions import Action

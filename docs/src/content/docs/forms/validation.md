@@ -173,7 +173,7 @@ TextInput.make('sku')
 | `.required_without_all(*fields)` | `required_without_all:a,b` |
 | `.required_if_accepted(field)` | `required_if_accepted:field` |
 
-`required_if` / `required_unless` are enforced today. The `required_with*` / `required_if_accepted` helpers register Filament-parity tokens for hosts and future `_check_rule` coverage — prefer callable `.required(lambda state, **_: …)` when you need guaranteed enforcement of complex sibling logic now.
+`required_if` / `required_unless` are enforced today. The `required_with*` / `required_if_accepted` helpers register rule tokens for hosts and future `_check_rule` coverage — prefer callable `.required(lambda state, **_: …)` when you need guaranteed enforcement of complex sibling logic now.
 
 ```python title="app/orbit/resources/account_resource.py"
 TextInput.make('admin_code')
@@ -198,7 +198,7 @@ TextInput.make('vat_number')
 | `.prohibited_if(field, value)` | `prohibited_if:field,value` |
 | `.prohibits(*fields)` | `prohibits:a,b` |
 
-`prohibited` / `prohibited_if` are enforced. `.prohibits()` registers the token for parity; use a callable rule if you must block sibling fields today.
+`prohibited` / `prohibited_if` are enforced. `.prohibits()` registers the token for hosts and future enforcement; use a callable rule if you must block sibling fields today.
 
 ```python title="app/orbit/resources/account_resource.py"
 TextInput.make('guest_note')
@@ -229,7 +229,7 @@ TextInput.make('backup_email').different('email')
 
 ## Filled and present
 
-`.filled()` requires a non-empty value (enforced). `.present()` registers the `present` token (Filament parity; prefer `.filled()` or `.required()` for enforcement today).
+`.filled()` requires a non-empty value (enforced). `.present()` registers the `present` token for hosts and future `_check_rule` coverage; prefer `.filled()` or `.required()` when you need enforcement today.
 
 ```python title="app/orbit/resources/profile_resource.py"
 TextInput.make('display_name')

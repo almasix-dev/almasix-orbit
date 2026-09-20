@@ -7,7 +7,7 @@ description: Nest Orbit UI with Schema, layouts, callouts, empty states, and pri
 
 Schemas are the nesting fabric under forms, infolists, and anything else that needs a component tree. A `Schema` holds state, dehydrates fields, and renders children. Layouts organize fields; primes, callouts, and empty states add non-field chrome.
 
-Orbit’s Python API mirrors Filament 5’s schemas package: compose with `.schema([...])` / `.components([...])`, hydrate with `.state()` / `.fill()`, read back with `.get_state()` / `.dehydrate()`, and render HTML for Conduit hosts.
+Compose with `.schema([...])` / `.components([...])`, hydrate with `.state()` / `.fill()`, read back with `.get_state()` / `.dehydrate()`, and render HTML for Conduit hosts. The same nesting model powers create/edit forms, read-only infolists, and custom panel pages.
 
 ## Available components
 

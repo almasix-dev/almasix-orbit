@@ -5,7 +5,7 @@ description: Utility injection cookbook for Orbit form field callables — label
 
 ## Introduction
 
-Static config is enough until a field must react to the record, tenant, operation, or sibling state. Orbit evaluates callables through `almasix.orbit.support.evaluate`: if the value is callable, it is invoked with a **filtered** keyword context (only parameters the callable declares, unless it accepts `**kwargs`). That is Filament-style utility injection — write `lambda record: …` even when the host passes dozens of extras.
+Static config is enough until a field must react to the record, tenant, operation, or sibling state. Orbit evaluates callables through `almasix.orbit.support.evaluate`: if the value is callable, it is invoked with a **filtered** keyword context (only parameters the callable declares, unless it accepts `**kwargs`). That is Orbit’s **utility injection**: declare `lambda record: …` (or `operation`, `state`, `user`, …) and the host supplies those values even when it also has dozens of other extras.
 
 Deep dive on the helper itself: [Support closures](/support/closures/). This page is the forms cookbook.
 
