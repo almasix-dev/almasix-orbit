@@ -300,7 +300,6 @@ def make_panel_page_action(
             request: Request,
             record_id: str,
             tenant: str | None = None,
-            **_extra: Any,
         ) -> Any:
             path = _request_path(request)
             user = _current_user(panel) if auth_shell else None
@@ -328,7 +327,6 @@ def make_panel_page_action(
     async def action(
         request: Request,
         tenant: str | None = None,
-        **_extra: Any,
     ) -> Any:
         path = _request_path(request)
         user = _current_user(panel) if auth_shell else None
@@ -533,7 +531,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
     if dash_cls is not None:
 
-        async def dashboard_home(request: Request, tenant: str | None = None, **_e: Any) -> Any:
+        async def dashboard_home(request: Request, tenant: str | None = None) -> Any:
             page_cls = dash_cls
             path = _request_path(request)
             user = _current_user(panel)
@@ -594,7 +592,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
     if panel.uploads_enabled():
 
-        async def upload_action(request: Request, **_extra: Any) -> Any:
+        async def upload_action(request: Request) -> Any:
             payload = await _upload_payload(request)
             if payload.get("_delete"):
                 result = await handle_upload_delete(
@@ -624,7 +622,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
     if panel.database_notifications_enabled():
 
-        async def database_notifications_action(request: Request, **_extra: Any) -> Any:
+        async def database_notifications_action(request: Request) -> Any:
             method = str(getattr(request, "method", "GET") or "GET")
             payload: dict[str, Any] = {}
             if method.upper() == "POST":
@@ -649,7 +647,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
     if panel.live_broadcasts_enabled():
 
-        async def live_broadcasts_action(request: Request, **_extra: Any) -> Any:
+        async def live_broadcasts_action(request: Request) -> Any:
             return _json_response(
                 handle_live_broadcasts(panel, since=_query_param(request, "since"))
             )
@@ -665,7 +663,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
     if panel.has_global_search():
 
-        async def global_search_action(request: Request, **_extra: Any) -> Any:
+        async def global_search_action(request: Request) -> Any:
             user = _current_user(panel)
             term = _query_param(request, "search")
             groups = await _global_search_groups(panel, term, user)
@@ -711,7 +709,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
             )
             Conduit.register(f"orbit.{panel.id}.mfa", mfa_host)
 
-            async def mfa_action(request: Request, **_extra: Any) -> Any:
+            async def mfa_action(request: Request) -> Any:
                 path = _request_path(request)
                 user = _current_user(panel)
                 if user is None:
@@ -852,7 +850,6 @@ def mount_panel(router: Any, panel: Panel) -> None:
             async def page_action(
                 request: Request,
                 tenant: str | None = None,
-                **_e: Any,
             ) -> Any:
                 path = _request_path(request)
                 user = _current_user(panel)
@@ -892,7 +889,6 @@ def mount_panel(router: Any, panel: Panel) -> None:
             async def tenant_register_action(
                 request: Request,
                 tenant: str | None = None,
-                **_e: Any,
             ) -> Any:
                 path = _request_path(request)
                 user = _current_user(panel)
@@ -929,7 +925,6 @@ def mount_panel(router: Any, panel: Panel) -> None:
             async def tenant_profile_action(
                 request: Request,
                 tenant: str | None = None,
-                **_e: Any,
             ) -> Any:
                 path = _request_path(request)
                 user = _current_user(panel)
@@ -966,7 +961,6 @@ def mount_panel(router: Any, panel: Panel) -> None:
             async def tenant_billing_action(
                 request: Request,
                 tenant: str | None = None,
-                **_e: Any,
             ) -> Any:
                 path = _request_path(request)
                 user = _current_user(panel)

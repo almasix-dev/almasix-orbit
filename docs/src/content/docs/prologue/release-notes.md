@@ -12,6 +12,14 @@ header switcher.
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+## 0.4.1
+
+Patch: the default panel home (`GET /admin`) failed under Almasix’s controller binder because dashboard (and other) route actions used `**_e` / `**_extra`. Those catch-alls are gone; handlers take `request` plus optional `tenant` / `record_id` only.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.4.1'
+```
+
 ## 0.4.0
 
 Feature release after 0.3.1 — resources, forms, tables, actions, users, panels,
