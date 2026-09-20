@@ -20,22 +20,26 @@ this framing into learner-facing pages.
 
 | Prior-art package (reference) | Orbit package | Status |
 |-------------------------------|---------------|--------|
-| support | `almasix-orbit-support` | Partial |
+| support | `almasix-orbit-support` | Done |
 | schemas | `almasix-orbit-schemas` | Done |
-| forms | `almasix-orbit-forms` | Partial |
+| forms | `almasix-orbit-forms` | Done |
 | tables | `almasix-orbit-tables` | Partial |
 | actions | `almasix-orbit-actions` | Done |
 | infolists | `almasix-orbit-infolists` | Partial |
 | notifications | `almasix-orbit-notifications` | Done |
 | widgets | `almasix-orbit-widgets` | Done |
-| query-builder | `almasix-orbit-query-builder` | Partial |
+| query-builder | `almasix-orbit-query-builder` | Done |
 | panels | `almasix-orbit` (panels) | Partial |
+
+## Support — Done
+
+`Component` (`.key` / `.grow` / `.when` / `.live` / `.saved`), `Colors.hex` / `css_class` / `css_var` / `palette` (50–950), Heroicon set + `register_icon` aliases, `HtmlString` + `e` / `classes` / `tag`, `evaluate` utility injection, `resolve_public_url`, `conduit_attr`.
 
 ## Schemas — Done
 
 `Schema`, `Grid`, `Flex`, `Group`, `Split`, `Section` (compact/aside/collapsible/persist), `Tabs` (icons/badges/persist), `Fieldset`, `Wizard` (nav/continue/back/skip), `Callout`, `EmptyState`, primes (`Text`, `Icon`, `Image`, `UnorderedList`).
 
-## Forms — Partial
+## Forms — Done
 
 | Feature | Status |
 |---------|--------|
@@ -44,16 +48,16 @@ this framing into learner-facing pages.
 | Validation catalog (+ `required_if` / `required_unless` / `prohibited` / `prohibited_if`) | Done |
 | Select: Orbit combobox (searchable / multiple / HTML / non-native), relationship AJAX, create/edit mounts | Done |
 
-| FileUpload: disk/visibility/editor/download attrs + preview chrome | Partial |
+| FileUpload: disk/visibility/editor + **panel upload endpoint** + `UploadStorage` | Done |
 | Repeater/Builder: defaultItems, simple, table head, grid, clone/reorder + **host mutations** | Done |
-| KeyValue / MorphToSelect / ModalTableSelect host mounts | Partial |
+| KeyValue / MorphToSelect / ModalTableSelect host mounts | Done |
 | TagsInput suggestions + separator + reorderable flag | Done |
 | Radio / CheckboxList descriptions, columns, bulk toggle | Done |
 | Date/Time pickers min/max/display_format/`native(False)` | Done |
 | `MoneyInput` currency prefix | Done |
 | Placeholder respects `hidden()` / visibility | Done |
-| TipTap RichEditor toolbar + contenteditable surface | Partial |
-| Live MorphTo AJAX / production FilePond upload adapter | Planned |
+| RichEditor toolbar, merge tags, contenteditable surface | Done |
+| Live MorphTo AJAX (`.options_using` + host search) | Done |
 
 ## Tables — Partial
 
@@ -96,7 +100,7 @@ this framing into learner-facing pages.
 | Replicate / ForceDelete / Restore / Import / Export | Done |
 | `ActionGroup` / `BulkActionGroup` + sections / placement | Done |
 | CRUD lifecycle hooks (mutate/using/before/after/halt/createAnother) | Done |
-| Host job runners for import/export | Partial (config + docs adapter contract) |
+| Host job runners for import/export | Done (in-process default; pluggable `JobRunner`) |
 
 ## Widgets — Done
 
@@ -136,19 +140,26 @@ this framing into learner-facing pages.
 | Testing helpers (`assert_notified` / `assert_not_notified` / `reset_notifications`) | Done |
 | Docs + light/dark gallery shots + orbit-admin sample | Done |
 
+## Query builder — Done
+
+Typed constraints (`Text` / `Select` / `Boolean` / `Date` / `Number`), operators, `.add_rule()` / `.logic("and"|"or")`, hydrate-from-state render, `QueryBuilderFilter` table chrome + `{logic, rules}` apply, docs + gallery shots.
+
 ## Panels / platform — Partial
 
 | Feature | Status |
 |---------|--------|
 | List/Create/Edit/View page hosts + list tabs | Done |
 | Dashboard home + multi-dashboard `route_path` | Done |
-| Global search helpers | Done |
-| Clusters / auth pages / MFA protocol | Done |
+| Global search (resource attributes, grouped results, panel endpoint) | Done |
+| Relation managers rendered on view/edit (+ create/delete actions) | Done |
+| Record titles in page headings and breadcrumbs | Done |
+| Resource soft deletes (trashed filter, restore, force delete) | Done |
+| Clusters / auth pages / MFA protocol + TOTP/email runners | Done |
 | Multi-tenancy (`Tenancy`, switcher, scoping, HasTenants, RegisterTenant / EditTenantProfile, middleware, route prefix, docs + gallery + orbit-admin) | Done |
 | Render hooks + Plugin base | Done |
 | `discover_*` + `load_discovered` + scaffolding writes files | Done |
-| Multi-panel domains / SPA / billing adapters | Partial (domains Done; SPA/billing later) |
-| Real DB notification persistence / Echo | Partial |
+| Multi-panel domains / SPA / billing adapters | Done |
+| Real DB notification persistence / live hub | Done (SQLite store + `BroadcastHub` + `/orbit-live`) |
 
 ## Docs / screenshots
 
@@ -159,6 +170,6 @@ this framing into learner-facing pages.
 | Gallery build + Playwright capture scripts | Done |
 | Every field page with PNG (not HTML fence) | Partial |
 
-Host-only concerns (SMTP MFA delivery, Spark billing, production queues) remain **interfaces + documented adapters**.
+Host-only concerns (SMTP MFA delivery, production queues, third-party billing processors) remain **interfaces + documented adapters**.
 
 Keywords for smoke tests: resources, pages, relation managers, TextInput, Select, Repeater.

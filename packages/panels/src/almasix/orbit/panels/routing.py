@@ -11,10 +11,27 @@ from almasix.orbit.panels.conduit.hosts import (
     EditRecordHost,
     ListRecordsHost,
     LoginHost,
+    MfaChallengeHost,
     RegisterHost,
     ViewRecordHost,
 )
+from almasix.orbit.panels.global_search import (
+    collect_global_search_results,
+    render_global_search_groups,
+)
+from almasix.orbit.panels.notification_routes import (
+    handle_database_notifications,
+    handle_live_broadcasts,
+    panel_live_url,
+    panel_notifications_url,
+    read_json_body,
+)
 from almasix.orbit.panels.panel import Panel, PanelRegistry
+from almasix.orbit.panels.uploads import (
+    handle_upload,
+    handle_upload_delete,
+    panel_upload_url,
+)
 
 _ASSETS = Path(__file__).resolve().parent.parent / "resources"
 
@@ -75,11 +92,32 @@ def _is_guest_path(panel: Panel, path: str | None) -> bool:
     return False
 
 
+def _mfa_challenge_path(panel: Panel) -> str:
+    return panel.url("mfa-challenge")
+
+
+def _is_mfa_path(panel: Panel, path: str | None) -> bool:
+    if not path:
+        return False
+    challenge = _mfa_challenge_path(panel).rstrip("/") or "/"
+    normalized = path.rstrip("/") or "/"
+    return normalized == challenge or path.endswith("/mfa-challenge")
+
+
 def _auth_gate(panel: Panel, path: str | None, user: Any) -> Any | None:
     """Redirect to login when the panel requires auth and the path is not guest."""
     if not panel.login_enabled():
         return None
     if user is not None:
+        from almasix.orbit.panels.mfa import is_mfa_pending
+
+        if (
+            panel.has_mfa_providers()
+            and is_mfa_pending()
+            and not _is_mfa_path(panel, path)
+            and not _is_guest_path(panel, path)
+        ):
+            return _redirect(_mfa_challenge_path(panel))
         return None
     if _is_guest_path(panel, path):
         return None
@@ -281,6 +319,7 @@ def make_panel_page_action(
                 active_path=path,
                 extra_head=_conduit_assets(),
                 bare=not auth_shell,
+                record_title=_host_record_title(instance),
             )
             return _html_response(body)
 
@@ -312,6 +351,139 @@ def make_panel_page_action(
         return _html_response(body)
 
     return action
+
+
+async def _upload_payload(request: Request | None) -> dict[str, Any]:
+    """Normalize an upload (multipart) or delete (form field) request."""
+    out: dict[str, Any] = {
+        "resource": _form_param(request, "resource") or _query_param(request, "resource"),
+        "field": _form_param(request, "field") or _query_param(request, "field"),
+    }
+    path = _form_param(request, "path") or _query_param(request, "path")
+    intent = _form_param(request, "intent") or _query_param(request, "intent")
+    if intent == "delete" or (path and not _request_file(request)):
+        out["_delete"] = True
+        out["path"] = path
+        return out
+    upload = _request_file(request)
+    if upload is None:
+        out["filename"] = ""
+        out["data"] = b""
+        return out
+    out["filename"] = str(getattr(upload, "filename", "") or "file")
+    read = getattr(upload, "read", None)
+    data = await read() if callable(read) else b""
+    out["data"] = data if isinstance(data, (bytes, bytearray)) else bytes(str(data), "utf-8")
+    return out
+
+
+def _request_file(request: Request | None) -> Any:
+    if request is None:
+        return None
+    getter = getattr(request, "file", None)
+    if not callable(getter):
+        return None
+    try:
+        found = getter("file")
+    except Exception:
+        return None
+    if isinstance(found, list):
+        return found[0] if found else None
+    return found
+
+
+def _form_param(request: Request | None, name: str) -> str:
+    """Read a submitted form value without assuming a single request API."""
+    if request is None:
+        return ""
+    getter = getattr(request, "input", None)
+    if callable(getter):
+        try:
+            value = getter(name)
+        except Exception:
+            value = None
+        if value not in (None, ""):
+            return str(value)
+    return ""
+
+
+def _json_response(payload: dict[str, Any]) -> Any:
+    try:
+        from almasix.http import json as json_response
+
+        return json_response(payload)
+    except Exception:  # pragma: no cover - framework fallback
+        from starlette.responses import JSONResponse
+
+        return JSONResponse(payload)
+
+
+def _host_record_title(instance: Any) -> str | None:
+    """Record title from a mounted view/edit host, for the breadcrumb leaf."""
+    record = getattr(instance, "record", None)
+    if not isinstance(record, dict) or not record:
+        record = getattr(instance, "data", None)
+    if not isinstance(record, dict) or not record:
+        return None
+    get_resource = getattr(instance, "get_resource", None)
+    if not callable(get_resource):
+        return None
+    try:
+        resource = get_resource()
+        title = resource.get_record_title(record)
+    except Exception:
+        return None
+    return str(title) if title else None
+
+
+def _query_param(request: Request | None, name: str) -> str:
+    """Read one query-string value across the supported request objects."""
+    if request is None:
+        return ""
+    params = getattr(request, "query_params", None)
+    if params is None:
+        params = getattr(request, "query", None)
+    if params is None:
+        return ""
+    getter = getattr(params, "get", None)
+    value = getter(name) if callable(getter) else None
+    return str(value or "")
+
+
+async def _global_search_groups(panel: Panel, term: str, user: Any) -> list[dict[str, Any]]:
+    """Load searchable records per resource, then group the matches."""
+    from almasix.orbit.panels.conduit.hosts import (
+        _orm_fetch_all,
+        _resource_model,
+        _resource_records,
+    )
+
+    records_by_resource: dict[Any, list[Any]] = {}
+    for resource in panel.get_resources():
+        searchable = getattr(resource, "is_globally_searchable", None)
+        if not callable(searchable) or not searchable():
+            continue
+        model = _resource_model(resource)
+        if model is not None:
+            records_by_resource[resource] = await _orm_fetch_all(model)
+        else:
+            records_by_resource[resource] = _resource_records(resource)
+    groups = collect_global_search_results(
+        panel,
+        term,
+        user=user,
+        records_by_resource=records_by_resource,
+    )
+    limit = getattr(panel, "_global_search_limit", 10)
+    remaining = int(limit)
+    trimmed: list[dict[str, Any]] = []
+    for group in groups:
+        if remaining <= 0:
+            break
+        results = list(group["results"])[:remaining]
+        remaining -= len(results)
+        trimmed.append({**group, "results": results})
+    return trimmed
 
 
 def mount_panel(router: Any, panel: Panel) -> None:
@@ -420,6 +592,91 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
         _add(home_uri, empty_home, name=f"orbit.{panel.id}.home")
 
+    if panel.uploads_enabled():
+
+        async def upload_action(request: Request, **_extra: Any) -> Any:
+            payload = await _upload_payload(request)
+            if payload.get("_delete"):
+                result = await handle_upload_delete(
+                    panel,
+                    resource=payload.get("resource", ""),
+                    field=payload.get("field", ""),
+                    path=payload.get("path", ""),
+                )
+            else:
+                result = await handle_upload(
+                    panel,
+                    resource=payload.get("resource", ""),
+                    field=payload.get("field", ""),
+                    filename=payload.get("filename", ""),
+                    data=payload.get("data", b""),
+                )
+            return _json_response(result)
+
+        router.add(
+            ["POST"],
+            panel_upload_url(panel),
+            upload_action,
+            name=f"orbit.{panel.id}.upload",
+            middleware=auth_middleware,
+            domain=domain,
+        )
+
+    if panel.database_notifications_enabled():
+
+        async def database_notifications_action(request: Request, **_extra: Any) -> Any:
+            method = str(getattr(request, "method", "GET") or "GET")
+            payload: dict[str, Any] = {}
+            if method.upper() == "POST":
+                payload = await read_json_body(request)
+            return _json_response(
+                handle_database_notifications(
+                    panel,
+                    user=_current_user(panel),
+                    method=method,
+                    payload=payload,
+                )
+            )
+
+        router.add(
+            ["GET", "POST"],
+            panel_notifications_url(panel),
+            database_notifications_action,
+            name=f"orbit.{panel.id}.database-notifications",
+            middleware=auth_middleware,
+            domain=domain,
+        )
+
+    if panel.live_broadcasts_enabled():
+
+        async def live_broadcasts_action(request: Request, **_extra: Any) -> Any:
+            return _json_response(
+                handle_live_broadcasts(panel, since=_query_param(request, "since"))
+            )
+
+        router.add(
+            ["GET"],
+            panel_live_url(panel),
+            live_broadcasts_action,
+            name=f"orbit.{panel.id}.live",
+            middleware=auth_middleware,
+            domain=domain,
+        )
+
+    if panel.has_global_search():
+
+        async def global_search_action(request: Request, **_extra: Any) -> Any:
+            user = _current_user(panel)
+            term = _query_param(request, "search")
+            groups = await _global_search_groups(panel, term, user)
+            return _html_response(render_global_search_groups(groups))
+
+        _add(
+            "/global-search",
+            global_search_action,
+            name=f"orbit.{panel.id}.global-search",
+        )
+
     if panel.login_enabled():
         from almasix.conduit import Conduit
 
@@ -443,7 +700,47 @@ def mount_panel(router: Any, panel: Panel) -> None:
             mw=["web"],
         )
 
+        if panel.has_mfa_providers():
+            mfa_host = type(
+                f"MfaChallengeHost_{panel.id}",
+                (MfaChallengeHost,),
+                {
+                    "panel_id": panel.id,
+                    "_panel": panel,
+                },
+            )
+            Conduit.register(f"orbit.{panel.id}.mfa", mfa_host)
+
+            async def mfa_action(request: Request, **_extra: Any) -> Any:
+                path = _request_path(request)
+                user = _current_user(panel)
+                if user is None:
+                    return _redirect(_login_path(panel))
+                instance = _instantiate_host(mfa_host, {})
+                slot = await _embed_async(instance)
+                body = panel.render_shell(
+                    slot,
+                    user=user,
+                    active_path=path,
+                    extra_head=_conduit_assets(),
+                    bare=True,
+                )
+                return _html_response(body)
+
+            _add(
+                "/mfa-challenge",
+                mfa_action,
+                name=f"orbit.{panel.id}.mfa",
+                mw=["web"],
+            )
+
         async def logout_action(request: Request) -> Any:
+            try:
+                from almasix.orbit.panels.mfa import clear_mfa_pending
+
+                clear_mfa_pending()
+            except Exception:
+                pass
             try:
                 from almasix.auth import auth
 
@@ -656,6 +953,73 @@ def mount_panel(router: Any, panel: Panel) -> None:
                 profile_uri,
                 tenant_profile_action,
                 name=f"orbit.{panel.id}.tenant.profile",
+            )
+
+        billing_page = tenancy.billing_page()
+        if billing_page is not None:
+            billing_slug = getattr(billing_page, "get_slug", lambda: "billing")()
+            tenant_prefix = _tenant_path_prefix(panel)
+            billing_uri = (
+                f"{tenant_prefix}/{billing_slug}" if tenant_prefix else billing_slug
+            )
+
+            async def tenant_billing_action(
+                request: Request,
+                tenant: str | None = None,
+                **_e: Any,
+            ) -> Any:
+                path = _request_path(request)
+                user = _current_user(panel)
+                gated = _auth_gate(panel, path, user)
+                if gated is not None:
+                    return gated
+                _apply_tenant_slug(panel, tenant, user)
+                method = str(getattr(request, "method", "GET") or "GET")
+                if method.upper() == "POST":
+                    payload = await read_json_body(request)
+                    plan_id = str(
+                        payload.get("plan_id")
+                        or payload.get("plan")
+                        or _form_param(request, "plan_id")
+                        or _query_param(request, "plan_id")
+                        or ""
+                    )
+                    handler = getattr(billing_page, "handle_subscribe", None)
+                    if callable(handler) and plan_id:
+                        try:
+                            handler(
+                                plan_id,
+                                panel=panel,
+                                user=user,
+                                tenant=panel.get_tenant(),
+                            )
+                        except Exception:
+                            pass
+                html_body = billing_page.render(
+                    panel=panel, user=user, tenant=panel.get_tenant()
+                )
+                return _html_response(
+                    panel.render_shell(
+                        html_body,
+                        user=user,
+                        active_path=path,
+                        extra_head=_conduit_assets(),
+                    )
+                )
+
+            if billing_uri.startswith("/") or billing_uri == "":
+                billing_full = f"{prefix}{billing_uri}"
+            else:
+                billing_full = f"{prefix}/{billing_uri}" if prefix else f"/{billing_uri}"
+            if billing_full == "":
+                billing_full = "/"
+            router.add(
+                ["GET", "POST"],
+                billing_full,
+                tenant_billing_action,
+                name=f"orbit.{panel.id}.tenant.billing",
+                middleware=auth_middleware,
+                domain=domain,
             )
 
 

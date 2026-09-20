@@ -1689,6 +1689,29 @@ class FileUpload(Field):
         self._panel_layout = False
         self._image_preview_height: int | None = None
         self._prevent_file_path_tampering = False
+        self._upload_url: str | None = None
+
+    def upload_url(self, url: str) -> Self:
+        """Endpoint the browser posts selected files to.
+
+        Panels set this automatically; override when a form lives outside a panel.
+        """
+        self._upload_url = url
+        return self
+
+    def get_upload_rules(self) -> Any:
+        """Server-side rules the upload endpoint enforces for this field."""
+        from almasix.orbit.forms.uploads import UploadRules
+
+        return UploadRules(
+            disk=self._disk,
+            directory=self._directory,
+            visibility=self._visibility,
+            preserve_filenames=self._preserve_filenames,
+            max_size=self._max_size,
+            min_size=self._min_size,
+            accepted_types=list(self._accepted_file_types),
+        )
 
     def disk(self, name: str) -> Self:
         self._disk = name
@@ -1801,6 +1824,44 @@ class FileUpload(Field):
         self._image_max_height = max_height
         return self
 
+    def _render_existing_files(self, state: Any) -> str:
+        """Thumbnails / chips for files already on the record."""
+        from almasix.orbit.forms.uploads import is_image
+
+        values = state if isinstance(state, (list, tuple)) else ([state] if state else [])
+        cards: list[str] = []
+        for value in values:
+            if isinstance(value, dict):
+                path = str(value.get("path") or value.get("url") or "")
+                url = str(value.get("url") or path)
+                label = str(value.get("name") or path.rsplit("/", 1)[-1])
+            else:
+                path = str(value or "")
+                url = path
+                label = path.rsplit("/", 1)[-1]
+            if not path:
+                continue
+            body = (
+                f'<img class="or-file-thumb" src="{e(url)}" alt="{e(label)}" />'
+                if is_image(path)
+                else f'<span class="or-file-name">{e(label)}</span>'
+            )
+            actions = ""
+            if self._openable:
+                actions += (
+                    f'<a class="or-file-action" href="{e(url)}" target="_blank" '
+                    'rel="noopener">Open</a>'
+                )
+            if self._downloadable:
+                actions += f'<a class="or-file-action" href="{e(url)}" download>Download</a>'
+            cards.append(
+                f'<div class="or-file-card" data-file-path="{e(path)}">{body}'
+                f'<div class="or-file-card-actions">{actions}'
+                '<button type="button" class="or-file-remove" data-file-remove '
+                'aria-label="Remove file">&times;</button></div></div>'
+            )
+        return "".join(cards)
+
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
             return ""
@@ -1860,18 +1921,35 @@ class FileUpload(Field):
         ):
             if val is not None:
                 attrs.append(f'data-image-{key}="{val}"')
+        upload_url = self._upload_url or ctx.get("upload_url")
+        if upload_url:
+            attrs.append(f'data-upload-url="{e(str(upload_url))}"')
+        field_key = self.get_state_path() or self.get_name() or ""
+        attrs.append(f'data-upload-field="{e(field_key)}"')
+        resource = ctx.get("resource")
+        slug_fn = getattr(resource, "get_slug", None)
+        if callable(slug_fn):
+            attrs.append(f'data-upload-resource="{e(str(slug_fn()))}"')
         attr_str = (" " + " ".join(attrs)) if attrs else ""
         avatar_cls = " or-file-avatar" if self._avatar else ""
         preview = ""
-        if self._image_preview and self._previewable:
-            preview = '<div class="or-file-preview" data-preview-grid aria-live="polite"></div>'
+        if self._previewable:
+            preview = (
+                '<div class="or-file-preview" data-preview-grid aria-live="polite">'
+                f"{self._render_existing_files(state)}</div>"
+            )
         editor = ""
         if self._image_editor:
             editor = '<div class="or-file-image-editor" data-image-editor-ui hidden></div>'
+        progress = (
+            '<div class="or-file-progress" data-upload-progress hidden>'
+            '<div class="or-file-progress-bar" data-upload-progress-bar></div></div>'
+        )
         control = (
             f"{preview}{editor}"
             f'<input class="or-file" id="or-{name}" type="file" name="{name}"{acc}{multi}{disabled} '
             f'{self._wire_binding(name)} />'
+            f"{progress}"
         )
         html = self.wrap_field(name, control, **ctx)
         return html.replace(
@@ -2041,10 +2119,42 @@ class MoneyInput(TextInput):
         )
 
 
+#: Toolbar buttons the editor knows how to execute, with their labels.
+RICH_EDITOR_TOOLS: dict[str, str] = {
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "strike": "Strikethrough",
+    "link": "Link",
+    "unlink": "Unlink",
+    "h1": "Heading 1",
+    "h2": "Heading 2",
+    "h3": "Heading 3",
+    "heading": "Heading",
+    "paragraph": "Paragraph",
+    "blockquote": "Quote",
+    "codeBlock": "Code block",
+    "bulletList": "Bullet list",
+    "orderedList": "Numbered list",
+    "horizontalRule": "Divider",
+    "image": "Image",
+    "alignStart": "Align left",
+    "alignCenter": "Align center",
+    "alignEnd": "Align right",
+    "clearFormat": "Clear formatting",
+    "undo": "Undo",
+    "redo": "Redo",
+}
+
+
 class RichEditor(Textarea):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._toolbar_buttons: list[str] = ["bold", "italic", "link"]
+        self._placeholder: str | None = None
+        self._merge_tags: list[str] = []
+        self._custom_tools: dict[str, str] = {}
+        self._min_height: str | None = None
 
     def toolbar_buttons(self, buttons: Sequence[str]) -> Self:
         self._toolbar_buttons = list(buttons)
@@ -2053,28 +2163,75 @@ class RichEditor(Textarea):
     def get_toolbar_buttons(self) -> list[str]:
         return list(self._toolbar_buttons)
 
+    def toolbar_button(self, name: str, label: str | None = None) -> Self:
+        """Append one button, optionally with your own label."""
+        if name not in self._toolbar_buttons:
+            self._toolbar_buttons.append(name)
+        if label:
+            self._custom_tools[name] = label
+        return self
+
+    def placeholder(self, text: str) -> Self:
+        """Ghost text shown while the editor is empty."""
+        self._placeholder = text
+        return self
+
+    def merge_tags(self, tags: Sequence[str]) -> Self:
+        """Insertable placeholders such as ``{{ customer_name }}``."""
+        self._merge_tags = [str(tag) for tag in tags]
+        return self
+
+    def get_merge_tags(self) -> list[str]:
+        return list(self._merge_tags)
+
+    def min_height(self, value: str | int) -> Self:
+        """CSS height for the writing surface (``"18rem"`` or a pixel count)."""
+        self._min_height = f"{value}px" if isinstance(value, (int, float)) else value
+        return self
+
+    def tool_label(self, name: str) -> str:
+        if name in self._custom_tools:
+            return self._custom_tools[name]
+        if name in RICH_EDITOR_TOOLS:
+            return RICH_EDITOR_TOOLS[name]
+        return name[:1].upper() + name[1:]
+
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
             return ""
         name = e(self.get_state_path() or "")
         label = e(self.get_label(**ctx))
         val = "" if state is None else str(state)
-        disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        is_disabled = self.is_disabled(**ctx) or self._readonly
+        disabled = " disabled" if is_disabled else ""
+        disabled_attr = ' data-editor-disabled="true"' if is_disabled else ""
         live = " wire:model.live" if self._live else " wire:model"
         toolbar = ",".join(self._toolbar_buttons)
         toolbar_spans = "".join(
             f'<button type="button" class="or-editor-tool" data-tool="{e(b)}" '
-            f'aria-label="{e(b)}">{e(b[:1].upper() + b[1:])}</button>'
+            f'aria-label="{e(self.tool_label(b))}" title="{e(self.tool_label(b))}">'
+            f"{e(self.tool_label(b))}</button>"
             for b in self._toolbar_buttons
         )
+        for tag in self._merge_tags:
+            toolbar_spans += (
+                f'<button type="button" class="or-editor-tool or-editor-merge-tag" '
+                f'data-tool="mergeTag:{e(tag)}" title="Insert {e(tag)}">{{{{ {e(tag)} }}}}</button>'
+            )
+        placeholder_attr = (
+            f' data-placeholder="{e(self._placeholder)}"' if self._placeholder else ""
+        )
+        height = f' style="min-height: {e(self._min_height)}"' if self._min_height else ""
+        helper = self._helper_html(**ctx)
         return (
             f'<div class="or-field or-field-RichEditor" data-field="{name}">'
             f'<label class="or-label" for="or-{name}">{label}</label>'
             f'<div class="or-editor-toolbar" data-toolbar="{e(toolbar)}">{toolbar_spans}</div>'
             f'<div class="or-editor or-editor-rich" id="or-{name}-editor" data-tiptap '
-            f'data-toolbar="{e(toolbar)}" data-input="or-{name}"{disabled}></div>'
+            f'data-toolbar="{e(toolbar)}" data-input="or-{name}"'
+            f"{placeholder_attr}{disabled_attr}{height}{disabled}></div>"
             f'<input type="hidden" class="or-editor-input" id="or-{name}" name="{name}" '
-            f'value="{e(val)}"{live}="{name}" data-tiptap-input /></div>'
+            f'value="{e(val)}"{live}="{name}" data-tiptap-input />{helper}</div>'
         )
 
 
@@ -2087,31 +2244,119 @@ class MarkdownEditor(Textarea):
 
 
 class KeyValue(Field):
+    """Editable dictionary — a list of key/value rows the host keeps in sync."""
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._key_label = "Key"
+        self._value_label = "Value"
+        self._key_placeholder = "Key"
+        self._value_placeholder = "Value"
+        self._add_action_label = "Add row"
+        self._editable_keys = True
+        self._addable = True
+        self._deletable = True
+        self._reorderable = False
+
+    def key_label(self, text: str) -> Self:
+        self._key_label = text
+        return self
+
+    def value_label(self, text: str) -> Self:
+        self._value_label = text
+        return self
+
+    def key_placeholder(self, text: str) -> Self:
+        self._key_placeholder = text
+        return self
+
+    def value_placeholder(self, text: str) -> Self:
+        self._value_placeholder = text
+        return self
+
+    def add_action_label(self, text: str) -> Self:
+        self._add_action_label = text
+        return self
+
+    def editable_keys(self, condition: bool = True) -> Self:
+        """Allow (or lock) renaming of keys."""
+        self._editable_keys = bool(condition)
+        return self
+
+    def addable(self, condition: bool = True) -> Self:
+        self._addable = bool(condition)
+        return self
+
+    def deletable(self, condition: bool = True) -> Self:
+        self._deletable = bool(condition)
+        return self
+
+    def reorderable(self, condition: bool = True) -> Self:
+        self._reorderable = bool(condition)
+        return self
+
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
             return ""
         name = e(self.get_state_path() or "")
         label = e(self.get_label(**ctx))
         data = state if isinstance(state, dict) else {}
+        locked = self.is_disabled(**ctx) or self._readonly
+        disabled = " disabled" if locked else ""
         rows = []
-        for i, (k, v) in enumerate(data.items()):
+        for i, (key, value) in enumerate(data.items()):
+            key_attrs = (
+                f'wire:change="setKeyValueKey(\'{name}\', \'{e(key)}\', $event.target.value)"'
+                if self._editable_keys and not locked
+                else "readonly"
+            )
+            delete_button = (
+                '<button type="button" class="or-key-value-remove or-btn or-btn-gray or-btn-sm" '
+                f"wire:click=\"removeKeyValueRow('{name}', '{e(key)}')\" "
+                'aria-label="Remove row">&times;</button>'
+                if self._deletable and not locked
+                else ""
+            )
             rows.append(
-                f'<div class="or-key-value-row" data-index="{i}">'
-                f'<input class="or-input" name="{name}_key_{i}" value="{e(k)}" placeholder="Key" />'
-                f'<input class="or-input" name="{name}_val_{i}" value="{e(v)}" placeholder="Value" '
-                f'wire:model="{name}.{e(k)}" /></div>'
+                f'<div class="or-key-value-row" data-index="{i}" data-key="{e(key)}">'
+                f'<input class="or-input or-key-value-key" name="{name}_key_{i}" value="{e(key)}" '
+                f'placeholder="{e(self._key_placeholder)}" aria-label="{e(self._key_label)}" '
+                f"{key_attrs}{disabled} />"
+                f'<input class="or-input or-key-value-value" name="{name}_val_{i}" value="{e(value)}" '
+                f'placeholder="{e(self._value_placeholder)}" aria-label="{e(self._value_label)}" '
+                f'wire:model="{name}.{e(key)}"{disabled} />'
+                f"{delete_button}</div>"
             )
         if not rows:
             rows.append(
-                '<div class="or-key-value-row">'
-                '<input class="or-input" placeholder="Key" /><input class="or-input" placeholder="Value" /></div>'
+                '<div class="or-key-value-row or-key-value-empty">'
+                f'<input class="or-input or-key-value-key" placeholder="{e(self._key_placeholder)}" '
+                f'aria-label="{e(self._key_label)}"{disabled} />'
+                f'<input class="or-input or-key-value-value" placeholder="{e(self._value_placeholder)}" '
+                f'aria-label="{e(self._value_label)}"{disabled} /></div>'
             )
+        spacer = (
+            '<span class="or-key-value-head-spacer" aria-hidden="true"></span>'
+            if self._deletable and not locked
+            else ""
+        )
+        header = (
+            '<div class="or-key-value-head">'
+            f"<span>{e(self._key_label)}</span><span>{e(self._value_label)}</span>"
+            f"{spacer}</div>"
+        )
+        add_button = (
+            '<button type="button" class="or-btn or-btn-gray or-btn-sm" '
+            f"wire:click=\"addKeyValueRow('{name}')\">{e(self._add_action_label)}</button>"
+            if self._addable and not locked
+            else ""
+        )
+        reorder = ' data-reorderable="true"' if self._reorderable else ""
         return (
-            f'<div class="or-field or-field-KeyValue" data-field="{name}">'
+            f'<div class="or-field or-field-KeyValue" data-field="{name}"{reorder}>'
             f'<span class="or-label">{label}</span>'
-            f'<div class="or-key-value-editor">{"".join(rows)}</div>'
-            f'<button type="button" class="or-btn or-btn-gray or-btn-sm" wire:click="addKeyValueRow(\'{name}\')">'
-            f"Add row</button></div>"
+            f'<div class="or-key-value-editor">{header}{"".join(rows)}</div>'
+            f"{add_button}{self._helper_html(**ctx)}</div>"
         )
 
 
@@ -2556,6 +2801,7 @@ class MorphToSelect(Select):
         self._types: list[Any] = []
         self._type_field: str = "type"
         self._id_field: str = "id"
+        self._options_using: Callable[..., Mapping[Any, Any]] | None = None
 
     def types(self, types: Sequence[Any]) -> Self:
         """Accept ``['App\\\\Models\\\\User', …]`` or ``[{'type': …, 'label': …, 'options': …}]``."""
@@ -2572,6 +2818,23 @@ class MorphToSelect(Select):
 
     def get_types(self) -> list[Any]:
         return list(self._types)
+
+    def options_using(self, callback: Callable[..., Mapping[Any, Any]]) -> Self:
+        """Load the record options for the selected type on the server.
+
+        Called as ``callback(type=..., search=...)`` whenever the type changes or
+        the operator types in the search box.
+        """
+        self._options_using = callback
+        return self
+
+    def get_options_for_type(self, morph_type: str, search: str = "") -> dict[Any, Any]:
+        """Options for one morph type, through ``options_using`` when set."""
+        callback = self._options_using
+        if callback is None:
+            return {}
+        result = callback(type=morph_type, search=search)
+        return dict(result or {})
 
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
@@ -2612,24 +2875,41 @@ class MorphToSelect(Select):
             sel = " selected" if type_value is not None and str(k) == str(type_value) else ""
             type_opts_html.append(f'<option value="{e(k)}"{sel}>{e(v)}</option>')
 
-        # ID select: use type-specific options or inherited options.
-        id_opts = id_options_by_type.get(str(type_value or ""), {})
+        # ID select: server-loaded options for the type, then static, then inherited.
+        search = str((ctx.get("morph_search") or {}).get(self.get_state_path() or "", ""))
+        id_opts = self.get_options_for_type(str(type_value or ""), search)
+        if not id_opts:
+            id_opts = id_options_by_type.get(str(type_value or ""), {})
         if not id_opts:
             id_opts = self.get_options(**ctx)
+        if search:
+            needle = search.casefold()
+            id_opts = {k: v for k, v in id_opts.items() if needle in str(v).casefold()}
         id_opts_html = []
         for k, v in id_opts.items():
             sel = " selected" if id_value is not None and str(k) == str(id_value) else ""
             id_opts_html.append(f'<option value="{e(k)}"{sel}>{e(v)}</option>')
 
         searchable_attr = " data-searchable" if self._searchable else ""
+        search_box = ""
+        if self._searchable:
+            search_box = (
+                '<input type="search" class="or-input or-morph-search" '
+                f'placeholder="Search…" value="{e(search)}" data-morph-search '
+                f"wire:model.live.debounce.300ms=\"morph_search.{name}\" "
+                f"wire:keydown.debounce.300ms=\"searchMorphOptions('{name}', $event.target.value)\""
+                f"{disabled} />"
+            )
         return (
             f'<div class="or-field or-field-MorphToSelect" data-field="{name}"{searchable_attr} '
             f'x-data="orbitMorphToSelect">'
             f'<span class="or-label">{label}</span>'
             f'<div class="or-morph-to-select">'
             f'<select class="or-select or-select-morph or-select-morph-type" '
-            f'name="{type_name}" data-morph-type{disabled}{live}="{type_name}">'
+            f'name="{type_name}" data-morph-type{disabled}{live}="{type_name}" '
+            f"wire:change=\"setMorphType('{name}', $event.target.value)\">"
             f'{"".join(type_opts_html)}</select>'
+            f"{search_box}"
             f'<select class="or-select or-select-morph or-select-morph-id" '
             f'name="{e(name)}" data-morph-id{disabled}{live}="{name}">'
             f'{"".join(id_opts_html)}</select>'
@@ -2646,18 +2926,123 @@ class TableSelect(Select):
 
 
 class ModalTableSelect(Select):
+    """Pick a record from a table shown in a modal."""
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._table: Any = None
+        self._records: Any = None
+        self._modal_heading: str | None = None
+        self._browse_label = "Browse"
+        self._title_attribute = "name"
+
+    def table(self, table: Any) -> Self:
+        """Table rendered inside the picker."""
+        self._table = table
+        return self
+
+    def get_table(self) -> Any:
+        return self._table
+
+    def records(self, records: Any) -> Self:
+        """Rows offered in the picker (list or callable)."""
+        self._records = records
+        return self
+
+    def get_records(self, **ctx: Any) -> list[Any]:
+        records = self._records
+        if callable(records):
+            records = records(**ctx)
+        return list(records or [])
+
+    def modal_heading(self, text: str) -> Self:
+        self._modal_heading = text
+        return self
+
+    def browse_label(self, text: str) -> Self:
+        self._browse_label = text
+        return self
+
+    def title_attribute(self, name: str) -> Self:
+        """Attribute shown in the input once a record is chosen."""
+        self._title_attribute = name
+        return self
+
+    def get_display_value(self, state: Any, **ctx: Any) -> str:
+        """Label for the current value, resolved through options or the record list."""
+        if state in (None, ""):
+            return ""
+        options = self.get_options(**ctx)
+        if state in options:
+            return str(options[state])
+        for record in self.get_records(**ctx):
+            value = record.get("id") if isinstance(record, Mapping) else getattr(record, "id", None)
+            if str(value) == str(state):
+                if isinstance(record, Mapping):
+                    return str(record.get(self._title_attribute, state))
+                return str(getattr(record, self._title_attribute, state))
+        return str(state)
+
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
             return ""
         name = e(self.get_state_path() or "")
         label = e(self.get_label(**ctx))
-        display = "" if state is None else e(str(state))
+        display = e(self.get_display_value(state, **ctx))
+        disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        open_field = str((ctx.get("table_select") or {}).get("field") or "")
+        modal = ""
+        if open_field and open_field == (self.get_state_path() or ""):
+            modal = self._render_modal(name, **ctx)
         return (
             f'<div class="or-field or-field-ModalTableSelect" data-field="{name}">'
             f'<label class="or-label" for="or-{name}">{label}</label>'
             f'<div class="or-modal-table-select">'
             f'<input class="or-input" id="or-{name}" name="{name}" value="{display}" '
-            f'readonly wire:model="{name}" />'
-            f'<button type="button" class="or-btn or-btn-gray" '
-            f'wire:click="mountTableSelect(\'{name}\')">Browse</button></div></div>'
+            f'readonly data-display-value />'
+            f'<input type="hidden" data-value wire:model="{name}" value="{e(state or "")}" />'
+            f'<button type="button" class="or-btn or-btn-gray"{disabled} '
+            f'wire:click="mountTableSelect(\'{name}\')">{e(self._browse_label)}</button>'
+            f"</div>{modal}{self._helper_html(**ctx)}</div>"
         )
+
+    def _render_modal(self, name: str, **ctx: Any) -> str:
+        heading = self._modal_heading or f"Select {self.get_label(**ctx)}"
+        search = str((ctx.get("table_select") or {}).get("search") or "")
+        rows = self.get_records(**ctx)
+        if search:
+            needle = search.casefold()
+            rows = [row for row in rows if needle in str(row).casefold()]
+        body = self._render_rows(name, rows)
+        return (
+            '<div class="or-modal-backdrop or-table-select-modal" role="dialog" aria-modal="true">'
+            f'<div class="or-modal"><header class="or-modal-header">'
+            f'<h2 class="or-modal-heading">{e(heading)}</h2>'
+            '<button type="button" class="or-modal-close" wire:click="closeTableSelect()" '
+            'aria-label="Close">&times;</button></header>'
+            '<div class="or-modal-body">'
+            f'<input type="search" class="or-input" placeholder="Search…" value="{e(search)}" '
+            f"wire:keydown.debounce.300ms=\"setTableSelectSearch('{name}', $event.target.value)\" />"
+            f"{body}</div></div></div>"
+        )
+
+    def _render_rows(self, name: str, rows: list[Any]) -> str:
+        table = self.get_table()
+        if table is not None:
+            table.records(rows)
+            return table.render(skip_header_actions=True)
+        if not rows:
+            return '<p class="or-muted">No records.</p>'
+        items = []
+        for row in rows:
+            if isinstance(row, Mapping):
+                value = row.get("id", "")
+                title = row.get(self._title_attribute, value)
+            else:
+                value = getattr(row, "id", "")
+                title = getattr(row, self._title_attribute, value)
+            items.append(
+                '<button type="button" class="or-table-select-row" '
+                f"wire:click=\"selectTableRecord('{name}', '{e(value)}')\">{e(title)}</button>"
+            )
+        return f'<div class="or-table-select-rows">{"".join(items)}</div>'

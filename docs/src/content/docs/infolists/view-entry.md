@@ -45,6 +45,10 @@ ViewEntry.make("title")
 ViewEntry.make("custom").view("<i>static</i>").hidden_label()
 ```
 
+![Orbit View entry hidden label (light)](/examples/light/infolists/view-entry/hidden-label.png)
+
+![Orbit View entry hidden label (dark)](/examples/dark/infolists/view-entry/hidden-label.png)
+
 ## API cheat sheet
 
 | Method | Notes |

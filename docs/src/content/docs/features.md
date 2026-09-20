@@ -47,7 +47,7 @@ A straight inventory of what ships today. For narrative guides, start at [Quick 
 - Full modal API: confirmation, form schema, slide-over, width, sticky chrome, labels, icons
 - `ActionGroup` / `BulkActionGroup` dropdowns, button groups, and sections
 - Create / edit / view / delete / replicate / force-delete / restore presets
-- Import / export config bags with documented host-owned `Importer` / `Exporter` adapters
+- Import / export in-process job runner (`ImmediateJobRunner`, pluggable queues) with CSV/JSON parse, column maps, and browser download
 
 See [Actions overview](/actions/overview/).
 
@@ -65,17 +65,18 @@ See [Infolists overview](/infolists/overview/).
 
 - Fluent flash toasts — title / body / icon / color / status / duration / persistent / actions
 - `OrbitNotification` JS client + `close-notification` by id + toast alignment
-- Database bell (panel seeds, polling, topbar/sidebar position, pluggable store)
-- Broadcast / live adapter (`LiveNotifier` + `orbit:broadcast`)
+- Database bell (panel seeds, SQLite or pluggable store, `/orbit-notifications` poll, topbar/sidebar)
+- Broadcast hub + panel `/orbit-live` poll (`LiveNotifier`, `orbit:broadcast`)
 
 See [Notifications overview](/notifications/overview/).
 
 ## Users & tenancy
 
 - Login / Register / Profile auth pages
-- MFA provider protocol (`MfaProvider` / `AppAuthentication`)
+- MFA: authenticator TOTP + email codes (`AppAuthentication` / `EmailAuthentication`)
 - Multi-tenancy: `Panel.tenant` / `Tenancy`, switcher, `HasTenants`, query scoping, resource opt-out
-- Tenant registration / profile / billing page slots, route prefix, tenant middleware
+- Tenant registration / profile / billing (`ManageBilling` + pluggable `BillingProvider`)
+- Multi-panel registry (`get_by_path` / `get_by_domain`) and per-panel `.spa()` navigation
 
 See [Users overview](/users/overview/) and [Multi-tenancy](/users/tenancy/).
 
@@ -91,7 +92,7 @@ See [Widgets overview](/widgets/overview/).
 ## Navigation
 
 - Sorted nav from resources, pages, clusters, and custom items
-- Layout modes: sidebar, top, and Shamar-style `apps` (sidebar roots + topbar secondary)
+- Layout modes: sidebar, top, and `apps` (sidebar roots + topbar secondary)
 - Groups / subgroups, badges, active icons, parent items, builder override
 - User menu with icons, groups, profile / logout hooks, topbar or sidebar
 - Clusters: discover/register, sub-nav `start` / `end` / `top`, breadcrumbs
@@ -108,9 +109,12 @@ See [Navigation overview](/navigation/overview/).
 
 ## Query builder & support
 
-- Text / select / boolean / date / number constraints
+- Text / select / boolean / date / number constraints with typed value widgets
 - Operators: equals, contains, comparisons, set checks, `in`
-- Fluent `Component` base, colors, Heroicons, `e` / `tag` helpers
+- AND / OR rule logic, `.add_rule()`, table `QueryBuilderFilter`
+- Fluent `Component` base (`.key()`, `.grow()`, `.when()`, `.live()`), colors with 50–950 palettes, Heroicon aliases, `HtmlString` / `e` / `classes` / `tag`
+
+See [Query builder](/query-builder/overview/) and [Support](/support/overview/).
 
 ## Rendering stack
 
@@ -118,7 +122,6 @@ See [Navigation overview](/navigation/overview/).
 - Semantic `.or-*` CSS (Outfit + Almasix orange by default)
 - `@orbitStyles` / `@orbitScripts` Prism directives
 - Publishable `orbit-assets` tag
+- `.spa()` in-panel navigation (fetch-and-swap of `main.or-content`)
 
-:::note[Still cooking]
-SPA mode and deeper relation-manager tooling are still landing. Resource scaffolding with `--generate` is available — see [Resources](/resources/overview/).
-:::
+See [Configuration](/configuration/) and [Panel configuration](/panels/configuration/).

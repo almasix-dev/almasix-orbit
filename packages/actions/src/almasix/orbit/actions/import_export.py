@@ -1,18 +1,9 @@
 """Import / export action helpers.
 
-Parent wiring:
-- Re-export from ``almasix.orbit.actions`` (done in package ``__init__.py``).
-- Panel/resource pages should mount these like other actions; CSV/JSON handlers are
-  application-provided via ``.action(callback)`` or ``.exporter`` / ``.importer``.
-- ``column_map``, ``chunk_size``, and ``max_rows`` are configuration only; the host
-  reads them via ``to_dict()`` when running import/export jobs.
-
-Adapter contract (Filament-shaped, host-owned jobs):
-- Subclass :class:`Importer` / :class:`Exporter` or pass callables to
-  ``ImportAction.importer`` / ``ExportAction.exporter``.
-- Orbit does **not** run a job queue; the panel host is responsible for uploading,
-  chunking, and notifying. Use ``options_form`` / ``formats`` / ``column_map`` as the
-  Filament-compatible config bag.
+``ImportAction`` / ``ExportAction`` hold the job config (file types, column map,
+chunk size, filename). The default :class:`~almasix.orbit.actions.jobs.ImmediateJobRunner`
+parses CSV/JSON and writes rows inside the request. Swap
+:func:`~almasix.orbit.actions.jobs.set_job_runner` to run the same jobs on a queue.
 """
 
 from __future__ import annotations
@@ -27,10 +18,7 @@ from almasix.orbit.support.html import e
 
 
 class Importer:
-    """Lightweight importer base — apps subclass or pass any callable to ``importer()``.
-
-    Orbit does not run a job queue; the panel host invokes this during import jobs.
-    """
+    """Optional per-chunk hook — the default runner calls this with ``rows=``."""
 
     def __call__(
         self, path: str, *, options: dict[str, Any] | None = None, **kwargs: Any
@@ -39,10 +27,7 @@ class Importer:
 
 
 class Exporter:
-    """Lightweight exporter base — apps subclass or pass any callable to ``exporter()``.
-
-    Orbit does not run a job queue; the panel host invokes this during export jobs.
-    """
+    """Optional export hook — return CSV/JSON text, a dict, or an ``ExportReport``."""
 
     def __call__(self, records: Sequence[Any] | None = None, **kwargs: Any) -> Any:
         raise NotImplementedError("Implement Exporter.__call__ or pass a callable.")
@@ -78,7 +63,7 @@ class ImportAction(Action):
         return self
 
     def options_form(self, schema: Sequence[Component]) -> Self:
-        """Filament-shaped options schema shown in the import modal."""
+        """Extra modal fields merged into the import form."""
         self._options_form = list(schema)
         # Merge into the action form surface so the modal host embeds fields.
         existing = list(self._form_schema)

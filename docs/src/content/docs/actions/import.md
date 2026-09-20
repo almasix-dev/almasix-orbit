@@ -1,65 +1,69 @@
 ---
 title: Import action
-description: ImportAction — upload CSV/JSON with options form, column map, and host-owned Importer adapters.
+description: ImportAction uploads CSV or JSON, maps columns, and writes records through the in-process job runner.
 ---
 
 ## Introduction
 
-`ImportAction` opens a modal for uploading records. Defaults: name `import`, label **Import**, arrow-up-tray icon, gray color, modal on.
+`ImportAction` is the header button that brings records in. The operator opens a modal, supplies a CSV or JSON payload, and Orbit runs the job **in the same request**: parse → apply `.column_map()` → chunk → write rows onto the resource (or call your `.importer()`).
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.actions import ImportAction
-from almasix.orbit.forms import TextInput
 
-ImportAction.make()
-    .accepted_file_types([".csv", ".json"])
-    .options_form([TextInput.make("delimiter").label("Delimiter").default(",")])
-    .column_map({"Title": "title", "Status": "status"})
-    .chunk_size(500)
-    .max_rows(10_000)
-    .importer(run_import)
+table.header_actions([
+    ImportAction.make()
+        .accepted_file_types([".csv", ".json"])
+        .column_map({"Title": "title", "Status": "status"})
+        .chunk_size(100)
+        .max_rows(10_000),
+])
 ```
+
+The list host listens for `mountAction("import", payload={...})`. Send `content` (the file body) and optional `filename`; the runner returns `{imported, failed, skipped, chunks, errors}` and dispatches `orbit-import-finished`.
 
 ![Orbit ImportAction (light)](/examples/light/actions/import.png)
 
 ![Orbit ImportAction (dark)](/examples/dark/actions/import.png)
 
-## Configuration bag
+## Configuration
 
 | Method | Role |
 |--------|------|
-| `.accepted_file_types` | Extensions / MIME hints (`data-accept`) |
-| `.options` | Opaque dict merged into job options |
-| `.options_form` | Extra modal fields (also merged into `.form`) |
-| `.column_map` | Header → attribute mapping |
-| `.chunk_size` | Rows per chunk (default `500`) |
+| `.accepted_file_types` | Extensions shown on the file input |
+| `.options` | Extra dict merged into the job (e.g. `delimiter`) |
+| `.options_form` | Extra modal fields |
+| `.column_map` | CSV header → attribute |
+| `.chunk_size` | Rows per write (default `500`) |
 | `.max_rows` | Hard cap (`None` = unlimited) |
-| `.importer` | Callable / `Importer` subclass |
+| `.importer` | Optional per-chunk callable |
 
-## Adapter contract
+Without an importer, the list host appends each mapped row to the resource’s records.
 
-Orbit does **not** run a job queue. The panel host uploads the file, reads `to_dict()` config, and invokes your importer.
+## Custom importer
+
+When you need to hit an API or an ORM yourself, pass `.importer(...)`. It is called as `importer(path, options=..., rows=chunk)` for every chunk.
 
 ```python title="app/orbit/importers/post_importer.py"
-from almasix.orbit.actions import Importer
+from almasix.orbit.actions import Importer, ImportAction
 
 class PostImporter(Importer):
-    def __call__(self, path: str, *, options=None, **kwargs):
-        # Parse CSV/JSON at path; honor options["delimiter"], column_map, chunks…
-        return imported_count
-```
-
-Wire either a subclass instance or any callable:
-
-```python title="app/orbit/actions/import_wire.py"
-from almasix.orbit.actions import ImportAction
+    def __call__(self, path, *, options=None, rows=None, **kwargs):
+        Post.insert(list(rows or []))
 
 ImportAction.make().importer(PostImporter())
-# or
-ImportAction.make().action(lambda path, **_: custom_import(path))
 ```
 
-`.call()` prefers `.using` / `.action` when set; otherwise calls `.importer`.
+## Queueing
+
+The default `ImmediateJobRunner` runs inside the request. Replace it to push the same `ImportAction` onto a queue:
+
+```python title="app/providers/orbit_panel_provider.py"
+from almasix.orbit.actions import set_job_runner
+
+set_job_runner(CeleryJobRunner())
+```
+
+Your runner must implement `run_import(action, source, **kwargs)` and `run_export(action, records, **kwargs)`.
 
 ## On a table header
 
@@ -67,7 +71,7 @@ ImportAction.make().action(lambda path, **_: custom_import(path))
 from almasix.orbit.actions import ExportAction, ImportAction
 
 table.header_actions([
-    ImportAction.make().importer(PostImporter()),
-    ExportAction.make().exporter(PostExporter()),
+    ImportAction.make().column_map({"Title": "title"}),
+    ExportAction.make().filename("posts"),
 ])
 ```

@@ -105,6 +105,8 @@ panel.login(MyLogin).signup().dashboard()
 | `.signup(...)` | Default `False`. Pass `True`/`()` for `Register`, or a custom page. Adds login↔signup links |
 | `.dashboard(...)` | Default `True` → built-in `Dashboard` as panel home (`/`). Pass `False` to use the first resource instead |
 | `.auth_guard("web")` | Guard name |
+| `.spa()` | Same-document navigation for in-panel links (Alpine fetch + history) |
+| `.spa_url_exceptions(...)` | Paths that always do a full page load (login/logout are excluded automatically) |
 | `.dark_mode()` | Enable dark-mode CSS / preference boot |
 | `.theme_switcher()` | Show the light/dark/system toggle (requires dark mode) |
 | `.default_theme_mode(...)` | `"system"` / `"light"` / `"dark"` when the user has no stored choice |
@@ -196,7 +198,12 @@ registry.default("admin")    # mark an already-registered panel as default
 registry.all()               # list[Panel]
 ```
 
-`OrbitServiceProvider` binds `PanelRegistry` as a singleton.
+Also look up a panel by path or host when several are registered:
+
+```python
+registry.get_by_path("docs")           # the panel mounted at /docs
+registry.get_by_domain("admin.example.com")
+```
 
 ## Navigation
 
@@ -221,12 +228,56 @@ You get a full HTML document: sidebar, brand, favicon, theme boot, and links to 
 
 ## Multiple panels
 
-Need a public “docs” panel and a private “admin” panel? Make two IDs, register both, and route to the one you want:
+Need a public “docs” panel and a private “admin” panel? Make two IDs, register both, and bind each to a path (and optionally a host). `PanelRegistry.get_by_path` / `get_by_domain` resolve the active panel:
 
 ```python
-Panel.make("admin").default().path("admin").resources([PostResource])
+Panel.make("admin").default().path("admin").domain("admin.example.com").resources([PostResource])
 Panel.make("docs").path("docs").resources([ArticleResource]).login(False)
 ```
+
+See `examples/orbit-admin` — it registers **app** (authenticated, `/`) and **docs** (guest, `/docs`).
+
+![Orbit multi-panel (light)](/examples/light/panels/configuration/multi-panel.png)
+
+![Orbit multi-panel (dark)](/examples/dark/panels/configuration/multi-panel.png)
+
+## SPA mode
+
+`.spa()` keeps the admin chrome in place and swaps `main.or-content` when the user clicks an in-panel link. Login, logout, register, and MFA challenge always do a full load. Add extra exceptions with `.spa_url_exceptions("/export")`.
+
+```python title="app/orbit/admin/panel.py"
+Panel.make("admin").path("admin").spa().spa_url_exceptions("/export", "/download")
+```
+
+The shell sets `data-orbit-spa="true"` on `<html>`. The Alpine `orbitShell` component fetches the next URL, replaces the main slot, and pushes history. Dispatch `orbit:spa-navigated` if you need to re-init widgets.
+
+![Orbit Panel SPA mode (light)](/examples/light/panels/configuration/spa.png)
+
+![Orbit Panel SPA mode (dark)](/examples/dark/panels/configuration/spa.png)
+
+## Billing
+
+Tenant billing is a first-class slot. `.tenant_billing(True)` mounts `ManageBilling` at `{panel}/billing` and installs an in-process `MemoryBillingProvider` (Starter / Pro plans). Swap in your processor with `.billing_provider(...)`.
+
+```python title="app/orbit/admin/panel.py"
+from almasix.orbit.panels import BillingPlan, MemoryBillingProvider, Panel
+
+Panel.make("admin")
+    .path("admin")
+    .tenant_billing(True)
+    .billing_provider(
+        MemoryBillingProvider(
+            [BillingPlan("pro", "Pro", 2900)],
+            portal_url="https://billing.example.com",
+        )
+    )
+```
+
+Implement `plans`, `current_subscription`, `subscribe`, and `portal_url` on your own provider when you wire Stripe or a similar API. The page POSTs `plan_id` back to `/billing`.
+
+![Orbit Panel billing (light)](/examples/light/panels/configuration/billing.png)
+
+![Orbit Panel billing (dark)](/examples/dark/panels/configuration/billing.png)
 
 See `examples/orbit-admin/app/providers/orbit_panel_provider.py` for a live multi-panel + plugin showcase.
 

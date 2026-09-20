@@ -13,15 +13,21 @@ evaluate(lambda record=None, **_: record["title"], record={"title": "Hi"})
 # "Hi"
 ```
 
+![Orbit evaluate closures (light)](/examples/light/support/closures.png)
+
+![Orbit evaluate closures (dark)](/examples/dark/support/closures.png)
+
 ## Resolution order
 
-When the candidate is callable, `evaluate` tries:
+When the candidate is callable, `evaluate` first **filters** `**ctx` to parameter names the callable actually declares (so `lambda record: …` is not broken by extra utilities). Then it tries:
 
-1. `candidate(**ctx)`
+1. `candidate(**filtered_ctx)`
 2. `candidate(*args)` (if positional args were passed)
-3. `candidate(*args, **ctx)`
+3. `candidate(*args, **filtered_ctx)`
 4. `candidate()`
 5. If all raise `TypeError`, returns the callable unchanged
+
+Callables that accept `**kwargs` receive the full context. Builtins without a usable signature get the full context as well.
 
 That means you can write `lambda record=None, **_:` *or* a zero-arg function *or* something that only accepts `record` — Orbit will meet you halfway.
 
@@ -73,4 +79,4 @@ Invisible components return empty HTML. Disabled ones still render, but won’t 
 
 ## Mental model
 
-Think of closures as stage directions, not a second schema language. Same field tree; manners that depend on who’s in the room. For form-focused examples see [Form closures](/forms/closures/).
+Think of closures as stage directions, not a second schema language. Same field tree; manners that depend on who’s in the room. For form-focused examples see [Form closures](/forms/closures/). Trusted markup in a label or helper uses [`HtmlString`](/support/overview/#html) so `e()` does not escape it.

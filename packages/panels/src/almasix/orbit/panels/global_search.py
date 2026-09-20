@@ -50,12 +50,93 @@ def render_global_search_results(
     return f'<div class="or-global-search-results">{body}</div>'
 
 
-def render_global_search_input(*, debounce_ms: int = 300) -> str:
+def render_global_search_groups(groups: Sequence[dict[str, Any]]) -> str:
+    """Results grouped per resource — ``[{"label": …, "results": [...]}, …]``."""
+    sections: list[str] = []
+    for group in groups:
+        results = list(group.get("results") or [])
+        if not results:
+            continue
+        sections.append(
+            f'<div class="or-gs-group"><p class="or-gs-group-label">{e(group.get("label", ""))}</p>'
+            f"{render_global_search_results(results, limit=len(results))}</div>"
+        )
+    if not sections:
+        return '<div class="or-global-search-results"><p class="or-gs-empty">No results</p></div>'
+    return "".join(sections)
+
+
+def collect_global_search_results(
+    panel: Any,
+    term: str,
+    *,
+    user: Any = None,
+    records_by_resource: dict[Any, Sequence[Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Search every globally searchable resource on ``panel``.
+
+    ``records_by_resource`` supplies the rows to search (the panel route loads
+    them from the ORM or from a resource's seed list before calling this).
+    """
+    needle = str(term or "").strip()
+    if not needle:
+        return []
+    groups: list[dict[str, Any]] = []
+    for resource in panel.get_resources():
+        searchable = getattr(resource, "is_globally_searchable", None)
+        if not callable(searchable) or not searchable():
+            continue
+        if user is not None and not resource.can_view_any(user):
+            continue
+        records = (records_by_resource or {}).get(resource)
+        if records is None:
+            getter = getattr(resource, "get_records", None)
+            records = list(getter()) if callable(getter) else []
+        results = resource.get_global_search_results(needle, records)
+        if results:
+            groups.append(
+                {
+                    "resource": resource,
+                    "label": resource.get_plural_model_label(),
+                    "results": results,
+                }
+            )
+    return groups
+
+
+def render_global_search_input(
+    *,
+    debounce_ms: int = 300,
+    endpoint: str | None = None,
+    placeholder: str = "Search…",
+) -> str:
+    """Topbar search box.
+
+    With ``endpoint`` the box fetches server-rendered results from the panel's
+    global-search route; without one it binds to a ``globalSearch`` host property.
+    """
+    if endpoint is None:
+        return (
+            '<div class="or-global-search" x-data="{ q: \'\' }">'
+            f'<input class="or-input or-global-search-input" type="search" placeholder="{e(placeholder)}" '
+            f'wire:model.live.debounce.{debounce_ms}ms="globalSearch" x-model="q" />'
+            '<div class="or-global-search-panel" wire:ignore.self></div></div>'
+        )
+    state = (
+        "{ q: '', open: false, html: '', timer: null, "
+        "search() { clearTimeout(this.timer); "
+        "if (this.q.trim().length < 2) { this.open = false; this.html = ''; return; } "
+        f"this.timer = setTimeout(() => fetch('{endpoint}?search=' + encodeURIComponent(this.q))"
+        ".then(r => r.text()).then(html => { this.html = html; this.open = true; })"
+        f", {int(debounce_ms)}); }} }}"
+    )
     return (
-        '<div class="or-global-search" x-data="{ q: \'\' }">'
-        f'<input class="or-input or-global-search-input" type="search" placeholder="Search…" '
-        f'wire:model.live.debounce.{debounce_ms}ms="globalSearch" x-model="q" />'
-        '<div class="or-global-search-panel" wire:ignore.self></div></div>'
+        f'<div class="or-global-search" data-orbit-global-search x-data="{e(state)}" '
+        '@click.outside="open = false" @keydown.escape.window="open = false">'
+        f'<input class="or-input or-global-search-input" type="search" placeholder="{e(placeholder)}" '
+        'x-model="q" @input="search()" @focus="q.trim().length > 1 && (open = true)" />'
+        '<div class="or-global-search-panel" x-show="open" x-cloak x-html="html"></div>'
+        "</div>"
     )
 
 

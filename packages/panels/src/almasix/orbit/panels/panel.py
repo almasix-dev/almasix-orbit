@@ -10,6 +10,7 @@ from almasix.orbit.panels.content_width import (
     resolve_content_max_width,
 )
 from almasix.orbit.panels.discover import load_theme_css
+from almasix.orbit.panels.global_search import render_global_search_input
 from almasix.orbit.panels.hooks import register_render_hook, render_hook
 from almasix.orbit.panels.navigation import (
     NavigationBuilder,
@@ -92,6 +93,10 @@ class Panel:
         self._signup: PageOption = False
         self._dashboard: PageOption = True
         self._auth_guard: str | None = None
+        self._mfa_providers: list[Any] = []
+        self._spa_enabled = False
+        self._spa_url_exceptions: list[str] = []
+        self._billing_provider: Any = None
         self._plugin_callbacks: list[Callable[[Panel], Any]] = []
         self._plugins: list[Any] = []
         self._boot_callbacks: list[Callable[[Panel], Any]] = []
@@ -128,6 +133,15 @@ class Panel:
         self._database_notifications: list[dict[str, Any]] = []
         self._database_notifications_position: Literal["topbar", "sidebar"] = "topbar"
         self._database_notifications_polling: str | int | None = "30s"
+        self._database_notification_store: Any = None
+        self._live_broadcasts_enabled = False
+        self._live_broadcasts_polling: str | int | None = "2s"
+        self._broadcast_hub: Any = None
+        self._uploads_enabled = True
+        self._global_search_enabled = True
+        self._global_search_debounce_ms = 300
+        self._global_search_placeholder = "Search…"
+        self._global_search_limit = 10
         self._panel_user: Any = None
         self._content_max_width: str = DEFAULT_CONTENT_MAX_WIDTH
         self._simple_page_max_content_width: str = DEFAULT_SIMPLE_PAGE_MAX_CONTENT_WIDTH
@@ -352,6 +366,30 @@ class Panel:
         self._auth_guard = guard
         return self
 
+    def multi_factor_authentication(self, *providers: Any) -> Self:
+        """Register MFA providers (authenticator TOTP, email codes, or custom)."""
+        flat: list[Any] = []
+        for item in providers:
+            if item is None or item is False:
+                continue
+            if isinstance(item, (list, tuple)):
+                flat.extend(item)
+            else:
+                flat.append(item)
+        self._mfa_providers = flat
+        return self
+
+    def get_mfa_providers(self) -> list[Any]:
+        return list(self._mfa_providers)
+
+    def has_mfa_providers(self) -> bool:
+        return bool(self._mfa_providers)
+
+    def enabled_mfa_providers(self, user: Any) -> list[Any]:
+        from almasix.orbit.panels.mfa import enabled_providers
+
+        return enabled_providers(self._mfa_providers, user)
+
     def tenant(
         self,
         model: type[Any] | Any | bool | None = None,
@@ -389,7 +427,59 @@ class Panel:
     def tenant_billing(self, page: PageOption | type[Any] | bool = True) -> Self:
         tenancy = self._ensure_tenancy()
         tenancy.billing(page)  # type: ignore[arg-type]
+        if page is not False and self._billing_provider is None:
+            from almasix.orbit.panels.billing import MemoryBillingProvider
+
+            self._billing_provider = MemoryBillingProvider()
         return self
+
+    def billing_provider(self, provider: Any) -> Self:
+        """Set the :class:`~almasix.orbit.panels.billing.BillingProvider` for this panel."""
+        self._billing_provider = provider
+        return self
+
+    def get_billing_provider(self) -> Any:
+        return self._billing_provider
+
+    def spa(self, condition: bool = True) -> Self:
+        """Navigate panel links without a full document reload (Alpine fetch + history)."""
+        self._spa_enabled = bool(condition)
+        return self
+
+    def spa_enabled(self) -> bool:
+        return bool(self._spa_enabled)
+
+    def spa_url_exceptions(self, urls: str | Sequence[str], *more: str) -> Self:
+        """Paths that always do a full page load (login/logout are excluded automatically)."""
+        items: list[str] = []
+        if isinstance(urls, str):
+            items.append(urls)
+        else:
+            items.extend(str(u) for u in urls)
+        items.extend(str(u) for u in more)
+        self._spa_url_exceptions.extend(item for item in items if item)
+        return self
+
+    def spa_exceptions(self) -> list[str]:
+        built: list[str] = []
+        if self.login_enabled():
+            built.append(self.url("login"))
+            built.append(self.url("logout"))
+        if self.signup_enabled():
+            built.append(self.url("register"))
+        if self.has_mfa_providers():
+            built.append(self.url("mfa-challenge"))
+        return built + list(self._spa_url_exceptions)
+
+    def _spa_html_attrs(self) -> str:
+        if not self._spa_enabled:
+            return ""
+        exceptions = ",".join(e(item) for item in self.spa_exceptions())
+        root = e(self.get_path() or "/")
+        return (
+            f' data-orbit-spa="true" data-orbit-spa-root="{root}" '
+            f'data-orbit-spa-exceptions="{exceptions}"'
+        )
 
     def tenant_middleware(
         self,
@@ -621,12 +711,153 @@ class Panel:
             self._database_notifications.append(item.to_dict())
         else:
             self._database_notifications.append(dict(item))
+        store = self._database_notification_store
+        if store is not None:
+            try:
+                store.save(dict(self._database_notifications[-1]))
+            except Exception:
+                pass
         return self
+
+    def database_notifications_enabled(self) -> bool:
+        return bool(self._database_notifications_enabled)
+
+    def database_notifications_store(self, store: Any) -> Self:
+        """Use a :class:`~almasix.orbit.notifications.store.DatabaseNotificationStore`."""
+        self._database_notification_store = store
+        try:
+            from almasix.orbit.notifications import get_notifier
+
+            get_notifier().use_store(store)
+        except Exception:
+            pass
+        if store is not None:
+            for item in list(self._database_notifications):
+                try:
+                    store.save(dict(item))
+                except Exception:
+                    pass
+        return self
+
+    def get_notification_store(self) -> Any:
+        return self._database_notification_store
+
+    def sqlite_notifications(self, path: str = "orbit-notifications.sqlite") -> Self:
+        """Persist the database bell with stdlib SQLite (file path or ``:memory:``)."""
+        from almasix.orbit.notifications import SqliteNotificationStore
+
+        if not self._database_notifications_enabled:
+            self.database_notifications(True)
+        return self.database_notifications_store(SqliteNotificationStore(path))
+
+    def notifications_url(self) -> str:
+        from almasix.orbit.panels.notification_routes import panel_notifications_url
+
+        return panel_notifications_url(self)
+
+    def live_broadcasts(
+        self,
+        enabled: bool | Any = True,
+        *,
+        polling: str | int | None = "2s",
+        hub: Any = None,
+    ) -> Self:
+        """Enable the ``/orbit-live`` poll endpoint and bind a broadcast hub."""
+        from almasix.orbit.notifications import MemoryBroadcastHub, set_broadcast_hub
+
+        self._live_broadcasts_polling = polling
+        if enabled is False:
+            self._live_broadcasts_enabled = False
+            return self
+        if enabled is not True:
+            hub = enabled
+        self._live_broadcasts_enabled = True
+        if hub is not None:
+            self._broadcast_hub = hub
+        elif self._broadcast_hub is None:
+            self._broadcast_hub = MemoryBroadcastHub()
+        set_broadcast_hub(self._broadcast_hub)
+        return self
+
+    def live_broadcasts_enabled(self) -> bool:
+        return bool(self._live_broadcasts_enabled)
+
+    def get_broadcast_hub(self) -> Any:
+        return self._broadcast_hub
+
+    def live_url(self) -> str:
+        from almasix.orbit.panels.notification_routes import panel_live_url
+
+        return panel_live_url(self)
 
     def notifications(self, condition: bool = True) -> Self:
         """Enable the toast notification host (default on)."""
         self._notifications_enabled = bool(condition)
         return self
+
+    def uploads(self, condition: bool = True) -> Self:
+        """Toggle this panel's file-upload endpoint (on by default)."""
+        self._uploads_enabled = bool(condition)
+        return self
+
+    def uploads_enabled(self) -> bool:
+        return bool(self._uploads_enabled)
+
+    def upload_url(self) -> str:
+        """URL ``FileUpload`` fields post to on this panel."""
+        from almasix.orbit.panels.uploads import panel_upload_url
+
+        return panel_upload_url(self)
+
+    def global_search(
+        self,
+        condition: bool = True,
+        *,
+        debounce: int | None = None,
+        placeholder: str | None = None,
+        limit: int | None = None,
+    ) -> Self:
+        """Toggle and configure the topbar global search box (default on).
+
+        The box only appears once at least one resource declares
+        ``global_search_attributes``.
+        """
+        self._global_search_enabled = bool(condition)
+        if debounce is not None:
+            self._global_search_debounce_ms = int(debounce)
+        if placeholder is not None:
+            self._global_search_placeholder = str(placeholder)
+        if limit is not None:
+            self._global_search_limit = int(limit)
+        return self
+
+    def global_search_debounce(self, milliseconds: int) -> Self:
+        self._global_search_debounce_ms = int(milliseconds)
+        return self
+
+    def global_search_placeholder(self, text: str) -> Self:
+        self._global_search_placeholder = str(text)
+        return self
+
+    def global_search_limit(self, limit: int) -> Self:
+        """Cap on results shown across all resources."""
+        self._global_search_limit = int(limit)
+        return self
+
+    def has_global_search(self) -> bool:
+        """True when search is enabled and some resource opts in."""
+        if not self._global_search_enabled:
+            return False
+        return any(
+            callable(getattr(resource, "is_globally_searchable", None))
+            and resource.is_globally_searchable()
+            for resource in self.get_resources()
+        )
+
+    def global_search_url(self) -> str:
+        """URL of this panel's global-search endpoint."""
+        prefix = self.get_path().rstrip("/")
+        return f"{prefix}/global-search" if prefix and prefix != "/" else "/global-search"
 
     def user(self, user: OrbitUser | Any | None) -> Self:
         """Panel principal used when Almasix Auth has no session user."""
@@ -1328,6 +1559,7 @@ class Panel:
         active_path: str | None = None,
         extra_head: str = "",
         bare: bool = False,
+        record_title: str | None = None,
     ) -> str:
         """Render the admin document shell around page ``content``.
 
@@ -1473,7 +1705,7 @@ class Panel:
                 '  <div class="or-main">\n'
                 f"{topbar_html}"
                 f'    {render_hook("panels::content.start", scope=scope, user=user)}\n'
-                f"{self._render_breadcrumbs(active_path)}"
+                f"{self._render_breadcrumbs(active_path, record_title)}"
                 f'    <main class="or-content">{content_inner}</main>\n'
                 f'    {render_hook("panels::content.end", scope=scope, user=user)}\n'
                 "  </div>\n"
@@ -1514,7 +1746,8 @@ class Panel:
 
         return (
             "<!DOCTYPE html>\n"
-            f'<html lang="en" translate="no" data-orbit-panel="{e(self.id)}" data-theme="light">\n'
+            f'<html lang="en" translate="no" data-orbit-panel="{e(self.id)}" '
+            f'data-theme="light"{self._spa_html_attrs()}>\n'
             "<head>\n"
             '  <meta charset="utf-8" />\n'
             '  <meta name="viewport" content="width=device-width, initial-scale=1" />\n'
@@ -1555,11 +1788,17 @@ class Panel:
             "</html>"
         )
 
-    def breadcrumbs(self, active_path: str | None = None) -> list[dict[str, str | None]]:
+    def breadcrumbs(
+        self,
+        active_path: str | None = None,
+        *,
+        record_title: str | None = None,
+    ) -> list[dict[str, str | None]]:
         """Resolve breadcrumb items for ``active_path``.
 
         Each item is ``{"label": str, "url": str | None}``. The last item is the
-        current page (``url`` is ``None``).
+        current page (``url`` is ``None``). ``record_title`` replaces the generic
+        "View" / "Edit" leaf on a record page.
         """
         for res in self._resources:
             res._panel_path = self.get_path()  # type: ignore[attr-defined]
@@ -1648,13 +1887,18 @@ class Panel:
                 crumbs[-1]["url"] = None
                 return crumbs
             action = segments[-1]
+            title = str(record_title).strip() if record_title else ""
             if action == "create":
                 crumbs.append({"label": "Create", "url": None})
             elif action == "edit":
+                if title:
+                    crumbs.append(
+                        {"label": title, "url": self._record_view_url(resource, segments)}
+                    )
                 crumbs.append({"label": "Edit", "url": None})
             else:
                 # /{slug}/{id} view (len(segments) >= 2 after the early return above)
-                crumbs.append({"label": "View", "url": None})
+                crumbs.append({"label": title or "View", "url": None})
             return crumbs
 
         if page is not None:
@@ -1672,10 +1916,21 @@ class Panel:
             crumbs.append({"label": label, "url": url})
         return crumbs
 
-    def _render_breadcrumbs(self, active_path: str | None) -> str:
+    def _record_view_url(self, resource: Any, segments: list[str]) -> str | None:
+        """View URL for ``/{slug}/{id}/edit`` so the record crumb stays clickable."""
+        if len(segments) < 2:
+            return None
+        try:
+            return str(resource.page_url("view", {"id": segments[1]}))
+        except Exception:
+            return None
+
+    def _render_breadcrumbs(
+        self, active_path: str | None, record_title: str | None = None
+    ) -> str:
         if not self._breadcrumbs_enabled:
             return ""
-        items = self.breadcrumbs(active_path)
+        items = self.breadcrumbs(active_path, record_title=record_title)
         if len(items) <= 1:
             # Home-only: omit the trail (the brand already marks where you are).
             return ""
@@ -2005,7 +2260,7 @@ class Panel:
         ):
             db_notify = (
                 f'<div class="or-sidebar-notifications">'
-                f"{self._render_database_notifications_trigger()}</div>"
+                f"{self._render_database_notifications_trigger(user=user)}</div>"
             )
 
         collapse_btn = ""
@@ -2222,7 +2477,16 @@ class Panel:
         parts: list[str] = []
         scope = self.id
         parts.append(render_hook("panels::global-search.before", scope=scope, user=user))
-        parts.append('<div class="or-global-search-slot" data-orbit-global-search></div>')
+        if self.has_global_search():
+            parts.append(
+                render_global_search_input(
+                    debounce_ms=self._global_search_debounce_ms,
+                    endpoint=self.global_search_url(),
+                    placeholder=self._global_search_placeholder,
+                )
+            )
+        else:
+            parts.append('<div class="or-global-search-slot" data-orbit-global-search></div>')
         parts.append(render_hook("panels::global-search.after", scope=scope, user=user))
 
         tenancy = self._tenancy
@@ -2250,7 +2514,7 @@ class Panel:
             and self._database_notifications_enabled
             and self._database_notifications_position == "topbar"
         ):
-            parts.append(self._render_database_notifications_trigger())
+            parts.append(self._render_database_notifications_trigger(user=user))
 
         parts.append(render_hook("panels::user-menu.before", scope=scope, user=user))
         if (
@@ -2263,8 +2527,7 @@ class Panel:
         parts.append(render_hook("panels::user-menu.after", scope=scope, user=user))
         return "".join(parts)
 
-    def _polling_ms(self) -> int | None:
-        raw = self._database_notifications_polling
+    def _interval_ms(self, raw: str | int | None) -> int | None:
         if raw is None:
             return None
         if isinstance(raw, int):
@@ -2287,11 +2550,25 @@ class Panel:
         except ValueError:
             return None
 
-    def _render_database_notifications_trigger(self) -> str:
+    def _polling_ms(self) -> int | None:
+        return self._interval_ms(self._database_notifications_polling)
+
+    def _live_polling_ms(self) -> int | None:
+        return self._interval_ms(self._live_broadcasts_polling)
+
+    def _render_database_notifications_trigger(self, user: Any = None) -> str:
         import json
         from uuid import uuid4
 
+        from almasix.orbit.panels.notification_routes import panel_notifications_url
+
         notes = list(self._database_notifications)
+        store = self._database_notification_store
+        if store is not None:
+            try:
+                notes = [row.to_dict() for row in store.get_for_user(user)] or notes
+            except Exception:
+                pass
         normalized: list[dict[str, Any]] = []
         for note in notes:
             row = dict(note)
@@ -2303,6 +2580,7 @@ class Panel:
         unread = sum(1 for n in normalized if not n.get("read"))
         polling = self._polling_ms()
         polling_attr = f' data-polling="{polling}"' if polling else ' data-polling=""'
+        url_attr = f' data-orbit-notifications-url="{e(panel_notifications_url(self))}"'
         payload = e(json.dumps(normalized))
         bell = render_icon("heroicon-o-bell", size=_TOPBAR_ICON)
         badge = (
@@ -2313,7 +2591,7 @@ class Panel:
         )
         return (
             f'<div class="or-notify" x-data="orbitDatabaseNotifications" '
-            f'data-notifications="{payload}"{polling_attr} '
+            f'data-notifications="{payload}"{polling_attr}{url_attr} '
             f'@click.outside="open = false">'
             '<button type="button" class="or-icon-btn or-notify-btn" @click="toggle()" '
             f'aria-label="Notifications" aria-haspopup="true">{bell}{badge}</button>'
@@ -2342,7 +2620,17 @@ class Panel:
         try:
             from almasix.orbit.notifications import get_notifier
 
-            return get_notifier().render_toast_host(include_flash=True)
+            html = get_notifier().render_toast_host(include_flash=True)
+            if self._live_broadcasts_enabled:
+                from almasix.orbit.panels.notification_routes import panel_live_url
+
+                polling = self._live_polling_ms() or 0
+                return (
+                    f'<div class="or-live-notifier" x-data="orbitLiveNotifications" '
+                    f'data-orbit-live-url="{e(panel_live_url(self))}" '
+                    f'data-polling="{polling}">{html}</div>'
+                )
+            return html
         except ImportError:  # pragma: no cover
             from almasix.orbit.notifications.alignment import Notifications
 
@@ -2377,6 +2665,10 @@ class Panel:
             "default_theme_mode": self._default_theme_mode,
             "breadcrumbs": self._breadcrumbs_enabled,
             "tenancy": self._tenancy.to_dict() if self._tenancy is not None else None,
+            "mfa_providers": [
+                p.get_id() if hasattr(p, "get_id") else type(p).__name__ for p in self._mfa_providers
+            ],
+            "spa": self._spa_enabled,
         }
 
 
@@ -2451,3 +2743,29 @@ class PanelRegistry:
 
     def all(self) -> list[Panel]:
         return list(self._panels.values())
+
+    def get_by_path(self, path: str | None) -> Panel | None:
+        """Find a registered panel whose path matches ``path``."""
+        cleaned = (path or "").strip() or "/"
+        if not cleaned.startswith("/"):
+            cleaned = f"/{cleaned}"
+        if cleaned != "/":
+            cleaned = cleaned.rstrip("/")
+        for panel in self.all():
+            candidate = panel.get_path() or "/"
+            if candidate != "/":
+                candidate = candidate.rstrip("/")
+            if candidate == cleaned:
+                return panel
+        return None
+
+    def get_by_domain(self, domain: str | None) -> Panel | None:
+        """Find a registered panel bound to ``domain`` (host, no port)."""
+        host = str(domain or "").split("/")[0].split(":")[0].strip().lower()
+        if not host:
+            return None
+        for panel in self.all():
+            bound = (panel.get_domain() or "").split(":")[0].strip().lower()
+            if bound and bound == host:
+                return panel
+        return None

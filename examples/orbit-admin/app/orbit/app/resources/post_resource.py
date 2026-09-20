@@ -5,11 +5,39 @@ from __future__ import annotations
 from typing import Any
 
 from almasix.orbit import Resource
-from almasix.orbit.forms import Form, Select, TextInput, Textarea
+from almasix.orbit.actions import ExportAction, ImportAction
+from almasix.orbit.forms import (
+    FileUpload,
+    Form,
+    KeyValue,
+    ModalTableSelect,
+    RichEditor,
+    Select,
+    TextInput,
+)
 from almasix.orbit.panels.pages import Tab
-from almasix.orbit.tables import Average, Count, Filter, FilterGroup, SelectFilter, Sum, Table, TextColumn
+from almasix.orbit.query_builder import (
+    BooleanConstraint,
+    NumberConstraint,
+    QueryBuilder,
+    SelectConstraint,
+    TextConstraint,
+)
+from almasix.orbit.tables import (
+    Average,
+    Count,
+    Filter,
+    FilterGroup,
+    QueryBuilderFilter,
+    SelectFilter,
+    Sum,
+    Table,
+    TextColumn,
+)
 
 from app.models.post import Post
+from app.orbit.app.relations.comments_relation_manager import CommentsRelationManager
+from app.orbit.app.resources.author_resource import AuthorResource
 
 
 class PostResource(Resource):
@@ -19,6 +47,13 @@ class PostResource(Resource):
     navigation_icon = "heroicon-o-pencil-square"
     navigation_sort = 1
     record_title_attribute = "title"
+    model_label = "Post"
+    global_search_attributes = ("title", "body")
+    global_search_result_details = ("status",)
+
+    @classmethod
+    def get_relations(cls) -> list[type[Any]]:
+        return [CommentsRelationManager]
 
     @classmethod
     def get_tabs(cls) -> list[Tab]:
@@ -62,7 +97,35 @@ class PostResource(Resource):
                 .options({"draft": "Draft", "review": "Review", "published": "Published"})
                 .required(),
                 TextInput.make("amount").numeric().label("Amount"),
-                Textarea.make("body").rows(6),
+                ModalTableSelect.make("author_id")
+                .label("Author")
+                .records(AuthorResource.get_records)
+                .title_attribute("name")
+                .browse_label("Browse authors")
+                .modal_heading("Pick an author")
+                .helper_text("Opens the authors table in a modal."),
+                FileUpload.make("cover")
+                .label("Cover image")
+                .image()
+                .directory("post-covers")
+                .max_size(2048)
+                .image_preview()
+                .openable()
+                .downloadable(),
+                RichEditor.make("body")
+                .toolbar_buttons(
+                    ["bold", "italic", "h2", "bulletList", "orderedList", "link", "undo"]
+                )
+                .placeholder("Write the post…")
+                .merge_tags(["author_name", "site_name"])
+                .min_height("16rem"),
+                KeyValue.make("meta")
+                .label("Metadata")
+                .key_label("Attribute")
+                .value_label("Value")
+                .key_placeholder("e.g. reading_time")
+                .value_placeholder("e.g. 4 min")
+                .add_action_label("Add attribute"),
             ]
         )
 
@@ -117,9 +180,41 @@ class PostResource(Resource):
                             ),
                         ]
                     ),
+                    QueryBuilderFilter.make("query")
+                    .label("Rules")
+                    .builder(
+                        QueryBuilder.make()
+                        .constraints(
+                            [
+                                TextConstraint.make("title").label("Title"),
+                                SelectConstraint.make("status")
+                                .label("Status")
+                                .options(
+                                    {
+                                        "draft": "Draft",
+                                        "review": "Review",
+                                        "published": "Published",
+                                    }
+                                ),
+                                NumberConstraint.make("amount").label("Amount"),
+                                BooleanConstraint.make("featured").label("Featured"),
+                            ]
+                        )
+                    ),
                 ]
             )
             .defer_filters()
             .persist_filters_in_session()
             .stacked_on_mobile()
+            .header_actions(
+                [
+                    ImportAction.make()
+                    .column_map({"Title": "title", "Status": "status", "Amount": "amount"})
+                    .chunk_size(100),
+                    ExportAction.make()
+                    .formats(["csv", "json"])
+                    .columns(["title", "status", "amount"])
+                    .filename("posts"),
+                ]
+            )
         )

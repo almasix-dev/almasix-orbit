@@ -7,6 +7,7 @@ from typing import Any, ClassVar
 from almasix.orbit import Resource
 from almasix.orbit.actions import Action
 from almasix.orbit.forms import Form, TextInput
+from almasix.orbit.notifications import Notification
 from almasix.orbit.tables import Table, TextColumn
 
 
@@ -36,7 +37,7 @@ class NotificationsOverviewResource(Resource):
         {
             "id": 3,
             "title": "Broadcast bridge",
-            "note": "Live button dispatches orbit:notify (Echo bridges to this).",
+            "note": "Live button publishes to the panel broadcast hub.",
         },
     ]
 
@@ -60,7 +61,8 @@ class NotificationsOverviewResource(Resource):
             .description(
                 "Fire success / danger toasts from the header. "
                 "Check the bell for seeded database notifications. "
-                "Live demo dispatches orbit:notify (Echo bridges here)."
+                "Live demo publishes through the panel broadcast hub "
+                "(`Notification.broadcast()` + `/orbit-live` polling)."
             )
             .columns(
                 [
@@ -108,7 +110,13 @@ class NotificationsOverviewResource(Resource):
                             ),
                         }
                     )
-                    .action(lambda **_: None),
+                    .action(
+                        lambda **_: Notification.make()
+                        .title("Deploy finished")
+                        .success()
+                        .body("v1.4.2 is live on production.")
+                        .broadcast()
+                    ),
                 ]
             )
             .records(cls.get_records())

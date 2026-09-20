@@ -107,6 +107,7 @@ from almasix.orbit.panels.navigation import (
 from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.pages.dashboard import Dashboard
 from almasix.orbit.panels.panel import Panel
+from almasix.orbit.panels.relation_manager import RelationManager
 from almasix.orbit.panels.resource import Resource
 from almasix.orbit.panels.tenancy import Tenancy, Tenant
 from almasix.orbit.panels.users import OrbitUser, PanelNotification, UserMenuItem
@@ -761,6 +762,33 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .image_preview_height(120)
             .render(),
         ),
+        "forms/file-upload/stored-files": (
+            "File upload — stored files",
+            FileUpload.make("gallery")
+            .label("Gallery")
+            .image()
+            .multiple()
+            .openable()
+            .downloadable()
+            .upload_url("/admin/orbit-upload")
+            .render(
+                [
+                    {
+                        "path": "post-covers/launch.png",
+                        "url": (
+                            "data:image/svg+xml;utf8,"
+                            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'>"
+                            "<rect width='120' height='120' fill='%236366f1'/>"
+                            "<circle cx='60' cy='48' r='22' fill='%23c7d2fe'/>"
+                            "<path d='M12 108 L48 64 L78 100 L96 82 L120 108 Z' fill='%234338ca'/>"
+                            "</svg>"
+                        ),
+                        "name": "launch.png",
+                    },
+                    {"path": "post-covers/press-kit.pdf", "name": "press-kit.pdf"},
+                ]
+            ),
+        ),
         "forms/file-upload/size-limits": (
             "File upload — size limits",
             FileUpload.make("attachment")
@@ -957,6 +985,16 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .toolbar_buttons(["bold", "italic"])
             .render("<p>Live updates on change.</p>"),
         ),
+        "forms/rich-editor/merge-tags": (
+            "Rich editor — merge tags",
+            RichEditor.make("message")
+            .label("Message")
+            .toolbar_buttons(["bold", "italic", "h2", "bulletList", "link"])
+            .merge_tags(["customer_name", "invoice_total"])
+            .placeholder("Write the message…")
+            .min_height("12rem")
+            .render(""),
+        ),
         "forms/rich-editor/toolbar": (
             "Rich editor — toolbar",
             RichEditor.make("body")
@@ -1028,6 +1066,26 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             KeyValue.make("meta")
             .label("Metadata")
             .render({"version": "1.0", "env": "production"}),
+        ),
+        "forms/key-value/editing": (
+            "Key-value — editing rows",
+            KeyValue.make("meta")
+            .label("Metadata")
+            .key_label("Attribute")
+            .value_label("Value")
+            .key_placeholder("e.g. reading_time")
+            .value_placeholder("e.g. 4 min")
+            .add_action_label("Add attribute")
+            .render({"reading_time": "4 min", "audience": "developers"}),
+        ),
+        "forms/key-value/locked-keys": (
+            "Key-value — locked keys",
+            KeyValue.make("limits")
+            .label("Plan limits")
+            .editable_keys(False)
+            .addable(False)
+            .deletable(False)
+            .render({"seats": "25", "projects": "10"}),
         ),
         "forms/key-value/required": (
             "Key-value — required",
@@ -1241,6 +1299,19 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .options({"1": "Ada", "2": "Grace", "10": "Engineering"})
             .render({"type": "App\\Models\\User", "id": "1"}),
         ),
+        "forms/morph-to-select/live-search": (
+            "Morph-to select — live search",
+            MorphToSelect.make("assignee")
+            .label("Assignee")
+            .searchable()
+            .types([{"type": "user", "label": "User"}, {"type": "team", "label": "Team"}])
+            .options_using(
+                lambda type="", search="": (
+                    {"1": "Ada Lovelace", "2": "Grace Hopper"} if type == "user" else {}
+                )
+            )
+            .render({"type": "user", "id": "2"}, morph_search={"assignee": "hopper"}),
+        ),
         "forms/morph-to-select/searchable": (
             "Morph-to select — searchable",
             MorphToSelect.make("assignee")
@@ -1305,6 +1376,22 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .label("Product")
             .disabled_on("view")
             .render("SKU-42", operation="view"),
+        ),
+        "forms/modal-table-select/picker": (
+            "Modal table select — picker open",
+            ModalTableSelect.make("author_id")
+            .label("Author")
+            .modal_heading("Pick an author")
+            .browse_label("Browse authors")
+            .title_attribute("name")
+            .records(
+                [
+                    {"id": "1", "name": "Ada Lovelace"},
+                    {"id": "2", "name": "Grace Hopper"},
+                    {"id": "3", "name": "Katherine Johnson"},
+                ]
+            )
+            .render(None, table_select={"field": "author_id", "search": ""}),
         ),
         "forms/modal-table-select/populated": (
             "Modal table select — populated",
@@ -3815,6 +3902,26 @@ def build_notification_variants() -> dict[str, tuple[str, str]]:
             "Broadcast — live host",
             live_html,
         ),
+        "notifications/database-notifications/sqlite": (
+            "Database — SQLite store",
+            _db_panel()
+            + '<p class="or-muted" style="margin-top:0.75rem;font-size:0.8125rem;'
+            'color:var(--or-muted)">SqliteNotificationStore persists the bell '
+            "across requests.</p>",
+        ),
+        "notifications/broadcast-notifications/hub": (
+            "Broadcast — hub",
+            live_html
+            + '<p class="or-muted" style="margin-top:0.75rem;font-size:0.8125rem;'
+            'color:var(--or-muted)">MemoryBroadcastHub records payloads for '
+            "<code>/orbit-live</code>.</p>",
+        ),
+        "notifications/broadcast-notifications/live-endpoint": (
+            "Broadcast — live endpoint",
+            live_html
+            + '<p class="or-muted" style="margin-top:0.75rem;font-size:0.8125rem;'
+            'color:var(--or-muted)">GET /orbit-live?since=0 returns new events.</p>',
+        ),
     }
 
 
@@ -3943,4 +4050,275 @@ def build_tenancy_variants() -> dict[str, tuple[str, str]]:
             "Tenancy — scoped list",
             scoped_shell,
         ),
+    }
+
+
+# --- resources ---------------------------------------------------------------
+
+
+class _GalleryCommentsRelation(RelationManager):
+    relationship = "comments"
+    title = "Comments"
+    description = "Reader replies attached to this post."
+    record_title_attribute = "author"
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return table.columns(
+            [
+                TextColumn.make("author").label("Author").searchable(),
+                TextColumn.make("body").label("Comment").limit(60),
+                TextColumn.make("status").label("Status").badge(),
+            ]
+        )
+
+
+class _GalleryPostResource(Resource):
+    model = type("Post", (), {})
+    slug = "posts"
+    navigation_label = "Posts"
+    record_title_attribute = "title"
+    model_label = "Post"
+    global_search_attributes = ("title", "body")
+    global_search_result_details = ("status",)
+    records: list[dict] = [
+        {
+            "id": 1,
+            "title": "Launch Orbit",
+            "status": "published",
+            "body": "Ship the admin panel.",
+            "comments": [
+                {"id": 1, "author": "Ada Lovelace", "body": "Shipping this week?", "status": "visible"},
+                {"id": 2, "author": "Grace Hopper", "body": "The tables feel fast now.", "status": "visible"},
+                {"id": 3, "author": "Anon", "body": "Removed by a moderator.", "status": "hidden"},
+            ],
+        }
+    ]
+
+    @classmethod
+    def get_records(cls) -> list[dict]:
+        return list(cls.records)
+
+    @classmethod
+    def infolist(cls, infolist: Infolist) -> Infolist:
+        return infolist.schema(
+            [
+                TextEntry.make("title").label("Title").weight("bold"),
+                TextEntry.make("status").label("Status").badge().color("success"),
+                TextEntry.make("body").label("Body"),
+            ]
+        )
+
+    @classmethod
+    def get_relations(cls) -> list[type]:
+        return [_GalleryCommentsRelation]
+
+
+class _GalleryArchiveResource(Resource):
+    model = type("Archive", (), {})
+    slug = "archives"
+    navigation_label = "Archive"
+    records_mutable = True
+    soft_deletes = True
+    records: list[dict] = [
+        {"id": 1, "title": "Quarterly report", "deleted_at": None},
+        {"id": 2, "title": "Legacy pricing page", "deleted_at": "2026-02-01"},
+    ]
+
+    @classmethod
+    def get_records(cls) -> list[dict]:
+        return list(cls.records)
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return table.heading("Archive").columns(
+            [
+                TextColumn.make("title").label("Title"),
+                TextColumn.make("deleted_at").label("Deleted").placeholder("—"),
+            ]
+        )
+
+
+def build_query_builder_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for the Query builder docs shots."""
+    from almasix.orbit.query_builder import (
+        BooleanConstraint,
+        DateConstraint,
+        NumberConstraint,
+        QueryBuilder,
+        SelectConstraint,
+        TextConstraint,
+    )
+    from almasix.orbit.tables import QueryBuilderFilter, Table, TextColumn
+
+    constraints = [
+        TextConstraint.make("title").label("Title"),
+        SelectConstraint.make("status")
+        .label("Status")
+        .options({"draft": "Draft", "published": "Published"}),
+        NumberConstraint.make("views").label("Views"),
+        DateConstraint.make("published_at").label("Published"),
+        BooleanConstraint.make("featured").label("Featured"),
+    ]
+    records = [
+        {"title": "Launch Orbit", "status": "published", "views": 120},
+        {"title": "Draft note", "status": "draft", "views": 3},
+    ]
+
+    basic = QueryBuilder.make().constraints(constraints).render()
+    populated = (
+        QueryBuilder.make()
+        .constraints(constraints)
+        .add_rule("title", "contains", "orbit")
+        .add_rule("status", "equals", "published")
+        .add_rule("views", "greater_than", 10)
+        .render()
+    )
+    or_logic = (
+        QueryBuilder.make()
+        .constraints(constraints)
+        .logic("or")
+        .add_rule("status", "equals", "draft")
+        .add_rule("featured", "equals", True)
+        .render()
+    )
+    table = (
+        Table.make("posts")
+        .columns(
+            [
+                TextColumn.make("title").label("Title"),
+                TextColumn.make("status").label("Status"),
+            ]
+        )
+        .filters(
+            [
+                QueryBuilderFilter.make("query")
+                .label("Rules")
+                .builder(
+                    QueryBuilder.make()
+                    .constraints(constraints)
+                    .add_rule("title", "contains", "orbit")
+                )
+            ]
+        )
+        .records(records)
+        .filter_state(
+            {
+                "query": [
+                    {"constraint": "title", "operator": "contains", "value": "orbit"},
+                ]
+            }
+        )
+    )
+    table_html = table.render().replace(
+        'class="or-filters-panel" x-show="filtersOpen" x-cloak',
+        'class="or-filters-panel"',
+        1,
+    )
+
+    return {
+        "query-builder/overview": ("Query builder — overview", populated),
+        "query-builder/overview/constraints": ("Query builder — constraints", basic),
+        "query-builder/overview/rules": ("Query builder — populated rules", populated),
+        "query-builder/overview/or-logic": ("Query builder — any rule", or_logic),
+        "query-builder/overview/table-filter": ("Query builder — table filter", table_html),
+    }
+
+
+def build_resource_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for the Resources docs shots."""
+    from almasix.orbit.panels.global_search import render_global_search_groups
+    from almasix.orbit.panels.pages.resource_pages import ViewRecord
+
+    _GalleryPostResource._panel_path = "/admin"
+    _GalleryArchiveResource._panel_path = "/admin"
+    record = _GalleryPostResource.records[0]
+
+    class _BoundView(ViewRecord):
+        resource = _GalleryPostResource
+
+    view_page = _BoundView.render(record=record)
+    relation = _GalleryCommentsRelation.render(record)
+
+    results = render_global_search_groups(
+        [
+            {
+                "label": "Posts",
+                "results": _GalleryPostResource.get_global_search_results("launch", [record]),
+            },
+            {
+                "label": "Authors",
+                "results": [
+                    {
+                        "title": "Ada Lovelace",
+                        "url": "/admin/authors/1",
+                        "details": {"Email": "ada@orbit.test"},
+                    }
+                ],
+            },
+        ]
+    )
+    search = (
+        '<div class="or-global-search" style="width: 26rem">'
+        '<input class="or-input or-global-search-input" type="search" value="launch" />'
+        '<div class="or-global-search-panel" '
+        'style="position: static; width: 100%; margin-top: 0.375rem">'
+        f"{results}</div></div>"
+    )
+
+    trashed = (
+        _GalleryArchiveResource.get_table()
+        .records(_GalleryArchiveResource.get_records())
+        .filter_state({"trashed": "with"})
+        .render()
+    )
+
+    return {
+        "resources/view-record": ("Resources — view page", view_page),
+        "resources/relation-manager": ("Resources — relation manager", relation),
+        "resources/global-search": ("Resources — global search", search),
+        "resources/soft-deletes": ("Resources — soft deletes", trashed),
+    }
+
+
+def build_mfa_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for MFA docs shots."""
+    from types import SimpleNamespace
+
+    from almasix.orbit.panels.auth import MfaChallenge
+    from almasix.orbit.panels.mfa import AppAuthentication, EmailAuthentication
+
+    user = SimpleNamespace(
+        email="ada@orbit.test",
+        mfa_app_secret="JBSWY3DPEHPK3PXP",
+        mfa_recovery_codes=["a1b2c3d4", "deadbeef"],
+        mfa_app_enabled=True,
+        mfa_email_enabled=True,
+    )
+    app = AppAuthentication(brand_name="Orbit")
+    email = EmailAuthentication()
+    challenge = MfaChallenge.render(
+        providers=[app, email],
+        provider="app",
+        user=user,
+        data={"code": ""},
+    )
+    setup = MfaChallenge.render(
+        providers=[app],
+        provider="app",
+        user=user,
+        show_setup=True,
+        data={"code": ""},
+    )
+    mailed = MfaChallenge.render(
+        providers=[app, email],
+        provider="email",
+        user=user,
+        sent=True,
+        data={"code": ""},
+    )
+    return {
+        "users/mfa/challenge": ("MFA — challenge", challenge),
+        "users/mfa/app-setup": ("MFA — authenticator setup", setup),
+        "users/mfa/email": ("MFA — email code", mailed),
     }

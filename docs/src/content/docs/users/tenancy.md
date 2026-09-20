@@ -230,13 +230,14 @@ When `False`, list hosts skip `scope_query` and create hosts skip `associate_rec
 Enable pages on the panel or on `Tenancy`:
 
 ```python title="app/providers/orbit_panel_provider.py"
-from almasix.orbit.panels import EditTenantProfile, RegisterTenant
+from almasix.orbit.panels import EditTenantProfile, MemoryBillingProvider, RegisterTenant
 
 Panel.make("admin")
     .tenant(Team)
     .tenant_registration(True)       # or a RegisterTenant subclass
     .tenant_profile(True)            # or an EditTenantProfile subclass
-    .tenant_billing(MyBillingPage)   # custom page class when you have billing
+    .tenant_billing(True)            # ManageBilling + MemoryBillingProvider
+    .billing_provider(MemoryBillingProvider())  # optional override
 ```
 
 ```python title="app/orbit/pages/register_team.py"
@@ -275,7 +276,7 @@ class EditTeamProfile(EditTenantProfile):
         ...
 ```
 
-Default routes under the panel path: `/new` (register), `/profile` (profile). Billing is a slot — pass a page class when you wire a provider; `True` alone only flips the menu flag (no default billing page).
+Default routes under the panel path: `/new` (register), `/profile` (profile), `/billing` (billing). `.tenant_billing(True)` mounts `ManageBilling` and an in-process `MemoryBillingProvider`. Pass a page class to replace the UI, and `.billing_provider(...)` to talk to Stripe or another processor.
 
 These pages default to `should_register_navigation = False` so they appear in the switcher menu, not the sidebar.
 
@@ -283,7 +284,7 @@ These pages default to `should_register_navigation = False` so they appear in th
 |------|--------------|--------------|
 | Registration | `.tenant_registration` | `RegisterTenant` |
 | Profile | `.tenant_profile` | `EditTenantProfile` |
-| Billing | `.tenant_billing` | Custom class required for a page |
+| Billing | `.tenant_billing` | `ManageBilling` |
 
 ## Tenant route prefix
 

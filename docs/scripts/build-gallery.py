@@ -91,8 +91,11 @@ from gallery_variants import (
     build_action_variants,
     build_form_variants,
     build_infolist_variants,
+    build_mfa_variants,
     build_navigation_variants,
     build_notification_variants,
+    build_query_builder_variants,
+    build_resource_variants,
     build_schema_variants,
     build_tenancy_variants,
     build_widget_variants,
@@ -388,6 +391,14 @@ SHOTS: list[tuple[str, str]] = [
     ("users/tenancy/switcher", "Tenancy — switcher"),
     ("users/tenancy/menu", "Tenancy — switcher menu"),
     ("users/tenancy/scoped-list", "Tenancy — scoped list"),
+    ("query-builder/overview", "Query builder — overview"),
+    ("query-builder/overview/constraints", "Query builder — constraints"),
+    ("query-builder/overview/rules", "Query builder — populated rules"),
+    ("query-builder/overview/or-logic", "Query builder — any rule"),
+    ("query-builder/overview/table-filter", "Query builder — table filter"),
+    ("users/mfa/challenge", "MFA — challenge"),
+    ("users/mfa/app-setup", "MFA — authenticator setup"),
+    ("users/mfa/email", "MFA — email code"),
 ]
 
 
@@ -1908,6 +1919,9 @@ def build() -> str:
     navigation_variants = build_navigation_variants()
     notification_variants = build_notification_variants()
     tenancy_variants = build_tenancy_variants()
+    resource_variants = build_resource_variants()
+    query_builder_variants = build_query_builder_variants()
+    mfa_variants = build_mfa_variants()
 
     parts = [
         shot("forms/overview", "Forms overview", form_overview.render()),
@@ -1957,6 +1971,18 @@ def build() -> str:
         *(
             shot(sid, label, html)
             for sid, (label, html) in tenancy_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in resource_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in query_builder_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in mfa_variants.items()
         ),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/overview-columns", "Overview — columns", table_overview_columns.render()),
@@ -2112,6 +2138,19 @@ def build() -> str:
   width: min(22rem, 100%);
   min-height: 16rem;
 }}
+[data-shot="forms/modal-table-select/picker"] .or-modal-backdrop {{
+  display: block !important;
+  position: static;
+  background: transparent;
+  padding: 0;
+}}
+[data-shot="forms/modal-table-select/picker"] .or-modal {{
+  display: block !important;
+  position: static;
+  transform: none;
+  margin: 0.75rem 0 0;
+  width: 100%;
+}}
 [data-shot^="actions/"] .or-dropdown-menu {{
   display: block !important;
   position: static;
@@ -2178,6 +2217,11 @@ body.dark {{
   padding: 1.5rem;
   box-shadow: 0 10px 30px rgba(28, 20, 17, 0.06);
   overflow: visible;
+}}
+[data-shot="query-builder/overview/table-filter"],
+[data-shot^="users/mfa/"] {{
+  overflow: hidden;
+  isolation: isolate;
 }}
 .or-shot:has(.or-combobox) {{
   padding-bottom: 14rem; /* room for open combobox dropdown in screenshots */

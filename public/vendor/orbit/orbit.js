@@ -63,6 +63,82 @@
         } catch (_) {
           /* ignore */
         }
+        this._initSpa();
+      },
+      destroy() {
+        if (this._spaClick) {
+          document.removeEventListener("click", this._spaClick);
+        }
+        if (this._spaPop) {
+          window.removeEventListener("popstate", this._spaPop);
+        }
+      },
+      _initSpa() {
+        const rootEl = document.documentElement;
+        if (rootEl.getAttribute("data-orbit-spa") !== "true") return;
+        this._spaRoot = rootEl.getAttribute("data-orbit-spa-root") || "/";
+        this._spaExceptions = (rootEl.getAttribute("data-orbit-spa-exceptions") || "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        this._spaClick = (event) => this._onSpaClick(event);
+        this._spaPop = () => this._spaLoad(location.href, false);
+        document.addEventListener("click", this._spaClick);
+        window.addEventListener("popstate", this._spaPop);
+      },
+      _spaShouldHandle(anchor) {
+        if (!anchor || !anchor.getAttribute) return false;
+        if (anchor.target === "_blank" || anchor.hasAttribute("download")) return false;
+        if (anchor.getAttribute("data-orbit-spa") === "false") return false;
+        let url;
+        try {
+          url = new URL(anchor.href, location.origin);
+        } catch (_) {
+          return false;
+        }
+        if (url.origin !== location.origin) return false;
+        if (url.pathname === location.pathname && url.search === location.search) return false;
+        const path = url.pathname;
+        const root = this._spaRoot === "/" ? "" : String(this._spaRoot).replace(/\/$/, "");
+        if (root && path !== root && !path.startsWith(`${root}/`)) return false;
+        return !this._spaExceptions.some(
+          (ex) => path === ex || path.endsWith(ex) || path.includes(ex),
+        );
+      },
+      _onSpaClick(event) {
+        if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+          return;
+        }
+        const anchor = event.target?.closest?.("a[href]");
+        if (!this._spaShouldHandle(anchor)) return;
+        event.preventDefault();
+        this._spaLoad(anchor.href, true);
+      },
+      async _spaLoad(href, push) {
+        try {
+          const res = await fetch(href, {
+            headers: { "X-Orbit-Spa": "1", Accept: "text/html" },
+            credentials: "same-origin",
+          });
+          if (!res.ok) {
+            location.href = href;
+            return;
+          }
+          const html = await res.text();
+          const doc = new DOMParser().parseFromString(html, "text/html");
+          const nextMain = doc.querySelector("main.or-content");
+          const curMain = document.querySelector("main.or-content");
+          if (!nextMain || !curMain) {
+            location.href = href;
+            return;
+          }
+          curMain.replaceWith(nextMain);
+          document.title = doc.title;
+          if (push) history.pushState({}, "", href);
+          window.dispatchEvent(new CustomEvent("orbit:spa-navigated", { detail: { href } }));
+        } catch (_) {
+          location.href = href;
+        }
       },
       resolvedTheme() {
         if (this.theme === "dark") return "dark";
@@ -803,12 +879,15 @@
 
     window.Alpine.data("orbitLiveNotifications", () => ({
       channels: [],
+      cursor: 0,
+      _pollTimer: null,
       init() {
         const raw = this.$el.getAttribute("data-channels") || "";
         this.channels = raw
           .split(",")
           .map((c) => c.trim())
           .filter(Boolean);
+        this.cursor = Number(this.$el.getAttribute("data-cursor") || 0) || 0;
         window.addEventListener("orbit:broadcast", (event) => {
           const detail = event.detail || {};
           const channel = detail.channel;
@@ -817,6 +896,32 @@
           }
           window.dispatchEvent(new CustomEvent("orbit:notify", { detail }));
         });
+        const url = this.$el.getAttribute("data-orbit-live-url") || "";
+        const polling = Number(this.$el.getAttribute("data-polling") || 0);
+        if (url && polling > 0) {
+          this.pollLive(url);
+          this._pollTimer = setInterval(() => this.pollLive(url), polling);
+        }
+      },
+      destroy() {
+        if (this._pollTimer) clearInterval(this._pollTimer);
+      },
+      async pollLive(url) {
+        try {
+          const sep = url.includes("?") ? "&" : "?";
+          const res = await fetch(`${url}${sep}since=${this.cursor}`, {
+            headers: { Accept: "application/json" },
+            credentials: "same-origin",
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          const events = Array.isArray(data.events) ? data.events : [];
+          if (typeof data.cursor === "number") this.cursor = data.cursor;
+          else this.cursor += events.length;
+          for (const detail of events) {
+            window.dispatchEvent(new CustomEvent("orbit:broadcast", { detail }));
+          }
+        } catch (_) {}
       },
     }));
 
@@ -853,16 +958,49 @@
         this.notifications = this.notifications.map((n) =>
           n.id === id ? { ...n, read: true } : n
         );
+        this._sync({ id, read: true });
       },
       markUnread(id) {
         this.notifications = this.notifications.map((n) =>
           n.id === id ? { ...n, read: false } : n
         );
+        this._sync({ id, read: false });
       },
       markAllRead() {
         this.notifications = this.notifications.map((n) => ({ ...n, read: true }));
+        this._sync({ all: true });
       },
-      poll() {
+      async _sync(payload) {
+        const url = this.$el.getAttribute("data-orbit-notifications-url");
+        if (!url) return;
+        try {
+          await fetch(url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+        } catch (_) {}
+      },
+      async poll() {
+        const url = this.$el.getAttribute("data-orbit-notifications-url");
+        if (url) {
+          try {
+            const res = await fetch(url, {
+              credentials: "same-origin",
+              headers: { Accept: "application/json" },
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data.notifications)) {
+                this.notifications = data.notifications;
+              }
+            }
+          } catch (_) {}
+        }
         // Hook for Conduit / apps: replace list via custom event detail.
         window.dispatchEvent(
           new CustomEvent("orbit:database-notifications-poll", {
@@ -1666,6 +1804,188 @@
       },
     }));
 
+    const bootFileUploads = () => {
+      const fields = document.querySelectorAll('[data-upload-field]');
+      if (!fields.length) return;
+
+      const bytesFromKb = (kb) => Number(kb) * 1024;
+
+      const accepts = (file, accept) => {
+        if (!accept) return true;
+        return accept
+          .split(",")
+          .map((part) => part.trim().toLowerCase())
+          .filter(Boolean)
+          .some((rule) => {
+            if (rule.startsWith(".")) return file.name.toLowerCase().endsWith(rule);
+            if (rule.endsWith("/*")) return (file.type || "").startsWith(rule.slice(0, -1));
+            return (file.type || "").toLowerCase() === rule;
+          });
+      };
+
+      const initField = (root) => {
+        if (root.dataset.uploadBound === "1") return;
+        root.dataset.uploadBound = "1";
+
+        const input = root.querySelector("input.or-file");
+        const grid = root.querySelector("[data-preview-grid]");
+        const progress = root.querySelector("[data-upload-progress]");
+        const bar = root.querySelector("[data-upload-progress-bar]");
+        const endpoint = root.getAttribute("data-upload-url");
+        const field = root.getAttribute("data-upload-field") || "";
+        const resource = root.getAttribute("data-upload-resource") || "";
+        const multiple = Boolean(input && input.multiple);
+        const maxFiles = Number(root.getAttribute("data-max-files") || 0);
+        const maxSize = root.getAttribute("data-max-size");
+        const minSize = root.getAttribute("data-min-size");
+        const accept = input ? input.getAttribute("accept") : "";
+        if (!input || !endpoint) return;
+
+        const paths = () =>
+          Array.from(grid ? grid.querySelectorAll("[data-file-path]") : []).map((card) =>
+            card.getAttribute("data-file-path"),
+          );
+
+        const pushState = () => {
+          const wire = window.orbitWire?.(root);
+          if (!wire || typeof wire.set_property !== "function") return;
+          const list = paths();
+          wire.set_property(field, multiple ? list : list[0] || null);
+        };
+
+        const fail = (message) => {
+          root.setAttribute("data-upload-error", message);
+          window.dispatchEvent(
+            new CustomEvent("orbit-upload-failed", { detail: { field, message } }),
+          );
+        };
+
+        const card = (file) => {
+          const el = document.createElement("div");
+          el.className = "or-file-card";
+          el.setAttribute("data-file-path", file.path);
+          const isImage = (file.mime || "").startsWith("image/");
+          el.innerHTML = isImage
+            ? `<img class="or-file-thumb" src="${file.url}" alt="${file.name}" />`
+            : `<span class="or-file-name">${file.name}</span>`;
+          const actions = document.createElement("div");
+          actions.className = "or-file-card-actions";
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "or-file-remove";
+          remove.setAttribute("data-file-remove", "");
+          remove.setAttribute("aria-label", "Remove file");
+          remove.innerHTML = "&times;";
+          actions.appendChild(remove);
+          el.appendChild(actions);
+          return el;
+        };
+
+        const send = (file) =>
+          new Promise((resolve) => {
+            const body = new FormData();
+            body.append("file", file);
+            body.append("field", field);
+            body.append("resource", resource);
+            const request = new XMLHttpRequest();
+            request.open("POST", endpoint, true);
+            request.upload.addEventListener("progress", (event) => {
+              if (!bar || !event.lengthComputable) return;
+              progress?.removeAttribute("hidden");
+              bar.style.width = `${Math.round((event.loaded / event.total) * 100)}%`;
+            });
+            request.addEventListener("loadend", () => {
+              progress?.setAttribute("hidden", "hidden");
+              if (bar) bar.style.width = "0%";
+              try {
+                resolve(JSON.parse(request.responseText || "{}"));
+              } catch (_error) {
+                resolve({ ok: false, error: "Upload failed." });
+              }
+            });
+            request.send(body);
+          });
+
+        input.addEventListener("change", async () => {
+          root.removeAttribute("data-upload-error");
+          const files = Array.from(input.files || []);
+          for (const file of files) {
+            if (maxFiles && paths().length >= maxFiles) {
+              fail(`At most ${maxFiles} file(s).`);
+              break;
+            }
+            if (maxSize && file.size > bytesFromKb(maxSize)) {
+              fail(`${file.name} is larger than ${maxSize} KB.`);
+              continue;
+            }
+            if (minSize && file.size < bytesFromKb(minSize)) {
+              fail(`${file.name} is smaller than ${minSize} KB.`);
+              continue;
+            }
+            if (!accepts(file, accept)) {
+              fail(`${file.name} is not an accepted type.`);
+              continue;
+            }
+            const result = await send(file);
+            if (!result.ok) {
+              fail(result.error || "Upload failed.");
+              continue;
+            }
+            if (grid) {
+              if (!multiple) grid.innerHTML = "";
+              grid.appendChild(card(result.file));
+            }
+            pushState();
+          }
+          input.value = "";
+        });
+
+        root.addEventListener("click", (event) => {
+          const button =
+            event.target instanceof Element ? event.target.closest("[data-file-remove]") : null;
+          if (!button) return;
+          event.preventDefault();
+          const target = button.closest("[data-file-path]");
+          if (!target) return;
+          const body = new FormData();
+          body.append("intent", "delete");
+          body.append("path", target.getAttribute("data-file-path") || "");
+          body.append("field", field);
+          body.append("resource", resource);
+          fetch(endpoint, { method: "POST", body }).finally(() => {
+            target.remove();
+            pushState();
+          });
+        });
+
+        if (root.getAttribute("data-reorderable") === "true" && grid) {
+          grid.querySelectorAll("[data-file-path]").forEach((el) => {
+            el.setAttribute("draggable", "true");
+          });
+          let dragged = null;
+          grid.addEventListener("dragstart", (event) => {
+            dragged = event.target instanceof Element ? event.target.closest("[data-file-path]") : null;
+          });
+          grid.addEventListener("dragover", (event) => event.preventDefault());
+          grid.addEventListener("drop", (event) => {
+            const target =
+              event.target instanceof Element ? event.target.closest("[data-file-path]") : null;
+            if (!dragged || !target || dragged === target) return;
+            event.preventDefault();
+            grid.insertBefore(dragged, target);
+            pushState();
+          });
+        }
+      };
+
+      fields.forEach(initField);
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bootFileUploads);
+    } else {
+      bootFileUploads();
+    }
+
     const bootTipTap = () => {
       const nodes = document.querySelectorAll(".or-editor-rich[data-tiptap]");
       if (!nodes.length) return;
@@ -1693,17 +2013,44 @@
             const btn = event.target instanceof Element ? event.target.closest("[data-tool]") : null;
             if (!(btn instanceof HTMLElement)) return;
             event.preventDefault();
-            const tool = btn.getAttribute("data-tool");
+            const tool = btn.getAttribute("data-tool") || "";
+            const block = {
+              h1: "<h1>",
+              h2: "<h2>",
+              h3: "<h3>",
+              heading: "<h2>",
+              paragraph: "<p>",
+              blockquote: "<blockquote>",
+              codeBlock: "<pre>",
+            }[tool];
             const cmd = {
               bold: "bold",
               italic: "italic",
               underline: "underline",
               strike: "strikeThrough",
               link: "createLink",
-            }[tool || ""];
-            if (cmd === "createLink") {
+              unlink: "unlink",
+              bulletList: "insertUnorderedList",
+              orderedList: "insertOrderedList",
+              alignStart: "justifyLeft",
+              alignCenter: "justifyCenter",
+              alignEnd: "justifyRight",
+              undo: "undo",
+              redo: "redo",
+              clearFormat: "removeFormat",
+              horizontalRule: "insertHorizontalRule",
+            }[tool];
+            surface.focus();
+            if (block) {
+              document.execCommand("formatBlock", false, block);
+            } else if (cmd === "createLink") {
               const url = window.prompt("URL");
               if (url) document.execCommand(cmd, false, url);
+            } else if (tool === "image") {
+              const src = window.prompt("Image URL");
+              if (src) document.execCommand("insertImage", false, src);
+            } else if (tool.startsWith("mergeTag:")) {
+              document.execCommand("insertText", false, `{{ ${tool.slice(9)} }}`);
             } else if (cmd) {
               document.execCommand(cmd, false);
             }
@@ -1720,6 +2067,13 @@
         surface.addEventListener("input", sync);
         if (input && !surface.innerHTML) {
           surface.innerHTML = input.value || "";
+        }
+        const placeholder = root.getAttribute("data-placeholder");
+        if (placeholder) {
+          surface.setAttribute("data-placeholder", placeholder);
+        }
+        if (root.getAttribute("data-editor-disabled") === "true") {
+          surface.setAttribute("contenteditable", "false");
         }
       };
 
@@ -1897,6 +2251,25 @@
           row.removeAttribute("hidden");
         }
       });
+    });
+  }
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("orbit-export-ready", (event) => {
+      const detail = event.detail || {};
+      const content = detail.content;
+      if (content == null || content === "") return;
+      const mime = detail.mime || "text/csv";
+      const filename = detail.filename || "export.csv";
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
     });
   }
 })();

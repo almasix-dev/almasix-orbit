@@ -218,6 +218,86 @@ async def _orm_update(model: type[Any], record_id: str, data: dict[str, Any]) ->
     return _as_record_dict(instance)
 
 
+def _resource_relation_managers(resource: type[Any]) -> list[type[Any]]:
+    getter = getattr(resource, "get_relations", None)
+    if not callable(getter):
+        return []
+    try:
+        return list(getter() or [])
+    except Exception:
+        return []
+
+
+def _relation_manager_for(resource: type[Any], relationship: str) -> type[Any] | None:
+    for manager in _resource_relation_managers(resource):
+        if str(getattr(manager, "relationship", "")) == relationship:
+            return manager
+    return None
+
+
+async def _load_relation_records(
+    resource: type[Any],
+    owner: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    """Related rows per relationship — ORM query when a model is set, else the owner."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    owner_id = str(owner.get("id") or "")
+    for manager in _resource_relation_managers(resource):
+        relationship = str(getattr(manager, "relationship", ""))
+        if not relationship:
+            continue
+        related_model = getattr(manager, "related_model", None)
+        if _is_orm_model(related_model) and owner_id:
+            foreign_key = manager.get_foreign_key(resource)
+            rows = await _await_maybe(related_model.where(foreign_key, owner_id).get())
+            out[relationship] = [_as_record_dict(row) for row in (rows or [])]
+            continue
+        out[relationship] = [_as_record_dict(row) for row in manager.get_records(owner)]
+    return out
+
+
+def _parse_relation_action(name: str) -> tuple[str, str] | None:
+    """``relation.comments.delete`` → ``("comments", "delete")``."""
+    parts = str(name or "").split(".")
+    if len(parts) == 3 and parts[0] == "relation":
+        return parts[1], parts[2]
+    return None
+
+
+async def _orm_restore_id(model: type[Any], record_id: str) -> None:
+    instance = await _orm_find(model, record_id)
+    if instance is None:
+        return
+    restore = getattr(instance, "restore", None)
+    if callable(restore):
+        await _await_maybe(restore())
+        return
+    try:
+        instance.deleted_at = None
+    except Exception:
+        return
+    await _await_maybe(instance.save())
+
+
+def _restore_seed_records(records: list[Any], record_id: str) -> list[Any]:
+    out: list[Any] = []
+    for record in records:
+        if _record_key(record) != record_id:
+            out.append(record)
+            continue
+        if isinstance(record, dict):
+            out.append({**record, "deleted_at": None, "trashed": False})
+        else:
+            for attr in ("deleted_at", "trashed"):
+                if hasattr(record, attr):
+                    try:
+                        setattr(record, attr, None if attr == "deleted_at" else False)
+                    except Exception:
+                        pass
+            out.append(record)
+    return out
+
+
 async def _orm_delete_ids(model: type[Any], ids: set[str]) -> None:
     for rid in ids:
         if not rid:
@@ -762,7 +842,14 @@ class ListRecordsHost(OrbitPageHost):
         action_name, rid, data = _mount_action_args(name, record_id, payload, **kwargs)
         resource = self.get_resource()
         mutable = _resource_mutable(resource)
-        if action_name in {"delete", "force_delete", "delete_bulk", "create", "edit"} and not mutable:
+        if action_name in {
+            "delete",
+            "force_delete",
+            "delete_bulk",
+            "create",
+            "edit",
+            "restore",
+        } and not mutable:
             self.dispatch(
                 "orbit-records-readonly",
                 name=action_name,
@@ -776,8 +863,13 @@ class ListRecordsHost(OrbitPageHost):
             "delete_bulk",
             "create",
             "edit",
+            "restore",
         }:
             return self._mount_action_orm(model, action_name, rid, data)
+        if action_name == "restore" and rid:
+            self.records = _restore_seed_records(list(self.records), rid)
+            self._sync_resource_records()
+            return None
         if action_name in {"delete", "force_delete"} and rid:
             self.records = [r for r in self.records if self._record_key(r) != rid]
             self._sync_resource_records()
@@ -818,8 +910,77 @@ class ListRecordsHost(OrbitPageHost):
             self.records = out
             self._sync_resource_records()
             return None
+        if action_name == "import":
+            return self.runImport(data or payload or kwargs)
+        if action_name == "export":
+            return self.runExport(data or payload or kwargs)
         self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
         return None
+
+    def _header_action(self, name: str) -> Any:
+        resource = self.get_resource()
+        getter = getattr(resource, "get_table", None)
+        if not callable(getter):
+            return None
+        try:
+            table = getter()
+        except Exception:
+            return None
+        for action in getattr(table, "_header_actions", []) or []:
+            if str(getattr(action, "get_name", lambda: "")()) == name:
+                return action
+        return None
+
+    def runImport(self, payload: Any = None) -> dict[str, Any]:
+        """Parse an uploaded CSV/JSON payload and append rows to this list."""
+        from almasix.orbit.actions.import_export import ImportAction
+        from almasix.orbit.actions.jobs import get_job_runner
+
+        data = dict(payload or {}) if isinstance(payload, dict) else {}
+        action = self._header_action("import") or ImportAction.make()
+        source = data.get("content") or data.get("file") or data.get("body") or ""
+        filename = str(data.get("filename") or data.get("name") or "import.csv")
+        options = {
+            key: value
+            for key, value in data.items()
+            if key not in {"content", "file", "body", "filename", "name"}
+        }
+
+        def writer(chunk: list[dict[str, Any]]) -> None:
+            next_id = 1
+            for row in self.records:
+                try:
+                    next_id = max(next_id, int(self._record_key(row) or 0) + 1)
+                except (TypeError, ValueError):
+                    pass
+            appended: list[Any] = []
+            for row in chunk:
+                record = dict(row)
+                record.setdefault("id", next_id)
+                next_id += 1
+                appended.append(record)
+            self.records = [*self.records, *appended]
+            self._sync_resource_records()
+
+        report = get_job_runner().run_import(
+            action, source, filename=filename, options=options, writer=writer
+        )
+        payload_out = report.to_dict() if hasattr(report, "to_dict") else dict(report)
+        self.dispatch("orbit-import-finished", **payload_out)
+        return payload_out
+
+    def runExport(self, payload: Any = None) -> dict[str, Any]:
+        """Export the current (filtered) records and fire a download event."""
+        from almasix.orbit.actions.import_export import ExportAction
+        from almasix.orbit.actions.jobs import get_job_runner
+
+        data = dict(payload or {}) if isinstance(payload, dict) else {}
+        action = self._header_action("export") or ExportAction.make()
+        fmt = str(data.get("format") or data.get("fmt") or "")
+        report = get_job_runner().run_export(action, list(self.records), fmt=fmt or None)
+        payload_out = report.to_dict() if hasattr(report, "to_dict") else dict(report)
+        self.dispatch("orbit-export-ready", **payload_out)
+        return payload_out
 
     async def _mount_action_orm(
         self,
@@ -832,6 +993,15 @@ class ListRecordsHost(OrbitPageHost):
             await _orm_delete_ids(model, {rid})
             self.records = [r for r in self.records if self._record_key(r) != rid]
             self.selected = [s for s in (self.selected or []) if s != rid]
+            return
+        if action_name == "restore" and rid:
+            await _orm_restore_id(model, rid)
+            restored = await _orm_find(model, rid)
+            if restored is not None:
+                row = _as_record_dict(restored)
+                self.records = [
+                    row if self._record_key(r) == rid else r for r in self.records
+                ]
             return
         if action_name == "delete_bulk":
             ids = set(self.get_selected_ids())
@@ -897,6 +1067,8 @@ class FormDataMutations:
 
     data: dict[str, Any]
     select_search: dict[str, str] = {}
+    morph_search: dict[str, str] = {}
+    table_select: dict[str, Any] = {}
 
     @classmethod
     def _public_property_names(cls) -> set[str]:
@@ -1044,8 +1216,75 @@ class FormDataMutations:
         data = {**data, f"key{n}": ""}
         self._form_path_set(key, data)
 
+    def removeKeyValueRow(self, name: str, key: str) -> None:
+        """Drop one key from a key-value field."""
+        field = str(name or "")
+        data = self._form_path_get(field)
+        if not isinstance(data, dict):
+            return
+        self._form_path_set(field, {k: v for k, v in data.items() if str(k) != str(key)})
+
+    def setKeyValueKey(self, name: str, key: str, new_key: str) -> None:
+        """Rename a key in place, keeping the row's position and value."""
+        field = str(name or "")
+        data = self._form_path_get(field)
+        if not isinstance(data, dict) or str(key) not in data:
+            return
+        renamed = str(new_key or "").strip()
+        if not renamed or renamed == str(key):
+            return
+        out: dict[str, Any] = {}
+        for existing, value in data.items():
+            if str(existing) == str(key):
+                out[renamed] = value
+            elif str(existing) != renamed:
+                out[str(existing)] = value
+        self._form_path_set(field, out)
+
+    def setKeyValueValue(self, name: str, key: str, value: Any = "") -> None:
+        field = str(name or "")
+        data = self._form_path_get(field)
+        if not isinstance(data, dict):
+            data = {}
+        self._form_path_set(field, {**data, str(key): value})
+
+    def setMorphType(self, name: str, morph_type: str = "") -> None:
+        """Switch a MorphToSelect's type and clear the stale record id."""
+        field = str(name or "")
+        current = self._form_path_get(field)
+        state = dict(current) if isinstance(current, dict) else {}
+        state["type"] = str(morph_type or "")
+        state["id"] = None
+        self._form_path_set(field, state)
+        searches = dict(getattr(self, "morph_search", None) or {})
+        searches.pop(field, None)
+        self.morph_search = searches
+
+    def searchMorphOptions(self, name: str, search: str = "") -> None:
+        """Server-side search for the record leg of a MorphToSelect."""
+        field = str(name or "")
+        searches = dict(getattr(self, "morph_search", None) or {})
+        searches[field] = str(search or "")
+        self.morph_search = searches
+
     def mountTableSelect(self, name: str, **kwargs: Any) -> None:
-        self.dispatch("orbit-mount-table-select", name=str(name or ""), **kwargs)
+        """Open the record picker for a ModalTableSelect field."""
+        field = str(name or "")
+        self.table_select = {"field": field, "search": ""}
+        self.dispatch("orbit-mount-table-select", name=field, **kwargs)
+
+    def closeTableSelect(self) -> None:
+        self.table_select = {}
+
+    def setTableSelectSearch(self, name: str, search: str = "") -> None:
+        self.table_select = {"field": str(name or ""), "search": str(search or "")}
+
+    def selectTableRecord(self, name: str, record_id: Any = None) -> None:
+        """Write the picked record into form state and close the picker."""
+        field = str(name or "")
+        self._form_path_set(field, record_id)
+        self.table_select = {}
+        self.dispatch("orbit-table-record-selected", name=field, record_id=record_id)
 
     def mountCreateOption(self, name: str, **kwargs: Any) -> None:
         self.dispatch("orbit-mount-create-option", name=str(name or ""), **kwargs)
@@ -1064,6 +1303,8 @@ class FormDataMutations:
 class CreateRecordHost(FormDataMutations, OrbitPageHost):
     data: dict[str, Any] = {}
     select_search: dict[str, str] = {}
+    morph_search: dict[str, str] = {}
+    table_select: dict[str, Any] = {}
     created_id: str | None = None
 
     def mount(self, **kwargs: Any) -> None:
@@ -1141,37 +1382,109 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
         return Bound.render(
             state=dict(self.data),
             select_search=dict(self.select_search or {}),
+            morph_search=dict(self.morph_search or {}),
+            table_select=dict(self.table_select or {}),
             model=model,
             resource=resource,
         )
 
 
-class EditRecordHost(FormDataMutations, OrbitPageHost):
+class RelationRecords:
+    """Loads and caches related rows for the relation managers on a page host."""
+
+    relations: dict[str, list[dict[str, Any]]] = {}
+
+    def load_relations(self, owner: dict[str, Any]) -> Any:
+        """Fill :attr:`relations`; returns a coroutine only when the ORM is involved."""
+        resource = self.get_resource()  # type: ignore[attr-defined]
+        managers = _resource_relation_managers(resource)
+        if not managers or not owner:
+            return None
+        if any(_is_orm_model(getattr(m, "related_model", None)) for m in managers):
+            return self._load_relations_async(resource, owner)
+        self.relations = {
+            str(manager.relationship): [
+                _as_record_dict(row) for row in manager.get_records(owner)
+            ]
+            for manager in managers
+            if getattr(manager, "relationship", "")
+        }
+        return None
+
+    async def _load_relations_async(
+        self, resource: type[Any], owner: dict[str, Any]
+    ) -> None:
+        self.relations = await _load_relation_records(resource, owner)
+
+    def relation_action(self, action_name: str, rid: str) -> Any:
+        """Handle ``relation.<relationship>.<action>``; returns True when consumed."""
+        parsed = _parse_relation_action(action_name)
+        if parsed is None:
+            return None
+        relationship, action = parsed
+        resource = self.get_resource()  # type: ignore[attr-defined]
+        manager = _relation_manager_for(resource, relationship)
+        if manager is None:
+            return None
+        self.dispatch(  # type: ignore[attr-defined]
+            "orbit-relation-action",
+            relationship=relationship,
+            action=action,
+            record_id=rid,
+        )
+        if action == "delete" and rid:
+            return self._delete_relation_record(manager, relationship, rid)
+        return True
+
+    def _delete_relation_record(self, manager: type[Any], relationship: str, rid: str) -> Any:
+        related_model = getattr(manager, "related_model", None)
+        if _is_orm_model(related_model):
+            return self._delete_relation_orm(related_model, relationship, rid)
+        rows = [r for r in self.relations.get(relationship, []) if _record_key(r) != rid]
+        self.relations = {**self.relations, relationship: rows}
+        return True
+
+    async def _delete_relation_orm(
+        self, model: type[Any], relationship: str, rid: str
+    ) -> None:
+        await _orm_delete_ids(model, {rid})
+        rows = [r for r in self.relations.get(relationship, []) if _record_key(r) != rid]
+        self.relations = {**self.relations, relationship: rows}
+
+
+class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
     record_id: str = ""
     data: dict[str, Any] = {}
     select_search: dict[str, str] = {}
+    morph_search: dict[str, str] = {}
+    table_select: dict[str, Any] = {}
+    relations: dict[str, list[dict[str, Any]]] = {}
 
     def mount(self, **kwargs: Any) -> Any:
         if kwargs.get("record_id") is not None:
             self.record_id = str(kwargs["record_id"])
         if isinstance(kwargs.get("data"), dict):
             self.data = dict(kwargs["data"])
-        elif isinstance(kwargs.get("record"), dict):
+            return self.load_relations(self.data)
+        if isinstance(kwargs.get("record"), dict):
             self.data = dict(kwargs["record"])
             self.record_id = str(self.data.get("id") or self.record_id)
-        elif self.record_id and not self.data:
+            return self.load_relations(self.data)
+        if self.record_id and not self.data:
             model = _resource_model(self.get_resource())
             if model is not None:
                 return self._mount_orm(model)
             found = _find_record(_resource_records(self.get_resource()), self.record_id)
             if found is not None:
                 self.data = _as_record_dict(found)
+                return self.load_relations(self.data)
         return None
 
     async def _mount_orm(self, model: type[Any]) -> None:
         found = await _orm_find(model, self.record_id)
         if found is not None:
             self.data = _as_record_dict(found)
+            await _await_maybe(self.load_relations(self.data))
 
     def save(self) -> Any:
         resource = self.get_resource()
@@ -1244,6 +1557,9 @@ class EditRecordHost(FormDataMutations, OrbitPageHost):
         action_name, rid, _ = _mount_action_args(name, record_id, payload, **kwargs)
         if not rid:
             rid = str(self.record_id or "")
+        relation = self.relation_action(action_name, rid)
+        if relation is not None:
+            return relation if not isinstance(relation, bool) else None
         if action_name in {"delete", "force_delete"} and rid:
             resource = self.get_resource()
             if not _resource_mutable(resource):
@@ -1288,14 +1604,18 @@ class EditRecordHost(FormDataMutations, OrbitPageHost):
             record=record,
             state=dict(self.data) if self.data else None,
             select_search=dict(self.select_search or {}),
+            morph_search=dict(self.morph_search or {}),
+            table_select=dict(self.table_select or {}),
             model=model,
             resource=resource,
+            relation_records=dict(self.relations or {}),
         )
 
 
-class ViewRecordHost(OrbitPageHost):
+class ViewRecordHost(RelationRecords, OrbitPageHost):
     record_id: str = ""
     record: dict[str, Any] = {}
+    relations: dict[str, list[dict[str, Any]]] = {}
 
     def mount(self, **kwargs: Any) -> Any:
         if kwargs.get("record_id") is not None:
@@ -1303,19 +1623,22 @@ class ViewRecordHost(OrbitPageHost):
         if isinstance(kwargs.get("record"), dict):
             self.record = dict(kwargs["record"])
             self.record_id = str(self.record.get("id") or self.record_id)
-        elif self.record_id and not self.record:
+            return self.load_relations(self.record)
+        if self.record_id and not self.record:
             model = _resource_model(self.get_resource())
             if model is not None:
                 return self._mount_orm(model)
             found = _find_record(_resource_records(self.get_resource()), self.record_id)
             if found is not None:
                 self.record = _as_record_dict(found)
+                return self.load_relations(self.record)
         return None
 
     async def _mount_orm(self, model: type[Any]) -> None:
         found = await _orm_find(model, self.record_id)
         if found is not None:
             self.record = _as_record_dict(found)
+            await _await_maybe(self.load_relations(self.record))
 
     def mountAction(
         self,
@@ -1327,7 +1650,10 @@ class ViewRecordHost(OrbitPageHost):
         action_name, rid, _ = _mount_action_args(name, record_id, payload, **kwargs)
         if not rid:
             rid = str(self.record_id or "")
-        if action_name in {"delete", "force_delete"} and rid:
+        relation = self.relation_action(action_name, rid)
+        if relation is not None:
+            return relation if not isinstance(relation, bool) else None
+        if action_name in {"delete", "force_delete", "restore"} and rid:
             resource = self.get_resource()
             if not _resource_mutable(resource):
                 self.dispatch(
@@ -1335,6 +1661,8 @@ class ViewRecordHost(OrbitPageHost):
                     message="This demo resource uses a fixed seed list and cannot be changed.",
                 )
                 return None
+            if action_name == "restore":
+                return self._restore(resource, rid)
             model = _resource_model(resource)
             if model is not None:
                 return self._delete_orm(model, resource, rid)
@@ -1345,6 +1673,19 @@ class ViewRecordHost(OrbitPageHost):
             return None
         self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
         return None
+
+    def _restore(self, resource: type[Any], rid: str) -> Any:
+        model = _resource_model(resource)
+        if model is not None:
+            return self._restore_orm(model, rid)
+        _save_resource_records(resource, _restore_seed_records(_resource_records(resource), rid))
+        self.dispatch("orbit-record-restored", record_id=rid)
+        return None
+
+    async def _restore_orm(self, model: type[Any], rid: str) -> None:
+        await _orm_restore_id(model, rid)
+        self.record = _as_record_dict(await _orm_find(model, rid))
+        self.dispatch("orbit-record-restored", record_id=rid)
 
     async def _delete_orm(self, model: type[Any], resource: type[Any], rid: str) -> None:
         await _orm_delete_ids(model, {rid})
@@ -1361,7 +1702,7 @@ class ViewRecordHost(OrbitPageHost):
         data = dict(self.record)
         if self.record_id and "id" not in data:
             data["id"] = self.record_id
-        return Bound.render(record=data)
+        return Bound.render(record=data, relation_records=dict(self.relations or {}))
 
 
 class FormHost(FormDataMutations, ConduitHost):
@@ -1369,6 +1710,8 @@ class FormHost(FormDataMutations, ConduitHost):
 
     data: dict[str, Any] = {}
     select_search: dict[str, str] = {}
+    morph_search: dict[str, str] = {}
+    table_select: dict[str, Any] = {}
     _form_factory: ClassVar[Any] = None
     _title: ClassVar[str] = "Form"
 
@@ -1398,7 +1741,7 @@ class FormHost(FormDataMutations, ConduitHost):
         title = type(self)._title
         return (
             f'<div class="or-page or-page-form"><h1 class="or-page-title">{title}</h1>'
-            f'<form class="or-form"{conduit_attr("submit", "save")}>{form.render(self.data, select_search=dict(self.select_search or {}))}'
+            f'<form class="or-form"{conduit_attr("submit", "save")}>{form.render(self.data, select_search=dict(self.select_search or {}), morph_search=dict(self.morph_search or {}), table_select=dict(self.table_select or {}))}'
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Save</button>'
             f"</div></form></div>"
@@ -1491,6 +1834,23 @@ class LoginHost(FormDataMutations, ConduitHost):
             pass
 
         panel = type(self)._panel
+        user = None
+        try:
+            from almasix.auth import auth as auth_fn
+
+            user = auth_fn().user()
+        except Exception:
+            user = None
+        if panel is not None and user is not None and hasattr(panel, "enabled_mfa_providers"):
+            enabled = panel.enabled_mfa_providers(user)
+            if enabled:
+                from almasix.orbit.panels.mfa import set_mfa_pending
+
+                set_mfa_pending(True)
+                self.data = {**payload, "password": ""}
+                self.redirect(panel.url("mfa-challenge"))
+                return
+
         home = "/"
         if panel is not None:
             home = panel.url() if hasattr(panel, "url") else str(panel.get_path() or "/")
@@ -1743,3 +2103,112 @@ class RegisterHost(FormDataMutations, ConduitHost):
             if msgs:
                 return str(msgs[0])
         return None
+
+
+class MfaChallengeHost(FormDataMutations, ConduitHost):
+    """Second-factor challenge after a successful password login."""
+
+    data: dict[str, Any] = {}
+    error: str = ""
+    provider: str = ""
+    sent: bool = False
+    panel_id: ClassVar[str] = "admin"
+    _panel: ClassVar[Any] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        data = dict(kwargs.pop("data", None) or {})
+        if "code" in kwargs and "code" not in data:
+            data["code"] = kwargs.pop("code")
+        super().__init__(**kwargs)
+        self.data = dict(data)
+
+    def _user(self) -> Any:
+        try:
+            from almasix.auth import auth
+
+            return auth().user()
+        except Exception:
+            panel = type(self)._panel
+            return getattr(panel, "_panel_user", None) if panel is not None else None
+
+    def _providers(self) -> list[Any]:
+        panel = type(self)._panel
+        user = self._user()
+        if panel is None or not hasattr(panel, "enabled_mfa_providers"):
+            return []
+        return panel.enabled_mfa_providers(user)
+
+    def _selected(self) -> Any | None:
+        providers = self._providers()
+        if not providers:
+            return None
+        current = self.provider or providers[0].get_id()
+        return next((p for p in providers if p.get_id() == current), providers[0])
+
+    def selectProvider(self, provider_id: str | None = None) -> None:
+        self.provider = str(provider_id or "")
+        self.error = ""
+        self.sent = False
+
+    def resendCode(self) -> None:
+        selected = self._selected()
+        if selected is None or not hasattr(selected, "send_code"):
+            return
+        selected.send_code(self._user())
+        self.sent = True
+        self.error = ""
+
+    def verifyMfa(self) -> None:
+        self.error = ""
+        selected = self._selected()
+        code = str((self.data or {}).get("code") or "")
+        if selected is None:
+            self.error = "No multi-factor method is available."
+            return
+        if not code:
+            self.error = "Enter the authentication code."
+            return
+        if not selected.verify(self._user(), code):
+            self.error = "That code is not valid."
+            return
+        from almasix.orbit.panels.mfa import clear_mfa_pending
+
+        clear_mfa_pending()
+        panel = type(self)._panel
+        home = panel.url() if panel is not None else "/"
+        self.data = {**(self.data or {}), "code": ""}
+        self.redirect(home)
+
+    def render(self) -> str:
+        from almasix.orbit.panels.auth import MfaChallenge
+
+        panel = type(self)._panel
+        brand = "Orbit"
+        brand_logo = None
+        brand_logo_dark = None
+        brand_logo_only = False
+        if panel is not None:
+            brand = str(getattr(panel, "_brand", None) or brand)
+            getter = getattr(panel, "get_brand_logo_url", None)
+            if callable(getter):
+                brand_logo = getter(dark=False)
+                brand_logo_dark = getter(dark=True)
+            else:
+                brand_logo = getattr(panel, "_brand_logo", None)
+                brand_logo_dark = getattr(panel, "_brand_logo_dark", None) or brand_logo
+            brand_logo_only = bool(getattr(panel, "_brand_logo_only", False))
+        providers = self._providers()
+        selected = self._selected()
+        return MfaChallenge.render(
+            data=dict(self.data or {}),
+            brand=brand,
+            brand_logo=brand_logo,
+            brand_logo_dark=brand_logo_dark,
+            brand_logo_only=brand_logo_only,
+            error=self.error,
+            providers=providers,
+            provider=selected.get_id() if selected is not None else self.provider,
+            user=self._user(),
+            sent=self.sent,
+            show_setup=False,
+        )

@@ -43,7 +43,18 @@ Full walkthrough — what a tenant is, one-team vs switcher models, `HasTenants`
 
 ## MFA
 
-Implement `MfaProvider` or use `AppAuthentication` for TOTP-shaped challenge/management forms. Host verifies codes.
+After a correct password, Orbit can require a second factor. Register providers on the panel; users with `mfa_app_enabled` or `mfa_email_enabled` are sent to the challenge page.
+
+```python title="app/providers/orbit_panel_provider.py"
+from almasix.orbit.panels.mfa import AppAuthentication, EmailAuthentication
+
+Panel.make("admin").multi_factor_authentication(
+    AppAuthentication(brand_name="Orbit"),
+    EmailAuthentication(),
+)
+```
+
+Full walkthrough — TOTP, recovery codes, SMTP vs in-memory mail, and the pending-session gate — in [Multi-factor authentication](/users/multi-factor-authentication/).
 
 ## Preview
 

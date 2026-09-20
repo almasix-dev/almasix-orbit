@@ -105,6 +105,62 @@ def _resource_is_mutable(resource: type[Any]) -> bool:
     return bool(getattr(resource, "records_mutable", False))
 
 
+def _upload_url(resource: type[Any]) -> str:
+    """Panel upload endpoint that ``FileUpload`` fields on this page post to."""
+    from almasix.orbit.panels.uploads import resource_upload_url
+
+    return resource_upload_url(resource)
+
+
+def _create_heading(resource: type[Any]) -> str:
+    """Singular label for the create page — ``Create post``, not ``Create Posts``."""
+    label_fn = getattr(resource, "get_model_label", None)
+    if callable(label_fn):
+        return str(label_fn())
+    return str(resource.get_navigation_label())
+
+
+def _record_title(resource: type[Any], record: Any, *, fallback: str) -> str:
+    """Record title when the resource can resolve one, else ``fallback``."""
+    getter = getattr(resource, "get_record_title", None)
+    if record is None or not callable(getter):
+        return fallback
+    try:
+        title = getter(record)
+    except Exception:
+        return fallback
+    return str(title) if title else fallback
+
+
+def _relation_managers(
+    resource: type[Any],
+    record: Any,
+    operation: str,
+    relation_records: dict[str, list[Any]] | None = None,
+    **ctx: Any,
+) -> str:
+    """Render every relation manager that opts into ``operation``."""
+    get_relations = getattr(resource, "get_relations", None)
+    if not callable(get_relations) or record is None:
+        return ""
+    user = _auth_user()
+    sections: list[str] = []
+    for manager in get_relations() or []:
+        render_on = str(getattr(manager, "render_on", "both") or "both")
+        if render_on not in {"both", operation}:
+            continue
+        can_view = getattr(manager, "can_view_for_record", None)
+        if callable(can_view) and user is not None and not can_view(user, record):
+            continue
+        rows = None
+        if relation_records is not None:
+            rows = relation_records.get(getattr(manager, "relationship", ""))
+        sections.append(manager.render(record, records=rows, **ctx))
+    if not sections:
+        return ""
+    return '<div class="or-relation-managers">' + "".join(sections) + "</div>"
+
+
 def _record_id(record: Any) -> str:
     if record is None:
         return ""
@@ -285,7 +341,7 @@ class CreateRecord(ResourcePage):
                 f'<div class="or-page or-page-create" data-resource="{e(resource.get_slug())}"'
                 f"{_resource_width_style(resource, operation='create')}>"
                 f'<header class="or-page-header">'
-                f'<h1 class="or-page-title">Create {e(resource.get_navigation_label())}</h1>'
+                f'<h1 class="or-page-title">Create {e(_create_heading(resource))}</h1>'
                 f"</header>"
                 f'<p class="or-muted">This demo resource uses a fixed seed list and cannot be changed.</p>'
                 f"</div>"
@@ -293,7 +349,7 @@ class CreateRecord(ResourcePage):
         form = resource.get_form()
         if state:
             form.fill(state)
-        ctx = {**ctx, "resource": resource}
+        ctx = {**ctx, "resource": resource, "upload_url": _upload_url(resource)}
         if "model" not in ctx:
             try:
                 ctx["model"] = resource.get_model()
@@ -303,7 +359,7 @@ class CreateRecord(ResourcePage):
             f'<div class="or-page or-page-create" data-resource="{e(resource.get_slug())}"'
             f"{_resource_width_style(resource, operation='create')}>"
             f'<header class="or-page-header">'
-            f'<h1 class="or-page-title">Create {e(resource.get_navigation_label())}</h1>'
+            f'<h1 class="or-page-title">Create {e(_create_heading(resource))}</h1>'
             f"</header>"
             f'<form class="or-form"{conduit_attr("submit", "create")}>'
             f"{form.render(form.get_state() if state is None else state, **ctx)}"
@@ -326,7 +382,15 @@ class EditRecord(ResourcePage):
         record_id = _record_id(record)
         header_actions = _page_header_actions(resource, "edit", record)
         mutable = _resource_is_mutable(resource)
-        ctx = {**ctx, "resource": resource}
+        heading = _record_title(resource, record, fallback=resource.get_navigation_label())
+        relation_records = ctx.pop("relation_records", None)
+        relations = _relation_managers(
+            resource,
+            record,
+            "edit",
+            relation_records if isinstance(relation_records, dict) else None,
+        )
+        ctx = {**ctx, "resource": resource, "upload_url": _upload_url(resource)}
         if "model" not in ctx:
             try:
                 ctx["model"] = resource.get_model()
@@ -338,22 +402,22 @@ class EditRecord(ResourcePage):
                 f'<div class="or-page or-page-edit" data-resource="{e(resource.get_slug())}" '
                 f'data-record="{e(record_id)}"{_resource_width_style(resource, operation="edit")}>'
                 f'<header class="or-page-header">'
-                f'<h1 class="or-page-title">{e(resource.get_navigation_label())}</h1>'
+                f'<h1 class="or-page-title">{e(heading)}</h1>'
                 f"{header_actions}</header>"
                 f'<p class="or-muted">This demo resource uses a fixed seed list and cannot be changed.</p>'
-                f"{readonly.render(data or form.get_state(), **ctx)}</div>"
+                f"{readonly.render(data or form.get_state(), **ctx)}{relations}</div>"
             )
         return (
             f'<div class="or-page or-page-edit" data-resource="{e(resource.get_slug())}" '
             f'data-record="{e(record_id)}"{_resource_width_style(resource, operation="edit")}>'
             f'<header class="or-page-header">'
-            f'<h1 class="or-page-title">Edit {e(resource.get_navigation_label())}</h1>'
+            f'<h1 class="or-page-title">Edit {e(heading)}</h1>'
             f"{header_actions}</header>"
             f'<form class="or-form"{conduit_attr("submit", "save")}>'
             f"{form.render(data or form.get_state(), **ctx)}"
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Save</button></div>'
-            f"</form></div>"
+            f"</form>{relations}</div>"
         )
 
 
@@ -364,11 +428,19 @@ class ViewRecord(ResourcePage):
         infolist = resource.get_infolist()
         record_id = _record_id(record)
         header_actions = _page_header_actions(resource, "view", record)
+        heading = _record_title(resource, record, fallback=resource.get_navigation_label())
+        relation_records = ctx.pop("relation_records", None)
+        relations = _relation_managers(
+            resource,
+            record,
+            "view",
+            relation_records if isinstance(relation_records, dict) else None,
+        )
         return (
             f'<div class="or-page or-page-view" data-resource="{e(resource.get_slug())}" '
             f'data-record="{e(record_id)}"{_resource_width_style(resource, operation="view")}>'
             f'<header class="or-page-header">'
-            f'<h1 class="or-page-title">{e(resource.get_navigation_label())}</h1>'
+            f'<h1 class="or-page-title">{e(heading)}</h1>'
             f"{header_actions}</header>"
-            f"{infolist.render(record, **ctx)}</div>"
+            f"{infolist.render(record, **ctx)}{relations}</div>"
         )

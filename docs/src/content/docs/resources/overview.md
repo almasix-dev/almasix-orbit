@@ -5,6 +5,10 @@ description: CRUD resources — forms, tables, infolists, permissions, and page 
 
 A **resource** is one admin surface for a model. It owns the form (create/edit), table (index), optional infolist (view), permissions, and the usual index / create / edit / view routes. Register the resource class on a [panel](/panels/configuration/); Orbit mounts the pages under the panel path.
 
+![Orbit resource in the panel (light)](/examples/light/resources/overview.png)
+
+![Orbit resource in the panel (dark)](/examples/dark/resources/overview.png)
+
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit import Resource
 from almasix.orbit.forms import Form, TextInput
@@ -55,7 +59,23 @@ class PostResource(Resource):
 | `slug` | plural of class name | URL segment; strips trailing `Resource`, snake_case + plural (`AuthorResource` → `authors`). Set `slug = "..."` to override. |
 | `navigation_*` | sensible defaults | Sidebar label, icon, group, sort |
 | `record_title_attribute` | `"id"` | How records introduce themselves |
+| `model_label` / `plural_model_label` | derived from slug | Singular / plural wording in page headings |
+| `global_search_attributes` | `()` | Attributes matched by [global search](/resources/global-search/) |
+| `global_search_result_details` | `()` | Attributes shown under a search result |
+| `global_search_result_limit` | `5` | Most results this resource contributes |
+| `soft_deletes` | `False` | Adds a trashed filter plus restore / force-delete actions |
 | `permission_prefix` | slug | Ability prefix |
+
+### Record titles
+
+`record_title_attribute` names the field that identifies a record. Orbit uses it for the view and edit page headings, the last breadcrumb, and global search results:
+
+```python
+PostResource.get_record_title({"id": 3, "title": "Launch Orbit"})   # "Launch Orbit"
+PostResource.get_record_title({"id": 3, "title": ""})               # "Post #3"
+```
+
+Override `get_record_title(record)` when the title is computed from several fields.
 
 ## Configure hooks
 
@@ -135,6 +155,19 @@ Resolution order looks for `can` / `has_permission` / `hasPermissionTo`, then ad
 
 ## Relations
 
-Return relation manager classes from `get_relations()` — see [Relation managers](/resources/managing-relationships/).
+Return relation manager classes from `get_relations()`. Orbit renders each one on the view and edit pages — see [Relation managers](/resources/managing-relationships/).
 
-Next: [Pages](/navigation/custom-pages/), [Forms](/forms/overview/), [Tables](/tables/overview/), [Infolists](/infolists/overview/).
+## Soft deletes
+
+```python
+class PostResource(Resource):
+    soft_deletes = True
+```
+
+The default table gains a trashed filter ("Without trashed" / "With trashed" / "Only trashed") and restore plus force-delete row actions that appear only on trashed rows. List and view hosts learn the `restore` action, which calls the model's `restore()` when it has one and otherwise clears `deleted_at`.
+
+## Global search
+
+Declare `global_search_attributes` and the resource joins the panel's topbar search box — see [Global search](/resources/global-search/).
+
+Next: [Listing records](/resources/listing-records/), [Forms](/forms/overview/), [Tables](/tables/overview/), [Infolists](/infolists/overview/).

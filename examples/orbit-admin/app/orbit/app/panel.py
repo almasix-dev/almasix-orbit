@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from almasix.orbit import Panel, PanelRegistry
+from almasix.orbit.panels.mfa import AppAuthentication, EmailAuthentication
 from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem, NavigationSubgroup
 from almasix.orbit.panels.tenancy import Tenancy, Tenant
 from almasix.orbit.panels.users import PanelNotification, UserMenuItem
+
 from app.orbit.app.clusters.settings_hub_cluster import SettingsHubCluster
 from app.orbit.app.pages.nav_account_pages import NavAccountPage, NavPreferencesPage
 from app.orbit.app.plugins import BrandingPlugin
@@ -88,6 +90,10 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
         .sidebar_collapsible()
         .login()
         .signup()
+        .multi_factor_authentication(
+            AppAuthentication(brand_name="Orbit Admin"),
+            EmailAuthentication(),
+        )
         .auth_guard("web")
         .middleware(["web"], replace=True)
         .tenant(_demo_tenancy())
@@ -197,6 +203,10 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
             ]
         )
         .database_notifications_polling("30s")
+        .sqlite_notifications("orbit-notifications.sqlite")
+        .live_broadcasts(polling="2s")
+        .tenant_billing(True)
+        .spa()
         .widgets(
             [
                 WelcomeWidget,
