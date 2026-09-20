@@ -687,3 +687,52 @@
 .content-panel:has([data-marketplace]) {
 	padding-block: 1.35rem 2.5rem;
 }
+
+.market-table-wrap {
+	overflow-x: auto;
+	margin: 0.75rem 0 1.25rem;
+	border: 1px solid var(--market-line);
+	border-radius: var(--market-radius);
+}
+
+.market-table-wrap table {
+	width: 100%;
+	margin: 0;
+	border-collapse: collapse;
+	font-size: var(--sl-text-sm);
+}
+
+.market-table-wrap th,
+.market-table-wrap td {
+	padding: 0.65rem 0.9rem;
+	text-align: start;
+	border-bottom: 1px solid var(--market-line);
+	vertical-align: top;
+}
+
+.market-table-wrap th {
+	font-size: var(--sl-text-xs);
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: var(--sl-color-gray-3);
+	background: var(--sl-color-gray-7, var(--sl-color-black));
+}
+
+.market-table-wrap tr:last-child td {
+	border-bottom: 0;
+}
+
+.market-table-wrap code {
+	font-size: 0.85em;
+}
+
+.market-api-facts {
+	margin: 0.85rem 0 1rem;
+	padding-inline-start: 1.2rem;
+	color: var(--sl-color-gray-2);
+	font-size: var(--sl-text-sm);
+}
+
+.market-api-facts li + li {
+	margin-top: 0.35rem;
+}

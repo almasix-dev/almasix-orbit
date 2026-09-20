@@ -9,18 +9,25 @@ import {
 	isHomePath,
 	isMarketplacePath,
 	isNavCurrent,
+	isPluginDocPath,
 	normalizePath,
 	parseGithubRepo,
+	pluginPathSegment,
 	pypiProjectUrl,
 } from './marketplace-lib.mjs';
 
-test('marketplace paths include catalog, listings, and plugin development', () => {
+test('marketplace paths are the catalog, not plugin guides or panel docs', () => {
 	assert.equal(isMarketplacePath('/plugins'), true);
 	assert.equal(isMarketplacePath('/plugins/'), true);
 	assert.equal(isMarketplacePath('/plugins/orbit-branding/'), true);
 	assert.equal(isMarketplacePath('/plugins/paid/?x=1'), true);
-	assert.equal(isMarketplacePath('/panels/plugins/'), true);
-	assert.equal(isMarketplacePath('/panels/plugins'), true);
+	assert.equal(isMarketplacePath('/plugins/authors/almasix/'), true);
+	assert.equal(isMarketplacePath('/plugins/develop/'), true);
+	assert.equal(isMarketplacePath('/plugins/feed.json'), true);
+	assert.equal(isMarketplacePath('/plugins/using/'), false);
+	assert.equal(isMarketplacePath('/plugins/overview/'), false);
+	assert.equal(isMarketplacePath('/plugins/get-listed/'), false);
+	assert.equal(isMarketplacePath('/panels/plugins/'), false);
 	assert.equal(isMarketplacePath('/'), false);
 	assert.equal(isMarketplacePath('/forms/overview/'), false);
 	assert.equal(isMarketplacePath('/panels/configuration/'), false);
@@ -33,18 +40,24 @@ test('docs vs home vs marketplace for the top-bar menus', () => {
 	assert.equal(isDocsPath('/'), false);
 	assert.equal(isDocsPath('/getting-started/installation/'), true);
 	assert.equal(isDocsPath('/forms/overview/'), true);
+	assert.equal(isDocsPath('/plugins/overview/'), true);
+	assert.equal(isDocsPath('/panels/plugins/'), true);
 	assert.equal(isDocsPath('/plugins/'), false);
-	assert.equal(isDocsPath('/panels/plugins/'), false);
+	assert.equal(isDocsPath('/plugins/develop/'), false);
+	assert.equal(isPluginDocPath('/plugins/using/'), true);
+	assert.equal(isPluginDocPath('/plugins/orbit-branding/'), false);
+	assert.equal(pluginPathSegment('/plugins/feed.json'), 'feed');
 });
 
 test('nav current is exact for catalog roots and nested for indexes', () => {
 	assert.equal(isNavCurrent('/plugins/', '/plugins/'), true);
 	assert.equal(isNavCurrent('/plugins/', '/plugins/orbit-branding/'), true);
 	assert.equal(isNavCurrent('/plugins/', '/plugins/using/'), false);
+	assert.equal(isNavCurrent('/plugins/', '/plugins/develop/'), false);
 	assert.equal(isNavCurrent('/plugins/paid/', '/plugins/paid/'), true);
 	assert.equal(isNavCurrent('/plugins/paid/', '/plugins/'), false);
 	assert.equal(isNavCurrent('/plugins/authors/', '/plugins/authors/almasix/'), true);
-	assert.equal(isNavCurrent('/panels/plugins/', '/panels/plugins/'), true);
+	assert.equal(isNavCurrent('/plugins/develop/', '/plugins/develop/'), true);
 });
 
 test('parseGithubRepo reads owner/repo and ignores extra path', () => {

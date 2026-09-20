@@ -68,6 +68,6 @@ panel.plugins([AuditLogPlugin(), BrandingPlugin()])
 ## Related
 
 - [Browse the marketplace](/plugins/)
-- [How listings work](/plugins/overview/)
+- [How the marketplace works](/plugins/overview/)
 - [Plugin development](/panels/plugins/)
 - [Get listed](/plugins/get-listed/) — if you are publishing rather than installing

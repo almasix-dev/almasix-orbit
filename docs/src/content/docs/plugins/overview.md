@@ -1,6 +1,6 @@
 ---
-title: Plugin marketplace
-description: How the Orbit plugin directory works — registry, review, feeds, and how free and paid plugins are listed.
+title: How the marketplace works
+description: Overview of the Orbit plugin directory — registry, review, feeds, and how free and paid plugins are listed.
 ---
 
 A **plugin** is a Python package that extends Orbit: a new form field, a table column, a dashboard widget, a theme, or a whole feature set such as a blog or a CRM. Because plugins are ordinary packages, anyone can publish one without asking permission.
@@ -68,10 +68,11 @@ If you find malware or a security problem an author will not fix, [open a securi
 | [`/plugins/categories/`](/plugins/categories/) | Category index |
 | [`/plugins/categories/<slug>/`](/plugins/categories/theme/) | One category |
 | [`/plugins/feed.json`](/plugins/feed.json) | JSON catalog for tooling |
+| [`/plugins/develop/`](/plugins/develop/) | Catalog API — feed shape, HTML routes, shareable filters |
 
-The JSON feed includes slug, summary, author, categories, versions, price, package, repository, license, official/featured flags, stars, and installs. It is regenerated with the docs site.
+The JSON feed includes slug, summary, author, categories, versions, price, package, repository, license, official/featured flags, stars, and installs. It is regenerated with the docs site. Field-level notes live on the [Catalog API](/plugins/develop/) page next to the live feed.
 
-Marketplace pages use a dedicated sidebar (all plugins, paid, authors, building, listing) and a wider content column than the rest of the docs. The home page and the top bar both link to `/plugins/`.
+The marketplace itself is a full-width listing UI with its own sidebar (browse, authors, categories, catalog API). These pages — overview, using, building, listing — stay in the Docs sidebar. The home page and the top bar **Plugins** menu both open [`/plugins/`](/plugins/).
 
 ## The path from idea to listing
 
@@ -92,6 +93,7 @@ flowchart LR
 ## Related
 
 - [Browse the marketplace](/plugins/) — the live directory
+- [Catalog API](/plugins/develop/) — JSON feed and listing URLs
 - [Using a plugin](/plugins/using/) — install and register
 - [Plugin development](/panels/plugins/) — write the code
 - [Render hooks](/panels/render-hooks/) — inject HTML from a plugin

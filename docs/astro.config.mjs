@@ -183,7 +183,18 @@ export default defineConfig({
 			],
 			sidebar: [
 				{ label: 'Home', slug: 'index' },
-				{ label: 'Plugins', link: '/plugins/' },
+				{
+					label: 'Plugins',
+					collapsed: true,
+					items: [
+						{ label: 'Marketplace overview', slug: 'plugins/overview' },
+						{ label: 'Using a plugin', slug: 'plugins/using' },
+						{ label: 'Building a plugin', slug: 'panels/plugins' },
+						{ label: 'Listing a plugin', slug: 'plugins/get-listed' },
+						{ label: 'Listing guidelines', slug: 'plugins/guidelines' },
+						{ label: 'Paid vs free', slug: 'plugins/paid-vs-free' },
+					],
+				},
 				{
 					label: 'Prologue',
 					collapsed: false,
@@ -371,6 +382,7 @@ export default defineConfig({
 						{ label: 'Overview', slug: 'panels/configuration' },
 						{ label: 'Dashboard', slug: 'panels/dashboard' },
 						{ label: 'Actions in the panel', slug: 'panels/actions' },
+						{ label: 'Plugins', slug: 'panels/plugins' },
 						{ label: 'Render hooks', slug: 'panels/render-hooks' },
 					],
 				},

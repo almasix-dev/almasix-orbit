@@ -2,6 +2,12 @@
  * Shared marketplace helpers — used by the Astro catalog and Node tests.
  */
 
+/** Catalog indexes (not a plugin listing slug). */
+export const MARKETPLACE_INDEX_SEGMENTS = ['authors', 'categories', 'develop', 'feed', 'paid'];
+
+/** Plugin guides that live under `/plugins/` but use the docs sidebar. */
+export const PLUGIN_DOC_SEGMENTS = ['get-listed', 'guidelines', 'overview', 'paid-vs-free', 'using'];
+
 export const MARKETPLACE_NAV = [
 	{
 		label: 'Browse',
@@ -13,15 +19,8 @@ export const MARKETPLACE_NAV = [
 		],
 	},
 	{
-		label: 'Guides',
-		items: [
-			{ label: 'Using a plugin', href: '/plugins/using/' },
-			{ label: 'Building a plugin', href: '/panels/plugins/' },
-			{ label: 'Listing a plugin', href: '/plugins/get-listed/' },
-			{ label: 'Listing guidelines', href: '/plugins/guidelines/' },
-			{ label: 'Paid vs free', href: '/plugins/paid-vs-free/' },
-			{ label: 'How listings work', href: '/plugins/overview/' },
-		],
+		label: 'Catalog API',
+		items: [{ label: 'JSON feed', href: '/plugins/develop/' }],
 	},
 ];
 
@@ -32,9 +31,24 @@ export function normalizePath(pathname) {
 	return raw.endsWith('/') ? raw : `${raw}/`;
 }
 
-export function isMarketplacePath(pathname) {
+/** First `/plugins/…` segment, without a trailing file extension. */
+export function pluginPathSegment(pathname) {
 	const path = (pathname ?? '/').split('?')[0].replace(/\/+$/, '') || '/';
-	return path === '/plugins' || path.startsWith('/plugins/') || path === '/panels/plugins';
+	if (path === '/plugins') return '';
+	if (!path.startsWith('/plugins/')) return null;
+	return path.slice('/plugins/'.length).split('/')[0].replace(/\.[a-z0-9]+$/i, '');
+}
+
+export function isMarketplacePath(pathname) {
+	const segment = pluginPathSegment(pathname);
+	if (segment === null) return false;
+	if (segment === '') return true;
+	return !PLUGIN_DOC_SEGMENTS.includes(segment);
+}
+
+export function isPluginDocPath(pathname) {
+	const segment = pluginPathSegment(pathname);
+	return Boolean(segment) && PLUGIN_DOC_SEGMENTS.includes(segment);
 }
 
 export function isHomePath(pathname) {
@@ -61,13 +75,8 @@ export function isNavCurrent(href, pathname) {
 	if (target === '/plugins/') {
 		if (current === '/plugins/') return true;
 		const parts = current.replace(/^\/+|\/+$/g, '').split('/');
-		return (
-			parts[0] === 'plugins' &&
-			parts.length === 2 &&
-			!['authors', 'categories', 'paid', 'using', 'get-listed', 'guidelines', 'overview', 'paid-vs-free'].includes(
-				parts[1],
-			)
-		);
+		const listing = parts[0] === 'plugins' && parts.length === 2 ? parts[1].replace(/\.[a-z0-9]+$/i, '') : '';
+		return Boolean(listing) && !MARKETPLACE_INDEX_SEGMENTS.includes(listing) && !PLUGIN_DOC_SEGMENTS.includes(listing);
 	}
 	return current === target || current.startsWith(target);
 }
