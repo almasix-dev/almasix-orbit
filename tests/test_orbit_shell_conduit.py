@@ -138,6 +138,56 @@ def test_mount_panel_registers_prefixed_routes() -> None:
     assert "/" not in uris or all(r.uri != "/" or "orbit" not in (r.route_name or "") for r in router.routes)
 
 
+def test_mounted_actions_are_almasix_bindable() -> None:
+    """Almasix's kernel treats ``**kwargs`` as a required parameter (e.g. ``_e``)."""
+    import inspect
+    import re
+    from typing import Any, get_type_hints
+
+    from almasix.http.request import Request
+    from almasix.routing.router import Router
+
+    router = Router()
+    panel = Panel.make("admin").path("admin").resources([PostResource]).login()
+    mount_panel(router, panel)
+    skip = {str, int, float, bool, bytes, dict, list, tuple, set, type(None), Any}
+    home = None
+    for route in router.routes:
+        action = route.action
+        name = getattr(route, "route_name", None) or route.get_name()
+        if name == "orbit.admin.home":
+            home = action
+        sig = inspect.signature(action)
+        try:
+            hints = get_type_hints(action)
+        except Exception:
+            hints = {}
+        path_names = set(re.findall(r"\{([^{}:]+)", str(route.uri)))
+        for pname, param in sig.parameters.items():
+            if pname == "self":
+                continue
+            assert param.kind not in (
+                inspect.Parameter.VAR_KEYWORD,
+                inspect.Parameter.VAR_POSITIONAL,
+            ), f"{name} has catch-all {pname!r}"
+            annotation = hints.get(pname, param.annotation)
+            if annotation is Request or pname in {"request", "req"}:
+                continue
+            if pname in path_names:
+                continue
+            if param.default is not inspect.Parameter.empty:
+                continue
+            if (
+                annotation is not inspect.Parameter.empty
+                and isinstance(annotation, type)
+                and annotation not in skip
+            ):
+                continue
+            raise AssertionError(f"Cannot resolve {pname!r} for {name} {action!r}")
+    assert home is not None
+    assert "tenant" in inspect.signature(home).parameters
+
+
 def test_mount_root_panel_opt_in() -> None:
     from almasix.routing.router import Router
 

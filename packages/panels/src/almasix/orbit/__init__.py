@@ -19,7 +19,7 @@ from almasix.orbit.panels.relation_manager import RelationManager
 from almasix.orbit.panels.resource import Resource
 from almasix.orbit.panels.users import OrbitUser, PanelNotification, UserMenuItem
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 __all__ = [
     "__version__",
