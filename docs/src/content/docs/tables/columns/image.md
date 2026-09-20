@@ -3,7 +3,9 @@ title: Image column
 description: ImageColumn — circular or square avatars, sizes, stacked galleries, rings, overlap, alt text, and default images.
 ---
 
-`ImageColumn` renders a URL (or list of URLs) in the state as an `<img>`. It's most often used for avatars, logos, and thumbnail galleries:
+## Introduction
+
+`ImageColumn` renders a URL (or list of URLs) from the record as an `<img>`. Reach for it when a row needs an avatar, logo, cover thumbnail, or a small gallery of faces:
 
 ```python
 from almasix.orbit.tables import ImageColumn
@@ -46,7 +48,7 @@ ImageColumn.make("avatar_url").default_image_url("/images/avatar-fallback.png")
 
 ## Stacking images
 
-If the column's state is a list of URLs, `.stacked()` overlaps them into a compact group, Filament-style:
+If the column's state is a list of URLs, `.stacked()` overlaps them into a compact group — handy for “team members on this project” or similar galleries:
 
 ```python
 ImageColumn.make("team_avatars").stacked().circular().size(28)

@@ -1,11 +1,13 @@
 ---
 title: Overview
-description: Dashboard widgets — base layout APIs, stats overviews, charts, and embedded tables for Orbit panels.
+description: Dashboard widgets — cards you register on a panel home page for stats, charts, tables, and custom HTML.
 ---
 
 ## Introduction
 
-**Widgets** are dashboard-sized cards for a panel home page. Orbit mirrors Filament 5’s widget model: register classes (or instances) on the panel, then the default [Dashboard](/panels/dashboard/) sorts, authorizes, and lays them out in a responsive grid.
+**Widgets** are dashboard-sized cards on a panel home page. Each widget is a Python class (or fluent instance) that renders a self-contained block of UI — a KPI strip, a chart, an embedded table, or custom HTML.
+
+Register widget classes on the panel with `.widgets([...])`. The default [Dashboard](/panels/dashboard/) collects them, checks who can see each one, sorts by `.sort(...)`, and lays them out in a responsive grid.
 
 ```python title="app/providers/orbit_panel_provider.py"
 from almasix.orbit import Panel

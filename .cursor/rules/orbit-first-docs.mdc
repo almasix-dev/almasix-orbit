@@ -1,0 +1,33 @@
+---
+description: Orbit docs must be original and beginner-complete — never Filament-referential
+globs: docs/**/*
+alwaysApply: true
+---
+
+# Orbit-first documentation voice
+
+Learner-facing Orbit docs (`docs/src/content/docs/**`, gallery captions, features pages) teach **Orbit on its own terms**. Readers are assumed to know **no other admin framework**.
+
+## Required
+
+- Explain every concept from first principles (what it is, why it exists, how to use it in Orbit).
+- Use Orbit class/method names, Orbit examples, and Orbit screenshots only.
+- Prefer concrete walkthroughs: problem → API → code snippet → light/dark shot when available.
+- Cross-link other Orbit docs pages instead of external admin UIs.
+
+## Forbidden in learner docs
+
+- “Mirrors Filament…”, “Filament 5 parity”, “Filament-style”, “Filament-familiar”, “same as Filament”, “Filament’s X”
+- Mapping tables that list Filament APIs next to Orbit as the primary explanation
+- Assuming the reader already knows Filament (or Laravel admin) vocabulary
+- Telling readers to “see Filament docs” for behavior Orbit should document
+
+## Allowed exceptions
+
+- **Maintainer-only** files such as `docs/parity.md` may mention Filament for internal tracking.
+- **Historical** release-note bullets that record past work may keep factual changelog wording; do not use them as teaching copy.
+- The home page may include a brief optional “inspiration” note that does **not** require Filament knowledge to continue learning.
+
+## When editing or polishing a feature
+
+Rewrite any Filament-referential prose you touch. Expand explanations so a new Orbit learner can succeed without opening another product’s docs.

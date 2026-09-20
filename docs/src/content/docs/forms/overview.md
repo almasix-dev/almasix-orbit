@@ -1,11 +1,11 @@
 ---
 title: Forms overview
-description: Build Filament-familiar forms with Orbit fields — labels, defaults, visibility, live reactivity, validation, and relationship helpers.
+description: Build Orbit forms with fluent fields — labels, defaults, visibility, live reactivity, validation, and relationship helpers.
 ---
 
 ## Introduction
 
-Orbit forms mirror Filament 5’s fluent field API on Almasix. A `Form` is a [`Schema`](/schemas/overview/) specialized for input: compose with `.schema([...])`, hydrate with `.fill(...)`, collect values with `.dehydrate()`, and check rules with `.validate(...)`. Conduit hosts render HTML; your Python config owns chrome, visibility, and dehydration.
+A form is how Orbit collects and validates user input in an admin panel. In Python you declare fields with a fluent API; Conduit hosts turn that config into HTML. A `Form` is a [`Schema`](/schemas/overview/) specialized for input: compose with `.schema([...])`, hydrate with `.fill(...)`, collect values with `.dehydrate()`, and check rules with `.validate(...)`. Your Python config owns chrome, visibility, and dehydration — the host only renders and posts state.
 
 Use `.operation("create" | "edit" | "view")` so `.disabled_on` / `.hidden_on` / `.visible_on` can branch without bespoke callables. Nest fields in [Sections](/schemas/sections/), [Tabs](/schemas/tabs/), [Grids](/schemas/grid/), and [Wizards](/schemas/wizards/).
 
@@ -128,7 +128,7 @@ Toggle.make("notify").default(lambda user=None, **_: bool(getattr(user, "wants_a
 
 ## Disabling a field
 
-Disabled fields stay visible but reject input. Use `.disabled()` or a callable for auth-gated locks. Values still dehydrate by default — call `.dehydrated(False)` / `.saved(False)` (Filament alias) when the host must omit the path from the save payload.
+Disabled fields stay visible but reject input. Use `.disabled()` or a callable for auth-gated locks. Values still dehydrate by default — call `.dehydrated(False)` (alias `.saved(False)`) when the host must omit the path from the save payload.
 
 ```python title="app/orbit/forms/locked_slug.py"
 from almasix.orbit.forms import TextInput
@@ -192,7 +192,7 @@ TextInput.make("migration_token").visible_on("create")
 
 ## Inline labels
 
-Inline labels sit beside the control instead of above it — useful in dense settings rows. Toggle/checkbox fields often combine this with `.inline()` for Filament-style side-by-side chrome.
+Inline labels sit beside the control instead of above it — useful in dense settings rows. Toggle and checkbox fields often combine `.inline_label()` with `.inline()` so the label and control share one horizontal row.
 
 ```python title="app/orbit/forms/preferences.py"
 from almasix.orbit.forms import TextInput, Toggle

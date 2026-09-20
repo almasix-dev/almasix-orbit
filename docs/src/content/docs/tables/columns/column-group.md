@@ -3,7 +3,11 @@ title: Column group
 description: ColumnGroup — a shared header above related columns, with its own alignment and header wrapping.
 ---
 
-`ColumnGroup` draws one header above a set of child columns — use it when related fields should share a label, like shipping address fields or payment totals:
+## Introduction
+
+`ColumnGroup` draws one header above a set of child columns. Use it when related fields should share a label — shipping address pieces, payment totals, customer contact details — so the table reads as labeled sections instead of a flat list of headers.
+
+Pass the group label and the child columns to `ColumnGroup.make(...)`:
 
 ```python
 from almasix.orbit.tables import ColumnGroup, TextColumn
@@ -14,7 +18,7 @@ ColumnGroup.make("Customer", [
 ])
 ```
 
-The constructor mirrors Filament's shape — `ColumnGroup.make('Label', [columns])`. An alternate shape is also available when you'd rather set the label afterwards:
+An alternate constructor accepts the columns first when you'd rather set the label afterwards:
 
 ```python
 ColumnGroup.make([

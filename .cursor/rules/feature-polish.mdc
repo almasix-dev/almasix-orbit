@@ -13,7 +13,7 @@ Orbit features are polished **sequentially**. Do not start the next feature unti
 2. **Parity** — Fix bugs and add Filament 5–equivalent APIs for *this* feature only.
 3. **Sample** — Focused showcase in `examples/orbit-admin/`.
 4. **Tests** — 100% coverage on the touched surface + regression tests.
-5. **Docs** — Update docs, examples, light/dark screenshots under `docs/public/examples/`.
+5. **Docs** — Update docs, examples, light/dark screenshots under `docs/public/examples/`. Learner docs must be **Orbit-first** (see `.cursor/rules/orbit-first-docs.mdc`): never “mirrors Filament” or assume another framework; teach from scratch.
 6. **Close** — Mark done in `.cursor/feature-polish.md`; only then open the next.
 
 ## Rules

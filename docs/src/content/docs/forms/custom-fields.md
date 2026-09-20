@@ -166,7 +166,7 @@ Rating.make('score').label('Score').required()
 
 ## When not to subclass
 
-Reach for a custom `Field` only when existing components cannot express the control. Composition is cheaper to maintain and keeps Filament-parity helpers for free.
+Reach for a custom `Field` only when existing components cannot express the control. Composition is cheaper to maintain and keeps Orbit’s built-in fluent helpers (validation, slots, visibility, dehydrate) without extra code.
 
 ```python title="app/orbit/resources/product_resource.py"
 # Extra chrome around TextInput — content slots, not a subclass:

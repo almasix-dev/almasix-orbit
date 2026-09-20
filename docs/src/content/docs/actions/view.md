@@ -5,7 +5,7 @@ description: ViewAction preset — read-only modal forms or view-page URLs.
 
 ## Introduction
 
-`ViewAction` opens a record in read-only mode. Defaults: name `view`, label **View**, magnifying-glass icon, gray color.
+`ViewAction` opens a record in read-only mode. Reach for it on table rows or toolbars when users should inspect a record without editing. Defaults: name `view`, label **View**, magnifying-glass icon, gray color.
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.actions import ViewAction
@@ -36,7 +36,7 @@ from almasix.orbit.actions import ViewAction
 ViewAction.make().url(lambda record, **_: f"/posts/{record['id']}")
 ```
 
-Pair with an [Infolist](/infolists/overview/) on the resource for Filament-style show pages.
+Pair with an [Infolist](/infolists/overview/) on the resource when the view page should show typed read-only entries instead of a disabled form.
 
 ## Authorization
 

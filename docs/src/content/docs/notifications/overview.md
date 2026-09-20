@@ -7,6 +7,8 @@ description: Flash toast notifications — title, body, icon, color, status, dur
 
 **Notifications** are short, typed messages built with a fluent `Notification` API. Calling `.send()` flashes them into the panel toast host (Alpine `orbitNotifications`). The same object can also [persist to the database bell](/notifications/database-notifications/) or [broadcast live](/notifications/broadcast-notifications/).
 
+Use them after a save, when a background job finishes, or anywhere you want a non-blocking “it worked / look at this” cue without navigating away.
+
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.notifications import Notification
 
@@ -24,7 +26,9 @@ The panel shell renders a toast host when notifications are enabled (default). P
 
 ## Setting a title
 
-The main message is the title. Pass it via `.title(...)`, or use `Notification.make(title="…")`. A custom id (Filament-style) is `Notification.make("greeting")` when the string has no spaces.
+The main message is the title. Pass it via `.title(...)`, or use `Notification.make(title="…")`.
+
+To give the toast a **stable id** you can close later, pass a single word (no spaces) as the first argument: `Notification.make("greeting")`. Otherwise Orbit assigns a random id.
 
 ```python title="app/orbit/notifications/title.py"
 from almasix.orbit.notifications import Notification

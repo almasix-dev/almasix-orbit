@@ -5,7 +5,7 @@ description: TextEntry is the default Infolist entry — badges, icons, URLs, da
 
 ## Introduction
 
-`TextEntry` is the workhorse for read-only strings and formatted values. It inherits the shared [Entry chrome](/infolists/overview/) (label, helper, hint, placeholder, copyable, slots) and adds Filament-parity formatters for badges, icons, links, dates, money, numeric display, markdown / HTML / prose, and list layouts.
+`TextEntry` is the workhorse for read-only strings and formatted values. It inherits the shared [Entry chrome](/infolists/overview/) (label, helper, hint, placeholder, copyable, slots) and adds formatters for badges, icons, links, dates, money, numeric display, markdown / HTML / prose, and list layouts.
 
 Each variation below includes a short explanation, the fluent API to paste into your schema, and light/dark screenshots.
 

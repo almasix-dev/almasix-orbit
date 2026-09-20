@@ -3,9 +3,14 @@ title: Plugin development
 description: Build, publish, and register Orbit plugins — Panel Plugin classes, package layout, and use inside or outside panels.
 ---
 
-An Orbit **plugin** is a small package (or app module) that configures one or more panels — brand, hooks, resources, middleware — without editing every consumer’s `OrbitPanelProvider`.
+An Orbit **plugin** is a small package (or app module) that configures one or more panels — brand, hooks, resources, middleware — without editing every consumer’s panel file.
 
-Think Filament panel plugins: `register` mutates the panel early; `boot` runs at mount time for side effects (hooks, routes, discovery).
+Subclass `Plugin` and implement two hooks:
+
+- **`register`** — mutate the panel early (brand, colors, resources, …)
+- **`boot`** — run at mount time for side effects (render hooks, routes, discovery)
+
+That split keeps config changes separate from “do something when the panel mounts.”
 
 ## Anatomy
 

@@ -5,7 +5,9 @@ description: Fluent Stat cards with icons, descriptions, colors, URLs, and Chart
 
 ## Introduction
 
-`StatsOverviewWidget` renders a horizontal row of `Stat` cards — Filament’s familiar KPI strip. Build each card with the fluent `Stat` API, then attach the list with `.stats([...])`.
+`StatsOverviewWidget` renders a horizontal row of **stat cards** — compact KPI tiles that show a label, a primary value, and optional extras (description, icon, color, sparkline, or link).
+
+Build each card with the fluent `Stat` API, then attach the list with `.stats([...])`. Register the widget on the panel like any other [widget](/widgets/overview/).
 
 ```python title="app/orbit/widgets/overview_stats.py"
 from almasix.orbit.widgets import Stat, StatsOverviewWidget

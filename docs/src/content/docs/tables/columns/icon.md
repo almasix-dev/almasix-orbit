@@ -3,7 +3,9 @@ title: Icon column
 description: IconColumn — render a Heroicon from state, boolean check/X icons, sizes, and true/false colors.
 ---
 
-`IconColumn` renders a [Heroicon](https://heroicons.com) instead of text. The column's state is treated as the icon name unless `.boolean()` is enabled, in which case a fixed check or X icon renders based on truthiness:
+## Introduction
+
+`IconColumn` renders a [Heroicon](https://heroicons.com) instead of text. Use it for status glyphs, severity markers, or compact Yes/No indicators. By default the column's state is treated as the icon name; enable `.boolean()` to swap to a fixed check or X icon based on truthiness:
 
 ```python
 from almasix.orbit.tables import IconColumn
@@ -51,7 +53,7 @@ Pass `.boolean()` for read-only Yes/No fields — it swaps to a check icon when 
 IconColumn.make("verified").boolean()
 ```
 
-Boolean icons default to `success` (check) and `danger` (X) if no color is set. `BooleanColumn` is a Filament-shaped shortcut for exactly this — see [Boolean column](/tables/columns/boolean/).
+Boolean icons default to `success` (check) and `danger` (X) if no color is set. Prefer [`BooleanColumn`](/tables/columns/boolean/) when the column is always a Yes/No icon — it is the same API with `.boolean()` already on.
 
 ### Customizing the boolean icons
 

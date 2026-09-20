@@ -3,9 +3,11 @@ title: Boolean column
 description: BooleanColumn and IconColumn.boolean() render check/X icons; TextColumn.boolean() renders Yes/No text.
 ---
 
-Boolean state can render as icons or as text — pick whichever fits the table.
+## Introduction
 
-`BooleanColumn` is the Filament-shaped alias for [`IconColumn`](/tables/columns/icon/) with `.boolean()` already applied — a check icon (`success`) when truthy, an X icon (`danger`) when falsy:
+Boolean fields show up often in admin tables — enabled flags, verification state, feature toggles. Orbit gives you three ways to display that state: icon check/X cells, the same icons via `IconColumn`, or plain Yes/No text.
+
+`BooleanColumn` is a convenience column that is already an [`IconColumn`](/tables/columns/icon/) with `.boolean()` applied — a check icon (`success`) when truthy, an X icon (`danger`) when falsy:
 
 ```python
 from almasix.orbit.tables import BooleanColumn

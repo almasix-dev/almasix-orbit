@@ -1,11 +1,11 @@
 ---
 title: Group
-description: Fuse schema children without fieldset chrome — optional column grid, Filament-style inline grouping.
+description: Fuse schema children without fieldset chrome — optional column grid for lightweight inline clusters.
 ---
 
 ## Introduction
 
-`Group` fuses child components without fieldset or section chrome. Use it when fields should sit together visually but you don’t want a legend or heading — Filament’s `Group` analogue. Optionally enable a column grid with `.columns(n)`.
+`Group` fuses child components without fieldset or section chrome. Use it when fields should sit together visually but you don’t want a legend or heading — for example a SKU and quantity pair beside a longer notes field. Optionally enable a column grid with `.columns(n)`.
 
 ```python title="app/orbit/schemas/group_basic.py"
 from almasix.orbit.schemas import Group

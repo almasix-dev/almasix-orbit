@@ -5,7 +5,15 @@ description: Live / broadcast toasts — LiveNotifier, channels, and the orbit:b
 
 ## Introduction
 
-**Broadcast notifications** deliver a toast in real time without waiting for a full page render. Filament pairs this with Laravel Echo; Orbit ships a `LiveNotifier` adapter and an Alpine `orbitLiveNotifications` host that listens for `orbit:broadcast` browser events. Wire your websocket bridge (Pusher, Ably, SSE, …) to that event — Echo itself is intentionally out of package scope.
+**Broadcast notifications** deliver a toast in real time without waiting for a full page render. Use them when a background job finishes, an order ships, or any server-side event should pop a toast while the admin stays on the current page.
+
+Orbit provides:
+
+1. A fluent `.broadcast(...)` channel on `Notification`
+2. A `LiveNotifier` adapter that records channel names for the client
+3. An Alpine `orbitLiveNotifications` host that listens for the browser event `orbit:broadcast`
+
+Wire your own transport (websockets, SSE, or a push service) to dispatch that event — Orbit stays transport-agnostic.
 
 ```python title="app/orbit/notifications/broadcast.py"
 from almasix.orbit.notifications import Notification
@@ -66,9 +74,9 @@ Markup is `<div class="or-live-notifier" data-channels="…" x-data="orbitLiveNo
 
 ## Client bridge
 
-From your Echo / websocket callback, dispatch a CustomEvent. Optional `channel` is filtered against `data-channels` when set.
+From your websocket or SSE callback, dispatch a `CustomEvent`. Optional `channel` is filtered against `data-channels` when set.
 
-```js title="resources/js/echo-bridge.js"
+```js title="resources/js/broadcast-bridge.js"
 window.dispatchEvent(
   new CustomEvent("orbit:broadcast", {
     detail: {

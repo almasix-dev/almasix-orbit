@@ -103,5 +103,5 @@ See [Navigation overview](/navigation/overview/).
 - Publishable `orbit-assets` tag
 
 :::note[Still cooking]
-Some Filament surfaces (SPA mode, relation managers depth, etc.) are still landing. Resource scaffolding with `--generate` is available — see [Resources](/resources/overview/).
+SPA mode and deeper relation-manager tooling are still landing. Resource scaffolding with `--generate` is available — see [Resources](/resources/overview/).
 :::
