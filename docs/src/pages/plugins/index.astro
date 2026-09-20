@@ -34,8 +34,11 @@ const featured = plugins.filter((plugin) => plugin.featured);
 			</p>
 			<div class="market-cta-row">
 				<a class="market-button is-primary" href="/plugins/get-listed/">Get your plugin listed</a>
+				<a class="market-button" href="/plugins/using/">Using a plugin</a>
 				<a class="market-button" href="/panels/plugins/">Build a plugin</a>
-				<a class="market-button" href="/plugins/paid-vs-free/">Paid vs free</a>
+				<a class="market-button" href="/plugins/authors/">Authors</a>
+				<a class="market-button" href="/plugins/categories/">Categories</a>
+				<a class="market-button" href="/plugins/feed.json">JSON feed</a>
 			</div>
 		</div>
 
@@ -216,7 +219,28 @@ const featured = plugins.filter((plugin) => plugin.featured);
 			for (const card of [...cards].sort(order)) results.append(card);
 			if (count) count.textContent = `${visible} ${visible === 1 ? 'plugin' : 'plugins'}`;
 			if (noResults) noResults.hidden = visible > 0;
+			const next = new URLSearchParams();
+			const q = (search?.value ?? '').trim();
+			if (q) next.set('q', q);
+			if (price?.value) next.set('price', price.value);
+			if (category?.value) next.set('category', category.value);
+			if (version?.value) next.set('version', version.value);
+			if (sort?.value && sort.value !== 'newest') next.set('sort', sort.value);
+			if (official?.checked) next.set('official', '1');
+			if (dark?.checked) next.set('dark', '1');
+			const qs = next.toString();
+			const url = qs ? `${location.pathname}?${qs}` : location.pathname;
+			history.replaceState(null, '', url);
 		};
+
+		const params = new URLSearchParams(location.search);
+		if (search && params.has('q')) search.value = params.get('q') ?? '';
+		if (price && params.has('price')) price.value = params.get('price') ?? '';
+		if (category && params.has('category')) category.value = params.get('category') ?? '';
+		if (version && params.has('version')) version.value = params.get('version') ?? '';
+		if (sort && params.has('sort')) sort.value = params.get('sort') ?? 'newest';
+		if (official) official.checked = params.get('official') === '1';
+		if (dark) dark.checked = params.get('dark') === '1';
 
 		form.addEventListener('input', apply);
 		form.addEventListener('change', apply);

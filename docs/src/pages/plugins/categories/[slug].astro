@@ -1,0 +1,59 @@
+---
+/** One marketplace category and every published plugin in it. */
+import type { GetStaticPaths } from 'astro';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import PluginCard from '../../../components/marketplace/PluginCard.astro';
+import {
+	getMarketplaceCategories,
+	getMarketplacePlugins,
+	type MarketplaceCategory,
+	type MarketplacePlugin,
+} from '../../../data/marketplace';
+import '../../../styles/marketplace.css';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+	const [categories, plugins] = await Promise.all([
+		getMarketplaceCategories(),
+		getMarketplacePlugins(),
+	]);
+	return categories.map((category) => ({
+		params: { slug: category.slug },
+		props: {
+			category,
+			plugins: plugins.filter((plugin) =>
+				plugin.categories.some((item) => item.slug === category.slug),
+			),
+		},
+	}));
+};
+
+const { category, plugins } = Astro.props as {
+	category: MarketplaceCategory;
+	plugins: MarketplacePlugin[];
+};
+---
+
+<StarlightPage
+	frontmatter={{
+		title: category.label,
+		description: category.description,
+		tableOfContents: false,
+	}}
+>
+	<div class="market">
+		<a class="market-back" href="/plugins/categories/">← All categories</a>
+		<p class="market-lede">{category.description}</p>
+		<p class="market-meta">{plugins.length} {plugins.length === 1 ? 'plugin' : 'plugins'}</p>
+		{
+			plugins.length === 0 ? (
+				<p class="market-empty">No published plugins in this category yet.</p>
+			) : (
+				<ul class="market-grid">
+					{plugins.map((plugin) => (
+						<PluginCard plugin={plugin} />
+					))}
+				</ul>
+			)
+		}
+	</div>
+</StarlightPage>

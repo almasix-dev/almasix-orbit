@@ -312,6 +312,13 @@
 	align-items: center;
 }
 
+.market-install-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	align-items: center;
+}
+
 .market-install {
 	display: block;
 	padding: 0.55rem 0.8rem;
@@ -322,6 +329,20 @@
 	font-size: var(--sl-text-sm);
 	color: var(--sl-color-white);
 	overflow-x: auto;
+}
+
+.market-install-row .market-install {
+	flex: 1;
+	min-width: 12rem;
+}
+
+.market-chip a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.market-chip a:hover {
+	color: var(--sl-color-text-accent);
 }
 
 .market-facts {

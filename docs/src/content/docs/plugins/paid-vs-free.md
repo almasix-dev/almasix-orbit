@@ -79,6 +79,7 @@ If you are on the buying side, remember that a plugin runs with full access to y
 
 ## Related
 
+- [Using a plugin](/plugins/using/) — install after you buy or `pip install`
 - [Get listed](/plugins/get-listed/) — submission steps and fields
 - [Listing guidelines](/plugins/guidelines/) — the review checklist
 - [Browse the marketplace](/plugins/) — see how listings render

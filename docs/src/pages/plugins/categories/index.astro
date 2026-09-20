@@ -1,0 +1,59 @@
+---
+/** Index of marketplace categories, including empty ones so the taxonomy is visible. */
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import {
+	getMarketplaceCategories,
+	getMarketplacePlugins,
+} from '../../../data/marketplace';
+import '../../../styles/marketplace.css';
+
+const [categories, plugins] = await Promise.all([
+	getMarketplaceCategories(),
+	getMarketplacePlugins(),
+]);
+const rows = categories.map((category) => ({
+	category,
+	count: plugins.filter((plugin) =>
+		plugin.categories.some((item) => item.slug === category.slug),
+	).length,
+}));
+---
+
+<StarlightPage
+	frontmatter={{
+		title: 'Plugin categories',
+		description: 'Every category the Orbit plugin marketplace uses — form fields, themes, panel kits, and more.',
+		tableOfContents: false,
+	}}
+>
+	<div class="market">
+		<a class="market-back" href="/plugins/">← All plugins</a>
+		<p class="market-lede">
+			Each listing picks one or more of these keys. Authors cannot invent new ones — if nothing
+			fits, <a href="https://github.com/almasix-dev/almasix-orbit/issues/new?template=marketplace-category.yml"
+				>propose a category</a
+			>.
+		</p>
+		{
+			rows.length === 0 ? (
+				<p class="market-empty">No categories configured.</p>
+			) : (
+				<ul class="market-grid">
+					{rows.map(({ category, count }) => (
+						<li class="market-card">
+							<div class="market-card-body">
+								<h2 class="market-card-title">
+									<a href={`/plugins/categories/${category.slug}/`}>{category.label}</a>
+								</h2>
+								<p class="market-summary">{category.description}</p>
+								<p class="market-meta">
+									{count} {count === 1 ? 'plugin' : 'plugins'}
+								</p>
+							</div>
+						</li>
+					))}
+				</ul>
+			)
+		}
+	</div>
+</StarlightPage>

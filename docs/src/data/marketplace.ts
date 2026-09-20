@@ -4,11 +4,14 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 /** Docs pages that live under `/plugins/` — a listing may not claim these. */
 export const RESERVED_PLUGIN_SLUGS = [
 	'authors',
+	'categories',
 	'develop',
+	'feed',
 	'get-listed',
 	'guidelines',
 	'overview',
 	'paid-vs-free',
+	'using',
 ];
 
 export interface MarketplaceCategory {
@@ -42,6 +45,11 @@ export interface MarketplacePlugin {
 	installCommand?: string;
 	repository?: string;
 	docsUrl?: string;
+	homepage?: string;
+	changelogUrl?: string;
+	license?: string;
+	keywords: string[];
+	requiresPython?: string;
 	thumbnail?: string;
 	screenshots: { src: string; alt: string }[];
 	darkMode: boolean;
@@ -141,6 +149,11 @@ export async function getMarketplacePlugins(): Promise<MarketplacePlugin[]> {
 				installCommand: data.package ? `pip install ${data.package}` : undefined,
 				repository: data.repository,
 				docsUrl: data.docs_url,
+				homepage: data.homepage,
+				changelogUrl: data.changelog_url,
+				license: data.license,
+				keywords: data.keywords ?? [],
+				requiresPython: data.requires_python,
 				thumbnail: data.thumbnail,
 				screenshots: data.screenshots,
 				darkMode: data.features.dark_mode,
@@ -184,4 +197,52 @@ export function collectOrbitVersions(plugins: MarketplacePlugin[]): string[] {
 		for (const version of plugin.orbitVersions) versions.add(version);
 	}
 	return [...versions].sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+}
+
+export function getRelatedPlugins(
+	plugin: MarketplacePlugin,
+	all: MarketplacePlugin[],
+	limit = 3,
+): MarketplacePlugin[] {
+	const categorySlugs = new Set(plugin.categories.map((category) => category.slug));
+	return all
+		.filter((candidate) => candidate.slug !== plugin.slug)
+		.map((candidate) => ({
+			candidate,
+			overlap: candidate.categories.filter((category) => categorySlugs.has(category.slug)).length,
+		}))
+		.filter((row) => row.overlap > 0)
+		.sort((a, b) => b.overlap - a.overlap || b.candidate.publishedAt.getTime() - a.candidate.publishedAt.getTime())
+		.slice(0, limit)
+		.map((row) => row.candidate);
+}
+
+/** GitHub profile URL from a handle or an already-absolute URL. */
+export function authorGithubHref(github: string): string {
+	if (/^https?:\/\//i.test(github)) return github;
+	return `https://github.com/${github.replace(/^@/, '')}`;
+}
+
+export function pluginToFeedItem(plugin: MarketplacePlugin) {
+	return {
+		slug: plugin.slug,
+		name: plugin.name,
+		summary: plugin.summary,
+		url: plugin.url,
+		author: {
+			slug: plugin.author.slug,
+			name: plugin.author.name,
+		},
+		categories: plugin.categories.map((category) => category.slug),
+		orbit_versions: plugin.orbitVersions,
+		price: plugin.isPaid ? plugin.priceLabel : 'free',
+		package: plugin.package ?? null,
+		repository: plugin.repository ?? null,
+		docs_url: plugin.docsUrl ?? null,
+		license: plugin.license ?? null,
+		keywords: plugin.keywords,
+		official: plugin.official,
+		featured: plugin.featured,
+		published_at: plugin.publishedAt.toISOString().slice(0, 10),
+	};
 }

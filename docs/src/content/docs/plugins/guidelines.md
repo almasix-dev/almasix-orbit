@@ -68,10 +68,12 @@ A reviewer may ask for changes when a plugin:
 
 - Keep `orbit_versions` current as new Orbit releases land.
 - Respond to issues. Maintainers may unlist a plugin that is broken on every supported version and has an unreachable author.
+- To hide a listing without deleting history, set `status: archived` (retired) or `status: draft` (staging).
 - Security problems: fix them, then tell us. If an author will not fix a reported vulnerability, we unlist the plugin.
 
 ## Related
 
+- [Using a plugin](/plugins/using/) — install and register
 - [Get listed](/plugins/get-listed/) — the submission steps
 - [Paid vs free](/plugins/paid-vs-free/) — extra rules for commercial plugins
 - [Plugin development](/panels/plugins/) — build the package

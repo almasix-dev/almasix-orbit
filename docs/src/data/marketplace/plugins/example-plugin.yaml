@@ -31,5 +31,9 @@ repository: https://github.com/example/example-orbit-plugin
 #     alt: Describe what the screenshot shows
 features:
   dark_mode: false
+# license: MIT
+# keywords: [example]
+# homepage: https://example.com
+# changelog_url: https://github.com/example/example-orbit-plugin/releases
 status: draft
 published_at: 2026-01-01

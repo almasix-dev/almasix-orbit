@@ -26,7 +26,9 @@ docs/src/data/marketplace/
 
 Images live under `docs/public/plugins/` and are referenced with site-absolute paths such as `/plugins/your-plugin/thumbnail.jpg`. You may also point at an `https://` URL you control.
 
-`plugins/example-plugin.yaml` and `authors/example-author.yaml` are filled-in templates carrying `status: draft`, so they never appear on the site. Copy one rather than starting from a blank file.
+`plugins/example-plugin.yaml` and `authors/example-author.yaml` are filled-in templates carrying `status: draft`, so they never appear on the site. Copy one rather than starting from a blank file. The live official sample is `orbit-branding` — use it to see a published listing, not as a template to overwrite.
+
+Filters on `/plugins` are shareable query strings (`?q=`, `price=`, `category=`, `version=`, `sort=`, `official=1`, `dark=1`). After you merge, confirm your card shows up with those filters cleared.
 
 ## 1. Add your author profile
 
@@ -43,6 +45,12 @@ sponsor_url: https://github.com/sponsors/your-github-handle
 ```
 
 Only `name`, `slug`, and `bio` are required, and `slug` must match the filename.
+
+![Orbit plugin author page (light)](/examples/light/plugins/author.png)
+
+![Orbit plugin author page (dark)](/examples/dark/plugins/author.png)
+
+Need a category that is not in `categories.yaml`? Open a [marketplace category issue](https://github.com/almasix-dev/almasix-orbit/issues/new?template=marketplace-category.yml) before you send the listing PR.
 
 ## 2. Add the listing
 
@@ -109,12 +117,17 @@ checkout_url: https://store.example.com/acme-audit-log-pro
 | `package` | free plugins | PyPI name; drives the `pip install` line. |
 | `repository` | recommended | Public source. Required for free plugins without a PyPI name. |
 | `docs_url` | no | External documentation. |
+| `homepage` | no | Marketing or product page. |
+| `changelog_url` | no | Release notes. |
+| `license` | recommended | SPDX id such as `MIT` or `LicenseRef-Proprietary`. |
+| `keywords` | no | Extra search tokens on the browse grid. |
+| `requires_python` | no | e.g. `>=3.11`. |
 | `thumbnail` | recommended | 16:9, at least 1280×720, JPEG or PNG. |
 | `screenshots` | no | Each needs `src` and descriptive `alt` text. |
 | `features.dark_mode` | no | Set `true` only if you have verified both themes. |
-| `features.official` | no | Reserved for Almasix-maintained plugins. |
+| `features.official` | no | Reserved for Almasix-maintained plugins (`author: almasix`). |
 | `features.featured` | no | Set by maintainers, not by authors. |
-| `status` | no | `published` (default) or `draft` to stage an entry. |
+| `status` | no | `published` (default), `draft` to stage, or `archived` to hide a retired plugin. |
 | `published_at` | yes | `YYYY-MM-DD`. Drives the default “Newest” sort. |
 
 ## 3. Add your images
@@ -127,6 +140,7 @@ Put files under `docs/public/plugins/<your-slug>/`. Keep the thumbnail under abo
 cd docs
 npm ci
 npm run validate:marketplace   # schema, cross-references, missing images
+npm test                       # validator unit tests
 npm run dev                    # then open http://localhost:4321/plugins/
 ```
 
@@ -148,12 +162,14 @@ Open the PR with the [plugin submission template](https://github.com/almasix-dev
 
 - **Update:** edit your YAML file and open another PR. Bump `orbit_versions` when you add support for a new release.
 - **Pause:** set `status: draft` to hide a listing without deleting its history.
+- **Retire:** set `status: archived` when the plugin is no longer offered. Same hiding rules as draft, with a clearer intent.
 - **Remove:** delete the YAML file and your images. Tell us in the PR description why, so we can redirect people if the plugin was popular.
 
 Abandoned plugins that no longer install on any supported Orbit version may be unlisted by maintainers after we try to contact you.
 
 ## Related
 
+- [Using a plugin](/plugins/using/) — what visitors do after they find you
 - [Listing guidelines](/plugins/guidelines/) — what reviewers check
 - [Paid vs free](/plugins/paid-vs-free/) — rules for commercial plugins
 - [Plugin development](/panels/plugins/) — the code side

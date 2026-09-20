@@ -185,9 +185,12 @@ Use those helpers from resources or from non-panel Conduit hosts. Render hooks a
 
 ## Related
 
-- [Plugin marketplace](/plugins/overview/) — how listings work
-- [Get listed](/plugins/get-listed/) — publish your plugin to the directory
+- [Plugin marketplace](/plugins/) — browse listings
+- [How listings work](/plugins/overview/)
+- [Using a plugin](/plugins/using/)
+- [Get listed](/plugins/get-listed/)
+- [Listing guidelines](/plugins/guidelines/)
+- [Paid vs free](/plugins/paid-vs-free/)
 - [Render hooks](/panels/render-hooks/) — positions and scoping
 - [Panel configuration](/panels/configuration/) — fluent panel API
 - [Packages](/packages/) — Orbit’s own PyPI map
-- [Plugin marketplace](/plugins/) — list and submit community packages

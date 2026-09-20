@@ -9,7 +9,7 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 1–98 | Prior modules (tables → notifications) | (prior) | **closed** |
 | 99 | Multi-tenancy | `docs/src/content/docs/users/tenancy.md` | **closed** |
 | 100 | Infolists UI default layout + docs depth | `docs/src/content/docs/infolists/overview.md` | **closed** |
-| 101 | Plugins marketplace | `docs/src/content/docs/plugins/*` | **in progress** |
+| 101 | Plugins marketplace | `docs/src/content/docs/plugins/*` | **closed** |
 | 102 | Resources depth (relation managers, global search, record titles, soft deletes) | `docs/src/content/docs/resources/*` | **closed** |
 | 103 | Forms leftovers (FileUpload endpoint, RichEditor, MorphTo live search, ModalTableSelect / KeyValue hosts) | `docs/src/content/docs/forms/{file-upload,rich-editor,morph-to-select,modal-table-select,key-value}.md` | **closed** |
 | 104 | Import / export job runners | `docs/src/content/docs/actions/{import,export}.md` | **closed** |
@@ -20,9 +20,9 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 109 | Docs completeness pass (thin pages, unique shots, alignment) | `docs/src/content/docs/**` | **closed** |
 | 110 | Support toolkit polish | `docs/src/content/docs/support/*` | **closed** |
 
-## Plugin marketplace — in progress
+## Plugin marketplace — closed
 
-**Bar:** YAML registry with schema + validator tests, published official listing, browse with shareable query filters, category/author indexes, JSON feed, listing extras (license, keywords, related, copy-install), Orbit-first docs with unique shots, 100% coverage.
+**Bar:** YAML registry with schema + validator tests, published official listing (`orbit-branding`), browse with shareable query filters, category/author indexes, JSON feed, listing extras (license, keywords, related, copy-install), Orbit-first docs with unique shots, 100% coverage.
 
 ## Infolists layout + docs depth — closed
 

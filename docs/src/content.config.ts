@@ -56,6 +56,11 @@ const plugins = defineCollection({
 			package: z.string().optional(),
 			repository: z.string().url().optional(),
 			docs_url: z.string().url().optional(),
+			homepage: z.string().url().optional(),
+			changelog_url: z.string().url().optional(),
+			license: z.string().optional(),
+			keywords: z.array(z.string()).default([]),
+			requires_python: z.string().optional(),
 			thumbnail: z.string().optional(),
 			screenshots: z.array(screenshot).default([]),
 			features: z
@@ -65,7 +70,7 @@ const plugins = defineCollection({
 					featured: z.boolean().default(false),
 				})
 				.default({}),
-			status: z.enum(['published', 'draft']).default('published'),
+			status: z.enum(['published', 'draft', 'archived']).default('published'),
 			published_at: z.coerce.date(),
 		})
 		.superRefine((plugin, ctx) => {
@@ -81,6 +86,13 @@ const plugins = defineCollection({
 					code: z.ZodIssueCode.custom,
 					path: ['package'],
 					message: 'Free plugins must provide a `package` (PyPI name) or a public `repository`.',
+				});
+			}
+			if (plugin.features.official && plugin.author !== 'almasix') {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['features', 'official'],
+					message: '`features.official` is reserved for listings whose author is `almasix`.',
 				});
 			}
 		}),

@@ -18,6 +18,7 @@ const haystack = [
 	plugin.author.name,
 	plugin.package ?? '',
 	plugin.repository ?? '',
+	plugin.keywords.join(' '),
 	plugin.categories.map((category) => category.label).join(' '),
 ]
 	.join(' ')

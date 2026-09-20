@@ -6,8 +6,9 @@ Authors should read [Get listed](../docs/src/content/docs/plugins/get-listed.md)
 
 ## Review order
 
-1. CI is green — `npm run validate:marketplace` runs before the docs build and catches
-   schema errors, unknown categories, dangling author references, and missing images.
+1. CI is green — `npm run validate:marketplace` and `npm test` (validator unit tests)
+   run before the docs build and catch schema errors, unknown categories, dangling
+   author references, reserved slugs, and missing images.
 2. The PR only touches `docs/src/data/marketplace/**` and `docs/public/plugins/**`.
    A listing PR that also changes framework code goes back for a split.
 3. Install the package yourself if it is free: `pip install <package>` on a supported
@@ -132,6 +133,9 @@ the author first through their listed channels.
 
 ## Setting `features.official` / `features.featured`
 
-- `official: true` only for plugins Almasix maintains.
+- `official: true` only for plugins Almasix maintains, and only when `author` is `almasix`.
+  The validator rejects official flags on other authors.
 - `featured: true` is a maintainer curation call. Keep the featured row small (four or
   fewer), refresh it occasionally, and do not sell placement.
+- `status: archived` hides a retired listing without deleting git history. Prefer this
+  over deleting YAML when people may still hold a copy of the package.

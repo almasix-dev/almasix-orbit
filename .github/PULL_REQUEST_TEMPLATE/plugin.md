@@ -19,7 +19,7 @@ labels: marketplace
 
 ## Checklist
 
-- [ ] `cd docs && npm run validate:marketplace` passes locally
+- [ ] `cd docs && npm run validate:marketplace && npm test` passes locally
 - [ ] Listing renders correctly in `npm run dev` at `/plugins/<slug>/`, in light and dark
 - [ ] Thumbnail is 16:9, at least 1280x720, and cropped to the feature
 - [ ] Every screenshot has meaningful `alt` text

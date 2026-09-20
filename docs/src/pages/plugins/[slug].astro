@@ -2,8 +2,10 @@
 /** A single marketplace listing. */
 import type { GetStaticPaths } from 'astro';
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import PluginCard from '../../components/marketplace/PluginCard.astro';
 import {
 	getMarketplacePlugins,
+	getRelatedPlugins,
 	renderListingMarkdown,
 	RESERVED_PLUGIN_SLUGS,
 	type MarketplacePlugin,
@@ -14,10 +16,16 @@ export const getStaticPaths: GetStaticPaths = async () => {
 	const plugins = await getMarketplacePlugins();
 	return plugins
 		.filter((plugin) => !RESERVED_PLUGIN_SLUGS.includes(plugin.slug))
-		.map((plugin) => ({ params: { slug: plugin.slug }, props: { plugin } }));
+		.map((plugin) => ({
+			params: { slug: plugin.slug },
+			props: { plugin, related: getRelatedPlugins(plugin, plugins) },
+		}));
 };
 
-const { plugin } = Astro.props as { plugin: MarketplacePlugin };
+const { plugin, related } = Astro.props as {
+	plugin: MarketplacePlugin;
+	related: MarketplacePlugin[];
+};
 const description = await renderListingMarkdown(plugin.description);
 const published = plugin.publishedAt.toLocaleDateString('en-US', {
 	year: 'numeric',
@@ -40,7 +48,12 @@ const published = plugin.publishedAt.toLocaleDateString('en-US', {
 			<ul class="market-tags">
 				<li class="market-chip is-price">{plugin.priceLabel}</li>
 				{plugin.official && <li class="market-chip is-official">Official</li>}
-				{plugin.categories.map((category) => <li class="market-chip">{category.label}</li>)}
+				{plugin.featured && <li class="market-chip is-featured">Featured</li>}
+				{plugin.categories.map((category) => (
+					<li class="market-chip">
+						<a href={`/plugins/categories/${category.slug}/`}>{category.label}</a>
+					</li>
+				))}
 				{plugin.darkMode && <li class="market-chip">Dark mode ready</li>}
 			</ul>
 			<p class="market-lede">{plugin.summary}</p>
@@ -59,6 +72,8 @@ const published = plugin.publishedAt.toLocaleDateString('en-US', {
 					)
 				}
 				{plugin.docsUrl && <a class="market-button" href={plugin.docsUrl}>Documentation</a>}
+				{plugin.homepage && <a class="market-button" href={plugin.homepage}>Homepage</a>}
+				{plugin.changelogUrl && <a class="market-button" href={plugin.changelogUrl}>Changelog</a>}
 				{
 					plugin.isPaid && plugin.repository && (
 						<a class="market-button" href={plugin.repository}>
@@ -67,7 +82,16 @@ const published = plugin.publishedAt.toLocaleDateString('en-US', {
 					)
 				}
 			</div>
-			{plugin.installCommand && <code class="market-install">{plugin.installCommand}</code>}
+			{
+				plugin.installCommand && (
+					<div class="market-install-row">
+						<code class="market-install" id="market-install">{plugin.installCommand}</code>
+						<button type="button" class="market-reset" id="market-copy" data-copy={plugin.installCommand}>
+							Copy
+						</button>
+					</div>
+				)
+			}
 		</div>
 
 		<dl class="market-facts">
@@ -83,11 +107,35 @@ const published = plugin.publishedAt.toLocaleDateString('en-US', {
 				<dt>Package</dt>
 				<dd>{plugin.package ?? 'Distributed by the author'}</dd>
 			</div>
+			{
+				plugin.license && (
+					<div>
+						<dt>License</dt>
+						<dd>{plugin.license}</dd>
+					</div>
+				)
+			}
+			{
+				plugin.requiresPython && (
+					<div>
+						<dt>Python</dt>
+						<dd>{plugin.requiresPython}</dd>
+					</div>
+				)
+			}
 			<div>
 				<dt>Listed</dt>
 				<dd>{published}</dd>
 			</div>
 		</dl>
+
+		{
+			plugin.keywords.length > 0 && (
+				<ul class="market-tags">
+					{plugin.keywords.map((keyword) => <li class="market-chip">{keyword}</li>)}
+				</ul>
+			)
+		}
 
 		<section class="market-description" set:html={description} />
 
@@ -97,6 +145,19 @@ const published = plugin.publishedAt.toLocaleDateString('en-US', {
 					{plugin.screenshots.map((shot) => (
 						<img src={shot.src} alt={shot.alt} loading="lazy" />
 					))}
+				</section>
+			)
+		}
+
+		{
+			related.length > 0 && (
+				<section aria-labelledby="market-related">
+					<h2 id="market-related">Related plugins</h2>
+					<ul class="market-grid">
+						{related.map((item) => (
+							<PluginCard plugin={item} />
+						))}
+					</ul>
 				</section>
 			)
 		}
@@ -113,6 +174,29 @@ const published = plugin.publishedAt.toLocaleDateString('en-US', {
 						' Payment, licensing, and support are handled by the author on their own store — Orbit is not part of the transaction.'
 				}
 			</p>
+			<p>
+				How to install and wire a plugin: <a href="/plugins/using/">Using a plugin</a>. Report
+				security issues on the
+				<a href="https://github.com/almasix-dev/almasix-orbit/security/advisories/new">
+					advisory form</a
+				>.
+			</p>
 		</div>
 	</div>
 </StarlightPage>
+
+<script>
+	const button = document.querySelector<HTMLButtonElement>('#market-copy');
+	button?.addEventListener('click', async () => {
+		const text = button.dataset.copy ?? '';
+		try {
+			await navigator.clipboard.writeText(text);
+			button.textContent = 'Copied';
+			window.setTimeout(() => {
+				button.textContent = 'Copy';
+			}, 1500);
+		} catch {
+			button.textContent = 'Copy failed';
+		}
+	});
+</script>

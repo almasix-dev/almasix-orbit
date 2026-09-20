@@ -31,6 +31,10 @@ this framing into learner-facing pages.
 | query-builder | `almasix-orbit-query-builder` | Done |
 | panels | `almasix-orbit` (panels) | Partial |
 
+## Marketplace — Done
+
+Docs-hosted YAML registry (`docs/src/data/marketplace/`), `/plugins` browse + listing + author + category pages, JSON feed, validator tests, official `orbit-branding` listing, PR template + review pack. Orbit takes no payment.
+
 ## Support — Done
 
 `Component` (`.key` / `.grow` / `.when` / `.live` / `.saved`), `Colors.hex` / `css_class` / `css_var` / `palette` (50–950), Heroicon set + `register_icon` aliases, `HtmlString` + `e` / `classes` / `tag`, `evaluate` utility injection, `resolve_public_url`, `conduit_attr`.

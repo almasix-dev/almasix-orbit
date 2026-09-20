@@ -51,5 +51,8 @@ jobs:
       - name: Validate plugin marketplace registry
         run: npm run validate:marketplace
 
+      - name: Marketplace validator tests
+        run: npm test
+
       - name: Build
         run: npm run build
