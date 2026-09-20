@@ -1531,6 +1531,113 @@ html.dark .or-login-logo-dark {
   font-size: 0.75rem;
 }
 
+.or-btn-md {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.875rem;
+}
+
+.or-btn-lg {
+  padding: 0.6rem 1.1rem;
+  font-size: 1rem;
+}
+
+.or-btn-link {
+  background: transparent;
+  border-color: transparent;
+  color: var(--or-primary);
+  padding-left: 0.15rem;
+  padding-right: 0.15rem;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.or-btn-link:hover {
+  background: transparent;
+  color: var(--or-primary);
+  opacity: 0.85;
+}
+
+.or-btn-outlined {
+  background: transparent;
+  border-color: currentColor;
+}
+
+.or-btn-outlined.or-btn-primary {
+  color: var(--or-primary);
+  background: transparent;
+}
+
+.or-btn-outlined.or-btn-danger {
+  color: var(--or-danger);
+  background: transparent;
+}
+
+.or-btn-icon,
+.or-icon-btn {
+  padding: 0.4rem;
+  min-width: 2.1rem;
+  min-height: 2.1rem;
+}
+
+.or-btn-badge,
+.or-btn.or-badge {
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.or-btn-disabled,
+.or-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.or-btn-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  margin-left: 0.35rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: var(--or-danger);
+  color: #fff;
+}
+
+.or-btn-indicator.or-badge-primary { background: var(--or-primary); }
+.or-btn-indicator.or-badge-danger { background: var(--or-danger); }
+.or-btn-indicator.or-badge-success { background: var(--or-success); }
+.or-btn-indicator.or-badge-warning { background: var(--or-warning); }
+.or-btn-indicator.or-badge-gray { background: var(--or-ink-soft); }
+
+.or-btn-labeled-from-sm > .or-btn-label,
+.or-btn-labeled-from-md > .or-btn-label,
+.or-btn-labeled-from-lg > .or-btn-label,
+.or-btn-labeled-from-xl > .or-btn-label,
+.or-btn-labeled-from-2xl > .or-btn-label {
+  display: none;
+}
+@media (min-width: 640px) {
+  .or-btn-labeled-from-sm > .or-btn-label { display: inline; }
+}
+@media (min-width: 768px) {
+  .or-btn-labeled-from-md > .or-btn-label { display: inline; }
+}
+@media (min-width: 1024px) {
+  .or-btn-labeled-from-lg > .or-btn-label { display: inline; }
+}
+@media (min-width: 1280px) {
+  .or-btn-labeled-from-xl > .or-btn-label { display: inline; }
+}
+@media (min-width: 1536px) {
+  .or-btn-labeled-from-2xl > .or-btn-label { display: inline; }
+}
+
 .or-btn svg,
 .or-btn .or-icon {
   width: 1rem;
@@ -4313,4 +4420,126 @@ html.dark .or-login-logo-dark {
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 1.1rem;
+}
+
+.or-modal-slide {
+  left: auto;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  transform: none;
+  width: min(28rem, 100vw);
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.or-modal-slide-left {
+  left: 0;
+  right: auto;
+}
+
+.or-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.35rem;
+}
+
+.or-modal-header-sticky,
+.or-modal-sticky-header .or-modal-header {
+  position: sticky;
+  top: 0;
+  background: var(--or-card);
+  z-index: 1;
+  padding-bottom: 0.35rem;
+}
+
+.or-modal-actions-sticky,
+.or-modal-sticky-footer .or-modal-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--or-card);
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+.or-modal-align-center {
+  text-align: center;
+}
+
+.or-modal-align-center .or-modal-header {
+  justify-content: center;
+}
+
+.or-modal-align-center .or-modal-actions {
+  justify-content: center;
+}
+
+.or-modal-icon {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--or-primary) 15%, transparent);
+  color: var(--or-primary);
+  flex-shrink: 0;
+}
+
+.or-modal-icon[data-color="danger"] {
+  background: color-mix(in srgb, var(--or-danger) 15%, transparent);
+  color: var(--or-danger);
+}
+
+.or-modal-icon[data-color="success"] {
+  background: color-mix(in srgb, var(--or-success) 15%, transparent);
+  color: var(--or-success);
+}
+
+.or-modal-icon[data-color="warning"] {
+  background: color-mix(in srgb, var(--or-warning) 15%, transparent);
+  color: var(--or-warning);
+}
+
+.or-modal-close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--or-ink-soft);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+}
+
+.or-modal-close:hover {
+  color: var(--or-ink);
+}
+
+.or-action-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.35rem 0;
+}
+
+.or-action-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--or-ink-soft);
+  padding: 0.15rem 0.35rem;
+}
+
+.or-btn-group .or-action-section + .or-action-section,
+.or-btn-group .or-action-section + .or-btn,
+.or-btn-group .or-btn + .or-action-section {
+  border-top: 1px solid var(--or-line);
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
 }

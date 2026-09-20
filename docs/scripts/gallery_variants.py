@@ -4,6 +4,19 @@ from __future__ import annotations
 
 from enum import Enum
 
+from almasix.orbit.actions import (
+    Action,
+    ActionGroup,
+    CreateAction,
+    DeleteAction,
+    EditAction,
+    ExportAction,
+    ForceDeleteAction,
+    ImportAction,
+    ReplicateAction,
+    RestoreAction,
+    ViewAction,
+)
 from almasix.orbit.forms.components import (
     Block,
     Builder,
@@ -2175,6 +2188,343 @@ def build_infolist_variants() -> dict[str, tuple[str, str]]:
                     lambda state=None, **_: f'<span class="or-badge or-color-success">{state}</span>'
                 ),
                 record=sample,
+            ),
+        ),
+    }
+
+
+def _action_row(*actions: Action, record: dict | None = None) -> str:
+    ctx: dict = {"record": record} if record is not None else {}
+    inner = "".join(a.render(**ctx) for a in actions)
+    return f'<div class="or-btn-group" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center">{inner}</div>'
+
+
+def _static_modal(
+    *,
+    heading: str,
+    description: str = "",
+    form_html: str = "",
+    submit: str = "Confirm",
+    cancel: str = "Cancel",
+    slide_over: bool = False,
+    modal_icon: str = "",
+    modal_icon_color: str = "primary",
+    alignment: str = "start",
+    width: str = "md",
+) -> str:
+    """Static modal preview for gallery shots (no Alpine host)."""
+    from almasix.orbit.support.icons import icon as render_icon
+
+    classes = ["or-modal", f"or-modal-{width}"]
+    if slide_over:
+        classes.append("or-modal-slide")
+    if alignment == "center":
+        classes.append("or-modal-align-center")
+    icon_html = ""
+    if modal_icon:
+        icon_html = (
+            f'<div class="or-modal-icon" data-color="{modal_icon_color}">'
+            f"{render_icon(modal_icon)}</div>"
+        )
+    desc = f'<p class="or-modal-body">{description}</p>' if description else ""
+    form = (
+        f'<form class="or-modal-form"><div class="or-modal-form-fields">{form_html}</div></form>'
+        if form_html
+        else ""
+    )
+    return (
+        '<div class="or-gallery-modal">'
+        f'<div class="{" ".join(classes)}" role="dialog" aria-modal="true" style="position:relative;left:auto;top:auto;transform:none;display:block !important;">'
+        '<button type="button" class="or-modal-close" aria-label="Close">&times;</button>'
+        f'<div class="or-modal-header">{icon_html}<h2 class="or-modal-title">{heading}</h2></div>'
+        f"{desc}{form}"
+        '<div class="or-modal-actions">'
+        f'<button type="button" class="or-btn or-btn-gray">{cancel}</button>'
+        f'<button type="button" class="or-btn or-btn-primary">{submit}</button>'
+        "</div></div></div>"
+    )
+
+
+def _open_dropdown(html: str) -> str:
+    """Force ActionGroup dropdown open for static screenshots."""
+    return (
+        html.replace(' x-show="menuOpen" x-cloak', "")
+        .replace('x-show="menuOpen"', "")
+        .replace('x-cloak', "")
+    )
+
+
+def build_action_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for action chrome / preset shots."""
+    record = {"id": 1, "title": "Launch Orbit", "status": "draft", "note": "Ship actions"}
+
+    return {
+        "actions/overview": (
+            "Actions overview",
+            _action_row(
+                CreateAction.make(),
+                EditAction.make().url("/edit/1"),
+                ViewAction.make().url("/view/1"),
+                DeleteAction.make(),
+                record=record,
+            ),
+        ),
+        "actions/overview/triggers": (
+            "Actions — trigger styles",
+            _action_row(
+                Action.make("save").label("Save").color("primary").button(),
+                Action.make("docs").label("Docs").link().url("https://orbit.almasix.com"),
+                Action.make("settings")
+                .label("Settings")
+                .icon("heroicon-o-cog-6-tooth")
+                .icon_button()
+                .color("gray"),
+                Action.make("inbox").label("Inbox").badge().color("primary"),
+            ),
+        ),
+        "actions/overview/sizes": (
+            "Actions — sizes",
+            _action_row(
+                Action.make("sm").label("Small").size("sm").color("primary"),
+                Action.make("md").label("Medium").size("md").color("primary"),
+                Action.make("lg").label("Large").size("lg").color("primary"),
+            ),
+        ),
+        "actions/overview/outlined": (
+            "Actions — outlined",
+            _action_row(
+                Action.make("a").label("Primary").color("primary").outlined(),
+                Action.make("b").label("Danger").color("danger").outlined().without_confirmation(),
+                Action.make("c").label("Gray").color("gray").outlined(),
+            ),
+        ),
+        "actions/overview/icons": (
+            "Actions — icons",
+            _action_row(
+                Action.make("before")
+                .label("Before")
+                .icon("heroicon-o-check")
+                .icon_position("before")
+                .color("success"),
+                Action.make("after")
+                .label("After")
+                .icon("heroicon-o-chevron-right")
+                .icon_position("after")
+                .color("primary"),
+            ),
+        ),
+        "actions/overview/tooltip": (
+            "Actions — tooltip",
+            _action_row(
+                Action.make("tip")
+                .label("Publish")
+                .icon("heroicon-o-check")
+                .tooltip("Publish this draft to production")
+                .color("primary"),
+            ),
+        ),
+        "actions/overview/badge": (
+            "Actions — badge indicator",
+            _action_row(
+                Action.make("inbox")
+                .label("Inbox")
+                .icon("heroicon-o-bell")
+                .badge(3)
+                .badge_color("danger")
+                .color("gray"),
+            ),
+        ),
+        "actions/overview/url": (
+            "Actions — URL + new tab",
+            _action_row(
+                Action.make("site")
+                .label("Open site")
+                .icon("heroicon-o-document-text")
+                .url("https://orbit.almasix.com", open_in_new_tab=True)
+                .color("gray"),
+            ),
+        ),
+        "actions/overview/authorize": (
+            "Actions — authorize (disabled)",
+            _action_row(
+                Action.make("admin")
+                .label("Admin only")
+                .icon("heroicon-o-x-mark")
+                .authorize(False)
+                .authorization_tooltip("You need admin access")
+                .color("danger")
+                .without_confirmation(),
+            ),
+        ),
+        "actions/overview/schema": (
+            "Actions — schema / form trigger",
+            _action_row(
+                Action.make("note")
+                .label("Add note")
+                .icon("heroicon-o-pencil-square")
+                .modal()
+                .modal_heading("Changelog note")
+                .form([TextInput.make("note").label("Note")])
+                .color("primary"),
+            ),
+        ),
+        "actions/overview/notifications": (
+            "Actions — notifications",
+            _action_row(
+                Action.make("save")
+                .label("Save")
+                .icon("heroicon-o-check")
+                .success_notification("Saved")
+                .success_notification_title("Success")
+                .color("primary"),
+            ),
+        ),
+        "actions/modals/confirm": (
+            "Modals — confirmation",
+            _static_modal(
+                heading="Delete?",
+                description="This permanently removes the record.",
+                submit="Delete",
+                cancel="Cancel",
+                modal_icon="heroicon-o-trash",
+                modal_icon_color="danger",
+            ),
+        ),
+        "actions/modals/form": (
+            "Modals — form",
+            _static_modal(
+                heading="Edit post",
+                description="Update the title and status.",
+                form_html=TextInput.make("title").label("Title").render("Launch Orbit")
+                + Select.make("status")
+                .label("Status")
+                .options({"draft": "Draft", "published": "Published"})
+                .render("draft"),
+                submit="Save",
+                cancel="Cancel",
+            ),
+        ),
+        "actions/modals/slide-over": (
+            "Modals — slide over",
+            _static_modal(
+                heading="Quick edit",
+                description="Slide-over panel from the right.",
+                form_html=TextInput.make("title").label("Title").render("Launch Orbit"),
+                submit="Save",
+                slide_over=True,
+                width="md",
+            ),
+        ),
+        "actions/modals/labels": (
+            "Modals — custom labels",
+            _static_modal(
+                heading="Archive post?",
+                description="Move this post to the archive.",
+                submit="Archive",
+                cancel="Keep editing",
+            ),
+        ),
+        "actions/modals/icon": (
+            "Modals — icon + alignment",
+            _static_modal(
+                heading="Publish?",
+                description="Make this draft live on the public site.",
+                submit="Publish",
+                modal_icon="heroicon-o-check",
+                modal_icon_color="success",
+                alignment="center",
+            ),
+        ),
+        "actions/grouping/dropdown": (
+            "Grouping — dropdown",
+            _open_dropdown(
+                ActionGroup.make(
+                    [
+                        EditAction.make().url("/edit/1"),
+                        ViewAction.make().url("/view/1"),
+                        DeleteAction.make(),
+                    ]
+                )
+                .label("Actions")
+                .icon("heroicon-o-ellipsis-vertical")
+                .render(record=record)
+            ),
+        ),
+        "actions/grouping/button-group": (
+            "Grouping — button group",
+            ActionGroup.make(
+                [
+                    EditAction.make().url("/edit/1"),
+                    ViewAction.make().url("/view/1"),
+                    DeleteAction.make(),
+                ]
+            )
+            .button_group()
+            .render(record=record),
+        ),
+        "actions/grouping/sections": (
+            "Grouping — sections",
+            ActionGroup.make(
+                [
+                    ActionGroup.make(
+                        [
+                            EditAction.make().url("/edit/1"),
+                            ViewAction.make().url("/view/1"),
+                        ]
+                    )
+                    .label("Record")
+                    .dropdown(False),
+                    ActionGroup.make([DeleteAction.make(), ForceDeleteAction.make()])
+                    .label("Danger zone")
+                    .dropdown(False),
+                ]
+            )
+            .button_group()
+            .render(record=record),
+        ),
+        "actions/create": (
+            "Create action",
+            _action_row(CreateAction.make().create_another()),
+        ),
+        "actions/edit": (
+            "Edit action",
+            _action_row(EditAction.make().url("/edit/1"), record=record),
+        ),
+        "actions/view": (
+            "View action",
+            _action_row(ViewAction.make().url("/view/1"), record=record),
+        ),
+        "actions/delete": (
+            "Delete action",
+            _action_row(DeleteAction.make(), record=record),
+        ),
+        "actions/replicate": (
+            "Replicate action",
+            _action_row(ReplicateAction.make(), record=record),
+        ),
+        "actions/force-delete": (
+            "Force-delete action",
+            _action_row(ForceDeleteAction.make(), record=record),
+        ),
+        "actions/restore": (
+            "Restore action",
+            _action_row(RestoreAction.make(), record=record),
+        ),
+        "actions/import": (
+            "Import action",
+            _action_row(
+                ImportAction.make()
+                .accepted_file_types([".csv", ".json"])
+                .options_form([TextInput.make("delimiter").label("Delimiter").default(",")])
+            ),
+        ),
+        "actions/export": (
+            "Export action",
+            _action_row(
+                ExportAction.make()
+                .formats(["csv", "json"])
+                .filename("posts-export")
+                .columns(["title", "status"])
             ),
         ),
     }

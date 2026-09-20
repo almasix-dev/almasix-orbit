@@ -735,11 +735,23 @@
       recordId: "",
       pendingEl: null,
       slideOver: false,
+      slideOverPosition: "right",
       modalWidth: "md",
       stickyHeader: false,
       stickyFooter: false,
       closeOnEscape: true,
       closeOnClickAway: true,
+      showCloseButton: true,
+      modalIcon: "",
+      modalIconColor: "",
+      modalIconHtml: "",
+      modalAlignment: "start",
+      modalAutofocus: true,
+      submitLabel: "Confirm",
+      cancelLabel: "Cancel",
+      get confirmOnly() {
+        return this.needsConfirm && !this.hasForm;
+      },
       init() {
         this.$el.classList.add("or-alpine-ready");
         window.addEventListener("orbit:mount-action", (event) => {
@@ -753,12 +765,32 @@
           this.recordId = detail.recordId || "";
           this.pendingEl = detail.pendingEl || null;
           this.slideOver = Boolean(detail.slideOver);
+          this.slideOverPosition = detail.slideOverPosition || "right";
           this.modalWidth = detail.modalWidth || "md";
           this.stickyHeader = Boolean(detail.stickyHeader);
           this.stickyFooter = Boolean(detail.stickyFooter);
           this.closeOnEscape = detail.closeOnEscape !== false;
           this.closeOnClickAway = detail.closeOnClickAway !== false;
+          this.showCloseButton = detail.showCloseButton !== false;
+          this.modalIcon = detail.modalIcon || "";
+          this.modalIconColor = detail.modalIconColor || "";
+          this.modalIconHtml = detail.modalIconHtml || "";
+          this.modalAlignment = detail.modalAlignment || "start";
+          this.modalAutofocus = detail.modalAutofocus !== false;
+          this.submitLabel =
+            detail.submitLabel ||
+            (this.hasForm ? (this.needsConfirm ? "Confirm" : "Save") : "Confirm");
+          this.cancelLabel = detail.cancelLabel || "Cancel";
           this.open = true;
+          if (this.modalAutofocus) {
+            this.$nextTick?.(() => {
+              const root = this.$refs.actionForm || this.$el;
+              const focusable = root?.querySelector?.(
+                "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button.or-btn-primary",
+              );
+              focusable?.focus?.();
+            });
+          }
         });
       },
       close() {
@@ -816,6 +848,9 @@
         if (!(target instanceof Element)) return;
         const btn = target.closest("[data-action]");
         if (!(btn instanceof HTMLElement)) return;
+        if (btn.hasAttribute("disabled") || btn.classList.contains("or-btn-disabled")) {
+          return;
+        }
         const needsConfirm = btn.getAttribute("data-confirm") === "true";
         const hasForm = btn.getAttribute("data-has-form") === "true";
         const click = btn.getAttribute("wire:click") || "";
@@ -843,6 +878,7 @@
         } else if (tpl) {
           formHtml = tpl.innerHTML;
         }
+        const iconName = btn.getAttribute("data-modal-icon") || "";
         window.dispatchEvent(
           new CustomEvent("orbit:mount-action", {
             detail: {
@@ -855,11 +891,20 @@
               recordId: btn.getAttribute("data-record-id") || "",
               pendingEl: btn,
               slideOver: btn.getAttribute("data-slide-over") === "true",
+              slideOverPosition: btn.getAttribute("data-slide-over-position") || "right",
               modalWidth: btn.getAttribute("data-modal-width") || "md",
               stickyHeader: btn.getAttribute("data-sticky-header") === "true",
               stickyFooter: btn.getAttribute("data-sticky-footer") === "true",
               closeOnEscape: btn.getAttribute("data-close-on-escape") !== "false",
               closeOnClickAway: btn.getAttribute("data-close-on-click-away") !== "false",
+              showCloseButton: btn.getAttribute("data-modal-close-button") !== "false",
+              modalIcon: iconName,
+              modalIconColor: btn.getAttribute("data-modal-icon-color") || "",
+              modalIconHtml: "",
+              modalAlignment: btn.getAttribute("data-modal-alignment") || "start",
+              modalAutofocus: btn.getAttribute("data-modal-autofocus") !== "false",
+              submitLabel: btn.getAttribute("data-modal-submit-label") || "",
+              cancelLabel: btn.getAttribute("data-modal-cancel-label") || "",
             },
           }),
         );

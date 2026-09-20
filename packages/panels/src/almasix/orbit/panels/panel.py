@@ -1332,19 +1332,38 @@ class Panel:
 
 def _action_modal_html() -> str:
     return (
-        '  <div class="or-action-modal-host" x-data="orbitActionModal" x-cloak>\n'
-        '    <div class="or-modal-backdrop" x-show="open" @click="if (closeOnClickAway) close()"></div>\n'
-        '    <div class="or-modal" x-show="open" role="dialog" aria-modal="true"\n'
-        '         :class="{ \'or-modal-slide\': slideOver, [\'or-modal-\' + modalWidth]: true }">\n'
-        '      <h2 class="or-modal-title" x-text="heading"></h2>\n'
+        '  <div class="or-action-modal-host" x-data="orbitActionModal" x-cloak\n'
+        '       @keydown.escape.window="if (open && closeOnEscape) close()">\n'
+        '    <div class="or-modal-backdrop" x-show="open" '
+        '@click="if (closeOnClickAway) close()"></div>\n'
+        '    <div class="or-modal" x-show="open"\n'
+        '         :role="confirmOnly ? \'alertdialog\' : \'dialog\'" aria-modal="true"\n'
+        '         :class="{\n'
+        "           'or-modal-slide': slideOver,\n"
+        "           'or-modal-slide-left': slideOver && slideOverPosition === 'left',\n"
+        "           'or-modal-sticky-header': stickyHeader,\n"
+        "           'or-modal-sticky-footer': stickyFooter,\n"
+        "           'or-modal-align-center': modalAlignment === 'center',\n"
+        "           ['or-modal-' + modalWidth]: true\n"
+        '         }">\n'
+        '      <button type="button" class="or-modal-close" x-show="showCloseButton"\n'
+        '              @click="close()" aria-label="Close">&times;</button>\n'
+        '      <div class="or-modal-header" :class="{ \'or-modal-header-sticky\': stickyHeader }">\n'
+        '        <div class="or-modal-icon" x-show="modalIcon"\n'
+        '             :data-color="modalIconColor || \'primary\'" x-html="modalIconHtml"></div>\n'
+        '        <h2 class="or-modal-title" x-text="heading"></h2>\n'
+        "      </div>\n"
         '      <p class="or-modal-body" x-text="description" x-show="description"></p>\n'
-        '      <form class="or-modal-form" x-show="hasForm" x-ref="actionForm" @submit.prevent="confirm()">\n'
+        '      <form class="or-modal-form" x-show="hasForm" x-ref="actionForm" '
+        '@submit.prevent="confirm()">\n'
         '        <div class="or-modal-form-fields" x-html="formHtml"></div>\n'
         "      </form>\n"
-        '      <div class="or-modal-actions">\n'
-        '        <button type="button" class="or-btn or-btn-gray" @click="close()">Cancel</button>\n'
+        '      <div class="or-modal-actions" '
+        ':class="{ \'or-modal-actions-sticky\': stickyFooter }">\n'
+        '        <button type="button" class="or-btn or-btn-gray" @click="close()"\n'
+        '                x-text="cancelLabel"></button>\n'
         '        <button type="button" class="or-btn or-btn-primary" @click="confirm()"\n'
-        '                x-text="hasForm ? (needsConfirm ? \'Confirm\' : \'Save\') : \'Confirm\'"></button>\n'
+        '                x-text="submitLabel"></button>\n'
         "      </div>\n"
         "    </div>\n"
         "  </div>\n"

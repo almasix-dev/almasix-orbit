@@ -153,6 +153,16 @@ _ICONS: dict[str, str] = {
         "1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 "
         '4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z"/>'
     ),
+    "heroicon-o-arrow-up-tray": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75'
+        "V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5\"/>"
+    ),
+    "heroicon-o-arrow-down-tray": (
+        '<path stroke-linecap="round" stroke-linejoin="round" '
+        'd="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75'
+        "V16.5M12 3v12.75m0 0-4.5-4.5M12 15.75l4.5-4.5\"/>"
+    ),
     "heroicon-o-ellipsis-vertical": (
         '<path stroke-linecap="round" stroke-linejoin="round" '
         'd="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 '

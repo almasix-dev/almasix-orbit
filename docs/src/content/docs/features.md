@@ -39,8 +39,14 @@ A straight inventory of what ships today. For narrative guides, start at [Quick 
 
 ## Actions
 
-- Custom actions with authorize, confirm, modal form, URL, notifications
-- Create / edit / view / delete / delete-bulk presets
+- Trigger styles: button, link, icon button, badge — plus size, outlined, icons, tooltip, keybindings
+- URL actions with open-in-new-tab; authorize with tooltip / notification UX
+- Full modal API: confirmation, form schema, slide-over, width, sticky chrome, labels, icons
+- `ActionGroup` / `BulkActionGroup` dropdowns, button groups, and sections
+- Create / edit / view / delete / replicate / force-delete / restore presets
+- Import / export config bags with documented host-owned `Importer` / `Exporter` adapters
+
+See [Actions overview](/actions/overview/).
 
 ## Infolists
 
