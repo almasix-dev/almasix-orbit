@@ -478,7 +478,8 @@ class Panel:
                 base = UserMenuItem.make(key)
                 if key == "logout":
                     base.label("Sign out").url(self.url("logout")).post_to_url()
-                elif key == "profile":
+                else:
+                    # ``profile`` (only other special key admitted above).
                     base.label("Profile")
                 customized = value(base)
                 data = customized.to_dict() if isinstance(customized, UserMenuItem) else dict(customized)
@@ -929,13 +930,18 @@ class Panel:
                 # Synthesize a minimal cluster class from the string slug.
                 from almasix.orbit.panels.cluster import Cluster
 
-                slug = str(cluster)
-
-                class _DynamicCluster(Cluster):
-                    slug = slug  # type: ignore[misc]
-                    navigation_label = slug.replace("_", " ").replace("-", " ").title()
-
-                _DynamicCluster.__name__ = f"{slug.title().replace('_', '')}Cluster"
+                slug_value = str(cluster)
+                label = slug_value.replace("_", " ").replace("-", " ").title()
+                class_name = f"{slug_value.title().replace('_', '').replace('-', '')}Cluster"
+                # ``type()`` avoids class-body scoping (locals are not visible as ``slug = slug``).
+                _DynamicCluster = type(
+                    class_name,
+                    (Cluster,),
+                    {
+                        "slug": slug_value,
+                        "navigation_label": label,
+                    },
+                )
                 key = self._cluster_key(_DynamicCluster)
                 if key not in seen:
                     out.append(_DynamicCluster)

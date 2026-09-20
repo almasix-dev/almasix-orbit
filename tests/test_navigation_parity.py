@@ -781,3 +781,1445 @@ def test_navigation_remaining_branches() -> None:
     )
     assert top.menu_secondary
     assert top.menu_roots == []
+
+
+def test_url_path_prefix_cluster_edge_cases() -> None:
+    """Exercise get_url_path_prefix string/object/slug_fn/no-slash branches."""
+
+    class NoSlashCluster(Cluster):
+        slug = "noslash"
+
+        @classmethod
+        def path_prefix(cls) -> str:
+            return "noslash"  # no leading slash
+
+    class SlugOnlyCluster:
+        """Cluster-like object without path_prefix — falls back to get_slug."""
+
+        @classmethod
+        def get_slug(cls) -> str:
+            return "slugonly"
+
+    class EmptySlugCluster:
+        @classmethod
+        def get_slug(cls) -> str:
+            return ""
+
+    class NoHelpersCluster:
+        pass
+
+    class ResNoSlash(Resource):
+        slug = "items"
+        cluster = NoSlashCluster
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class ResSlugOnly(Resource):
+        slug = "tokens"
+        cluster = SlugOnlyCluster
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class ResEmptyClusterStr(Resource):
+        slug = "blank"
+        cluster = "   "
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class ResStrCluster(Resource):
+        slug = "named"
+        cluster = "platform"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class PageNoSlash(Page):
+        slug = "brand"
+        cluster = NoSlashCluster
+
+    class PageSlugOnly(Page):
+        slug = "prefs"
+        cluster = SlugOnlyCluster
+
+    class PageEmptyHelpers(Page):
+        slug = "empty"
+        cluster = EmptySlugCluster
+
+    class PageNoHelpers(Page):
+        slug = "naked"
+        cluster = NoHelpersCluster
+
+    class PageStrCluster(Page):
+        slug = "about"
+        cluster = "platform"
+
+    class PageBlankStr(Page):
+        slug = "void"
+        cluster = ""
+
+    for cls in (
+        ResNoSlash,
+        ResSlugOnly,
+        ResEmptyClusterStr,
+        ResStrCluster,
+        PageNoSlash,
+        PageSlugOnly,
+        PageEmptyHelpers,
+        PageNoHelpers,
+        PageStrCluster,
+        PageBlankStr,
+    ):
+        cls._panel_path = "/admin"  # type: ignore[attr-defined]
+
+    assert ResNoSlash.get_url_path_prefix() == "/admin/noslash"
+    assert ResSlugOnly.get_url_path_prefix() == "/admin/slugonly"
+    assert ResEmptyClusterStr.get_url_path_prefix() == "/admin"
+    assert ResStrCluster.get_url_path_prefix() == "/admin/platform"
+    assert PageNoSlash.get_url_path_prefix() == "/admin/noslash"
+    assert PageSlugOnly.get_url_path_prefix() == "/admin/slugonly"
+    assert PageEmptyHelpers.get_url_path_prefix() == "/admin"
+    assert PageNoHelpers.get_url_path_prefix() == "/admin"
+    assert PageStrCluster.get_url_path_prefix() == "/admin/platform"
+    assert PageBlankStr.get_url_path_prefix() == "/admin"
+
+    # Cluster prefix only (no panel path).
+    ResSlugOnly._panel_path = ""  # type: ignore[attr-defined]
+    assert ResSlugOnly.get_url_path_prefix() == "/slugonly"
+
+
+def test_resolve_nav_flag_edge_cases() -> None:
+    from almasix.orbit.panels.resource import _resolve_nav_flag
+
+    class Base(Resource):
+        slug = "base"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    # Attr missing entirely → walk MRO to object, return default.
+    assert _resolve_nav_flag(Base, "no_such_nav_flag", default=True) is True
+    assert _resolve_nav_flag(Base, "no_such_nav_flag", default=False) is False
+
+    class CM(Base):
+        slug = "cm"
+
+        @classmethod
+        def should_register_navigation(cls, **ctx: object) -> bool:
+            return False
+
+    assert CM.get_should_register_navigation() is False
+
+    def _skip(**_ctx: object) -> bool:
+        return False
+
+    class SkipFn(Base):
+        slug = "skip"
+        should_register_navigation = _skip  # type: ignore[assignment]
+
+    # Plain function skipped; falls through to Resource ClassVar True.
+    assert SkipFn.get_should_register_navigation() is True
+
+    class TruthyType:
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def __bool__(self) -> bool:
+            return False
+
+    class TypeFlag(Base):
+        slug = "typeflag"
+        should_register_navigation = TruthyType  # type: ignore[assignment]
+
+    assert TypeFlag.get_should_register_navigation() is False
+
+
+def test_user_menu_item_visible_hidden() -> None:
+    shown = UserMenuItem.make("a").label("A").url("/a").visible(True)
+    assert shown.is_visible() is True
+    hidden = UserMenuItem.make("b").label("B").url("/b").hidden()
+    assert hidden.is_visible() is False
+    toggled = UserMenuItem.make("c").label("C").url("/c").visible(lambda: False)
+    assert toggled.is_visible() is False
+    unhidden = UserMenuItem.make("d").label("D").url("/d").hidden(False).visible(True)
+    assert unhidden.is_visible() is True
+
+
+def test_mount_panel_clustered_resources_and_pages() -> None:
+    from almasix.routing.router import Router
+    from almasix.orbit.panels.routing import mount_panel
+
+    class Hub(Cluster):
+        slug = "hub"
+        navigation_label = "Hub"
+
+    class HubRes(Resource):
+        slug = "widgets"
+        cluster = Hub
+        navigation_label = "Widgets"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class StrClusterRes(Resource):
+        slug = "gadgets"
+        cluster = "tools"
+        navigation_label = "Gadgets"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class HubPage(Page):
+        slug = "overview"
+        cluster = Hub
+        navigation_label = "Overview"
+
+    class StrClusterPage(Page):
+        slug = "docs"
+        cluster = "tools"
+        navigation_label = "Docs"
+
+    panel = (
+        Panel.make("admin")
+        .path("/admin")
+        .dashboard(False)
+        .login(False)
+        .clusters([Hub])
+        .resources([HubRes, StrClusterRes])
+        .pages([HubPage, StrClusterPage])
+    )
+    router = Router()
+    mount_panel(router, panel)
+    uris = {r.uri for r in router.routes}
+    assert any("/admin/hub/widgets" in u for u in uris)
+    assert any("/admin/tools/gadgets" in u for u in uris)
+    assert any("/admin/hub/overview" in u for u in uris)
+    assert any("/admin/tools/docs" in u for u in uris)
+
+
+def test_panel_navigation_api_coverage_gaps(tmp_path) -> None:
+    """Hit remaining panel navigation / user-menu / cluster shell branches."""
+    user = OrbitUser.default()
+
+    # sidebar_collapsible_on_desktop alias + fully-collapsible False branch.
+    panel = (
+        Panel.make("admin")
+        .path("/admin")
+        .dashboard(False)
+        .sidebar_collapsible_on_desktop(True)
+        .sidebar_fully_collapsible_on_desktop(False)
+        .navigation(True)
+        .user_menu(True, position="topbar")
+        .user_menu_position("sidebar")
+        .user_menu_items(None)
+        .resources([_PostResource])
+        .user(user)
+    )
+    assert panel._sidebar_collapsible is True
+    assert panel._sidebar_fully_collapsible is False
+    assert panel._user_menu_position == "sidebar"
+
+    # user_menu_items dict: profile/logout callables, UserMenuItem, plain dict;
+    # plus non-special UserMenuItem and dict entries.
+    panel.user_menu_items(
+        {
+            "profile": lambda action: action.label("My profile").url("/admin/me").icon(
+                "heroicon-o-user"
+            ),
+            "logout": UserMenuItem.make("logout")
+            .label("Exit")
+            .url("/admin/logout")
+            .post_to_url(),
+            "extra": UserMenuItem.make("extra").label("Extra").url("/admin/extra"),
+            "plain": {"label": "Plain", "url": "/admin/plain", "name": "plain"},
+        }
+    )
+    # profile as UserMenuItem + logout as plain dict (alternate branches).
+    panel2 = (
+        Panel.make("p2")
+        .path("/p2")
+        .user(user)
+        .user_menu_items(
+            {
+                "profile": UserMenuItem.make("profile").label("Prof").url("/p2/me"),
+                "logout": {
+                    "label": "Bye",
+                    "url": "/p2/logout",
+                    "name": "logout",
+                    "post_to_url": True,
+                },
+            }
+        )
+    )
+    html2 = panel2.render_shell("<p>x</p>", user=user)
+    assert "Prof" in html2 or "or-user-menu" in html2
+
+    # discover_clusters + load_discovered.
+    cluster_dir = tmp_path / "clusters"
+    cluster_dir.mkdir()
+    (cluster_dir / "ops_cluster.py").write_text(
+        "from almasix.orbit.panels.cluster import Cluster\n"
+        "class OpsCluster(Cluster):\n"
+        "    slug = 'ops'\n"
+        "    navigation_label = 'Ops'\n",
+        encoding="utf-8",
+    )
+    panel.discover_clusters(str(cluster_dir)).load_discovered()
+    assert any(c.get_slug() == "ops" for c in panel.get_clusters())
+    # Second load skips already-seen clusters.
+    panel.load_discovered()
+
+    # navigation_groups: blank string skip + already-ordered label + object group.
+    panel.navigation_groups(["", "Content", "Content"])
+    panel.navigation_groups(
+        [NavigationGroup.make("Content").icon("heroicon-o-folder")]
+    )
+    # Group with empty name → skip name registration branch.
+    panel.navigation_group(NavigationGroup.make(None))
+
+    # Builder callable returning False / non-builder / builder with invisible item.
+    empty = (
+        Panel.make("empty")
+        .path("/empty")
+        .dashboard(False)
+        .navigation(lambda _b: False)
+    )
+    assert empty.navigation_items() == []
+
+    weird = (
+        Panel.make("weird")
+        .path("/weird")
+        .dashboard(False)
+        .navigation(lambda _b: "not-a-builder")  # type: ignore[arg-type]
+    )
+    assert weird.navigation_items() == []
+
+    with_hidden = (
+        Panel.make("hid")
+        .path("/hid")
+        .dashboard(False)
+        .navigation(
+            lambda b: b.item(
+                NavigationItem.make("gone").label("Gone").url("/hid/gone").hidden()
+            )
+        )
+    )
+    assert with_hidden.navigation_items() == []
+
+    # Builder that returns a builder instance (isinstance path after callable).
+    built = (
+        Panel.make("built")
+        .path("/built")
+        .dashboard(False)
+        .navigation(
+            lambda b: b.groups(
+                [NavigationGroup.make("G").items([NavigationItem.make("a").label("A").url("/a")])]
+            )
+        )
+    )
+    assert any(i["label"] == "A" for i in built.navigation_items())
+
+    # _should_register without getter (raw flag / callable flag).
+    class RawPage:
+        should_register_navigation = False
+        slug = "raw"
+
+        @classmethod
+        def get_slug(cls):
+            return "raw"
+
+        @classmethod
+        def get_navigation_label(cls):
+            return "Raw"
+
+    class CallPage:
+        should_register_navigation = staticmethod(lambda **_: False)
+        slug = "call"
+
+        @classmethod
+        def get_slug(cls):
+            return "call"
+
+        @classmethod
+        def get_navigation_label(cls):
+            return "Call"
+
+    p_raw = Panel.make("raw").path("/raw").dashboard(False)
+    assert p_raw._should_register(RawPage) is False
+    assert p_raw._should_register(CallPage) is False
+
+    # _can_access_page: user set but no can_access → True.
+    class PlainPage:
+        pass
+
+    assert p_raw._can_access_page(PlainPage, user) is True
+
+    # Dashboard page registered on _pages (dash-in-pages branch).
+    from almasix.orbit.panels.pages.dashboard import Dashboard
+
+    class LocalDash(Dashboard):
+        navigation_label = "Home"
+
+    dash_panel = (
+        Panel.make("dash")
+        .path("/dash")
+        .pages([LocalDash])
+        .dashboard(True)
+        .sidebar_navigation()
+    )
+    labels = [i["label"] for i in dash_panel.navigation_items()]
+    assert "Home" in labels
+
+    # String cluster without matching panel cluster → dynamic synthesis.
+    class OrphanStrRes(Resource):
+        slug = "orphans"
+        cluster = "ghost-land"
+        navigation_label = "Orphans"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    orphan = (
+        Panel.make("orph")
+        .path("/orph")
+        .dashboard(False)
+        .resources([OrphanStrRes])
+    )
+    orphan_items = orphan.navigation_items()
+    assert any(i.get("cluster") for i in orphan_items)
+
+    # Registered cluster with members only via explicit clusters list
+    # (member uses matching type key path in _cluster_members).
+    class TwinCluster(Cluster):
+        slug = "twin"
+
+    class TwinRes(Resource):
+        slug = "twins"
+        cluster = TwinCluster
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    twin = (
+        Panel.make("twin")
+        .path("/twin")
+        .dashboard(False)
+        .clusters([TwinCluster])
+        .resources([TwinRes])
+    )
+    assert any(i.get("cluster") for i in twin.navigation_items())
+
+    # Cluster members filtered by should_register / can_view_any / can_access.
+    class DenyCluster(Cluster):
+        slug = "deny"
+        navigation_label = "Deny Hub"
+
+    class HiddenMember(Resource):
+        slug = "hidden-m"
+        cluster = DenyCluster
+        should_register_navigation = False
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class NoPermMember(Resource):
+        slug = "noperm"
+        cluster = DenyCluster
+        navigation_label = "NoPerm"
+
+        @classmethod
+        def can_view_any(cls, user):  # noqa: ANN001
+            return False
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class DeniedPageMember(Page):
+        slug = "denied-m"
+        cluster = DenyCluster
+        navigation_label = "DeniedM"
+        permission = "never.allow"
+
+    limited = OrbitUser.make().name("Lim").admin(False).permissions("posts.view_any")
+    deny_panel = (
+        Panel.make("deny")
+        .path("/deny")
+        .dashboard(False)
+        .clusters([DenyCluster])
+        .resources([HiddenMember, NoPermMember])
+        .pages([DeniedPageMember])
+        .user(limited)
+    )
+    # All members filtered → no cluster nav entry.
+    deny_items = deny_panel._collect_navigation_items(user=limited)
+    assert not any(i.get("label") == "Deny Hub" for i in deny_items)
+
+    # Sub-nav auth filtering + register skip inside cluster.
+    class OpenCluster(Cluster):
+        slug = "open"
+        navigation_label = "Open"
+        sub_navigation_position = "top"
+
+    class OpenRes(Resource):
+        slug = "open-items"
+        cluster = OpenCluster
+        navigation_label = "Open Items"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class HiddenOpen(Resource):
+        slug = "hidden-open"
+        cluster = OpenCluster
+        should_register_navigation = False
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class NoViewOpen(Resource):
+        slug = "noview"
+        cluster = OpenCluster
+        navigation_label = "NoView"
+
+        @classmethod
+        def can_view_any(cls, user):  # noqa: ANN001
+            return False
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class GatePage(Page):
+        slug = "gate"
+        cluster = OpenCluster
+        navigation_label = "Gate"
+        permission = "gate.access"
+
+    open_panel = (
+        Panel.make("open")
+        .path("/open")
+        .dashboard(False)
+        .clusters([OpenCluster])
+        .resources([OpenRes, HiddenOpen, NoViewOpen])
+        .pages([GatePage])
+        .sidebar_navigation()
+        .user(limited)
+    )
+    OpenRes._panel_path = "/open"  # type: ignore[attr-defined]
+    html_top = open_panel.render_shell(
+        "<p>x</p>",
+        active_path="/open/open/open-items",
+        user=limited,
+    )
+    assert "or-cluster-layout-top" in html_top or "Open Items" in html_top
+
+    # End position cluster layout.
+    class EndCluster(Cluster):
+        slug = "end"
+        sub_navigation_position = "end"
+        navigation_label = "End Hub"
+
+    class EndRes(Resource):
+        slug = "end-items"
+        cluster = EndCluster
+        navigation_label = "End Items"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    end_panel = (
+        Panel.make("end")
+        .path("/end")
+        .dashboard(False)
+        .clusters([EndCluster])
+        .resources([EndRes])
+        .sidebar_navigation()
+    )
+    EndRes._panel_path = "/end"  # type: ignore[attr-defined]
+    html_end = end_panel.render_shell(
+        "<p>x</p>",
+        active_path="/end/end/end-items",
+        user=user,
+    )
+    assert "or-cluster-layout-end" in html_end
+
+    # Breadcrumbs: cluster implied by membership (not in panel._clusters yet),
+    # and cluster leaf path with no further segments.
+    class ImplyCluster(Cluster):
+        slug = "imply"
+        cluster_breadcrumb = "Implied"
+
+    class ImplyRes(Resource):
+        slug = "implied"
+        cluster = ImplyCluster
+        navigation_label = "Implied Res"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    imply = (
+        Panel.make("imp")
+        .path("/imp")
+        .dashboard(False)
+        .resources([ImplyRes])
+    )
+    ImplyRes._panel_path = "/imp"  # type: ignore[attr-defined]
+    crumbs = imply.breadcrumbs("/imp/imply/implied")
+    assert any("Implied" in str(c.get("label")) for c in crumbs)
+    leaf = imply.breadcrumbs("/imp/imply")
+    assert leaf[-1].get("url") is None
+
+    # _member_url without get_pages / get_url_path_prefix (fallback prefixes).
+    class BareMember:
+        cluster = "bare-c"
+
+        @classmethod
+        def get_slug(cls):
+            return "bare"
+
+    class BareCluster(Cluster):
+        slug = "bare-c"
+
+    bare_panel = Panel.make("bare").path("/bare").clusters([BareCluster])
+    assert "/bare" in bare_panel._member_url(BareMember) or "bare" in bare_panel._member_url(
+        BareMember
+    )
+
+    # Page without get_url_path_prefix → else branch in _page_nav_dict.
+    class LegacyPage:
+        navigation_label = "Legacy"
+        navigation_sort = 1
+
+        @classmethod
+        def get_slug(cls):
+            return "legacy"
+
+        @classmethod
+        def get_navigation_label(cls):
+            return "Legacy"
+
+    legacy_panel = Panel.make("leg").path("/leg").dashboard(False)
+    nav = legacy_panel._page_nav_dict(LegacyPage)
+    assert "legacy" in nav["url"]
+
+    # Page with get_url_path_prefix but unset _panel_path.
+    class PrefPage(Page):
+        slug = "pref-page"
+        navigation_label = "Pref"
+
+    pref_panel = Panel.make("pref").path("/pref").dashboard(False).pages([PrefPage])
+    # Clear stamp so _page_nav_dict sets it.
+    if hasattr(PrefPage, "_panel_path"):
+        delattr(PrefPage, "_panel_path")
+    assert "pref-page" in pref_panel._page_nav_dict(PrefPage)["url"]
+
+    # Cluster sub-nav without get_should_register_sub_navigation (attr only).
+    class AttrCluster:
+        should_register_sub_navigation = False
+        sub_navigation_position = "start"
+
+    assert (
+        Panel.make("x").path("/x")._render_cluster_sub_nav(
+            AttrCluster, [{"label": "A", "url": "/a"}]
+        )
+        == ""
+    )
+
+    # User menu: profile special + default logout; early return when disabled.
+    um = (
+        Panel.make("um")
+        .path("/um")
+        .user(user)
+        .user_menu_items(
+            {
+                "profile": lambda a: a.label("Profile").url("/um/me"),
+            }
+        )
+    )
+    html_um = um.render_shell("<p>x</p>", user=user)
+    assert "Profile" in html_um
+    assert "Sign out" in html_um
+    assert um._render_user_menu(user=None) == ""
+    disabled_um = Panel.make("dum").path("/dum").user(user).user_menu(False)
+    assert disabled_um._render_user_menu(user=user) == ""
+
+    # collect_cluster_sub_navigation with empty active_path.
+    assert panel.collect_cluster_sub_navigation(None) == (None, [])
+
+    # navigation_items setter path.
+    assert (
+        Panel.make("ni")
+        .path("/ni")
+        .dashboard(False)
+        .navigation_items([NavigationItem.make("z").label("Z").url("/z")])
+        .navigation_items()
+    )
+
+
+def test_panel_navigation_remaining_branches() -> None:
+    """Close remaining statement/branch gaps in panel navigation helpers."""
+    admin = OrbitUser.default()
+
+    # user_menu(True) without position (false branch of position is not None).
+    Panel.make("um0").path("/um0").user_menu(True)
+
+    # logout as callable special (hits key == "logout" setup before customize).
+    p_logout = (
+        Panel.make("ulo")
+        .path("/ulo")
+        .user(admin)
+        .user_menu_items(
+            {
+                "logout": lambda action: action.label("Exit now")
+                .url("/ulo/logout")
+                .post_to_url(),
+            }
+        )
+    )
+    assert "Exit now" in p_logout.render_shell("<p>x</p>", user=admin)
+
+    # profile already present in items → skip inserting special.
+    p_prof = (
+        Panel.make("up")
+        .path("/up")
+        .user(admin)
+        .user_menu_item(
+            UserMenuItem.make("profile").label("Existing").url("/up/me")
+        )
+        .user_menu_items(
+            {"profile": lambda a: a.label("Special").url("/up/special")}
+        )
+    )
+    html_prof = p_prof.render_shell("<p>x</p>", user=admin)
+    assert "Existing" in html_prof
+
+    # logout special with visible=False + logout already in items.
+    p_hidden_lo = (
+        Panel.make("uhl")
+        .path("/uhl")
+        .user(admin)
+        .user_menu_item(
+            UserMenuItem.make("logout").label("Manual out").url("/uhl/out")
+        )
+        .user_menu_items(
+            {
+                "logout": lambda a: a.label("Hidden LO")
+                .url("/uhl/logout")
+                .visible(False),
+            }
+        )
+    )
+    html_lo = p_hidden_lo.render_shell("<p>x</p>", user=admin)
+    assert "Manual out" in html_lo
+    assert "Hidden LO" not in html_lo
+
+    # Non-cluster page with should_register_navigation=False (line 831 continue).
+    class HiddenPage(Page):
+        slug = "hidden-page"
+        navigation_label = "Hidden Page"
+        should_register_navigation = False
+
+    hid = (
+        Panel.make("hp")
+        .path("/hp")
+        .dashboard(False)
+        .pages([HiddenPage])
+    )
+    assert "Hidden Page" not in [i["label"] for i in hid.navigation_items()]
+
+    # Dashboard not registered / not accessible while dash not in _pages.
+    from almasix.orbit.panels.pages.dashboard import Dashboard
+
+    class NoNavDash(Dashboard):
+        should_register_navigation = False
+
+    class DenyDash(Dashboard):
+        permission = "dash.never"
+
+    limited = OrbitUser.make().name("L").admin(False).permissions("posts.view_any")
+    Panel.make("nd").path("/nd").dashboard(NoNavDash).navigation_items()
+    deny_dash = Panel.make("dd").path("/dd").dashboard(DenyDash).user(limited)
+    deny_dash._collect_navigation_items(user=limited)
+
+    # Dashboard on pages list but should_register False.
+    class ListedHiddenDash(Dashboard):
+        should_register_navigation = False
+        navigation_label = "ListedHidden"
+
+    listed = (
+        Panel.make("lh")
+        .path("/lh")
+        .pages([ListedHiddenDash])
+        .dashboard(ListedHiddenDash)  # same class so page is dash
+    )
+    assert "ListedHidden" not in [i["label"] for i in listed.navigation_items()]
+
+    # Dashboard on pages, register true but can_access false.
+    class DenyListedDash(Dashboard):
+        navigation_label = "DenyListed"
+        permission = "dash.never"
+
+    deny_listed = (
+        Panel.make("dld")
+        .path("/dld")
+        .pages([DenyListedDash])
+        .dashboard(DenyListedDash)
+        .user(limited)
+    )
+    assert "DenyListed" not in [
+        i["label"] for i in deny_listed._collect_navigation_items(user=limited)
+    ]
+
+    # Builder group with empty name (skip _nav_groups store).
+    empty_g = (
+        Panel.make("eg")
+        .path("/eg")
+        .dashboard(False)
+        .navigation(
+            lambda b: b.groups(
+                [
+                    NavigationGroup.make(None).items(
+                        [NavigationItem.make("x").label("X").url("/x")]
+                    )
+                ]
+            )
+        )
+    )
+    assert any(i["label"] == "X" for i in empty_g.navigation_items())
+
+    # _cluster_key string branch.
+    assert Panel.make("ck").path("/ck")._cluster_key("settings") == "settings"
+
+    # Second loop: empty registered, but panel clusters have members.
+    class LateCluster(Cluster):
+        slug = "late"
+
+    class LateRes(Resource):
+        slug = "late-items"
+        cluster = LateCluster
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    late = (
+        Panel.make("late")
+        .path("/late")
+        .dashboard(False)
+        .clusters([LateCluster])
+        .resources([LateRes])
+    )
+    assert late._iter_clusters_for_nav(set())  # hits 953-954
+
+    # Duplicate type cluster keys → skip re-append (916->919).
+    class DupA(Cluster):
+        slug = "dup"
+
+    class DupB(Cluster):
+        slug = "dup-b"
+
+    DupB.__module__ = DupA.__module__
+    DupB.__qualname__ = DupA.__qualname__
+    late._iter_clusters_for_nav({DupA, DupB})
+
+    # String cluster: first cand misses, second matches (922->921).
+    class FirstMiss(Cluster):
+        slug = "aaa"
+
+    class SecondHit(Cluster):
+        slug = "bbb"
+
+    multi = Panel.make("multi").path("/multi").clusters([FirstMiss, SecondHit])
+    multi._iter_clusters_for_nav({"bbb"})
+
+    # String cluster matching panel cluster by slug.
+    class NamedHubCluster(Cluster):
+        slug = "namedhub"
+
+    class NamedRes(Resource):
+        slug = "named-items"
+        cluster = "namedhub"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    named = (
+        Panel.make("named")
+        .path("/named")
+        .dashboard(False)
+        .clusters([NamedHubCluster])
+        .resources([NamedRes])
+    )
+    # Type already seen, then string slug matches same cluster (925->928).
+    # Use a list so type is processed before the string (set order is unreliable).
+    named._iter_clusters_for_nav([NamedHubCluster, "namedhub"])  # type: ignore[arg-type]
+    # Match by class __name__ as well.
+    named._iter_clusters_for_nav({"NamedHubCluster"})
+
+    # Synthesize when key already seen, then continue to another registered
+    # string so the false branch loops back to the ``for registered`` header.
+    import almasix.orbit.panels.panel as panel_mod
+
+    pre = type(
+        "GhostLandCluster",
+        (Cluster,),
+        {"slug": "ghost-land", "navigation_label": "Ghost Land"},
+    )
+    pre.__module__ = panel_mod.__name__
+    pre.__qualname__ = "GhostLandCluster"
+    synth_panel = Panel.make("synth").path("/synth")
+    synth_panel._iter_clusters_for_nav([pre, "ghost-land", "another-orphan"])
+
+    # _cluster_members: same key, different type object (969-970).
+    class KeyA(Cluster):
+        slug = "keyed"
+
+    class KeyB(Cluster):
+        slug = "other"
+
+    KeyB.__module__ = KeyA.__module__
+    KeyB.__qualname__ = KeyA.__qualname__
+
+    class KeyRes(Resource):
+        slug = "keyed-items"
+        cluster = KeyB
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    keyed = (
+        Panel.make("keyed")
+        .path("/keyed")
+        .dashboard(False)
+        .clusters([KeyA])
+        .resources([KeyRes])
+    )
+    members = keyed._cluster_members(KeyA)
+    assert KeyRes in members
+
+    # String cluster membership via slug / __name__.
+    class StrMemCluster(Cluster):
+        slug = "strmem"
+
+    class StrMemRes(Resource):
+        slug = "strmem-items"
+        cluster = "strmem"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    strmem = (
+        Panel.make("sm")
+        .path("/sm")
+        .clusters([StrMemCluster])
+        .resources([StrMemRes])
+    )
+    assert StrMemRes in strmem._cluster_members(StrMemCluster)
+    assert StrMemRes in strmem._cluster_members("strmem")
+
+    # Empty members → _cluster_nav_dict None.
+    class EmptyCluster(Cluster):
+        slug = "emptyc"
+
+    empty_c = Panel.make("ec").path("/ec").clusters([EmptyCluster])
+    assert empty_c._cluster_nav_dict(EmptyCluster) is None
+
+    # _member_url: type cluster without get_url_path_prefix.
+    class TypeOnlyCluster(Cluster):
+        slug = "typeonly"
+
+    class TypeOnlyMember:
+        cluster = TypeOnlyCluster
+
+        @classmethod
+        def get_slug(cls):
+            return "tom"
+
+    tom_panel = Panel.make("tom").path("/tom").clusters([TypeOnlyCluster])
+    url = tom_panel._member_url(TypeOnlyMember)
+    assert "typeonly" in url and "tom" in url
+
+    # String cluster on bare member (1034).
+    class StrOnlyMember:
+        cluster = "stronly"
+
+        @classmethod
+        def get_slug(cls):
+            return "som"
+
+    assert "stronly" in Panel.make("som").path("/som")._member_url(StrOnlyMember)
+
+    # get_pages returns non-dict / empty index → fall through.
+    class WeirdPages:
+        cluster = None
+
+        @classmethod
+        def get_pages(cls):
+            return ["not-a-dict"]
+
+        @classmethod
+        def get_slug(cls):
+            return "weird"
+
+        @classmethod
+        def get_url_path_prefix(cls):
+            return "/som/weird-prefix"
+
+    assert "weird" in Panel.make("wp").path("/wp")._member_url(WeirdPages)
+
+    # Top + end cluster layouts with admin (auth allows members).
+    class TopCluster(Cluster):
+        slug = "topc"
+        sub_navigation_position = "top"
+        navigation_label = "TopC"
+
+    class TopRes(Resource):
+        slug = "top-items"
+        cluster = TopCluster
+        navigation_label = "Top Items"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    top = (
+        Panel.make("topc")
+        .path("/topc")
+        .dashboard(False)
+        .clusters([TopCluster])
+        .resources([TopRes])
+        .sidebar_navigation()
+        .user(admin)
+    )
+    TopRes._panel_path = "/topc"  # type: ignore[attr-defined]
+    html_top = top.render_shell(
+        "<p>x</p>", active_path="/topc/topc/top-items", user=admin
+    )
+    assert "or-cluster-layout-top" in html_top
+
+    # Breadcrumbs: cluster in get_clusters() match + members for URL.
+    class CrumbCluster(Cluster):
+        slug = "crumb"
+        cluster_breadcrumb = "Crumb Hub"
+
+    class CrumbRes(Resource):
+        slug = "crumb-items"
+        cluster = CrumbCluster
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    crumb = (
+        Panel.make("crumb")
+        .path("/crumb")
+        .dashboard(False)
+        .clusters([CrumbCluster])
+        .resources([CrumbRes])
+    )
+    CrumbRes._panel_path = "/crumb"  # type: ignore[attr-defined]
+    crumbs = crumb.breadcrumbs("/crumb/crumb/crumb-items")
+    assert any("Crumb" in str(c.get("label")) for c in crumbs)
+
+    # Cluster without get_cluster_breadcrumb attr (hasattr false path).
+    class MinimalCluster:
+        @classmethod
+        def get_slug(cls):
+            return "mini"
+
+        @classmethod
+        def get_navigation_label(cls):
+            return "Mini"
+
+        @classmethod
+        def path_prefix(cls):
+            return "/mini"
+
+    class MiniRes(Resource):
+        slug = "mini-items"
+        cluster = MinimalCluster  # type: ignore[assignment]
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    mini = (
+        Panel.make("mini")
+        .path("/mini")
+        .dashboard(False)
+        .clusters([MinimalCluster])  # type: ignore[list-item]
+        .resources([MiniRes])
+    )
+    MiniRes._panel_path = "/mini"  # type: ignore[attr-defined]
+    mini_crumbs = mini.breadcrumbs("/mini/mini/mini-items")
+    assert any(c.get("label") == "Mini" for c in mini_crumbs)
+
+    # Page without can_access when user is set — already covered; ensure
+    # _resolve_cluster without get_cluster (getattr cluster).
+    class AttrClusterObj:
+        cluster = "attr-c"
+        navigation_label = "AttrC"
+
+        @classmethod
+        def get_slug(cls):
+            return "attrc"
+
+        @classmethod
+        def get_navigation_label(cls):
+            return "AttrC"
+
+    assert Panel.make("ac").path("/ac")._resolve_cluster(AttrClusterObj) == "attr-c"
+
+    # collect_cluster_sub_navigation: path equals prefix exactly.
+    cluster, items = top.collect_cluster_sub_navigation(
+        "/topc/topc", user=admin
+    )
+    assert cluster is TopCluster
+    assert items
+
+    # Remaining branch arcs -------------------------------------------------
+
+    # _member_url with no cluster (1030 false → return).
+    class NoClusterMember:
+        @classmethod
+        def get_slug(cls):
+            return "ncm"
+
+    ncm_url = Panel.make("ncm").path("/ncm")._member_url(NoClusterMember)
+    assert ncm_url.endswith("/ncm") or "ncm" in ncm_url
+
+    # Sub-nav skips a hidden member then includes a visible one (1160 continue).
+    class MixCluster(Cluster):
+        slug = "mix"
+        navigation_label = "Mix"
+
+    class MixHidden(Resource):
+        slug = "mix-hidden"
+        cluster = MixCluster
+        should_register_navigation = False
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class MixVisible(Resource):
+        slug = "mix-visible"
+        cluster = MixCluster
+        navigation_label = "Mix Visible"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    mix = (
+        Panel.make("mix")
+        .path("/mix")
+        .dashboard(False)
+        .clusters([MixCluster])
+        .resources([MixHidden, MixVisible])
+        .user(admin)
+    )
+    MixVisible._panel_path = "/mix"  # type: ignore[attr-defined]
+    MixHidden._panel_path = "/mix"  # type: ignore[attr-defined]
+    _c, mix_items = mix.collect_cluster_sub_navigation(
+        "/mix/mix/mix-visible", user=admin
+    )
+    assert any(i["label"] == "Mix Visible" for i in mix_items)
+    assert not any(i["label"] == "Mix Hidden" for i in mix_items)
+
+    # Breadcrumbs: multiple clusters (first miss), empty members, no breadcrumb helper.
+    class OtherCluster(Cluster):
+        slug = "other"
+
+    class LonelyCluster(Cluster):
+        slug = "lonely"
+        cluster_breadcrumb = "Lonely"
+
+    lonely = (
+        Panel.make("lonely")
+        .path("/lonely")
+        .dashboard(False)
+        .clusters([OtherCluster, LonelyCluster])
+    )
+    lonely_crumbs = lonely.breadcrumbs("/lonely/lonely")
+    assert any(c.get("label") == "Lonely" for c in lonely_crumbs)
+
+    # Implied cluster membership (not pre-registered) + members URL.
+    class ImpliedOnly(Cluster):
+        slug = "impliedonly"
+
+    class ImpliedOnlyRes(Resource):
+        slug = "io-items"
+        cluster = ImpliedOnly
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    implied = (
+        Panel.make("io")
+        .path("/io")
+        .dashboard(False)
+        .resources([ImpliedOnlyRes])  # cluster NOT in .clusters()
+    )
+    ImpliedOnlyRes._panel_path = "/io"  # type: ignore[attr-defined]
+    io_crumbs = implied.breadcrumbs("/io/impliedonly/io-items")
+    assert any("Implied" in str(c.get("label")) or "Io" in str(c.get("label")) for c in io_crumbs)
+    # Cluster was appended to panel.
+    assert ImpliedOnly in implied.get_clusters()
+
+    # String-resolved cluster in membership loop (971 continue).
+    class StrSlugCluster(Cluster):
+        slug = "strslug"
+
+    class StrSlugRes(Resource):
+        slug = "ss-items"
+        cluster = "strslug"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class StrSlugRes2(Resource):
+        slug = "ss-items-2"
+        cluster = "StrSlugCluster"  # match __name__
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    ss = (
+        Panel.make("ss")
+        .path("/ss")
+        .clusters([StrSlugCluster])
+        .resources([StrSlugRes, StrSlugRes2, _PostResource])
+    )
+    assert StrSlugRes in ss._cluster_members(StrSlugCluster)
+    assert StrSlugRes2 in ss._cluster_members(StrSlugCluster)
+
+    # String cluster that does not match (972 false → next obj).
+    class NopeStrRes(Resource):
+        slug = "nope-items"
+        cluster = "nope-slug"
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    ss.resources([NopeStrRes])
+    ss._cluster_members(StrSlugCluster)  # walks past nope string
+
+    # Sub-nav: first cluster prefix misses, second hits (1161 false → next).
+    class ACluster(Cluster):
+        slug = "acluster"
+
+    class BCluster(Cluster):
+        slug = "bcluster"
+
+    class ARes(Resource):
+        slug = "a-items"
+        cluster = ACluster
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    class BRes(Resource):
+        slug = "b-items"
+        cluster = BCluster
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    ab = (
+        Panel.make("ab")
+        .path("/ab")
+        .dashboard(False)
+        .clusters([ACluster, BCluster])
+        .resources([ARes, BRes])
+        .user(admin)
+    )
+    ARes._panel_path = "/ab"  # type: ignore[attr-defined]
+    BRes._panel_path = "/ab"  # type: ignore[attr-defined]
+    # Sets do not preserve order — force A (miss) before B (hit).
+    ab._iter_clusters_for_nav = lambda _registered: [ACluster, BCluster]  # type: ignore[method-assign]
+    b_cluster, b_items = ab.collect_cluster_sub_navigation(
+        "/ab/bcluster/b-items", user=admin
+    )
+    assert b_cluster is BCluster
+    assert b_items
+
+    # Breadcrumbs membership find when cluster already in _clusters (1462 false).
+    class AlreadyCluster(Cluster):
+        slug = "already"
+
+    class AlreadyRes(Resource):
+        slug = "already-items"
+        cluster = AlreadyCluster
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("t")])
+
+        @classmethod
+        def get_records(cls):
+            return []
+
+    already = (
+        Panel.make("al")
+        .path("/al")
+        .dashboard(False)
+        .clusters([AlreadyCluster])
+        .resources([AlreadyRes])
+    )
+    AlreadyRes._panel_path = "/al"  # type: ignore[attr-defined]
+    # First loop uses get_clusters(); force it empty so membership path runs
+    # while the cluster remains in ``_clusters``.
+    already.get_clusters = lambda: []  # type: ignore[method-assign]
+    already_crumbs = already.breadcrumbs("/al/already/already-items")
+    assert any("Already" in str(c.get("label")) for c in already_crumbs)

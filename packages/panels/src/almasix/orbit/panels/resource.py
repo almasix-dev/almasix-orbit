@@ -295,9 +295,7 @@ def _pluralize(value: str) -> str:
 
 def _resolve_nav_flag(cls: type[Any], attr: str, *, default: bool = True, **ctx: Any) -> bool:
     """Read a ClassVar bool, or call a same-named classmethod override on a subclass."""
-    for klass in cls.__mro__:
-        if klass is object:
-            break
+    for klass in cls.__mro__[:-1]:  # exclude ``object``
         if attr not in klass.__dict__:
             continue
         value = klass.__dict__[attr]
