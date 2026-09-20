@@ -1232,6 +1232,41 @@ class Select(Field):
             option_label=rel.get("option_label"),
         )
 
+    def uses_combobox(self) -> bool:
+        """Filament: searchable / multiple / allowHtml / native(false) → custom combobox."""
+        return bool(
+            self._searchable
+            or not self._native
+            or self._multiple
+            or self._allow_html
+        )
+
+    def _field_search_query(self, **ctx: Any) -> str:
+        field_name = self.get_state_path() or self.get_name() or ""
+        select_search = ctx.get("select_search") or {}
+        if isinstance(select_search, dict) and field_name in select_search:
+            return str(select_search.get(field_name) or "")
+        return ""
+
+    def _callback_options_for_render(self, state: Any, **ctx: Any) -> dict[str, str]:
+        """Resolve ``get_search_results_using`` for the current AJAX search query."""
+        cb = self._get_search_results_using
+        if cb is None:
+            return {}
+        search = self._field_search_query(**ctx)
+        raw = evaluate(cb, search, state=state, field=self, **ctx)
+        if isinstance(raw, dict):
+            return {str(k): str(v) for k, v in raw.items()}
+        if isinstance(raw, (list, tuple)):
+            out: dict[str, str] = {}
+            for item in raw:
+                if isinstance(item, (list, tuple)) and len(item) >= 2:
+                    out[str(item[0])] = str(item[1])
+                elif isinstance(item, dict) and "value" in item:
+                    out[str(item["value"])] = str(item.get("label", item["value"]))
+            return out
+        return {}
+
     def _relationship_options_for_render(self, state: Any, **ctx: Any) -> dict[str, str]:
         rel = self.get_relationship()
         if not rel:
@@ -1239,19 +1274,31 @@ class Select(Field):
         # Explicit static options win over relationship resolution.
         if self._options not in (None, {}):
             return {}
-        field_name = self.get_state_path() or self.get_name() or ""
-        select_search = ctx.get("select_search") or {}
-        search = None
-        if isinstance(select_search, dict) and field_name in select_search:
-            search = str(select_search.get(field_name) or "")
+        search = self._field_search_query(**ctx) or None
         return self.resolve_relationship_options(state, search=search, **ctx)
 
+    def _options_overlay_for_render(self, state: Any, **ctx: Any) -> dict[str, str]:
+        """Dynamic options from custom search callback or relationship loader."""
+        if self._get_search_results_using is not None:
+            return self._callback_options_for_render(state, **ctx)
+        return self._relationship_options_for_render(state, **ctx)
+
     def _render_options_html(self, state: Any, **ctx: Any) -> str:
-        # Merge relationship-backed options into the field for this render.
-        rel_opts = self._relationship_options_for_render(state, **ctx)
+        # Merge relationship / custom-search options into the field for this render.
+        overlay = self._options_overlay_for_render(state, **ctx)
         prior = self._options
-        if rel_opts:
-            self._options = rel_opts
+        if overlay:
+            # Keep selected labels available even when AJAX results omit them.
+            selected = state if isinstance(state, (list, tuple, set)) else (
+                [state] if state not in (None, "") else []
+            )
+            merged = dict(overlay)
+            if isinstance(prior, dict):
+                for key in selected:
+                    sk = str(key)
+                    if sk and sk not in merged and sk in {str(k) for k in prior}:
+                        merged[sk] = str(prior[key] if key in prior else prior.get(sk, sk))
+            self._options = merged
         try:
             selected = state if isinstance(state, (list, tuple, set)) else (
                 [state] if state not in (None, "") else []
@@ -1278,8 +1325,10 @@ class Select(Field):
                     sel = " selected" if str(k) in selected_s else ""
                     label = str(v) if self._allow_html else e(v)
                     wrap_cls = ' class="or-option-wrap"' if self._wrap_labels else ""
+                    group_attr = f' data-group="{e(group_label)}"' if group_label else ""
                     inner.append(
-                        f'<option value="{e(k)}" data-label="{e(v)}"{sel}{disabled_opt}{wrap_cls}>{label}</option>'
+                        f'<option value="{e(k)}" data-label="{e(v)}"{group_attr}'
+                        f"{sel}{disabled_opt}{wrap_cls}>{label}</option>"
                     )
                     count += 1
                 body = "".join(inner)
@@ -1291,27 +1340,44 @@ class Select(Field):
         finally:
             self._options = prior
 
-    def render(self, state: Any = None, **ctx: Any) -> str:
-        if not self.is_visible(**ctx):
-            return ""
-        name = e(self.get_state_path() or "")
-        opts_html = self._render_options_html(state, **ctx)
-        multi = " multiple" if self._multiple else ""
-        disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
-        wire = self._wire_binding(name)
-        searchable = self._searchable or not self._native
-        searchable_attr = " data-searchable" if searchable else ""
-        alpine = ' x-data="orbitSearchableSelect"' if searchable else ""
-        search_input = ""
-        if searchable:
-            prompt = e(self._search_prompt or "Search…")
-            debounce = self._search_debounce or 200
-            search_input = (
-                f'<input type="search" class="or-input or-select-search" placeholder="{prompt}" '
-                f'x-model="q" x-on:input.debounce.{debounce}ms="filter()" '
-                f'aria-label="Search" />'
-            )
-        select_ref = ' x-ref="select"' if searchable else ""
+    def _select_meta_attrs(self, *, searchable: bool) -> str:
+        rel = self.get_relationship()
+        attrs = ""
+        if rel:
+            if rel.get("name"):
+                attrs += f' data-relationship="{e(rel["name"])}"'
+            if rel.get("search_columns"):
+                attrs += f' data-search-columns="{e(",".join(rel["search_columns"]))}"'
+            if rel.get("preload"):
+                attrs += ' data-preload="true"'
+            from almasix.orbit.forms.select_relationship import relationship_should_ajax
+
+            if relationship_should_ajax(rel, searchable=searchable):
+                attrs += ' data-ajax-search="true"'
+            attrs += f' data-options-limit="{self.effective_options_limit()}"'
+        if self._get_search_results_using is not None:
+            attrs += ' data-ajax-search="true"'
+        if self._no_search_results_message:
+            attrs += f' data-no-results="{e(self._no_search_results_message)}"'
+        if self._loading_message:
+            attrs += f' data-loading="{e(self._loading_message)}"'
+        if self._searching_message:
+            attrs += f' data-searching="{e(self._searching_message)}"'
+        if self._min_items is not None:
+            attrs += f' data-min-items="{self._min_items}"'
+        if self._max_items is not None:
+            attrs += f' data-max-items="{self._max_items}"'
+        if self._reorderable_selected:
+            attrs += ' data-reorderable="true"'
+        if not self._native:
+            attrs += ' data-native="false"'
+        if self._allow_html:
+            attrs += ' data-allow-html="true"'
+        if self._multiple:
+            attrs += ' data-multiple="true"'
+        return attrs
+
+    def _select_actions_html(self, name: str) -> str:
         actions = []
         if self._create_option_form is not None or self._create_option_using is not None:
             actions.append(
@@ -1326,49 +1392,145 @@ class Select(Field):
                 f'<button type="button" class="or-btn or-btn-gray or-btn-sm" '
                 f'data-edit-option wire:click="mountAction(\'{e(action_name)}\')">Edit option</button>'
             )
-        actions_html = f'<div class="or-select-actions">{"".join(actions)}</div>' if actions else ""
-        rel = self.get_relationship()
-        rel_attrs = ""
-        if rel:
-            if rel.get("name"):
-                rel_attrs = f' data-relationship="{e(rel["name"])}"'
-            if rel.get("search_columns"):
-                rel_attrs += f' data-search-columns="{e(",".join(rel["search_columns"]))}"'
-            if rel.get("preload"):
-                rel_attrs += ' data-preload="true"'
-            from almasix.orbit.forms.select_relationship import relationship_should_ajax
+        return f'<div class="or-select-actions">{"".join(actions)}</div>' if actions else ""
 
-            if relationship_should_ajax(rel, searchable=searchable):
-                rel_attrs += ' data-ajax-search="true"'
-            rel_attrs += f' data-options-limit="{self.effective_options_limit()}"'
-        if self._get_search_results_using is not None:
-            rel_attrs += ' data-ajax-search="true"'
-        if self._no_search_results_message:
-            rel_attrs += f' data-no-results="{e(self._no_search_results_message)}"'
-        if self._loading_message:
-            rel_attrs += f' data-loading="{e(self._loading_message)}"'
-        if self._searching_message:
-            rel_attrs += f' data-searching="{e(self._searching_message)}"'
-        if self._min_items is not None:
-            rel_attrs += f' data-min-items="{self._min_items}"'
-        if self._max_items is not None:
-            rel_attrs += f' data-max-items="{self._max_items}"'
-        if self._reorderable_selected:
-            rel_attrs += ' data-reorderable="true"'
-        if not self._native:
-            rel_attrs += ' data-native="false"'
+    def _render_combobox(
+        self,
+        *,
+        name: str,
+        opts_html: str,
+        state: Any,
+        searchable: bool,
+        **ctx: Any,
+    ) -> str:
+        multi = " multiple" if self._multiple else ""
+        disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        wire = self._wire_binding(name)
+        debounce = self._search_debounce or 200
+        prompt = e(self._search_prompt or "Search…")
+        placeholder = "—" if self._selectable_placeholder else ""
+        query = e(self._field_search_query(**ctx))
+        no_results = e(self._no_search_results_message or "No options match your search.")
+        searching = e(self._searching_message or "Searching…")
+        loading = e(self._loading_message or "Loading…")
+        placeholder_opt = ""
+        if self._selectable_placeholder and not self._multiple:
+            placeholder_opt = f'<option value="">{e(placeholder)}</option>'
+        meta = self._select_meta_attrs(searchable=searchable)
+        searchable_attr = " data-searchable" if searchable else ""
+        return (
+            f'<div class="or-combobox" x-data="orbitCombobox"'
+            f'{searchable_attr}{meta}'
+            f' data-placeholder="{e(placeholder)}"'
+            f' data-search-prompt="{prompt}"'
+            f' data-no-results="{no_results}"'
+            f' data-searching="{searching}"'
+            f' data-loading="{loading}"'
+            f' data-debounce="{debounce}"'
+            f'{" data-wrap-labels" if self._wrap_labels else ""}'
+            f' @keydown.escape.window="close()"'
+            f' @click.outside="close()">'
+            f'<select class="or-select or-combobox-native" id="or-{name}" name="{name}"'
+            f'{multi}{disabled} x-ref="select"{wire}{self._after_state_attr()} '
+            f'tabindex="-1" aria-hidden="true">{placeholder_opt}{opts_html}</select>'
+            f'<div class="or-combobox-control" :class="{{ \'is-open\': open, \'is-disabled\': disabled }}">'
+            f'<div class="or-combobox-trigger" x-ref="trigger" role="combobox" '
+            f'tabindex="0" @click="toggle()" @keydown.down.prevent="move(1)" '
+            f'@keydown.up.prevent="move(-1)" @keydown.enter.prevent="chooseActive()" '
+            f'@keydown.space.prevent="toggle()" '
+            f':aria-expanded="open.toString()" aria-haspopup="listbox" '
+            f':aria-disabled="disabled.toString()" id="or-{name}-trigger">'
+            f'<div class="or-combobox-value">'
+            f'<template x-for="item in selectedItems" :key="item.value">'
+            f'<span class="or-combobox-chip" x-show="multiple">'
+            f'<span class="or-combobox-chip-label" x-text="item.label"></span>'
+            f'<button type="button" class="or-combobox-chip-remove" '
+            f'@click.stop="deselect(item.value)" :aria-label="`Remove ${{item.label}}`">'
+            f'<span aria-hidden="true">×</span></button></span>'
+            f"</template>"
+            f'<span class="or-combobox-single" '
+            f'x-show="!multiple && selectedLabel && !(searchable && open)" '
+            f'x-text="selectedLabel"></span>'
+            f'<span class="or-combobox-placeholder" '
+            f'x-show="!multiple && !selectedLabel && !(searchable && open)" '
+            f'x-text="placeholder"></span>'
+            f'<input type="search" class="or-combobox-search" x-ref="search" '
+            f'x-show="searchable" x-model="q" value="{query}" '
+            f'placeholder="{prompt}" autocomplete="off" '
+            f'@focus="openPanel()" '
+            f'@click.stop="openPanel()" '
+            f'@input.debounce.{debounce}ms="onSearch()" '
+            f'@keydown.down.prevent="move(1)" '
+            f'@keydown.up.prevent="move(-1)" '
+            f'@keydown.enter.prevent="chooseActive()" '
+            f'@keydown.backspace="onBackspace($event)" '
+            f'aria-autocomplete="list" aria-controls="or-{name}-list" '
+            f':aria-expanded="open.toString()" />'
+            f"</div>"
+            f'<button type="button" class="or-combobox-clear" x-show="hasValue && !disabled" '
+            f'@click.stop="clear()" aria-label="Clear selection">'
+            f'<span aria-hidden="true">×</span></button>'
+            f'<span class="or-combobox-chevron" aria-hidden="true"></span>'
+            f"</div>"
+            f'<ul class="or-combobox-dropdown" x-ref="list" id="or-{name}-list" '
+            f'role="listbox" x-show="open" '
+            f':aria-activedescendant="activeId">'
+            f'<li class="or-combobox-status" x-show="statusMessage" x-text="statusMessage"></li>'
+            f'<template x-for="(opt, idx) in visibleOptions" :key="opt.value">'
+            f'<li class="or-combobox-option" role="option" '
+            f':id="`or-{name}-opt-${{idx}}`" '
+            f':class="{{ '
+            f"'is-active': idx === activeIndex, "
+            f"'is-selected': isSelected(opt.value), "
+            f"'is-disabled': opt.disabled, "
+            f"'or-option-wrap': wrapLabels "
+            f'}}" '
+            f':aria-selected="isSelected(opt.value).toString()" '
+            f'@mouseenter="activeIndex = idx" '
+            f'@click="choose(opt)" '
+            f'x-html="allowHtml ? opt.labelHtml : undefined" '
+            f'x-text="allowHtml ? \'\' : opt.label"></li>'
+            f"</template></ul></div>"
+            f"{self._select_actions_html(name)}"
+            f"</div>"
+        )
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
+        name = e(self.get_state_path() or "")
+        opts_html = self._render_options_html(state, **ctx)
+        searchable = self._searchable or not self._native
+        # Filament: multiple / allowHtml force the custom select even when native().
+        if self.uses_combobox():
+            control = self._render_combobox(
+                name=name,
+                opts_html=opts_html,
+                state=state,
+                searchable=searchable or self._multiple or self._allow_html,
+                **ctx,
+            )
+            html = self.wrap_field(name, control, **ctx)
+            return html.replace(
+                f'data-field="{name}"',
+                f'data-field="{name}" data-combobox',
+                1,
+            )
+
+        multi = " multiple" if self._multiple else ""
+        disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        wire = self._wire_binding(name)
+        meta = self._select_meta_attrs(searchable=False)
         placeholder_opt = ""
         if self._selectable_placeholder and not self._multiple:
             placeholder_opt = '<option value="">—</option>'
         control = (
-            f"{search_input}"
             f'<select class="or-select" id="or-{name}" name="{name}"{multi}{disabled}'
-            f'{select_ref}{wire}{self._after_state_attr()}>{placeholder_opt}{opts_html}</select>'
-            f"{actions_html}"
+            f"{wire}{self._after_state_attr()}>{placeholder_opt}{opts_html}</select>"
+            f"{self._select_actions_html(name)}"
         )
         html = self.wrap_field(name, control, **ctx)
-        inject = f'data-field="{name}"{searchable_attr}{rel_attrs}{alpine}'
-        return html.replace(f'data-field="{name}"', inject, 1)
+        return html.replace(f'data-field="{name}"', f'data-field="{name}"{meta}', 1)
 
 
 class Checkbox(Field):

@@ -1969,7 +1969,10 @@ body.dark {{
   border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 10px 30px rgba(28, 20, 17, 0.06);
-  overflow: hidden;
+  overflow: visible;
+}}
+.or-shot:has(.or-combobox) {{
+  padding-bottom: 14rem; /* room for open combobox dropdown in screenshots */
 }}
 body.dark .or-shot {{
   background: #1c1613;
@@ -1992,6 +1995,24 @@ body.dark .or-shot {{
   <p><code>{shot_list}</code></p>
 </header>
 {"".join(parts)}
+<script src="../vendor/orbit/orbit.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+<script>
+document.addEventListener("alpine:initialized", () => {{
+  const openShot = (shot) => {{
+    const root = shot.querySelector('[x-data="orbitCombobox"]');
+    if (!root || typeof Alpine === "undefined") return;
+    const data = Alpine.$data(root);
+    if (!data || typeof data.openPanel !== "function") return;
+    data.openPanel();
+  }};
+  document
+    .querySelectorAll(
+      '[data-shot^="forms/select/"], [data-shot^="forms/multi-select/"], [data-shot="forms/select"]',
+    )
+    .forEach(openShot);
+}});
+</script>
 </body>
 </html>
 """

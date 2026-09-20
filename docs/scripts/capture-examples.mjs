@@ -44,6 +44,17 @@ async function main() {
         .querySelectorAll(".or-action-modal-host, .or-modal-backdrop, .or-modal")
         .forEach((el) => el.remove());
     }, theme);
+    await page.waitForFunction(() => window.Alpine?.version).catch(() => {});
+    await page.waitForTimeout(500);
+    // Ensure comboboxes are open for select screenshots (Alpine may re-init on theme toggle).
+    await page.evaluate(() => {
+      document
+        .querySelectorAll('[data-shot^="forms/select/"] [x-data="orbitCombobox"], [data-shot^="forms/multi-select/"] [x-data="orbitCombobox"]')
+        .forEach((root) => {
+          const data = window.Alpine?.$data?.(root);
+          if (data?.openPanel) data.openPanel();
+        });
+    });
     await page.waitForTimeout(100);
 
     const shots = page.locator("[data-shot]");

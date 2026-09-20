@@ -912,34 +912,250 @@
       true,
     );
 
-    window.Alpine.data("orbitSearchableSelect", () => ({
+    const orbitCombobox = () => ({
+      open: false,
       q: "",
-      filter() {
+      options: [],
+      state: null,
+      activeIndex: -1,
+      searching: false,
+      multiple: false,
+      searchable: false,
+      ajax: false,
+      allowHtml: false,
+      wrapLabels: false,
+      disabled: false,
+      placeholder: "—",
+      searchPrompt: "Search…",
+      noResults: "No options match your search.",
+      searchingMsg: "Searching…",
+      loadingMsg: "Loading…",
+      maxItems: null,
+      fieldName: "",
+
+      init() {
         const root = this.$el;
-        const select = this.$refs.select;
-        if (!(select instanceof HTMLSelectElement)) return;
-        const ajax = root.getAttribute("data-ajax-search") === "true";
-        const q = this.q || "";
-        if (ajax) {
-          const field = root.getAttribute("data-field") || "";
-          const wireRoot = root.closest("[wire\\:id], [conduit\\:id], [data-conduit]");
-          const wire = wireRoot && (wireRoot.__wire || wireRoot.__conduit);
-          if (wire && typeof wire.searchSelectOptions === "function") {
-            wire.searchSelectOptions(field, q);
-            return;
-          }
+        this.multiple = root.getAttribute("data-multiple") === "true";
+        this.searchable = root.hasAttribute("data-searchable");
+        this.ajax = root.getAttribute("data-ajax-search") === "true";
+        this.allowHtml = root.getAttribute("data-allow-html") === "true";
+        this.wrapLabels = root.hasAttribute("data-wrap-labels");
+        this.placeholder = root.getAttribute("data-placeholder") || "—";
+        this.searchPrompt = root.getAttribute("data-search-prompt") || "Search…";
+        this.noResults = root.getAttribute("data-no-results") || this.noResults;
+        this.searchingMsg = root.getAttribute("data-searching") || this.searchingMsg;
+        this.loadingMsg = root.getAttribute("data-loading") || this.loadingMsg;
+        const max = root.getAttribute("data-max-items");
+        this.maxItems = max != null && max !== "" ? Number(max) : null;
+        this.fieldName =
+          root.closest("[data-field]")?.getAttribute("data-field") ||
+          root.getAttribute("data-field") ||
+          "";
+        const search = this.$refs.search;
+        if (search instanceof HTMLInputElement && search.value) {
+          this.q = search.value;
         }
-        const needle = q.toLowerCase();
-        Array.from(select.options).forEach((opt) => {
-          if (!opt.value) {
-            opt.hidden = false;
-            return;
+        this.readFromSelect();
+        this.$watch("open", (value) => {
+          if (value) {
+            this.$nextTick(() => {
+              if (this.searchable && this.$refs.search) this.$refs.search.focus();
+            });
           }
-          const label = (opt.dataset.label || opt.textContent || "").toLowerCase();
-          opt.hidden = Boolean(needle) && !label.includes(needle);
         });
       },
-    }));
+
+      get selectedItems() {
+        return this.selectedValues.map((value) => {
+          const opt = this.options.find((o) => o.value === value);
+          return {
+            value,
+            label: opt ? opt.label : value,
+            labelHtml: opt ? opt.labelHtml : value,
+          };
+        });
+      },
+
+      get selectedValues() {
+        if (this.multiple) {
+          return Array.isArray(this.state) ? this.state.map(String) : [];
+        }
+        return this.state != null && this.state !== "" ? [String(this.state)] : [];
+      },
+
+      get selectedLabel() {
+        if (this.multiple) return "";
+        const item = this.selectedItems[0];
+        return item ? item.label : "";
+      },
+
+      get hasValue() {
+        return this.selectedValues.length > 0;
+      },
+
+      get visibleOptions() {
+        const opts = this.options.filter((o) => o.value !== "");
+        if (this.ajax || !this.searchable) return opts;
+        const needle = (this.q || "").toLowerCase().trim();
+        if (!needle) return opts;
+        return opts.filter(
+          (o) =>
+            o.label.toLowerCase().includes(needle) ||
+            o.value.toLowerCase().includes(needle),
+        );
+      },
+
+      get statusMessage() {
+        if (this.searching) {
+          return this.ajax ? this.searchingMsg : this.loadingMsg;
+        }
+        if (this.open && this.visibleOptions.length === 0) {
+          return this.noResults;
+        }
+        return "";
+      },
+
+      get activeId() {
+        if (this.activeIndex < 0 || !this.fieldName) return null;
+        return `or-${this.fieldName}-opt-${this.activeIndex}`;
+      },
+
+      readFromSelect() {
+        const select = this.$refs.select;
+        if (!(select instanceof HTMLSelectElement)) return;
+        this.disabled = select.disabled;
+        this.options = Array.from(select.options).map((opt) => ({
+          value: String(opt.value),
+          label: String(opt.dataset.label || opt.textContent || "").trim(),
+          labelHtml: opt.innerHTML,
+          disabled: Boolean(opt.disabled),
+          group: opt.dataset.group || "",
+        }));
+        if (this.multiple) {
+          this.state = Array.from(select.selectedOptions)
+            .map((o) => String(o.value))
+            .filter((v) => v !== "");
+        } else {
+          this.state = select.value || "";
+        }
+      },
+
+      isSelected(value) {
+        return this.selectedValues.includes(String(value));
+      },
+
+      toggle() {
+        if (this.disabled) return;
+        if (this.open) this.close();
+        else this.openPanel();
+      },
+
+      openPanel() {
+        if (this.disabled) return;
+        this.open = true;
+        this.activeIndex = this.visibleOptions.findIndex((o) => this.isSelected(o.value));
+        if (this.activeIndex < 0 && this.visibleOptions.length) this.activeIndex = 0;
+      },
+
+      close() {
+        this.open = false;
+        this.activeIndex = -1;
+        if (!this.multiple) this.q = "";
+      },
+
+      move(delta) {
+        this.openPanel();
+        const len = this.visibleOptions.length;
+        if (!len) return;
+        this.activeIndex = (this.activeIndex + delta + len) % len;
+        const el = this.activeId ? document.getElementById(this.activeId) : null;
+        if (el) el.scrollIntoView({ block: "nearest" });
+      },
+
+      chooseActive() {
+        const opt = this.visibleOptions[this.activeIndex];
+        if (opt) this.choose(opt);
+      },
+
+      choose(opt) {
+        if (!opt || opt.disabled) return;
+        if (this.multiple) {
+          const value = String(opt.value);
+          const current = [...this.selectedValues];
+          const idx = current.indexOf(value);
+          if (idx >= 0) current.splice(idx, 1);
+          else {
+            if (this.maxItems != null && current.length >= this.maxItems) return;
+            current.push(value);
+          }
+          this.state = current;
+          this.q = "";
+          this.syncSelect();
+          return;
+        }
+        this.state = String(opt.value);
+        this.syncSelect();
+        this.close();
+      },
+
+      deselect(value) {
+        if (!this.multiple) return;
+        this.state = this.selectedValues.filter((v) => v !== String(value));
+        this.syncSelect();
+      },
+
+      clear() {
+        this.state = this.multiple ? [] : "";
+        this.q = "";
+        this.syncSelect();
+        this.close();
+      },
+
+      onBackspace(event) {
+        if (!this.multiple) return;
+        if ((this.q || "") !== "") return;
+        const values = this.selectedValues;
+        if (!values.length) return;
+        event.preventDefault();
+        this.deselect(values[values.length - 1]);
+      },
+
+      onSearch() {
+        if (this.ajax) {
+          this.searching = true;
+          const wireRoot = this.$el.closest(
+            "[wire\\:id], [conduit\\:id], [data-conduit]",
+          );
+          const wire = wireRoot && (wireRoot.__wire || wireRoot.__conduit);
+          if (wire && typeof wire.searchSelectOptions === "function") {
+            wire.searchSelectOptions(this.fieldName, this.q || "");
+            return;
+          }
+          this.searching = false;
+        }
+        this.openPanel();
+        this.activeIndex = this.visibleOptions.length ? 0 : -1;
+      },
+
+      syncSelect() {
+        const select = this.$refs.select;
+        if (!(select instanceof HTMLSelectElement)) return;
+        if (this.multiple) {
+          const selected = new Set(this.selectedValues);
+          Array.from(select.options).forEach((opt) => {
+            opt.selected = selected.has(String(opt.value));
+          });
+        } else {
+          select.value = this.state == null ? "" : String(this.state);
+        }
+        select.dispatchEvent(new Event("input", { bubbles: true }));
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      },
+    });
+
+    window.Alpine.data("orbitCombobox", orbitCombobox);
+    window.Alpine.data("orbitSearchableSelect", orbitCombobox);
+
 
     window.Alpine.data("orbitMorphToSelect", () => ({
       init() {
