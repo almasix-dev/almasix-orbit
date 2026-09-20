@@ -20,6 +20,13 @@ from app.orbit.app.resources.post_resource import PostResource
 from app.orbit.app.resources.settings_resource import SettingsResource
 from app.orbit.app.resources.tables_overview_resource import TablesOverviewResource
 from app.orbit.app.resources.text_columns_resource import TextColumnsResource
+from app.orbit.app.widgets import (
+    OverviewStats,
+    RecentPostsTable,
+    RevenueApexChart,
+    SignupsChart,
+    WelcomeWidget,
+)
 
 
 def register_app_panel(registry: PanelRegistry) -> Panel:
@@ -80,6 +87,15 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
             NavigationGroup.make("System")
             .icon("heroicon-o-cog-6-tooth")
             .sort(10)
+        )
+        .widgets(
+            [
+                WelcomeWidget,
+                OverviewStats,
+                SignupsChart,
+                RevenueApexChart,
+                RecentPostsTable,
+            ]
         )
         .resources(
             [

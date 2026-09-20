@@ -92,6 +92,7 @@ from gallery_variants import (
     build_form_variants,
     build_infolist_variants,
     build_schema_variants,
+    build_widget_variants,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -329,6 +330,35 @@ SHOTS: list[tuple[str, str]] = [
     ("actions/restore", "Restore action"),
     ("actions/import", "Import action"),
     ("actions/export", "Export action"),
+    # Widgets + dashboard
+    ("widgets/overview", "Widgets overview"),
+    ("widgets/overview/heading", "Widgets — heading"),
+    ("widgets/overview/sort", "Widgets — sort"),
+    ("widgets/overview/column-span", "Widgets — column span"),
+    ("widgets/overview/visibility", "Widgets — visibility"),
+    ("widgets/overview/custom", "Widgets — custom"),
+    ("widgets/stats-overview", "Stats overview"),
+    ("widgets/stats-overview/value", "Stats — value"),
+    ("widgets/stats-overview/description", "Stats — description"),
+    ("widgets/stats-overview/colors", "Stats — colors"),
+    ("widgets/stats-overview/chart", "Stats — sparklines"),
+    ("widgets/stats-overview/url", "Stats — URL"),
+    ("widgets/charts", "Charts — Chart.js"),
+    ("widgets/charts/libraries", "Charts — libraries"),
+    ("widgets/charts/types", "Charts — types"),
+    ("widgets/charts/datasets", "Charts — datasets"),
+    ("widgets/charts/chrome", "Charts — chrome"),
+    ("widgets/charts/filters", "Charts — filters"),
+    ("widgets/charts/empty", "Charts — empty"),
+    ("widgets/tables", "Table widget"),
+    ("widgets/tables/basic", "Table widget — basic"),
+    ("widgets/tables/full-span", "Table widget — full span"),
+    ("widgets/tables/empty", "Table widget — empty"),
+    ("panels/dashboard", "Dashboard"),
+    ("panels/dashboard/widgets", "Dashboard — widgets"),
+    ("panels/dashboard/columns", "Dashboard — columns"),
+    ("panels/dashboard/filters", "Dashboard — filters"),
+    ("panels/dashboard/route-path", "Dashboard — route path"),
     ("panels/shell", "Panel shell"),
     ("users/login", "Login"),
 ]
@@ -1847,6 +1877,7 @@ def build() -> str:
     schema_variants = build_schema_variants()
     infolist_variants = build_infolist_variants()
     action_variants = build_action_variants()
+    widget_variants = build_widget_variants()
 
     parts = [
         shot("forms/overview", "Forms overview", form_overview.render()),
@@ -1880,6 +1911,10 @@ def build() -> str:
         *(
             shot(sid, label, html)
             for sid, (label, html) in action_variants.items()
+        ),
+        *(
+            shot(sid, label, html)
+            for sid, (label, html) in widget_variants.items()
         ),
         shot("tables/overview", "Tables overview", table.render()),
         shot("tables/overview-columns", "Overview — columns", table_overview_columns.render()),
@@ -2106,6 +2141,8 @@ body.dark .or-shot {{
   <p><code>{shot_list}</code></p>
 </header>
 {"".join(parts)}
+<script src="../vendor/orbit/chart.umd.min.js"></script>
+<script src="../vendor/orbit/apexcharts.min.js"></script>
 <script src="../vendor/orbit/orbit.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 <script>

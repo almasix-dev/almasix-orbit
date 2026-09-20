@@ -46,6 +46,23 @@ class OrbitServiceProvider(ServiceProvider):
             },
             "orbit-assets",
         )
+        self.publishes(
+            {
+                _HERE
+                / "resources"
+                / "vendor"
+                / "chart.umd.min.js": self.app.path(
+                    "public", "vendor", "orbit", "chart.umd.min.js"
+                ),
+                _HERE
+                / "resources"
+                / "vendor"
+                / "apexcharts.min.js": self.app.path(
+                    "public", "vendor", "orbit", "apexcharts.min.js"
+                ),
+            },
+            "orbit-assets",
+        )
         try:
             from almasix.orbit.panels.commands import ORBIT_COMMANDS
 

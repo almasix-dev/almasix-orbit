@@ -527,7 +527,12 @@ class Panel:
 
         seen_resources = {class_key(r) for r in self._resources}
         seen_pages = {class_key(p) for p in self._pages}
-        seen_widgets = {class_key(w) for w in self._widgets}
+        seen_widgets: set[str] = set()
+        for w in self._widgets:
+            if isinstance(w, type):
+                seen_widgets.add(class_key(w))
+            else:
+                seen_widgets.add(f"instance:{id(w)}")
 
         for path in self._discover_resources_in:
             for cls in discover_classes(path, base_class=Resource):
@@ -861,6 +866,9 @@ class Panel:
             '  <link rel="stylesheet" href="/vendor/orbit/orbit.css" />\n'
             # Register Alpine data before any Alpine CDN tag (Conduit may inject one in extra_head).
             '  <script src="/vendor/orbit/orbit.js"></script>\n'
+            # Chart widgets (Chart.js + ApexCharts) — always available in the admin shell.
+            '  <script src="/vendor/orbit/chart.umd.min.js"></script>\n'
+            '  <script src="/vendor/orbit/apexcharts.min.js"></script>\n'
             f"  <style>:root {{ --or-font: '{font}', ui-sans-serif, system-ui, sans-serif; "
             f"{color_vars}--or-brand-name-size: {brand_name_size}; "
             f"--or-brand-logo-height: {brand_logo_height}; "

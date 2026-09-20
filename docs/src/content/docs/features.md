@@ -58,11 +58,19 @@ See [Actions overview](/actions/overview/).
 
 See [Infolists overview](/infolists/overview/).
 
-## Notifications & widgets
+## Notifications
 
 - Success / danger / warning / info notifications
 - Flash, database, and broadcast channels
-- Stats overview, chart, and table widgets
+
+## Widgets & dashboard
+
+- Stats overview with fluent `Stat` cards and Chart.js sparklines
+- `ChartWidget` with Chart.js (default) or ApexCharts via `.chart_library`
+- `TableWidget` for embedded dashboard tables
+- Panel home [Dashboard](/panels/dashboard/) — columns, filters, multi-dashboard `route_path`
+
+See [Widgets overview](/widgets/overview/).
 
 ## Query builder & support
 

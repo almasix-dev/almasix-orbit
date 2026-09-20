@@ -1216,6 +1216,128 @@
       },
     }));
 
+    const parseJsonAttr = (el, name) => {
+      const raw = el.getAttribute(name);
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch (_) {
+        return null;
+      }
+    };
+
+    const chartCssColor = (token) => {
+      try {
+        const styles = getComputedStyle(document.documentElement);
+        return (
+          styles.getPropertyValue(`--or-chart-${token}`).trim() ||
+          styles.getPropertyValue(`--or-${token}`).trim() ||
+          styles.getPropertyValue("--or-primary").trim() ||
+          "#4f46e5"
+        );
+      } catch (_) {
+        return "#4f46e5";
+      }
+    };
+
+    window.Alpine.data("orbitChart", () => ({
+      chart: null,
+      init() {
+        const el = this.$el;
+        const library = (el.getAttribute("data-chart-library") || "chartjs").toLowerCase();
+        const payload = parseJsonAttr(el, "data-chart");
+        if (!payload) return;
+
+        if (library === "apex") {
+          if (typeof window.ApexCharts === "undefined") return;
+          const options = { ...payload };
+          if (!options.chart) options.chart = {};
+          options.chart.height = options.chart.height || el.style.maxHeight || 300;
+          this.chart = new window.ApexCharts(el, options);
+          this.chart.render();
+          return;
+        }
+
+        if (typeof window.Chart === "undefined") return;
+        let canvas = el.querySelector("canvas");
+        if (!canvas) {
+          canvas = document.createElement("canvas");
+          el.appendChild(canvas);
+        }
+        const type = payload.type || "line";
+        const data = {
+          labels: payload.labels || [],
+          datasets: payload.datasets || [],
+        };
+        this.chart = new window.Chart(canvas.getContext("2d"), {
+          type,
+          data,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            ...(payload.options || {}),
+          },
+        });
+      },
+      destroy() {
+        if (this.chart && typeof this.chart.destroy === "function") {
+          this.chart.destroy();
+        }
+        this.chart = null;
+      },
+    }));
+
+    window.Alpine.data("orbitSparkline", () => ({
+      chart: null,
+      init() {
+        const el = this.$el;
+        if (typeof window.Chart === "undefined") return;
+        const payload = parseJsonAttr(el, "data-sparkline") || {};
+        const values = payload.values || [];
+        if (!values.length) return;
+        let canvas = el.querySelector("canvas");
+        if (!canvas) {
+          canvas = document.createElement("canvas");
+          canvas.width = 120;
+          canvas.height = 36;
+          el.appendChild(canvas);
+        }
+        const color = chartCssColor(payload.color || "primary");
+        this.chart = new window.Chart(canvas.getContext("2d"), {
+          type: "line",
+          data: {
+            labels: values.map((_, i) => String(i)),
+            datasets: [
+              {
+                data: values,
+                borderColor: color,
+                backgroundColor: color,
+                fill: false,
+                tension: 0.35,
+                pointRadius: 0,
+                borderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: {
+              x: { display: false },
+              y: { display: false },
+            },
+          },
+        });
+      },
+      destroy() {
+        if (this.chart && typeof this.chart.destroy === "function") {
+          this.chart.destroy();
+        }
+        this.chart = null;
+      },
+    }));
+
     const bootTipTap = () => {
       const nodes = document.querySelectorAll(".or-editor-rich[data-tiptap]");
       if (!nodes.length) return;
