@@ -112,7 +112,7 @@ class OrbitPanelProvider(ServiceProvider):
 | `app/orbit/app/panel.py` | `register_app_panel` |
 | `app/orbit/shop/panel.py` | `register_shop_panel` |
 
-Legacy `app/orbit/{id}_panel.py` still loads with a **DeprecationWarning** (removed in 0.4).
+Orbit 0.4 dropped `app/orbit/{id}_panel.py`. Panels live at `app/orbit/{id}/panel.py` only.
 
 `.discover_panel_dirs()` (emitted by scaffolding) points discovery at `{panel_pkg}.resources` / `.pages` / `.widgets` and loads `*.css` from `{panel_pkg}.themes`. You can still call `.resources([...])` explicitly or pass custom paths to `.discover_resources(...)`.
 

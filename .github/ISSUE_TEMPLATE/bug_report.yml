@@ -7,7 +7,7 @@ body:
     id: version
     attributes:
       label: Orbit version
-      description: `pip show almasix-orbit` → e.g. 0.3.1
+      description: `pip show almasix-orbit` → e.g. 0.4.0
     validations:
       required: true
   - type: textarea

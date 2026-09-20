@@ -45,7 +45,7 @@ If your plugin has a UI, make sure it is legible in both light and dark themes b
 - Never include an `almasix/__init__.py` in your wheel. It overwrites the framework namespace and breaks every other Orbit package in the environment.
 - Scope render hooks to a panel id so a second panel does not inherit your injections.
 - Declare the Orbit versions you actually test against, both in your package metadata and in `orbit_versions`.
-- Pin nothing you do not have to. A plugin that hard-pins `almasix-orbit==0.3.1` blocks every consumer from upgrading.
+- Pin nothing you do not have to. A plugin that hard-pins `almasix-orbit==0.4.0` blocks every consumer from upgrading.
 
 ## Naming and voice
 

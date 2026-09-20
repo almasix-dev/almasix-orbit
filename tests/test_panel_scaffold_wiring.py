@@ -201,9 +201,7 @@ def test_register_app_orbit_panels_discovers_colocated(tmp_path: Path, monkeypat
                 del sys.modules[key]
 
 
-def test_legacy_panel_module_still_works_with_warning(tmp_path: Path, monkeypatch) -> None:
-    import pytest
-
+def test_legacy_panel_module_is_ignored(tmp_path: Path, monkeypatch) -> None:
     app = _app_tree(tmp_path)
     _ensure_thin_provider(app, force=True)
     orbit = tmp_path / "app" / "orbit"
@@ -227,9 +225,8 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
             del sys.modules[key]
     try:
         registry = PanelRegistry()
-        with pytest.warns(DeprecationWarning, match="Legacy panel module"):
-            register_app_orbit_panels(registry)
-        assert registry.get("admin") is not None
+        register_app_orbit_panels(registry)
+        assert registry.get("admin") is None
     finally:
         sys.path.remove(str(tmp_path))
         for key in list(sys.modules):

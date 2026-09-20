@@ -51,7 +51,7 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
 ''',
         encoding="utf-8",
     )
-    # Legacy twin for same id — should be skipped via seen_ids after colocated
+    # Leftover 0.3 flat module — ignored in 0.4 (must not register a second admin)
     (root / "admin_panel.py").write_text(
         '''from almasix.orbit import Panel, PanelRegistry
 
@@ -62,7 +62,7 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
 ''',
         encoding="utf-8",
     )
-    # Broken legacy module
+    # Broken leftover module must not crash discovery
     (root / "broken_panel.py").write_text("raise RuntimeError('boom')\n", encoding="utf-8")
     # Non-panel module name that isn't a package
     (root / "notes.py").write_text("x = 1\n", encoding="utf-8")
@@ -73,10 +73,10 @@ def register_admin_panel(registry: PanelRegistry) -> Panel:
         if key == "app" or key.startswith("app."):
             del sys.modules[key]
     try:
-        with pytest.warns(DeprecationWarning):
-            panels = register_app_orbit_panels(PanelRegistry())
+        panels = register_app_orbit_panels(PanelRegistry())
         ids = [p.id for p in panels if p is not None]
         assert ids.count("admin") == 1
+        assert all(getattr(p, "path", None) != "admin2" for p in panels if p is not None)
     finally:
         sys.path.remove(str(tmp_path))
         for key in list(sys.modules):
@@ -585,13 +585,15 @@ def test_wire_discovery_non_callable_and_empty_registrar(
         sys.path.remove(str(tmp_path))
 
 
-def test_legacy_registrar_none_without_callable(
+def test_ghost_package_without_registrar(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root = tmp_path / "app" / "orbit"
-    root.mkdir(parents=True)
+    ghost = root / "ghost"
+    ghost.mkdir(parents=True)
     (root / "__init__.py").write_text("", encoding="utf-8")
-    (root / "ghost_panel.py").write_text("x = 1\n", encoding="utf-8")
+    (ghost / "__init__.py").write_text("", encoding="utf-8")
+    (ghost / "panel.py").write_text("x = 1\n", encoding="utf-8")
 
     monkeypatch.chdir(tmp_path)
     sys.path.insert(0, str(tmp_path))
@@ -599,8 +601,7 @@ def test_legacy_registrar_none_without_callable(
         if key == "app" or key.startswith("app."):
             del sys.modules[key]
     try:
-        with pytest.warns(DeprecationWarning):
-            panels = register_app_orbit_panels(PanelRegistry())
+        panels = register_app_orbit_panels(PanelRegistry())
         assert panels == [] or all(
             p is None or getattr(p, "id", None) != "ghost" for p in panels
         )

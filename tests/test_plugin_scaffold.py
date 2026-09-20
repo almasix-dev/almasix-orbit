@@ -36,7 +36,7 @@ def test_parse_class_name_from_feature() -> None:
     assert spec.plugin_id == "acme-audit-log"
     assert spec.author == "jane"
     assert spec.category == "developer-tool"
-    assert spec.paid is False
+    assert spec.orbit_line == "0.4"
 
 
 def test_parse_distribution_name() -> None:

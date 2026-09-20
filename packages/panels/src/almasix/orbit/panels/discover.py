@@ -5,7 +5,6 @@ from __future__ import annotations
 import importlib
 import pkgutil
 import re
-import warnings
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -168,15 +167,12 @@ def register_app_orbit_panels(
 ) -> list[Any]:
     """Import panel modules under ``package`` and call each ``register_*_panel``.
 
-    v0.3 colocated convention (preferred)::
+    Colocated convention (v0.3+)::
 
         app/orbit/admin/panel.py → ``register_admin_panel``
         app/orbit/app/panel.py   → ``register_app_panel``
 
-    Legacy (deprecated)::
-
-        app/orbit/admin_panel.py → ``register_admin_panel``
-
+    Flat ``app/orbit/{id}_panel.py`` modules are ignored (removed in 0.4).
     Skips reserved packages (``shared``, ``fields``, ``plugins``) that are not
     panels. Plugins are never auto-discovered — register with ``Panel.plugin``.
     Returns panels from registrars (may include ``None``).
@@ -192,49 +188,23 @@ def register_app_orbit_panels(
         return registered
 
     prefix = package_mod.__name__ + "."
-    seen_ids: set[str] = set()
     _reserved = frozenset({"shared", "fields", "plugins"})
 
     for modinfo in pkgutil.iter_modules(paths, prefix):
         name = modinfo.name.rsplit(".", 1)[-1]
         if name.startswith("_") or name in _reserved:
             continue
-
-        # v0.3: app.orbit.<id> package with nested panel.py
-        if modinfo.ispkg and not name.endswith("_panel"):
-            panel_mod_name = f"{modinfo.name}.panel"
-            try:
-                module = importlib.import_module(panel_mod_name)
-            except ImportError:
-                continue
-            panel_id = name
-            panel = _call_panel_registrar(module, panel_id, registry)
-            if panel is not None or callable(getattr(module, f"register_{panel_id}_panel", None)):
-                seen_ids.add(panel_id)
-                _wire_default_discovery(panel, package=package, panel_id=panel_id)
-                registered.append(panel)
+        if not modinfo.ispkg:
             continue
-
-        # Legacy: app.orbit.<id>_panel module
-        if not name.endswith("_panel"):
-            continue
-        panel_id = name[: -len("_panel")]
-        warnings.warn(
-            f"Legacy panel module {modinfo.name!r} is deprecated; "
-            f"move to {package}.{panel_id}.panel "
-            f"(app/orbit/{panel_id}/panel.py). Will be removed in Orbit 0.4.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+        panel_mod_name = f"{modinfo.name}.panel"
         try:
-            module = importlib.import_module(modinfo.name)
-        except Exception:
+            module = importlib.import_module(panel_mod_name)
+        except ImportError:
             continue
-        if panel_id in seen_ids:
-            continue
+        panel_id = name
         panel = _call_panel_registrar(module, panel_id, registry)
         if panel is not None or callable(getattr(module, f"register_{panel_id}_panel", None)):
-            seen_ids.add(panel_id)
+            _wire_default_discovery(panel, package=package, panel_id=panel_id)
             registered.append(panel)
 
     return registered

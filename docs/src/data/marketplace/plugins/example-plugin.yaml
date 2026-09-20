@@ -20,7 +20,7 @@ author: example-author
 categories:
   - developer-tool
 orbit_versions:
-  - "0.3"
+  - "0.4"
 price: free
 package: example-orbit-plugin
 repository: https://github.com/example/example-orbit-plugin
