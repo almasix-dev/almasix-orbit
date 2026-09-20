@@ -716,7 +716,11 @@ def test_discover_clusters_and_string_cluster() -> None:
 
 
 def test_navigation_remaining_branches() -> None:
-    from almasix.orbit.panels.navigation import apply_active_state, build_menu_layout, nest_parent_items
+    from almasix.orbit.panels.navigation import (
+        apply_active_state,
+        build_menu_layout,
+        nest_parent_items,
+    )
 
     # Builder groups: item already has a group set (skip auto-assign).
     pregrouped = NavigationItem.make("p").label("P").url("/p").group("Existing")

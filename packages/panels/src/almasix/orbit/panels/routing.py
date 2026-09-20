@@ -427,7 +427,12 @@ def mount_panel(router: Any, panel: Panel) -> None:
         slug = resource.get_slug()
         # Stamp panel path so get_pages() / page_url() include prefixes.
         resource._panel_path = panel.get_path()  # type: ignore[attr-defined]
-        cluster = getattr(resource, "get_cluster", lambda: getattr(resource, "cluster", None))()
+        get_cluster = getattr(resource, "get_cluster", None)
+        cluster = (
+            get_cluster()
+            if callable(get_cluster)
+            else getattr(resource, "cluster", None)
+        )
         cluster_prefix = ""
         if cluster is not None:
             if isinstance(cluster, str):
@@ -467,8 +472,14 @@ def mount_panel(router: Any, panel: Panel) -> None:
         if dash_cls is not None and page is dash_cls:
             continue
         page._panel_path = panel.get_path()  # type: ignore[attr-defined]
-        slug = getattr(page, "get_slug", lambda p=page: p.__name__.lower())()
-        cluster = getattr(page, "get_cluster", lambda: getattr(page, "cluster", None))()
+        get_slug = getattr(page, "get_slug", None)
+        slug = get_slug() if callable(get_slug) else page.__name__.lower()
+        get_cluster = getattr(page, "get_cluster", None)
+        cluster = (
+            get_cluster()
+            if callable(get_cluster)
+            else getattr(page, "cluster", None)
+        )
         cluster_prefix = ""
         if cluster is not None:
             if isinstance(cluster, str):
