@@ -1,23 +1,24 @@
 ---
 /**
- * Major + main version switcher. Default / latest is the newest major (`0.x`).
- * `main` is unreleased and opt-in. Selection is synced from the live URL because
- * static builds cannot see `?docsVersion=` at request time.
+ * Major + main version switcher. Default / latest is the newest major (`0.x`)
+ * at `/0.x/`. `main` is unreleased at `/main/`. Local `astro dev` is unprefixed
+ * and is the main tree.
  */
 import {
 	DOCS_VERSIONS,
 	LATEST_VERSION,
 	DOCS_VERSION_QUERY,
 	hrefForVersion,
+	versionFromBase,
 } from '../versions.mjs';
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const tree = versionFromBase(base);
 const options = DOCS_VERSIONS.map((version) => ({
 	label: version.label,
 	slug: version.slug,
-	// SSR defaults to latest; the client rewrites values + selected from location.
 	value: hrefForVersion(base, version.slug, Astro.url.pathname, ''),
-	selected: version.slug === LATEST_VERSION,
+	selected: version.slug === tree,
 }));
 const known = DOCS_VERSIONS.map((version) => version.slug).join(',');
 ---
@@ -25,6 +26,7 @@ const known = DOCS_VERSIONS.map((version) => version.slug).join(',');
 <almasix-version-select
 	data-base={base}
 	data-latest={LATEST_VERSION}
+	data-tree={tree}
 	data-query={DOCS_VERSION_QUERY}
 	data-known={known}
 >
@@ -48,30 +50,55 @@ const known = DOCS_VERSIONS.map((version) => version.slug).join(',');
 			const select = this.querySelector('select');
 			if (!(select instanceof HTMLSelectElement)) return;
 
-			const base = this.dataset.base || '/';
 			const queryKey = this.dataset.query || 'docsVersion';
 			const latest = this.dataset.latest || '0.x';
+			const tree = this.dataset.tree || 'main';
 			const known = (this.dataset.known || latest).split(',').filter(Boolean);
+
+			const stripPrefix = (pathname) => {
+				const parts = pathname.split('/').filter(Boolean);
+				if (parts[0] && known.includes(parts[0])) {
+					const rest = parts.slice(1).join('/');
+					return rest ? `/${rest}${pathname.endsWith('/') ? '/' : ''}` : '/';
+				}
+				return pathname || '/';
+			};
 
 			const readCurrent = () => {
 				const params = new URLSearchParams(window.location.search);
 				const fromQuery = params.get(queryKey);
-				if (fromQuery && known.includes(fromQuery)) return fromQuery;
 				const parts = window.location.pathname.split('/').filter(Boolean);
-				const candidates = parts[0] === 'almasix' ? parts.slice(1) : parts;
-				const head = candidates[0];
+				const head = parts[0];
 				if (head && known.includes(head)) return head;
-				return latest;
+				if (fromQuery && known.includes(fromQuery)) return fromQuery;
+				return tree;
+			};
+
+			const locationVersioned = () => {
+				const head = window.location.pathname.split('/').filter(Boolean)[0];
+				return Boolean(head && known.includes(head));
 			};
 
 			const hrefFor = (slug) => {
 				const params = new URLSearchParams(window.location.search);
-				if (slug === latest) params.delete(queryKey);
-				else params.set(queryKey, slug);
+				params.delete(queryKey);
+				const inner = stripPrefix(window.location.pathname);
+				const path =
+					!locationVersioned() && slug === tree
+						? inner === '/'
+							? '/'
+							: inner
+						: `/${slug}${inner === '/' ? '/' : inner}`;
 				const query = params.toString();
-				const path = window.location.pathname;
 				return query ? `${path}?${query}` : path;
 			};
+
+			const fromQuery = new URLSearchParams(window.location.search).get(queryKey);
+			const pathHead = window.location.pathname.split('/').filter(Boolean)[0];
+			if (fromQuery && known.includes(fromQuery) && !known.includes(pathHead)) {
+				window.location.replace(hrefFor(fromQuery));
+				return;
+			}
 
 			const syncFromLocation = () => {
 				const current = readCurrent();
@@ -102,8 +129,6 @@ const known = DOCS_VERSIONS.map((version) => version.slug).join(',');
 				if (href) window.location.assign(href);
 			});
 
-			// Keep a non-latest selection when following plain in-site links.
-			// Do not rewrite explicit version navigation (banner → latest, or ?docsVersion=).
 			document.addEventListener(
 				'click',
 				(event) => {
@@ -114,9 +139,9 @@ const known = DOCS_VERSIONS.map((version) => version.slug).join(',');
 					if (anchor.target === '_blank' || anchor.hasAttribute('download')) return;
 					if (anchor.hasAttribute('data-latest-link')) return;
 
-					const current = readCurrent();
-					if (current === latest) return;
+					if (!locationVersioned()) return;
 
+					const current = readCurrent();
 					let url;
 					try {
 						url = new URL(anchor.href, window.location.href);
@@ -124,13 +149,13 @@ const known = DOCS_VERSIONS.map((version) => version.slug).join(',');
 						return;
 					}
 					if (url.origin !== window.location.origin) return;
-					const basePath = base.replace(/\/$/, '');
-					if (basePath && !url.pathname.startsWith(basePath)) return;
 
-					// Href already chooses a version — respect it.
+					const head = url.pathname.split('/').filter(Boolean)[0];
+					if (head === 'api' || (head && known.includes(head))) return;
 					if (url.searchParams.has(queryKey)) return;
 
-					url.searchParams.set(queryKey, current);
+					url.pathname = `/${current}${url.pathname.startsWith('/') ? url.pathname : `/${url.pathname}`}`;
+					url.searchParams.delete(queryKey);
 					event.preventDefault();
 					window.location.assign(url.toString());
 				},

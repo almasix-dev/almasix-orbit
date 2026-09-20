@@ -38,10 +38,12 @@ test('parseOwnerRepo and safeReturnPath', () => {
 	assert.equal(parseOwnerRepo(''), null);
 	assert.equal(parseOwnerRepo('https://example.com/x'), null);
 	assert.equal(safeReturnPath('/plugins/orbit-branding/'), '/plugins/orbit-branding/');
+	assert.equal(safeReturnPath('/main/plugins/orbit-branding/'), '/main/plugins/orbit-branding/');
 	assert.equal(safeReturnPath('/plugins'), '/plugins/');
 	assert.equal(safeReturnPath('https://evil.example/'), '/plugins/');
 	assert.equal(safeReturnPath('/plugins/../etc'), '/plugins/');
 	assert.equal(safeReturnPath('/getting-started/'), '/plugins/');
+	assert.equal(safeReturnPath('/main/getting-started/'), '/main/plugins/');
 });
 
 test('cookies and hmac state', async () => {

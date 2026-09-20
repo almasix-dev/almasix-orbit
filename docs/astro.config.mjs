@@ -5,7 +5,8 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import almasixTheme from '@almasix/starlight-theme';
 
-const base = '/';
+const docsVersion = process.env.DOCS_VERSION || '';
+const base = docsVersion ? `/${docsVersion}/` : '/';
 
 /** Section roots linked from the landing page → first real doc page. */
 const sectionRedirects = Object.fromEntries(

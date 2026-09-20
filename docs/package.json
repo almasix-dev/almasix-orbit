@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "astro dev --force",
     "start": "astro dev --force",
-    "build": "astro build",
+    "build": "node scripts/docs-version-build.mjs",
+    "build:current": "astro build",
     "prebuild": "npm run validate:marketplace",
     "validate:marketplace": "node scripts/validate-marketplace.mjs",
-    "test": "node --test scripts/validate-marketplace.test.mjs scripts/marketplace-lib.test.mjs scripts/github-star.test.mjs",
+    "test": "node --test scripts/validate-marketplace.test.mjs scripts/marketplace-lib.test.mjs scripts/github-star.test.mjs scripts/versions.test.mjs",
     "preview": "astro preview",
     "deploy": "npm run build && wrangler deploy",
     "astro": "astro"

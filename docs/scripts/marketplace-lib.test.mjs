@@ -28,17 +28,24 @@ test('marketplace paths are the catalog, not plugin guides or panel docs', () =>
 	assert.equal(isMarketplacePath('/plugins/overview/'), false);
 	assert.equal(isMarketplacePath('/plugins/get-listed/'), false);
 	assert.equal(isMarketplacePath('/panels/plugins/'), false);
-	assert.equal(isMarketplacePath('/'), false);
+	assert.equal(isMarketplacePath('/main/plugins'), true);
+	assert.equal(isMarketplacePath('/main/plugins/orbit-branding/'), true);
+	assert.equal(isMarketplacePath('/0.x/plugins/using/'), false);
+	assert.equal(isMarketplacePath('/0.x/forms/overview/'), false);
 	assert.equal(isMarketplacePath('/forms/overview/'), false);
 	assert.equal(isMarketplacePath('/panels/configuration/'), false);
 });
 
 test('docs vs home vs marketplace for the top-bar menus', () => {
 	assert.equal(isHomePath('/'), true);
+	assert.equal(isHomePath('/main/'), true);
+	assert.equal(isHomePath('/0.x/'), true);
 	assert.equal(isHomePath('/index.html'), true);
 	assert.equal(isHomePath('/getting-started/installation/'), false);
 	assert.equal(isDocsPath('/'), false);
-	assert.equal(isDocsPath('/getting-started/installation/'), true);
+	assert.equal(isDocsPath('/main/getting-started/installation/'), true);
+	assert.equal(isDocsPath('/0.x/plugins/overview/'), true);
+	assert.equal(isDocsPath('/main/plugins/'), false);
 	assert.equal(isDocsPath('/forms/overview/'), true);
 	assert.equal(isDocsPath('/plugins/overview/'), true);
 	assert.equal(isDocsPath('/panels/plugins/'), true);

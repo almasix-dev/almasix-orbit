@@ -19,6 +19,7 @@ htmlcov/
 node_modules/
 docs/dist/
 docs/.astro/
+docs/.version-build/
 docs/.dev.vars
 assets/node_modules/
 assets/dist/

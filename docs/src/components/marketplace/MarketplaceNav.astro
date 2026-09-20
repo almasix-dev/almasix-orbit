@@ -5,8 +5,10 @@
  */
 import MobileMenuFooter from 'virtual:starlight/components/MobileMenuFooter';
 import { MARKETPLACE_NAV, isNavCurrent } from '../../../scripts/marketplace-lib.mjs';
+import { withDocsBase } from '../../versions.mjs';
 
 const pathname = Astro.url.pathname;
+const base = import.meta.env.BASE_URL;
 ---
 
 <nav class="market-nav" aria-label="Plugin marketplace">
@@ -18,7 +20,7 @@ const pathname = Astro.url.pathname;
 					{group.items.map((item) => (
 						<li>
 							<a
-								href={item.href}
+								href={withDocsBase(item.href, base)}
 								aria-current={isNavCurrent(item.href, pathname) ? 'page' : undefined}
 							>
 								{item.label}
@@ -30,7 +32,7 @@ const pathname = Astro.url.pathname;
 		))
 	}
 	<p class="market-nav-foot">
-		<a href="/plugins/overview/">Plugin guides</a>
+		<a href={withDocsBase('/plugins/overview/', base)}>Plugin guides</a>
 	</p>
 </nav>
 

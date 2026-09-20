@@ -6,7 +6,9 @@ and [almasix.com](https://almasix.com)).
 
 ## Wrangler
 
-[`docs/wrangler.jsonc`](./docs/wrangler.jsonc) serves `./dist` as Worker assets (`ASSETS`) and runs [`docs/scripts/github-star.mjs`](./docs/scripts/github-star.mjs) first for `/api/github/*`. That Worker stars a marketplace plugin’s GitHub repository **as the visitor** (OAuth + `PUT /user/starred/{owner}/{repo}`). Do **not** use the build-time `GITHUB_TOKEN` for starring — that would star as the site, not the reader.
+[`docs/wrangler.jsonc`](./docs/wrangler.jsonc) serves `./dist` as Worker assets (`ASSETS`) and runs [`docs/scripts/github-star.mjs`](./docs/scripts/github-star.mjs) first for `/api/github/*`. `npm run build` emits **two documentation trees**: `/0.x/` from the latest stable `v0.*` tag (released docs) and `/main/` from the commit being built (unreleased). `/` redirects to `/0.x/`. Local `npm run build:current` / `astro dev` stay a single unprefixed tree for editing.
+
+That Worker also stars a marketplace plugin’s GitHub repository **as the visitor** (OAuth + `PUT /user/starred/{owner}/{repo}`). Do **not** use the build-time `GITHUB_TOKEN` for starring — that would star as the site, not the reader.
 
 Without OAuth secrets the API returns `501` and the listing button opens GitHub instead. Local `astro preview` has no Worker, so it uses the same fallback.
 
@@ -21,7 +23,7 @@ GitHub Actions ([`.github/workflows/docs.yml`](./.github/workflows/docs.yml) and
 |---------|--------|
 | Repository | `almasix-dev/almasix-orbit` |
 | Root directory | `docs` |
-| Build command | `npm ci && npm run build` |
+| Build command | `git fetch --tags --force origin && npm ci && npm run build` |
 | Deploy command | `npx wrangler deploy` |
 | Project name | `almasix-orbit-docs` |
 | Node | `22` (or `24`) |
@@ -82,9 +84,10 @@ The star route should return `401` (OAuth configured, no cookie) or `501` (secre
 cd docs
 npm ci
 npm test
-npm run build
-npx wrangler dev      # Worker + assets; copy .dev.vars.example → .dev.vars to star for real
-npx wrangler deploy   # needs Cloudflare auth (local only)
+npm run build:current   # this commit only, unprefixed (editing)
+npm run build           # /0.x/ from latest v0.* tag + /main/ from this commit
+npx wrangler dev        # Worker + assets; copy .dev.vars.example → .dev.vars to star for real
+npx wrangler deploy     # needs Cloudflare auth (local only)
 ```
 
 ## Notes
