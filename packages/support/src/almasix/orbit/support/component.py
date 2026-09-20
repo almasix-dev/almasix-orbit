@@ -1,4 +1,4 @@
-"""Fluent SDUI component base (Filament-style ``make`` + chained configurators)."""
+"""Fluent SDUI component base (``make`` + chained configurators)."""
 
 from __future__ import annotations
 
@@ -33,6 +33,8 @@ class Component:
         self._hint_icon: str | Callable[..., str] | None = None
         self._hidden_label = False
         self._inline_label = False
+        self._key: str | Callable[..., str] | None = None
+        self._grow: bool | Callable[..., bool] = False
 
     @classmethod
     def make(cls, name: str | None = None) -> Self:
@@ -49,7 +51,11 @@ class Component:
     def get_label(self, **ctx: Any) -> str:
         if self._label is not None:
             result = evaluate(self._label, **ctx)
-            return "" if result is None else str(result)
+            if result is None:
+                return ""
+            if hasattr(result, "__html__"):
+                return result
+            return str(result)
         if not self._name:
             return ""
         return self._name.replace("_", " ").replace(".", " ").title()
@@ -131,8 +137,34 @@ class Component:
         return self
 
     def saved(self, condition: bool = True) -> Self:
-        """Filament 5 alias for ``dehydrated``."""
+        """Alias for ``dehydrated`` — skip this component when persisting state."""
         return self.dehydrated(condition)
+
+    def key(self, value: str | Callable[..., str]) -> Self:
+        self._key = value
+        return self
+
+    def get_key(self, **ctx: Any) -> str | None:
+        if self._key is None:
+            return self.get_state_path()
+        result = evaluate(self._key, **ctx)
+        return None if result is None else str(result)
+
+    def grow(self, condition: bool | Callable[..., bool] = True) -> Self:
+        self._grow = condition
+        return self
+
+    def is_grow(self, **ctx: Any) -> bool:
+        return bool(evaluate(self._grow, **ctx))
+
+    def when(
+        self,
+        condition: bool | Callable[..., bool],
+        callback: Callable[[Self], Any],
+    ) -> Self:
+        if bool(evaluate(condition)):
+            callback(self)
+        return self
 
     def hidden_label(self, condition: bool = True) -> Self:
         self._hidden_label = condition
@@ -173,7 +205,11 @@ class Component:
         if self._helper_text is None:
             return None
         result = evaluate(self._helper_text, **ctx)
-        return None if result is None else str(result)
+        if result is None:
+            return None
+        if hasattr(result, "__html__"):
+            return result
+        return str(result)
 
     def hint(self, text: str | Callable[..., str]) -> Self:
         self._hint = text
@@ -183,7 +219,11 @@ class Component:
         if self._hint is None:
             return None
         result = evaluate(self._hint, **ctx)
-        return None if result is None else str(result)
+        if result is None:
+            return None
+        if hasattr(result, "__html__"):
+            return result
+        return str(result)
 
     def hint_icon(self, icon_name: str | Callable[..., str]) -> Self:
         self._hint_icon = icon_name
@@ -212,6 +252,8 @@ class Component:
             "helper_text": self._helper_text if not callable(self._helper_text) else None,
             "hint": self._hint if not callable(self._hint) else None,
             "column_span": self._column_span,
+            "grow": self._grow if not callable(self._grow) else None,
+            "key": self._key if not callable(self._key) else None,
             "extra_attributes": {
                 k: v for k, v in self._extra_attributes.items() if not callable(v)
             },
@@ -219,7 +261,7 @@ class Component:
 
     def render(self, state: Any = None, **ctx: Any) -> str:
         """Default HTML render — subclasses override for richer markup."""
-        from almasix.orbit.support.html import e
+        from almasix.orbit.support.html import classes, e
 
         if not self.is_visible(**ctx):
             return ""
@@ -227,8 +269,11 @@ class Component:
         name = e(self.get_state_path() or "")
         value = "" if state is None else e(str(state))
         disabled = " disabled" if self.is_disabled(**ctx) else ""
+        wrap_class = classes("or-field", {"or-grow": self.is_grow(**ctx)})
+        key = self.get_key(**ctx)
+        key_attr = f' data-key="{e(key)}"' if key else ""
         return (
-            f'<div class="or-field" data-field="{name}">'
+            f'<div class="{wrap_class}" data-field="{name}"{key_attr}>'
             f'<label class="or-label" for="or-{name}">{label}</label>'
             f'<input class="or-input" id="or-{name}" name="{name}" '
             f'value="{value}"{disabled} />'

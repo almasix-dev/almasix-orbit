@@ -20,7 +20,7 @@ this framing into learner-facing pages.
 
 | Prior-art package (reference) | Orbit package | Status |
 |-------------------------------|---------------|--------|
-| support | `almasix-orbit-support` | Partial |
+| support | `almasix-orbit-support` | Done |
 | schemas | `almasix-orbit-schemas` | Done |
 | forms | `almasix-orbit-forms` | Done |
 | tables | `almasix-orbit-tables` | Partial |
@@ -30,6 +30,10 @@ this framing into learner-facing pages.
 | widgets | `almasix-orbit-widgets` | Done |
 | query-builder | `almasix-orbit-query-builder` | Done |
 | panels | `almasix-orbit` (panels) | Partial |
+
+## Support — Done
+
+`Component` (`.key` / `.grow` / `.when` / `.live` / `.saved`), `Colors.hex` / `css_class` / `css_var` / `palette` (50–950), Heroicon set + `register_icon` aliases, `HtmlString` + `e` / `classes` / `tag`, `evaluate` utility injection, `resolve_public_url`, `conduit_attr`.
 
 ## Schemas — Done
 

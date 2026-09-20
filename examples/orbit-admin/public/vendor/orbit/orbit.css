@@ -4474,6 +4474,11 @@ html.dark .or-login-logo-dark {
   width: 100%;
 }
 
+.or-grow {
+  flex-grow: 1;
+  min-width: 0;
+}
+
 .or-th-wrap .or-th-sort-label,
 .or-th-wrap {
   white-space: normal;

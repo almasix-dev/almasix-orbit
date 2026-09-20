@@ -187,7 +187,24 @@ _ICONS: dict[str, str] = {
 }
 
 
+_ALIASES: dict[str, str] = {}
+
+
+def register_icon(alias: str, name: str) -> None:
+    """Map a semantic alias (``actions::delete``) to a Heroicon name."""
+    _ALIASES[alias] = name
+
+
+def reset_icon_aliases() -> None:
+    _ALIASES.clear()
+
+
+def resolve_icon_name(name: str) -> str:
+    return _ALIASES.get(name, name)
+
+
 def icon(name: str, *, size: int = 20, css_class: str = "or-icon") -> str:
+    name = resolve_icon_name(name)
     path = _ICONS.get(name)
     if path is None:
         return f'<span class="{e(css_class)}" data-missing-icon="{e(name)}"></span>'
@@ -199,12 +216,22 @@ def icon(name: str, *, size: int = 20, css_class: str = "or-icon") -> str:
 
 
 class Heroicon:
-    """Filament-style icon name helper."""
+    """Name helper for outline Heroicons shipped with Orbit."""
 
     @staticmethod
     def outline(name: str) -> str:
-        key = name if name.startswith("heroicon-") else f"heroicon-o-{name}"
-        return key
+        name = resolve_icon_name(name)
+        if name.startswith("heroicon-"):
+            return name
+        return f"heroicon-o-{name}"
+
+    @staticmethod
+    def alias(name: str, target: str) -> None:
+        register_icon(name, target)
+
+    @staticmethod
+    def reset_aliases() -> None:
+        reset_icon_aliases()
 
     @staticmethod
     def render(name: str, **kwargs: int | str) -> str:
