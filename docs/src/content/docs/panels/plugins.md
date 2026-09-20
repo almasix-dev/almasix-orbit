@@ -93,6 +93,22 @@ panel.plugins(
 
 Order matters: `register` runs in list order, then `boot` in the same order.
 
+## Scaffold a third-party plugin
+
+Do not start from a blank folder. Smith (or `python -m almasix.orbit`) writes a publishable package layout, a `Plugin` subclass, a smoke test, and **draft** marketplace YAML you can submit later:
+
+```bash title="terminal"
+smith make:orbit-plugin AuditLog --vendor=acme --author=jane
+# alias: smith orbit:plugin AuditLog --vendor=acme --author=jane
+
+# Same generator without an Almasix app:
+python -m almasix.orbit plugin new AuditLog --vendor=acme --author=jane
+```
+
+That creates `acme-orbit-audit-log/` with `src/acme_orbit_audit_log/plugin.py`, `tests/test_plugin.py`, and `marketplace/*.yaml` (`status: draft`). `--listing-only` writes just the YAML; `--no-listing` skips it; `--paid` stubs a checkout URL instead of a PyPI name.
+
+Copy the YAML into the Orbit repository when the plugin is ready to list — [Get listed](/plugins/get-listed/).
+
 ## Package layout (publishable)
 
 Minimal PyPI-ready layout:

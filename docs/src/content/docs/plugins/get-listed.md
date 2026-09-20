@@ -11,7 +11,14 @@ Listing a plugin takes one pull request against the Orbit repository. You add tw
 - Free plugins are published to PyPI (`pip install your-plugin` must work). Paid plugins have a working checkout page.
 - You have a 16:9 thumbnail that shows the feature, not a full screenshot of a panel.
 
-If you have not written the plugin yet, start at [Plugin development](/panels/plugins/).
+If you have not written the plugin yet, scaffold it first:
+
+```bash title="terminal"
+smith make:orbit-plugin AuditLog --vendor=acme --author=jane
+# or: python -m almasix.orbit plugin new AuditLog --vendor=acme --author=jane
+```
+
+That writes a package shell plus draft YAML under `marketplace/`. Copy those YAML files into the paths below, fill in summary, description, and images, then set `status: published`. Full walkthrough: [Plugin development](/panels/plugins/).
 
 ## Where the registry lives
 

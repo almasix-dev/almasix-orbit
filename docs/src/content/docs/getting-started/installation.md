@@ -136,6 +136,7 @@ smith make:orbit-resource Post --panel=admin --model=Post --generate
 smith make:orbit-page Settings --panel=admin
 smith make:orbit-widget StatsOverview --panel=admin
 smith make:orbit-field MoneyInput             # app/orbit/shared/fields/
+smith make:orbit-plugin AuditLog --vendor=acme --author=jane   # third-party package + listing YAML
 ```
 
 `--generate` inspects the model’s database columns (when the table exists) and stubs matching form fields and table columns for you.

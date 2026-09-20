@@ -13,6 +13,7 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 111 | Marketplace catalog layout | `docs/src/pages/plugins/**` | **closed** |
 | 112 | Header Docs + Plugins menus | `docs/src/components/SiteTitle.astro` | **closed** |
 | 113 | Marketplace listing chrome (full width, catalog sidebar, docs guides) | `docs/src/pages/plugins/**` | **closed** |
+| 114 | Third-party plugin scaffold + listing YAML | `docs/src/content/docs/panels/plugins.md` | **closed** |
 | 102 | Resources depth (relation managers, global search, record titles, soft deletes) | `docs/src/content/docs/resources/*` | **closed** |
 | 103 | Forms leftovers (FileUpload endpoint, RichEditor, MorphTo live search, ModalTableSelect / KeyValue hosts) | `docs/src/content/docs/forms/{file-upload,rich-editor,morph-to-select,modal-table-select,key-value}.md` | **closed** |
 | 104 | Import / export job runners | `docs/src/content/docs/actions/{import,export}.md` | **closed** |
@@ -22,6 +23,10 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 108 | Panels platform (SPA mode, billing adapters, multi-panel registry) | `docs/src/content/docs/panels/configuration.md` | **closed** |
 | 109 | Docs completeness pass (thin pages, unique shots, alignment) | `docs/src/content/docs/**` | **closed** |
 | 110 | Support toolkit polish | `docs/src/content/docs/support/*` | **closed** |
+
+## Third-party plugin scaffold — closed
+
+**Bar:** `smith make:orbit-plugin` / `python -m almasix.orbit plugin new` writes a publishable package (`Plugin` subclass, pyproject, smoke test) and draft marketplace YAML (plugin + author). `--listing-only` / `--no-listing` / `--paid`. Orbit-first docs, 100% coverage.
 
 ## Marketplace listing chrome — closed
 

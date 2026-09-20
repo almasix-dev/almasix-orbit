@@ -102,6 +102,7 @@ See [Navigation overview](/navigation/overview/).
 ## Plugins & marketplace
 
 - `Plugin` base with `register` / `boot` hooks and `panel.plugin(...)` / `.plugins([...])`
+- `smith make:orbit-plugin` / `python -m almasix.orbit plugin new` scaffold a publishable package and draft listing YAML
 - Publishable package layout, optional `ServiceProvider` entry-point auto-boot
 - Community [plugin marketplace](/plugins/) — full-width listing UI, catalog-only sidebar, JSON feed, authors, and categories
 - Registry-backed listings with install/star stats, GitHub/PyPI links, author aside, and related plugins
