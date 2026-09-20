@@ -86,6 +86,7 @@ const otherPlugins = authorPlugins.filter((item) => item.slug !== plugin.slug);
 								<StarButton
 									slug={plugin.slug}
 									githubUrl={plugin.githubUrl}
+									githubRepo={plugin.githubRepo}
 									stars={plugin.stars}
 									primary={!plugin.isPaid}
 								/>
@@ -312,42 +313,4 @@ const otherPlugins = authorPlugins.filter((item) => item.slug !== plugin.slug);
 			button.textContent = 'Copy failed';
 		}
 	});
-
-	const starKey = (slug: string) => `orbit-plugin-star:${slug}`;
-	const starBtn = document.querySelector<HTMLButtonElement>('.market-star-btn');
-	if (starBtn) {
-		const slug = starBtn.dataset.starSlug ?? '';
-		const href = starBtn.dataset.starHref ?? '';
-		const baseRaw = starBtn.dataset.starBase ?? '';
-		const base = baseRaw === '' ? null : Number(baseRaw);
-		const label = starBtn.querySelector('[data-star-label]');
-		const counts = document.querySelectorAll<HTMLElement>(
-			'[data-star-count], [data-star-count-page]',
-		);
-
-		const format = (value: number | null) => {
-			if (value == null || Number.isNaN(value)) return '—';
-			if (value >= 1000) {
-				const k = value / 1000;
-				return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`;
-			}
-			return String(value);
-		};
-
-		const liked = () => Boolean(slug && localStorage.getItem(starKey(slug)));
-		const render = () => {
-			const extra = liked() ? 1 : 0;
-			const shown = base == null ? (extra ? extra : null) : base + extra;
-			for (const node of counts) node.textContent = format(shown);
-			starBtn.classList.toggle('is-starred', liked());
-			if (label) label.textContent = liked() ? 'Starred on GitHub' : 'Star on GitHub';
-		};
-
-		render();
-		starBtn.addEventListener('click', () => {
-			if (href) window.open(href, '_blank', 'noopener');
-			if (slug) localStorage.setItem(starKey(slug), '1');
-			render();
-		});
-	}
 </script>

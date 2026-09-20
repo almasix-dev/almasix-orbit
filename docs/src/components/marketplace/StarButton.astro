@@ -1,18 +1,20 @@
 ---
 /**
- * Star on GitHub — opens the repo so the visitor can star it, and remembers
- * the click locally (static docs cannot star on the visitor's behalf).
+ * Star the plugin's GitHub repo. When OAuth is configured on the Worker, the
+ * click stars via the GitHub API as the visitor; otherwise the repo opens.
  */
-import { formatStat } from '../../../scripts/marketplace-lib.mjs';
+import { formatStat, parseGithubRepo } from '../../../scripts/marketplace-lib.mjs';
 
 interface Props {
 	slug: string;
 	githubUrl: string;
 	stars: number | null;
+	githubRepo?: string | null;
 	primary?: boolean;
 }
 
-const { slug, githubUrl, stars, primary = true } = Astro.props;
+const { slug, githubUrl, stars, githubRepo, primary = true } = Astro.props;
+const repo = githubRepo || parseGithubRepo(githubUrl) || '';
 ---
 
 <button
@@ -20,9 +22,107 @@ const { slug, githubUrl, stars, primary = true } = Astro.props;
 	class:list={['market-button', 'market-star-btn', { 'is-primary': primary }]}
 	data-star-slug={slug}
 	data-star-href={githubUrl}
+	data-star-repo={repo}
 	data-star-base={stars ?? ''}
 >
 	<span class="market-star-icon" aria-hidden="true">★</span>
 	<span data-star-label>Star on GitHub</span>
 	<span class="market-star-num" data-star-count>{formatStat(stars)}</span>
 </button>
+
+<script>
+	const starKey = (slug: string) => `orbit-plugin-star:${slug}`;
+
+	const format = (value: number | null) => {
+		if (value == null || Number.isNaN(value)) return '—';
+		if (value >= 1000) {
+			const k = value / 1000;
+			return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`;
+		}
+		return String(value);
+	};
+
+	const params = new URLSearchParams(location.search);
+	const oauthStarred = params.get('starred') === '1';
+	if (oauthStarred || params.has('star')) {
+		params.delete('starred');
+		params.delete('star');
+		const next = `${location.pathname}${params.toString() ? `?${params}` : ''}${location.hash}`;
+		history.replaceState(null, '', next);
+	}
+
+	for (const starBtn of document.querySelectorAll<HTMLButtonElement>('.market-star-btn')) {
+		const slug = starBtn.dataset.starSlug ?? '';
+		const href = starBtn.dataset.starHref ?? '';
+		const repo = starBtn.dataset.starRepo ?? '';
+		const baseRaw = starBtn.dataset.starBase ?? '';
+		const base = baseRaw === '' ? null : Number(baseRaw);
+		const label = starBtn.querySelector('[data-star-label]');
+		const counts = document.querySelectorAll<HTMLElement>(
+			'[data-star-count], [data-star-count-page]',
+		);
+
+		const liked = () => Boolean(slug && localStorage.getItem(starKey(slug)));
+		const markLiked = () => {
+			if (slug) localStorage.setItem(starKey(slug), '1');
+		};
+		const render = () => {
+			const extra = liked() ? 1 : 0;
+			const shown = base == null ? (extra ? extra : null) : base + extra;
+			for (const node of counts) node.textContent = format(shown);
+			starBtn.classList.toggle('is-starred', liked());
+			if (label) label.textContent = liked() ? 'Starred on GitHub' : 'Star on GitHub';
+		};
+
+		if (oauthStarred) markLiked();
+		render();
+
+		const fallback = () => {
+			if (href) window.open(href, '_blank', 'noopener');
+			markLiked();
+			render();
+		};
+
+		starBtn.addEventListener('click', async () => {
+			if (liked()) {
+				if (href) window.open(href, '_blank', 'noopener');
+				return;
+			}
+			starBtn.disabled = true;
+			try {
+				if (!repo) {
+					fallback();
+					return;
+				}
+				const returnPath = `${location.pathname}${location.search}`;
+				const response = await fetch(
+					`/api/github/star?repo=${encodeURIComponent(repo)}&return=${encodeURIComponent(returnPath)}`,
+					{ method: 'POST', headers: { Accept: 'application/json' }, credentials: 'same-origin' },
+				);
+				if (response.status === 501) {
+					fallback();
+					return;
+				}
+				if (response.status === 401) {
+					const data = (await response.json()) as { authorize?: string };
+					if (data.authorize) {
+						location.href = data.authorize;
+						return;
+					}
+					fallback();
+					return;
+				}
+				if (!response.ok) {
+					fallback();
+					return;
+				}
+				markLiked();
+				render();
+			} catch {
+				fallback();
+			} finally {
+				starBtn.disabled = false;
+			}
+		});
+	}
+</script>

@@ -1,0 +1,6 @@
+# Copy to docs/.dev.vars for `npx wrangler dev`. Do not commit .dev.vars.
+GITHUB_OAUTH_CLIENT_ID=
+GITHUB_OAUTH_CLIENT_SECRET=
+# Leave empty for a GitHub App with the Starring user permission.
+# Classic OAuth Apps need: GITHUB_OAUTH_SCOPE=public_repo
+GITHUB_OAUTH_SCOPE=

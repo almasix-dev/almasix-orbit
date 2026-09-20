@@ -6,7 +6,9 @@ and [almasix.com](https://almasix.com)).
 
 ## Wrangler
 
-[`docs/wrangler.jsonc`](./docs/wrangler.jsonc) serves `./dist`. There is no Worker `main` script.
+[`docs/wrangler.jsonc`](./docs/wrangler.jsonc) serves `./dist` as Worker assets (`ASSETS`) and runs [`docs/scripts/github-star.mjs`](./docs/scripts/github-star.mjs) first for `/api/github/*`. That Worker stars a marketplace plugin’s GitHub repository **as the visitor** (OAuth + `PUT /user/starred/{owner}/{repo}`). Do **not** use the build-time `GITHUB_TOKEN` for starring — that would star as the site, not the reader.
+
+Without OAuth secrets the API returns `501` and the listing button opens GitHub instead. Local `astro preview` has no Worker, so it uses the same fallback.
 
 ## CI vs deploy
 
@@ -37,6 +39,22 @@ counts, add a build env var in the Workers Builds project:
 
 No secrets are required in GitHub Actions for docs (build-only).
 
+### Marketplace Star on GitHub (runtime)
+
+Listing **Star on GitHub** calls `POST /api/github/star`. Configure a GitHub App (preferred: user permission **Starring** only, empty `GITHUB_OAUTH_SCOPE`) or a classic OAuth App (`GITHUB_OAUTH_SCOPE=public_repo`). Callback URL:
+
+`https://orbit.almasix.com/api/github/oauth/callback`
+
+Workers Builds / dashboard secrets (not git):
+
+| Variable | Value |
+|----------|--------|
+| `GITHUB_OAUTH_CLIENT_ID` | GitHub App or OAuth App client id |
+| `GITHUB_OAUTH_CLIENT_SECRET` | Client secret |
+| `GITHUB_OAUTH_SCOPE` | Empty for a GitHub App with Starring; `public_repo` for a classic OAuth App |
+
+Copy [`docs/.dev.vars.example`](./docs/.dev.vars.example) to `docs/.dev.vars` for `npx wrangler dev`. Never commit `.dev.vars`.
+
 ## Cutover checklist
 
 1. Cloudflare Dashboard → **Workers & Pages** → **Create** → connect **`almasix-dev/almasix-orbit`**.
@@ -51,7 +69,10 @@ No secrets are required in GitHub Actions for docs (build-only).
 curl -I https://orbit.almasix.com/
 curl -sS https://orbit.almasix.com/robots.txt | head
 curl -sS -o /dev/null -w '%{http_code}\n' https://orbit.almasix.com/og.png
+curl -sS -o /dev/null -w '%{http_code}\n' -X POST 'https://orbit.almasix.com/api/github/star?repo=almasix-dev/almasix-orbit'
 ```
+
+The star route should return `401` (OAuth configured, no cookie) or `501` (secrets not set yet) — never a static 404.
 
 (Add `docs/public/og.png` / SEO meta when you want social previews.)
 
@@ -60,7 +81,9 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://orbit.almasix.com/og.png
 ```bash
 cd docs
 npm ci
+npm test
 npm run build
+npx wrangler dev      # Worker + assets; copy .dev.vars.example → .dev.vars to star for real
 npx wrangler deploy   # needs Cloudflare auth (local only)
 ```
 
