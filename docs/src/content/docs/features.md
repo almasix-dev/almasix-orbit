@@ -105,7 +105,7 @@ See [Navigation overview](/navigation/overview/).
 - `smith make:orbit-plugin` / `python -m almasix.orbit plugin new` scaffold a publishable package and draft listing YAML
 - Publishable package layout, optional `ServiceProvider` entry-point auto-boot
 - Community [plugin marketplace](/plugins/) — full-width listing UI, catalog-only sidebar, JSON feed, authors, and categories
-- Registry-backed listings with install/star stats, GitHub/PyPI links, author aside, and related plugins
+- Registry-backed listings with install/star stats, GitHub/PyPI links, author aside, related plugins, and **Star on GitHub** (stars the repo via the GitHub API when you sign in)
 - [Catalog API](/plugins/develop/) for tooling; guides for [building](/panels/plugins/) and [listing](/plugins/get-listed/) stay in Docs
 
 ## Query builder & support
