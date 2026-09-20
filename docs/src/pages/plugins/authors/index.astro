@@ -1,0 +1,50 @@
+---
+/** Index of authors who have at least one published listing. */
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { getMarketplaceAuthors } from '../../../data/marketplace';
+import '../../../styles/marketplace.css';
+
+const authors = await getMarketplaceAuthors();
+---
+
+<StarlightPage
+	frontmatter={{
+		title: 'Plugin authors',
+		description: 'Everyone who currently maintains a published Orbit plugin listing.',
+		tableOfContents: false,
+	}}
+>
+	<div class="market">
+		<a class="market-back" href="/plugins/">← All plugins</a>
+		<p class="market-lede">
+			Each author page lists every published plugin they maintain. Want to appear here? Add an
+			author profile with your first listing — see <a href="/plugins/get-listed/">Get listed</a>.
+		</p>
+		{
+			authors.length === 0 ? (
+				<p class="market-empty">No published authors yet.</p>
+			) : (
+				<ul class="market-grid">
+					{authors.map(({ author, plugins }) => (
+						<li class="market-card">
+							<div class="market-card-body">
+								<div class="market-author-head">
+									{author.avatar && <img class="market-avatar" src={author.avatar} alt="" />}
+									<div>
+										<h2 class="market-card-title">
+											<a href={`/plugins/authors/${author.slug}/`}>{author.name}</a>
+										</h2>
+										<p class="market-summary">{author.bio}</p>
+										<p class="market-meta">
+											{plugins.length} {plugins.length === 1 ? 'plugin' : 'plugins'}
+										</p>
+									</div>
+								</div>
+							</div>
+						</li>
+					))}
+				</ul>
+			)
+		}
+	</div>
+</StarlightPage>

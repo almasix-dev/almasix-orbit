@@ -1,0 +1,254 @@
+---
+/** Plugin marketplace — browse every published community and official listing. */
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import PluginCard from '../../components/marketplace/PluginCard.astro';
+import {
+	collectOrbitVersions,
+	getMarketplaceCategories,
+	getMarketplacePlugins,
+} from '../../data/marketplace';
+import '../../styles/marketplace.css';
+
+const plugins = await getMarketplacePlugins();
+const categories = await getMarketplaceCategories();
+const versions = collectOrbitVersions(plugins);
+const usedCategories = categories.filter((category) =>
+	plugins.some((plugin) => plugin.categories.some((item) => item.slug === category.slug)),
+);
+const featured = plugins.filter((plugin) => plugin.featured);
+---
+
+<StarlightPage
+	frontmatter={{
+		title: 'Plugin marketplace',
+		description:
+			'Browse community and official Orbit plugins — fields, columns, widgets, themes, and whole panel kits. Free and paid.',
+		tableOfContents: false,
+	}}
+>
+	<div class="market">
+		<div class="market-intro">
+			<p class="market-lede">
+				Orbit plugins are ordinary Python packages that configure a panel, add components, or ship a
+				whole feature. Install a free one with <code>pip</code>, or buy a paid one from its author.
+			</p>
+			<div class="market-cta-row">
+				<a class="market-button is-primary" href="/plugins/get-listed/">Get your plugin listed</a>
+				<a class="market-button" href="/plugins/using/">Using a plugin</a>
+				<a class="market-button" href="/panels/plugins/">Build a plugin</a>
+				<a class="market-button" href="/plugins/authors/">Authors</a>
+				<a class="market-button" href="/plugins/categories/">Categories</a>
+				<a class="market-button" href="/plugins/feed.json">JSON feed</a>
+			</div>
+		</div>
+
+		<div class="market-note">
+			<p>
+				Most listings are third-party: they are built by the community, not by the Orbit team. Only
+				plugins marked <strong>Official</strong> are maintained by Almasix. Everything else is unreviewed
+				for security, so read the source before installing it in production.
+			</p>
+			<p>
+				Found malware or an unresolved security issue an author will not fix? <a
+					href="https://github.com/almasix-dev/almasix-orbit/security/advisories/new"
+					>Report it to us</a
+				>.
+			</p>
+		</div>
+
+		{
+			plugins.length === 0 ? (
+				<div class="market-empty">
+					<h2>No plugins listed yet</h2>
+					<p>
+						The directory is open and empty — the first listing could be yours. Publish your package,
+						then send a pull request with a registry entry.
+					</p>
+					<p>
+						<a class="market-button is-primary" href="/plugins/get-listed/">
+							Read the listing guide
+						</a>
+					</p>
+				</div>
+			) : (
+				<>
+					{featured.length > 0 && (
+						<section aria-labelledby="market-featured">
+							<h2 id="market-featured">Featured</h2>
+							<ul class="market-grid">
+								{featured.map((plugin) => (
+									<PluginCard plugin={plugin} />
+								))}
+							</ul>
+						</section>
+					)}
+
+					<section aria-labelledby="market-all">
+						<h2 id="market-all">All plugins</h2>
+
+						<form class="market-filters" id="market-filters" role="search">
+							<div class="market-filter-grid">
+								<div class="market-field">
+									<label for="market-search">Search</label>
+									<input
+										type="search"
+										id="market-search"
+										name="search"
+										placeholder="Name, author, package…"
+										autocomplete="off"
+									/>
+								</div>
+								<div class="market-field">
+									<label for="market-price">Price</label>
+									<select id="market-price" name="price">
+										<option value="">All</option>
+										<option value="free">Free</option>
+										<option value="paid">Paid</option>
+									</select>
+								</div>
+								<div class="market-field">
+									<label for="market-category">Category</label>
+									<select id="market-category" name="category">
+										<option value="">All</option>
+										{usedCategories.map((category) => (
+											<option value={category.slug}>{category.label}</option>
+										))}
+									</select>
+								</div>
+								<div class="market-field">
+									<label for="market-version">Orbit version</label>
+									<select id="market-version" name="version">
+										<option value="">All</option>
+										{versions.map((version) => (
+											<option value={version}>{version}</option>
+										))}
+									</select>
+								</div>
+								<div class="market-field">
+									<label for="market-sort">Sort by</label>
+									<select id="market-sort" name="sort">
+										<option value="newest">Newest</option>
+										<option value="oldest">Oldest</option>
+										<option value="name-asc">Name A–Z</option>
+										<option value="name-desc">Name Z–A</option>
+									</select>
+								</div>
+							</div>
+							<div class="market-toggles">
+								<label>
+									<input type="checkbox" name="official" id="market-official" /> Official only
+								</label>
+								<label>
+									<input type="checkbox" name="dark" id="market-dark" /> Dark mode ready
+								</label>
+							</div>
+							<div class="market-filter-footer">
+								<span id="market-count" aria-live="polite">
+									{plugins.length} plugins
+								</span>
+								<button type="button" class="market-reset" id="market-reset">Reset filters</button>
+							</div>
+						</form>
+
+						<ul class="market-grid" id="market-results">
+							{plugins.map((plugin) => (
+								<PluginCard plugin={plugin} />
+							))}
+						</ul>
+
+						<p class="market-empty" id="market-no-results" hidden>
+							No plugin matches those filters. Try clearing the search box or picking a different
+							category.
+						</p>
+					</section>
+				</>
+			)
+		}
+	</div>
+</StarlightPage>
+
+<script>
+	const form = document.querySelector<HTMLFormElement>('#market-filters');
+	const results = document.querySelector<HTMLUListElement>('#market-results');
+	if (form && results) {
+		const cards = Array.from(results.querySelectorAll<HTMLLIElement>('[data-plugin]'));
+		const count = document.querySelector<HTMLElement>('#market-count');
+		const noResults = document.querySelector<HTMLElement>('#market-no-results');
+		const field = <T extends HTMLElement>(id: string) => document.querySelector<T>(id);
+		const search = field<HTMLInputElement>('#market-search');
+		const price = field<HTMLSelectElement>('#market-price');
+		const category = field<HTMLSelectElement>('#market-category');
+		const version = field<HTMLSelectElement>('#market-version');
+		const sort = field<HTMLSelectElement>('#market-sort');
+		const official = field<HTMLInputElement>('#market-official');
+		const dark = field<HTMLInputElement>('#market-dark');
+
+		const matches = (card: HTMLLIElement) => {
+			const term = (search?.value ?? '').trim().toLowerCase();
+			if (term && !(card.dataset.search ?? '').includes(term)) return false;
+			if (price?.value && card.dataset.price !== price.value) return false;
+			if (category?.value && !(card.dataset.categories ?? '').split(' ').includes(category.value)) {
+				return false;
+			}
+			if (version?.value && !(card.dataset.versions ?? '').split(' ').includes(version.value)) {
+				return false;
+			}
+			if (official?.checked && card.dataset.official !== 'true') return false;
+			if (dark?.checked && card.dataset.darkMode !== 'true') return false;
+			return true;
+		};
+
+		const order = (a: HTMLLIElement, b: HTMLLIElement) => {
+			const mode = sort?.value ?? 'newest';
+			if (mode === 'name-asc' || mode === 'name-desc') {
+				const compared = (a.dataset.name ?? '').localeCompare(b.dataset.name ?? '');
+				return mode === 'name-asc' ? compared : -compared;
+			}
+			const left = Date.parse(a.dataset.published ?? '');
+			const right = Date.parse(b.dataset.published ?? '');
+			return mode === 'oldest' ? left - right : right - left;
+		};
+
+		const apply = () => {
+			let visible = 0;
+			for (const card of cards) {
+				const shown = matches(card);
+				card.hidden = !shown;
+				if (shown) visible += 1;
+			}
+			for (const card of [...cards].sort(order)) results.append(card);
+			if (count) count.textContent = `${visible} ${visible === 1 ? 'plugin' : 'plugins'}`;
+			if (noResults) noResults.hidden = visible > 0;
+			const next = new URLSearchParams();
+			const q = (search?.value ?? '').trim();
+			if (q) next.set('q', q);
+			if (price?.value) next.set('price', price.value);
+			if (category?.value) next.set('category', category.value);
+			if (version?.value) next.set('version', version.value);
+			if (sort?.value && sort.value !== 'newest') next.set('sort', sort.value);
+			if (official?.checked) next.set('official', '1');
+			if (dark?.checked) next.set('dark', '1');
+			const qs = next.toString();
+			const url = qs ? `${location.pathname}?${qs}` : location.pathname;
+			history.replaceState(null, '', url);
+		};
+
+		const params = new URLSearchParams(location.search);
+		if (search && params.has('q')) search.value = params.get('q') ?? '';
+		if (price && params.has('price')) price.value = params.get('price') ?? '';
+		if (category && params.has('category')) category.value = params.get('category') ?? '';
+		if (version && params.has('version')) version.value = params.get('version') ?? '';
+		if (sort && params.has('sort')) sort.value = params.get('sort') ?? 'newest';
+		if (official) official.checked = params.get('official') === '1';
+		if (dark) dark.checked = params.get('dark') === '1';
+
+		form.addEventListener('input', apply);
+		form.addEventListener('change', apply);
+		form.addEventListener('submit', (event) => event.preventDefault());
+		document.querySelector('#market-reset')?.addEventListener('click', () => {
+			form.reset();
+			apply();
+		});
+		apply();
+	}
+</script>

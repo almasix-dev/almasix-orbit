@@ -135,6 +135,8 @@ pip install acme-orbit-branding
 
 Do **not** ship an `almasix/__init__.py` stub in your wheel — that overwrites the framework namespace (see issue #24). Only add packages under your own top-level name, or under `almasix.orbit_plugins…` if you intentionally extend Orbit’s namespace without a root init file.
 
+Once the package installs, you can list it in the [plugin marketplace](/plugins/) so other people find it — free or paid. [Get listed](/plugins/get-listed/) covers the registry entry and the pull request.
+
 ## Optional: ServiceProvider auto-discovery
 
 If the plugin should register a panel (or several) without the app touching `OrbitPanelProvider`, expose an Almasix provider entry-point:
@@ -179,10 +181,16 @@ Use those helpers from resources or from non-panel Conduit hosts. Render hooks a
 - [ ] No `almasix/__init__.py` in the published wheel
 - [ ] Document the one-liner: `panel.plugin(YourPlugin())`
 - [ ] Add a smoke test that `run_plugins` calls `register` then `boot`
+- [ ] Publish the package, then [get it listed](/plugins/get-listed/)
 
 ## Related
 
+- [Plugin marketplace](/plugins/) — browse listings
+- [How listings work](/plugins/overview/)
+- [Using a plugin](/plugins/using/)
+- [Get listed](/plugins/get-listed/)
+- [Listing guidelines](/plugins/guidelines/)
+- [Paid vs free](/plugins/paid-vs-free/)
 - [Render hooks](/panels/render-hooks/) — positions and scoping
 - [Panel configuration](/panels/configuration/) — fluent panel API
 - [Packages](/packages/) — Orbit’s own PyPI map
-- [Plugin marketplace](/plugins/) — list and submit community packages

@@ -46,7 +46,7 @@ from almasix.orbit.testing import LiveResource
 
 ## Community plugins
 
-Third-party packages register with `.plugin(...)` on a panel. Browse published listings on the [plugin marketplace](/plugins/) and read [Plugin development](/panels/plugins/).
+Third-party packages register with `.plugin(...)` on a panel. Browse published listings on the [plugin marketplace](/plugins/), install from [Using a plugin](/plugins/using/), or publish your own via [Get listed](/plugins/get-listed/).
 
 ## Dependencies
 

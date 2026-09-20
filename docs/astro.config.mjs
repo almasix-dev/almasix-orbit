@@ -369,6 +369,18 @@ export default defineConfig({
 						{ label: 'Dashboard', slug: 'panels/dashboard' },
 						{ label: 'Actions in the panel', slug: 'panels/actions' },
 						{ label: 'Render hooks', slug: 'panels/render-hooks' },
+					],
+				},
+				{
+					label: 'Plugins',
+					collapsed: true,
+					items: [
+						{ label: 'Marketplace', link: '/plugins/' },
+						{ label: 'How listings work', slug: 'plugins/overview' },
+						{ label: 'Using a plugin', slug: 'plugins/using' },
+						{ label: 'Get listed', slug: 'plugins/get-listed' },
+						{ label: 'Listing guidelines', slug: 'plugins/guidelines' },
+						{ label: 'Paid vs free', slug: 'plugins/paid-vs-free' },
 						{ label: 'Plugin development', slug: 'panels/plugins' },
 					],
 				},
