@@ -34,7 +34,7 @@ Match the switcher to the package you have installed. APIs on `main` can move be
 
 The `/0.x/` tree is built from the newest stable `v0.*` git tag — the same docs that shipped with that release. Pages added on `main` after `v0.4.0` are **not** on `0.x` until the next 0.x release.
 
-When a new 0.x tag is published, the next docs deploy rebuilds `/0.x/` from that tag automatically.
+When a new 0.x tag is published, the next docs deploy rebuilds `/0.x/` from that tag automatically. The build fetches tags first, so `/0.x/` tracks `v0.4.0` (and later 0.x tags) rather than whatever `main` happens to contain.
 
 ## What to read first
 
