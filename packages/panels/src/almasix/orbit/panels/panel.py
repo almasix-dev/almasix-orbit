@@ -10,6 +10,7 @@ from almasix.orbit.panels.content_width import (
     resolve_content_max_width,
 )
 from almasix.orbit.panels.discover import load_theme_css
+from almasix.orbit.panels.global_search import render_global_search_input
 from almasix.orbit.panels.hooks import register_render_hook, render_hook
 from almasix.orbit.panels.navigation import (
     NavigationBuilder,
@@ -128,6 +129,10 @@ class Panel:
         self._database_notifications: list[dict[str, Any]] = []
         self._database_notifications_position: Literal["topbar", "sidebar"] = "topbar"
         self._database_notifications_polling: str | int | None = "30s"
+        self._global_search_enabled = True
+        self._global_search_debounce_ms = 300
+        self._global_search_placeholder = "Search…"
+        self._global_search_limit = 10
         self._panel_user: Any = None
         self._content_max_width: str = DEFAULT_CONTENT_MAX_WIDTH
         self._simple_page_max_content_width: str = DEFAULT_SIMPLE_PAGE_MAX_CONTENT_WIDTH
@@ -627,6 +632,56 @@ class Panel:
         """Enable the toast notification host (default on)."""
         self._notifications_enabled = bool(condition)
         return self
+
+    def global_search(
+        self,
+        condition: bool = True,
+        *,
+        debounce: int | None = None,
+        placeholder: str | None = None,
+        limit: int | None = None,
+    ) -> Self:
+        """Toggle and configure the topbar global search box (default on).
+
+        The box only appears once at least one resource declares
+        ``global_search_attributes``.
+        """
+        self._global_search_enabled = bool(condition)
+        if debounce is not None:
+            self._global_search_debounce_ms = int(debounce)
+        if placeholder is not None:
+            self._global_search_placeholder = str(placeholder)
+        if limit is not None:
+            self._global_search_limit = int(limit)
+        return self
+
+    def global_search_debounce(self, milliseconds: int) -> Self:
+        self._global_search_debounce_ms = int(milliseconds)
+        return self
+
+    def global_search_placeholder(self, text: str) -> Self:
+        self._global_search_placeholder = str(text)
+        return self
+
+    def global_search_limit(self, limit: int) -> Self:
+        """Cap on results shown across all resources."""
+        self._global_search_limit = int(limit)
+        return self
+
+    def has_global_search(self) -> bool:
+        """True when search is enabled and some resource opts in."""
+        if not self._global_search_enabled:
+            return False
+        return any(
+            callable(getattr(resource, "is_globally_searchable", None))
+            and resource.is_globally_searchable()
+            for resource in self.get_resources()
+        )
+
+    def global_search_url(self) -> str:
+        """URL of this panel's global-search endpoint."""
+        prefix = self.get_path().rstrip("/")
+        return f"{prefix}/global-search" if prefix and prefix != "/" else "/global-search"
 
     def user(self, user: OrbitUser | Any | None) -> Self:
         """Panel principal used when Almasix Auth has no session user."""
@@ -1328,6 +1383,7 @@ class Panel:
         active_path: str | None = None,
         extra_head: str = "",
         bare: bool = False,
+        record_title: str | None = None,
     ) -> str:
         """Render the admin document shell around page ``content``.
 
@@ -1473,7 +1529,7 @@ class Panel:
                 '  <div class="or-main">\n'
                 f"{topbar_html}"
                 f'    {render_hook("panels::content.start", scope=scope, user=user)}\n'
-                f"{self._render_breadcrumbs(active_path)}"
+                f"{self._render_breadcrumbs(active_path, record_title)}"
                 f'    <main class="or-content">{content_inner}</main>\n'
                 f'    {render_hook("panels::content.end", scope=scope, user=user)}\n'
                 "  </div>\n"
@@ -1555,11 +1611,17 @@ class Panel:
             "</html>"
         )
 
-    def breadcrumbs(self, active_path: str | None = None) -> list[dict[str, str | None]]:
+    def breadcrumbs(
+        self,
+        active_path: str | None = None,
+        *,
+        record_title: str | None = None,
+    ) -> list[dict[str, str | None]]:
         """Resolve breadcrumb items for ``active_path``.
 
         Each item is ``{"label": str, "url": str | None}``. The last item is the
-        current page (``url`` is ``None``).
+        current page (``url`` is ``None``). ``record_title`` replaces the generic
+        "View" / "Edit" leaf on a record page.
         """
         for res in self._resources:
             res._panel_path = self.get_path()  # type: ignore[attr-defined]
@@ -1648,13 +1710,18 @@ class Panel:
                 crumbs[-1]["url"] = None
                 return crumbs
             action = segments[-1]
+            title = str(record_title).strip() if record_title else ""
             if action == "create":
                 crumbs.append({"label": "Create", "url": None})
             elif action == "edit":
+                if title:
+                    crumbs.append(
+                        {"label": title, "url": self._record_view_url(resource, segments)}
+                    )
                 crumbs.append({"label": "Edit", "url": None})
             else:
                 # /{slug}/{id} view (len(segments) >= 2 after the early return above)
-                crumbs.append({"label": "View", "url": None})
+                crumbs.append({"label": title or "View", "url": None})
             return crumbs
 
         if page is not None:
@@ -1672,10 +1739,21 @@ class Panel:
             crumbs.append({"label": label, "url": url})
         return crumbs
 
-    def _render_breadcrumbs(self, active_path: str | None) -> str:
+    def _record_view_url(self, resource: Any, segments: list[str]) -> str | None:
+        """View URL for ``/{slug}/{id}/edit`` so the record crumb stays clickable."""
+        if len(segments) < 2:
+            return None
+        try:
+            return str(resource.page_url("view", {"id": segments[1]}))
+        except Exception:
+            return None
+
+    def _render_breadcrumbs(
+        self, active_path: str | None, record_title: str | None = None
+    ) -> str:
         if not self._breadcrumbs_enabled:
             return ""
-        items = self.breadcrumbs(active_path)
+        items = self.breadcrumbs(active_path, record_title=record_title)
         if len(items) <= 1:
             # Home-only: omit the trail (the brand already marks where you are).
             return ""
@@ -2222,7 +2300,16 @@ class Panel:
         parts: list[str] = []
         scope = self.id
         parts.append(render_hook("panels::global-search.before", scope=scope, user=user))
-        parts.append('<div class="or-global-search-slot" data-orbit-global-search></div>')
+        if self.has_global_search():
+            parts.append(
+                render_global_search_input(
+                    debounce_ms=self._global_search_debounce_ms,
+                    endpoint=self.global_search_url(),
+                    placeholder=self._global_search_placeholder,
+                )
+            )
+        else:
+            parts.append('<div class="or-global-search-slot" data-orbit-global-search></div>')
         parts.append(render_hook("panels::global-search.after", scope=scope, user=user))
 
         tenancy = self._tenancy

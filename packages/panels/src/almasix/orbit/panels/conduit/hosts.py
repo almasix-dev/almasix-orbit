@@ -218,6 +218,86 @@ async def _orm_update(model: type[Any], record_id: str, data: dict[str, Any]) ->
     return _as_record_dict(instance)
 
 
+def _resource_relation_managers(resource: type[Any]) -> list[type[Any]]:
+    getter = getattr(resource, "get_relations", None)
+    if not callable(getter):
+        return []
+    try:
+        return list(getter() or [])
+    except Exception:
+        return []
+
+
+def _relation_manager_for(resource: type[Any], relationship: str) -> type[Any] | None:
+    for manager in _resource_relation_managers(resource):
+        if str(getattr(manager, "relationship", "")) == relationship:
+            return manager
+    return None
+
+
+async def _load_relation_records(
+    resource: type[Any],
+    owner: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    """Related rows per relationship — ORM query when a model is set, else the owner."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    owner_id = str(owner.get("id") or "")
+    for manager in _resource_relation_managers(resource):
+        relationship = str(getattr(manager, "relationship", ""))
+        if not relationship:
+            continue
+        related_model = getattr(manager, "related_model", None)
+        if _is_orm_model(related_model) and owner_id:
+            foreign_key = manager.get_foreign_key(resource)
+            rows = await _await_maybe(related_model.where(foreign_key, owner_id).get())
+            out[relationship] = [_as_record_dict(row) for row in (rows or [])]
+            continue
+        out[relationship] = [_as_record_dict(row) for row in manager.get_records(owner)]
+    return out
+
+
+def _parse_relation_action(name: str) -> tuple[str, str] | None:
+    """``relation.comments.delete`` → ``("comments", "delete")``."""
+    parts = str(name or "").split(".")
+    if len(parts) == 3 and parts[0] == "relation":
+        return parts[1], parts[2]
+    return None
+
+
+async def _orm_restore_id(model: type[Any], record_id: str) -> None:
+    instance = await _orm_find(model, record_id)
+    if instance is None:
+        return
+    restore = getattr(instance, "restore", None)
+    if callable(restore):
+        await _await_maybe(restore())
+        return
+    try:
+        instance.deleted_at = None
+    except Exception:
+        return
+    await _await_maybe(instance.save())
+
+
+def _restore_seed_records(records: list[Any], record_id: str) -> list[Any]:
+    out: list[Any] = []
+    for record in records:
+        if _record_key(record) != record_id:
+            out.append(record)
+            continue
+        if isinstance(record, dict):
+            out.append({**record, "deleted_at": None, "trashed": False})
+        else:
+            for attr in ("deleted_at", "trashed"):
+                if hasattr(record, attr):
+                    try:
+                        setattr(record, attr, None if attr == "deleted_at" else False)
+                    except Exception:
+                        pass
+            out.append(record)
+    return out
+
+
 async def _orm_delete_ids(model: type[Any], ids: set[str]) -> None:
     for rid in ids:
         if not rid:
@@ -762,7 +842,14 @@ class ListRecordsHost(OrbitPageHost):
         action_name, rid, data = _mount_action_args(name, record_id, payload, **kwargs)
         resource = self.get_resource()
         mutable = _resource_mutable(resource)
-        if action_name in {"delete", "force_delete", "delete_bulk", "create", "edit"} and not mutable:
+        if action_name in {
+            "delete",
+            "force_delete",
+            "delete_bulk",
+            "create",
+            "edit",
+            "restore",
+        } and not mutable:
             self.dispatch(
                 "orbit-records-readonly",
                 name=action_name,
@@ -776,8 +863,13 @@ class ListRecordsHost(OrbitPageHost):
             "delete_bulk",
             "create",
             "edit",
+            "restore",
         }:
             return self._mount_action_orm(model, action_name, rid, data)
+        if action_name == "restore" and rid:
+            self.records = _restore_seed_records(list(self.records), rid)
+            self._sync_resource_records()
+            return None
         if action_name in {"delete", "force_delete"} and rid:
             self.records = [r for r in self.records if self._record_key(r) != rid]
             self._sync_resource_records()
@@ -832,6 +924,15 @@ class ListRecordsHost(OrbitPageHost):
             await _orm_delete_ids(model, {rid})
             self.records = [r for r in self.records if self._record_key(r) != rid]
             self.selected = [s for s in (self.selected or []) if s != rid]
+            return
+        if action_name == "restore" and rid:
+            await _orm_restore_id(model, rid)
+            restored = await _orm_find(model, rid)
+            if restored is not None:
+                row = _as_record_dict(restored)
+                self.records = [
+                    row if self._record_key(r) == rid else r for r in self.records
+                ]
             return
         if action_name == "delete_bulk":
             ids = set(self.get_selected_ids())
@@ -1146,32 +1247,100 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
         )
 
 
-class EditRecordHost(FormDataMutations, OrbitPageHost):
+class RelationRecords:
+    """Loads and caches related rows for the relation managers on a page host."""
+
+    relations: dict[str, list[dict[str, Any]]] = {}
+
+    def load_relations(self, owner: dict[str, Any]) -> Any:
+        """Fill :attr:`relations`; returns a coroutine only when the ORM is involved."""
+        resource = self.get_resource()  # type: ignore[attr-defined]
+        managers = _resource_relation_managers(resource)
+        if not managers or not owner:
+            return None
+        if any(_is_orm_model(getattr(m, "related_model", None)) for m in managers):
+            return self._load_relations_async(resource, owner)
+        self.relations = {
+            str(manager.relationship): [
+                _as_record_dict(row) for row in manager.get_records(owner)
+            ]
+            for manager in managers
+            if getattr(manager, "relationship", "")
+        }
+        return None
+
+    async def _load_relations_async(
+        self, resource: type[Any], owner: dict[str, Any]
+    ) -> None:
+        self.relations = await _load_relation_records(resource, owner)
+
+    def relation_action(self, action_name: str, rid: str) -> Any:
+        """Handle ``relation.<relationship>.<action>``; returns True when consumed."""
+        parsed = _parse_relation_action(action_name)
+        if parsed is None:
+            return None
+        relationship, action = parsed
+        resource = self.get_resource()  # type: ignore[attr-defined]
+        manager = _relation_manager_for(resource, relationship)
+        if manager is None:
+            return None
+        self.dispatch(  # type: ignore[attr-defined]
+            "orbit-relation-action",
+            relationship=relationship,
+            action=action,
+            record_id=rid,
+        )
+        if action == "delete" and rid:
+            return self._delete_relation_record(manager, relationship, rid)
+        return True
+
+    def _delete_relation_record(self, manager: type[Any], relationship: str, rid: str) -> Any:
+        related_model = getattr(manager, "related_model", None)
+        if _is_orm_model(related_model):
+            return self._delete_relation_orm(related_model, relationship, rid)
+        rows = [r for r in self.relations.get(relationship, []) if _record_key(r) != rid]
+        self.relations = {**self.relations, relationship: rows}
+        return True
+
+    async def _delete_relation_orm(
+        self, model: type[Any], relationship: str, rid: str
+    ) -> None:
+        await _orm_delete_ids(model, {rid})
+        rows = [r for r in self.relations.get(relationship, []) if _record_key(r) != rid]
+        self.relations = {**self.relations, relationship: rows}
+
+
+class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
     record_id: str = ""
     data: dict[str, Any] = {}
     select_search: dict[str, str] = {}
+    relations: dict[str, list[dict[str, Any]]] = {}
 
     def mount(self, **kwargs: Any) -> Any:
         if kwargs.get("record_id") is not None:
             self.record_id = str(kwargs["record_id"])
         if isinstance(kwargs.get("data"), dict):
             self.data = dict(kwargs["data"])
-        elif isinstance(kwargs.get("record"), dict):
+            return self.load_relations(self.data)
+        if isinstance(kwargs.get("record"), dict):
             self.data = dict(kwargs["record"])
             self.record_id = str(self.data.get("id") or self.record_id)
-        elif self.record_id and not self.data:
+            return self.load_relations(self.data)
+        if self.record_id and not self.data:
             model = _resource_model(self.get_resource())
             if model is not None:
                 return self._mount_orm(model)
             found = _find_record(_resource_records(self.get_resource()), self.record_id)
             if found is not None:
                 self.data = _as_record_dict(found)
+                return self.load_relations(self.data)
         return None
 
     async def _mount_orm(self, model: type[Any]) -> None:
         found = await _orm_find(model, self.record_id)
         if found is not None:
             self.data = _as_record_dict(found)
+            await _await_maybe(self.load_relations(self.data))
 
     def save(self) -> Any:
         resource = self.get_resource()
@@ -1244,6 +1413,9 @@ class EditRecordHost(FormDataMutations, OrbitPageHost):
         action_name, rid, _ = _mount_action_args(name, record_id, payload, **kwargs)
         if not rid:
             rid = str(self.record_id or "")
+        relation = self.relation_action(action_name, rid)
+        if relation is not None:
+            return relation if not isinstance(relation, bool) else None
         if action_name in {"delete", "force_delete"} and rid:
             resource = self.get_resource()
             if not _resource_mutable(resource):
@@ -1290,12 +1462,14 @@ class EditRecordHost(FormDataMutations, OrbitPageHost):
             select_search=dict(self.select_search or {}),
             model=model,
             resource=resource,
+            relation_records=dict(self.relations or {}),
         )
 
 
-class ViewRecordHost(OrbitPageHost):
+class ViewRecordHost(RelationRecords, OrbitPageHost):
     record_id: str = ""
     record: dict[str, Any] = {}
+    relations: dict[str, list[dict[str, Any]]] = {}
 
     def mount(self, **kwargs: Any) -> Any:
         if kwargs.get("record_id") is not None:
@@ -1303,19 +1477,22 @@ class ViewRecordHost(OrbitPageHost):
         if isinstance(kwargs.get("record"), dict):
             self.record = dict(kwargs["record"])
             self.record_id = str(self.record.get("id") or self.record_id)
-        elif self.record_id and not self.record:
+            return self.load_relations(self.record)
+        if self.record_id and not self.record:
             model = _resource_model(self.get_resource())
             if model is not None:
                 return self._mount_orm(model)
             found = _find_record(_resource_records(self.get_resource()), self.record_id)
             if found is not None:
                 self.record = _as_record_dict(found)
+                return self.load_relations(self.record)
         return None
 
     async def _mount_orm(self, model: type[Any]) -> None:
         found = await _orm_find(model, self.record_id)
         if found is not None:
             self.record = _as_record_dict(found)
+            await _await_maybe(self.load_relations(self.record))
 
     def mountAction(
         self,
@@ -1327,7 +1504,10 @@ class ViewRecordHost(OrbitPageHost):
         action_name, rid, _ = _mount_action_args(name, record_id, payload, **kwargs)
         if not rid:
             rid = str(self.record_id or "")
-        if action_name in {"delete", "force_delete"} and rid:
+        relation = self.relation_action(action_name, rid)
+        if relation is not None:
+            return relation if not isinstance(relation, bool) else None
+        if action_name in {"delete", "force_delete", "restore"} and rid:
             resource = self.get_resource()
             if not _resource_mutable(resource):
                 self.dispatch(
@@ -1335,6 +1515,8 @@ class ViewRecordHost(OrbitPageHost):
                     message="This demo resource uses a fixed seed list and cannot be changed.",
                 )
                 return None
+            if action_name == "restore":
+                return self._restore(resource, rid)
             model = _resource_model(resource)
             if model is not None:
                 return self._delete_orm(model, resource, rid)
@@ -1345,6 +1527,19 @@ class ViewRecordHost(OrbitPageHost):
             return None
         self.dispatch("orbit-mount-action", name=action_name, record_id=rid, **kwargs)
         return None
+
+    def _restore(self, resource: type[Any], rid: str) -> Any:
+        model = _resource_model(resource)
+        if model is not None:
+            return self._restore_orm(model, rid)
+        _save_resource_records(resource, _restore_seed_records(_resource_records(resource), rid))
+        self.dispatch("orbit-record-restored", record_id=rid)
+        return None
+
+    async def _restore_orm(self, model: type[Any], rid: str) -> None:
+        await _orm_restore_id(model, rid)
+        self.record = _as_record_dict(await _orm_find(model, rid))
+        self.dispatch("orbit-record-restored", record_id=rid)
 
     async def _delete_orm(self, model: type[Any], resource: type[Any], rid: str) -> None:
         await _orm_delete_ids(model, {rid})
@@ -1361,7 +1556,7 @@ class ViewRecordHost(OrbitPageHost):
         data = dict(self.record)
         if self.record_id and "id" not in data:
             data["id"] = self.record_id
-        return Bound.render(record=data)
+        return Bound.render(record=data, relation_records=dict(self.relations or {}))
 
 
 class FormHost(FormDataMutations, ConduitHost):

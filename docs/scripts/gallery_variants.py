@@ -107,6 +107,7 @@ from almasix.orbit.panels.navigation import (
 from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.pages.dashboard import Dashboard
 from almasix.orbit.panels.panel import Panel
+from almasix.orbit.panels.relation_manager import RelationManager
 from almasix.orbit.panels.resource import Resource
 from almasix.orbit.panels.tenancy import Tenancy, Tenant
 from almasix.orbit.panels.users import OrbitUser, PanelNotification, UserMenuItem
@@ -3943,4 +3944,146 @@ def build_tenancy_variants() -> dict[str, tuple[str, str]]:
             "Tenancy — scoped list",
             scoped_shell,
         ),
+    }
+
+
+# --- resources ---------------------------------------------------------------
+
+
+class _GalleryCommentsRelation(RelationManager):
+    relationship = "comments"
+    title = "Comments"
+    description = "Reader replies attached to this post."
+    record_title_attribute = "author"
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return table.columns(
+            [
+                TextColumn.make("author").label("Author").searchable(),
+                TextColumn.make("body").label("Comment").limit(60),
+                TextColumn.make("status").label("Status").badge(),
+            ]
+        )
+
+
+class _GalleryPostResource(Resource):
+    model = type("Post", (), {})
+    slug = "posts"
+    navigation_label = "Posts"
+    record_title_attribute = "title"
+    model_label = "Post"
+    global_search_attributes = ("title", "body")
+    global_search_result_details = ("status",)
+    records: list[dict] = [
+        {
+            "id": 1,
+            "title": "Launch Orbit",
+            "status": "published",
+            "body": "Ship the admin panel.",
+            "comments": [
+                {"id": 1, "author": "Ada Lovelace", "body": "Shipping this week?", "status": "visible"},
+                {"id": 2, "author": "Grace Hopper", "body": "The tables feel fast now.", "status": "visible"},
+                {"id": 3, "author": "Anon", "body": "Removed by a moderator.", "status": "hidden"},
+            ],
+        }
+    ]
+
+    @classmethod
+    def get_records(cls) -> list[dict]:
+        return list(cls.records)
+
+    @classmethod
+    def infolist(cls, infolist: Infolist) -> Infolist:
+        return infolist.schema(
+            [
+                TextEntry.make("title").label("Title").weight("bold"),
+                TextEntry.make("status").label("Status").badge().color("success"),
+                TextEntry.make("body").label("Body"),
+            ]
+        )
+
+    @classmethod
+    def get_relations(cls) -> list[type]:
+        return [_GalleryCommentsRelation]
+
+
+class _GalleryArchiveResource(Resource):
+    model = type("Archive", (), {})
+    slug = "archives"
+    navigation_label = "Archive"
+    records_mutable = True
+    soft_deletes = True
+    records: list[dict] = [
+        {"id": 1, "title": "Quarterly report", "deleted_at": None},
+        {"id": 2, "title": "Legacy pricing page", "deleted_at": "2026-02-01"},
+    ]
+
+    @classmethod
+    def get_records(cls) -> list[dict]:
+        return list(cls.records)
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return table.heading("Archive").columns(
+            [
+                TextColumn.make("title").label("Title"),
+                TextColumn.make("deleted_at").label("Deleted").placeholder("—"),
+            ]
+        )
+
+
+def build_resource_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for the Resources docs shots."""
+    from almasix.orbit.panels.global_search import render_global_search_groups
+    from almasix.orbit.panels.pages.resource_pages import ViewRecord
+
+    _GalleryPostResource._panel_path = "/admin"
+    _GalleryArchiveResource._panel_path = "/admin"
+    record = _GalleryPostResource.records[0]
+
+    class _BoundView(ViewRecord):
+        resource = _GalleryPostResource
+
+    view_page = _BoundView.render(record=record)
+    relation = _GalleryCommentsRelation.render(record)
+
+    results = render_global_search_groups(
+        [
+            {
+                "label": "Posts",
+                "results": _GalleryPostResource.get_global_search_results("launch", [record]),
+            },
+            {
+                "label": "Authors",
+                "results": [
+                    {
+                        "title": "Ada Lovelace",
+                        "url": "/admin/authors/1",
+                        "details": {"Email": "ada@orbit.test"},
+                    }
+                ],
+            },
+        ]
+    )
+    search = (
+        '<div class="or-global-search" style="width: 26rem">'
+        '<input class="or-input or-global-search-input" type="search" value="launch" />'
+        '<div class="or-global-search-panel" '
+        'style="position: static; width: 100%; margin-top: 0.375rem">'
+        f"{results}</div></div>"
+    )
+
+    trashed = (
+        _GalleryArchiveResource.get_table()
+        .records(_GalleryArchiveResource.get_records())
+        .filter_state({"trashed": "with"})
+        .render()
+    )
+
+    return {
+        "resources/view-record": ("Resources — view page", view_page),
+        "resources/relation-manager": ("Resources — relation manager", relation),
+        "resources/global-search": ("Resources — global search", search),
+        "resources/soft-deletes": ("Resources — soft deletes", trashed),
     }
