@@ -7,15 +7,17 @@ hero:
   actions: []
 ---
 
-import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+import { Aside, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 **Orbit** is how you build admin panels in [Almasix](https://docs.almasix.com/) without leaving Python.
 
 Declare a panel. Point it at resources. Describe forms, tables, and actions with a fluent API. Orbit renders semantic `.or-*` markup on **Conduit** + **Alpine.js** — server is the source of truth, the browser stays snappy.
 
-:::tip[Orbit is its own package]
-Install [`almasix-orbit`](https://pypi.org/project/almasix-orbit/), register a panel, and you have a full admin shell — panels, resources, forms, tables, actions, notifications, and widgets — designed for Almasix and Python. No other admin framework required.
-:::
+<div class="filament-callout">
+	<Aside type="tip" title="A nod to Filament">
+		Orbit stands on the shoulders of [Filament](https://filamentphp.com/). Filament’s architecture — panels, resources, forms, tables, and how those pieces compose — played a major role in shaping Orbit’s features. We’re our own package for the Almasix/Python world, with our own rendering stack. Same *idea*, our *house*.
+	</Aside>
+</div>
 
 ## Packages
 
