@@ -5,6 +5,10 @@ description: CRUD resources — forms, tables, infolists, permissions, and page 
 
 A **resource** is one admin surface for a model. It owns the form (create/edit), table (index), optional infolist (view), permissions, and the usual index / create / edit / view routes. Register the resource class on a [panel](/panels/configuration/); Orbit mounts the pages under the panel path.
 
+![Orbit resource in the panel (light)](/examples/light/resources/overview.png)
+
+![Orbit resource in the panel (dark)](/examples/dark/resources/overview.png)
+
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit import Resource
 from almasix.orbit.forms import Form, TextInput

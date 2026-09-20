@@ -5,6 +5,10 @@ description: The create page — the resource form, what happens on submit, and 
 
 Every resource gets a create page at `{resource}/create`. It renders the resource's [form](/forms/overview/) with a Create button, and the heading uses the singular label — **Create post**, not *Create Posts*.
 
+![Orbit create page (light)](/examples/light/resources/creating.png)
+
+![Orbit create page (dark)](/examples/dark/resources/creating.png)
+
 ## The form is the page
 
 ```python title="app/orbit/resources/post_resource.py"

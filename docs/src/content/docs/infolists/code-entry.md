@@ -33,6 +33,18 @@ CodeEntry.make("source").label("Source").grammar("python").copyable()
 
 ![Orbit Code entry grammar (dark)](/examples/dark/infolists/code-entry/grammar.png)
 
+## JSON payloads
+
+Dicts and lists pretty-print as JSON inside the same `<pre><code>` wrapper. Pass a mapping on the record (or fill state) and the entry does the rest.
+
+```python title="app/orbit/resources/post_resource.py"
+CodeEntry.make("payload").label("Webhook payload")
+```
+
+![Orbit Code entry JSON (light)](/examples/light/infolists/code-entry/json.png)
+
+![Orbit Code entry JSON (dark)](/examples/dark/infolists/code-entry/json.png)
+
 ## API cheat sheet
 
 | Method | Notes |

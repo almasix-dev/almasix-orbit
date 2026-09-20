@@ -32,6 +32,10 @@ table.bulk_actions([
 ])
 ```
 
+![Orbit RestoreBulkAction (light)](/examples/light/actions/restore/bulk.png)
+
+![Orbit RestoreBulkAction (dark)](/examples/dark/actions/restore/bulk.png)
+
 ## With TrashedFilter
 
 Pair with table trash filters so restore only appears on deleted rows:

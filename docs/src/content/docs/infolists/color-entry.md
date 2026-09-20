@@ -33,6 +33,18 @@ ColorEntry.make("accent").label("Accent").copyable().copy_message("Hex copied")
 
 ![Orbit Color entry copyable (dark)](/examples/dark/infolists/color-entry/copyable.png)
 
+## Placeholder
+
+`.placeholder(...)` is the empty-state copy when the record has no color. Orbit does not invent `#000000` for display in that case.
+
+```python title="app/orbit/resources/post_resource.py"
+ColorEntry.make("accent").label("Accent").placeholder("No accent set")
+```
+
+![Orbit Color entry placeholder (light)](/examples/light/infolists/color-entry/placeholder.png)
+
+![Orbit Color entry placeholder (dark)](/examples/dark/infolists/color-entry/placeholder.png)
+
 ## API cheat sheet
 
 | Method | Notes |

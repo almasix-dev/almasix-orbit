@@ -36,6 +36,10 @@ from almasix.orbit.actions import ViewAction
 ViewAction.make().url(lambda record, **_: f"/posts/{record['id']}")
 ```
 
+![Orbit ViewAction URL (light)](/examples/light/actions/view/url.png)
+
+![Orbit ViewAction URL (dark)](/examples/dark/actions/view/url.png)
+
 Pair with an [Infolist](/infolists/overview/) on the resource when the view page should show typed read-only entries instead of a disabled form.
 
 ## Authorization

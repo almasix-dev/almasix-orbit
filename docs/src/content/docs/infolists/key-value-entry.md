@@ -36,6 +36,18 @@ KeyValueEntry.make("meta")
 
 ![Orbit Key-value entry labels (dark)](/examples/dark/infolists/key-value-entry/labels.png)
 
+## Empty mapping
+
+An empty dict still renders the table chrome with headers so the slot is obvious on a sparse record. Pair with `.placeholder(...)` on the shared entry when you would rather show a sentence than an empty table.
+
+```python title="app/orbit/resources/post_resource.py"
+KeyValueEntry.make("meta").label("Meta").placeholder("No metadata")
+```
+
+![Orbit Key-value entry empty (light)](/examples/light/infolists/key-value-entry/empty.png)
+
+![Orbit Key-value entry empty (dark)](/examples/dark/infolists/key-value-entry/empty.png)
+
 ## API cheat sheet
 
 | Method | Notes |

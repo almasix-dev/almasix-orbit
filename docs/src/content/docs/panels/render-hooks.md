@@ -7,6 +7,10 @@ description: Inject HTML into the Orbit panel shell at named positions — head,
 
 Use them for small, targeted HTML — scripts, meta tags, banners, analytics snippets, or third-party widgets — at well-known points in the document (`panels::head.end`, `panels::content.start`, and so on).
 
+![Orbit render hook banner (light)](/examples/light/panels/render-hooks.png)
+
+![Orbit render hook banner (dark)](/examples/dark/panels/render-hooks.png)
+
 ## How they work
 
 ```mermaid

@@ -54,4 +54,41 @@ Callout.make()
 
 ![Orbit Success callout (dark)](/examples/dark/schemas/callout/success.png)
 
+## Warning callout
+
+Caution that is not yet destructive.
+
+```python
+Callout.make()
+    .warning()
+    .label("Unpublished")
+    .description("This draft is not visible on the site.")
+```
+
+![Orbit Warning callout (light)](/examples/light/schemas/callout/warning.png)
+
+![Orbit Warning callout (dark)](/examples/dark/schemas/callout/warning.png)
+
+## Footer actions
+
+`.footer_actions([...])` renders buttons under the body. `.footer_actions_alignment("end")` (or `"start"` / `"center"`) aligns them.
+
+```python
+from almasix.orbit.actions import Action
+from almasix.orbit.schemas import Callout
+
+Callout.make()
+    .warning()
+    .label("Unsaved changes")
+    .description("Leave this page and the draft is lost.")
+    .footer_actions([Action.make("discard").label("Discard").color("danger")])
+    .footer_actions_alignment("end")
+```
+
+![Orbit Callout footer actions (light)](/examples/light/schemas/callout/footer.png)
+
+![Orbit Callout footer actions (dark)](/examples/dark/schemas/callout/footer.png)
+
+`.icon(...)` / `.icon_color(...)` override the status default. `.color(...)` sets the accent independently of `.status(...)`. Nested `.schema([...])` lands in the body under the description.
+
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

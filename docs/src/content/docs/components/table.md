@@ -3,9 +3,9 @@ title: Rendering a table
 description: Build and render Orbit tables outside a Resource.
 ---
 
-Tables don’t require a resource registration ceremony. Feed them records, columns, and optional actions — render HTML when you’re ready.
+Tables don’t require a resource. Feed them records, columns, and optional actions — call `.render()` when you’re ready. The same column and filter kit that powers [Listing records](/resources/listing-records/) works here.
 
-```python
+```python title="app/orbit/tables/posts.py"
 from almasix.orbit.tables import Table, TextColumn, BadgeColumn, SelectFilter
 from almasix.orbit.actions import EditAction, DeleteAction
 
@@ -35,6 +35,10 @@ table = (
 html = table.render()
 ```
 
+![Orbit standalone table (light)](/examples/light/components/table.png)
+
+![Orbit standalone table (dark)](/examples/dark/components/table.png)
+
 ## Lifecycle
 
 | Step | Method |
@@ -46,27 +50,22 @@ html = table.render()
 | Chrome | `.striped()`, empty-state copy, action slots |
 | Paint | `.render()` / `.to_dict()` |
 
-```html
-<div class="or-table-wrap">
-  <table class="or-table or-table-striped">
-    <thead>
-      <tr>
-        <th class="or-th">Title</th>
-        <th class="or-th">Status</th>
-        <th class="or-th"></th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="or-td"><span class="or-cell-text">Shipping Orbit docs</span></td>
-        <td class="or-td"><span class="or-badge or-color-primary">published</span></td>
-        <td class="or-td"><!-- row actions --></td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+In-memory search hits **searchable** columns; sort uses the column name as a key or attribute. Wire `.query()` (or the [query builder](/query-builder/overview/)) when the database should do the heavy lifting.
+
+## Empty state
+
+With no matching rows the table paints an [EmptyState](/schemas/empty-state/) in the body. Override the heading and description on the table when the copy should be domain-specific:
+
+```python
+Table.make("posts").empty_state_heading("No posts yet").empty_state_description(
+    "Create the first one from the header."
+)
 ```
 
-In-memory search hits **searchable** columns; sort uses the column name as a key/attribute. Wire `.query()` (or the [query builder](/query-builder/overview/)) when the database should do the heavy lifting.
+## Actions and filters
 
-See [Filters](/tables/filters/overview/) and [column types](/tables/columns/text/) for the rest of the kit.
+Row, bulk, and header actions are the same [Action](/actions/overview/) objects a resource table uses. Filters apply through `.apply` on each filter — see [Filters](/tables/filters/overview/).
+
+When you *do* have a model, prefer a [resource](/resources/overview/) so the list page, permissions, and record URLs stay in one place.
+
+See [column types](/tables/columns/text/) for the rest of the kit.
