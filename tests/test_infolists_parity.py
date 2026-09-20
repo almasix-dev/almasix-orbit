@@ -128,6 +128,55 @@ def test_badge_list_separator_and_slots() -> None:
     assert "or-align-end" in chrome and 'title="hover"' in chrome
     assert 'data-x="1"' in chrome and 'data-y="2"' in chrome
     assert "or-sr-only" in chrome
+    assert "or-entry-inline" not in chrome
+
+
+def test_inline_label_and_section_cascade() -> None:
+    inline = TextEntry.make("timezone").label("Timezone").inline_label().render(
+        record={"timezone": "UTC"}
+    )
+    assert "or-entry-inline" in inline
+    assert TextEntry.make("timezone").is_inline_label() is False
+    assert TextEntry.make("timezone").inline_label().is_inline_label() is True
+    assert TextEntry.make("title").hidden_label().is_label_hidden() is True
+
+    cascaded = (
+        Infolist.make()
+        .schema(
+            [
+                Section.make("settings")
+                .heading("Settings")
+                .inline_label()
+                .schema(
+                    [
+                        TextEntry.make("timezone").label("Timezone"),
+                        TextEntry.make("locale").label("Locale"),
+                    ]
+                ),
+            ]
+        )
+        .render({"timezone": "UTC", "locale": "en"})
+    )
+    assert cascaded.count("or-entry-inline") == 2
+    assert "or-section" in cascaded
+
+    stacked = TextEntry.make("title").render(record={"title": "Launch"})
+    assert "or-entry" in stacked and "or-entry-inline" not in stacked
+
+    from_infolist = (
+        Infolist.make()
+        .inline_label()
+        .schema([TextEntry.make("timezone").label("Timezone")])
+        .render({"timezone": "UTC"})
+    )
+    assert "or-entry-inline" in from_infolist
+
+    via_ctx = (
+        Infolist.make()
+        .schema([TextEntry.make("locale").label("Locale")])
+        .render({"locale": "en"}, inline_label=True)
+    )
+    assert "or-entry-inline" in via_ctx
 
 
 def test_icon_entry_boolean() -> None:

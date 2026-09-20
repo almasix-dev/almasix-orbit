@@ -5,7 +5,9 @@ description: RepeatableEntry nests an entry schema over each item in a list — 
 
 ## Introduction
 
-`RepeatableEntry` is the read-only cousin of a form repeater: each list item renders a nested entry schema. Use it for related rows, line items, or module lists on a view page.
+`RepeatableEntry` is the read-only cousin of a form repeater: each list item renders a nested entry schema. Reach for it on view pages when a record owns related rows — line items, modules, addresses — and you want the same typed entries (badges, icons, text) inside each card instead of a flat comma-joined string.
+
+Nested entries keep the stacked label-above-value default unless you opt into `.inline_label()`. Empty lists render an “No items” empty state so the chrome still explains what would appear.
 
 ## Basic repeatable entry
 

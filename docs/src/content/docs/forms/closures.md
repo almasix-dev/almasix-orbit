@@ -22,10 +22,6 @@ evaluate(lambda record: record['title'], record={'title': 'Hi'}, unused=1)
 # 'Hi' — unused is ignored because the lambda does not declare it
 ```
 
-![Orbit How evaluate filters utilities (light)](/examples/light/forms/text-input/basic.png)
-
-![Orbit How evaluate filters utilities (dark)](/examples/dark/forms/text-input/basic.png)
-
 ## Label, helper, hint, placeholder
 
 Almost every copy surface on `Component` / `Field` accepts a callable: `.label()`, `.helper_text()`, `.hint()`, `.hint_icon()`, `.placeholder()`, `.prefix()`, `.suffix()`, and content slots.
@@ -119,10 +115,6 @@ TextInput.make('title')
     .after_state_updated_js('console.debug($event)')
 ```
 
-![Orbit After state updated (light)](/examples/light/forms/text-input/basic.png)
-
-![Orbit After state updated (dark)](/examples/dark/forms/text-input/basic.png)
-
 ## Dehydrate transforms
 
 `.trim()` and `.strip_characters()` run inside `apply_dehydrate_transforms` before `.dehydrate_state_using()`. Custom dehydrate callbacks receive the (possibly trimmed) value plus context.
@@ -148,10 +140,6 @@ TextInput.make('name')
         True if value and value.lower() != 'admin' else 'That name is reserved.'
     ))
 ```
-
-![Orbit Validation callables (light)](/examples/light/forms/text-input/required.png)
-
-![Orbit Validation callables (dark)](/examples/dark/forms/text-input/required.png)
 
 ## Disable option when
 
@@ -218,10 +206,6 @@ field.render(
 errors = form.validate(state, operation='edit', record=post, user=request.user)
 ```
 
-![Orbit Typical utility names (light)](/examples/light/forms/text-input/basic.png)
-
-![Orbit Typical utility names (dark)](/examples/dark/forms/text-input/basic.png)
-
 | Utility | Common sources |
 |---------|----------------|
 | `record` | Resource edit/view fill |
@@ -245,8 +229,6 @@ TextInput.make('slug').disabled(lambda record=None, **_: bool(record and record.
 TextInput.make('slug').disabled(lambda **ctx: bool((ctx.get('record') or {}).get('published')))
 ```
 
-![Orbit Mental model (light)](/examples/light/forms/text-input/disabled.png)
-
-![Orbit Mental model (dark)](/examples/dark/forms/text-input/disabled.png)
+See also [Validation](/forms/validation/) for callable rules and [Support closures](/support/closures/) for the evaluate helper itself.
 
 For building new field types see [Custom fields](/forms/custom-fields/).

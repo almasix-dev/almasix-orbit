@@ -118,8 +118,3 @@ With [grouping](/tables/grouping/), the same summarizers can roll up per group a
 | `.numeric(decimal_places=…)` / `.prefix` / `.suffix` | Extra formatting |
 | `.using(callback)` / `.query(callback)` | Custom calc or scoped records |
 | `Table.summaries(page=…, all=…)` | Toggle footer scopes |
-
-## Preview
-
-![Summary footer (light)](/examples/light/tables/summaries.png)
-![Summary footer (dark)](/examples/dark/tables/summaries.png)

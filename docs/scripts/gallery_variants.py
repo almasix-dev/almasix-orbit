@@ -1557,6 +1557,43 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
                 state={"name": "Ada", "created_at": "2026-09-18"},
             ),
         ),
+        "forms/overview/inline-label": (
+            "Overview — inline label",
+            _form(
+                TextInput.make("timezone").label("Timezone").inline_label().placeholder("UTC"),
+                Toggle.make("marketing_emails").label("Marketing emails").inline_label(),
+                state={"timezone": "America/New_York", "marketing_emails": True},
+            ),
+        ),
+        "forms/overview/placeholder": (
+            "Overview — placeholder",
+            _form(
+                TextInput.make("email")
+                .label("Email")
+                .email()
+                .placeholder("you@acme.test")
+                .helper_text("We never share this address."),
+                state={},
+            ),
+        ),
+        "forms/overview/autofocus": (
+            "Overview — autofocus",
+            _form(
+                TextInput.make("title").label("Title").autofocus().required(),
+                Textarea.make("body").label("Body").rows(4),
+                state={"title": "", "body": ""},
+            ),
+        ),
+        "forms/overview/extra-attributes": (
+            "Overview — extra attributes",
+            _form(
+                TextInput.make("title")
+                .label("Title")
+                .extra_input_attributes({"data-testid": "post-title", "spellcheck": "true"})
+                .extra_field_wrapper_attributes({"data-tour": "title-field"}),
+                state={"title": "Launch Orbit"},
+            ),
+        ),
     }
 
 
@@ -1792,7 +1829,7 @@ def build_infolist_variants() -> dict[str, tuple[str, str]]:
         "status": "published",
         "email": "ada@orbit.test",
         "website": "https://orbit.almasix.com",
-        "body": "Orbit infolists mirror Filament’s read-only entries for resource view pages.",
+        "body": "Orbit infolists turn one record into a stacked detail sheet — labels above values, badges, and copyable slugs.",
         "md": "Ship **badges**, *icons*, and copyable slugs on the show page.",
         "html": "<em>Trusted</em> HTML when you opt in.",
         "bio": "Ada Lovelace wrote the first algorithm intended for a machine. "
@@ -1819,6 +1856,9 @@ def build_infolist_variants() -> dict[str, tuple[str, str]]:
         ],
         "author": {"name": "Ada Lovelace"},
         "notes": None,
+        "subtitle": "Admin panels for Python teams",
+        "timezone": "UTC",
+        "locale": "en-US",
     }
 
     return {
@@ -1830,7 +1870,6 @@ def build_infolist_variants() -> dict[str, tuple[str, str]]:
                 TextEntry.make("slug").label("Slug").copyable(),
                 TextEntry.make("author.name").label("Author"),
                 ImageEntry.make("photo").label("Cover").circular().size(48),
-                columns=2,
                 record=sample,
             ),
         ),
@@ -1853,6 +1892,23 @@ def build_infolist_variants() -> dict[str, tuple[str, str]]:
                 .helper_text("Used for invoices and notifications.")
                 .hint("Primary")
                 .hint_icon("heroicon-m-envelope"),
+                record=sample,
+            ),
+        ),
+        "infolists/overview/hidden-label": (
+            "Infolists — hidden label",
+            _infolist(
+                TextEntry.make("title").hidden_label().weight("bold").size("lg"),
+                TextEntry.make("subtitle").hidden_label().color("gray"),
+                record=sample,
+            ),
+        ),
+        "infolists/overview/inline-label": (
+            "Infolists — inline label",
+            _infolist(
+                TextEntry.make("timezone").label("Timezone").inline_label(),
+                TextEntry.make("locale").label("Locale").inline_label().default("en"),
+                TextEntry.make("email").label("Email").inline_label(),
                 record=sample,
             ),
         ),
@@ -1887,6 +1943,11 @@ def build_infolist_variants() -> dict[str, tuple[str, str]]:
                 TextEntry.make("email")
                 .label("Email")
                 .format_state_using(lambda state, **_: str(state or "").upper()),
+                TextEntry.make("full_name")
+                .label("Full name")
+                .state(
+                    lambda record, **_: f"{record.get('author', {}).get('name', 'Unknown')}"
+                ),
                 record=sample,
             ),
         ),
@@ -1921,6 +1982,21 @@ def build_infolist_variants() -> dict[str, tuple[str, str]]:
                 record=sample,
             ),
         ),
+        "infolists/overview/extra-attributes": (
+            "Infolists — extra attributes",
+            _infolist(
+                TextEntry.make("title")
+                .label("Title")
+                .weight("bold")
+                .extra_attributes({"data-tour": "title"})
+                .extra_entry_wrapper_attributes({"data-qa": "post-title"}),
+                TextEntry.make("slug")
+                .label("Slug")
+                .copyable()
+                .extra_entry_wrapper_attributes({"data-qa": "post-slug"}),
+                record=sample,
+            ),
+        ),
         "infolists/overview/columns": (
             "Infolists — columns",
             _infolist(
@@ -1929,6 +2005,31 @@ def build_infolist_variants() -> dict[str, tuple[str, str]]:
                 TextEntry.make("email").label("Email"),
                 TextEntry.make("slug").label("Slug").copyable(),
                 columns=2,
+                record=sample,
+            ),
+        ),
+        "infolists/overview/sections": (
+            "Infolists — sections",
+            _infolist(
+                Section.make("basics")
+                .heading("Basics")
+                .description("Core fields for this post.")
+                .schema(
+                    [
+                        TextEntry.make("title").label("Title").weight("bold"),
+                        TextEntry.make("status").label("Status").badge().color("success"),
+                        TextEntry.make("slug").label("Slug").copyable(),
+                    ]
+                ),
+                Section.make("author")
+                .heading("Author")
+                .schema(
+                    [
+                        TextEntry.make("author.name").label("Name"),
+                        TextEntry.make("email").label("Email"),
+                        ImageEntry.make("photo").label("Avatar").circular().size(40),
+                    ]
+                ),
                 record=sample,
             ),
         ),

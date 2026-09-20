@@ -140,10 +140,6 @@ Rating.make('score')
     .dehydrate_state_using(lambda value, **_: int(value or 0))
 ```
 
-![Orbit Dehydrate and trim (light)](/examples/light/forms/money-input/usd.png)
-
-![Orbit Dehydrate and trim (dark)](/examples/dark/forms/money-input/usd.png)
-
 ## Packaging and discovery
 
 Put shared fields under `app/orbit/shared/fields/` and import them in resources. Do **not** expect auto-discovery — register by import only. Keep SDUI in mind: `to_dict()` on Component dumps configuration for hosts that serialize schemas.
@@ -159,10 +155,6 @@ from app.orbit.shared.fields.rating import Rating
 # Import explicitly — fields are never auto-discovered.
 Rating.make('score').label('Score').required()
 ```
-
-![Orbit Packaging and discovery (light)](/examples/light/forms/slider/basic.png)
-
-![Orbit Packaging and discovery (dark)](/examples/dark/forms/slider/basic.png)
 
 ## When not to subclass
 

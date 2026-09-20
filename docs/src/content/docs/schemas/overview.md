@@ -5,9 +5,11 @@ description: Nest Orbit UI with Schema, layouts, callouts, empty states, and pri
 
 ## Introduction
 
-Schemas are the nesting fabric under forms, infolists, and anything else that needs a component tree. A `Schema` holds state, dehydrates fields, and renders children. Layouts organize fields; primes, callouts, and empty states add non-field chrome.
+**Schemas** are the nesting fabric under forms, infolists, and anything else that needs a component tree in the panel. A `Schema` holds state, dehydrates fields, and renders children — it is the shared substrate so create/edit forms, read-only show pages, and custom panel pages speak the same composition language.
 
-Compose with `.schema([...])` / `.components([...])`, hydrate with `.state()` / `.fill()`, read back with `.get_state()` / `.dehydrate()`, and render HTML for Conduit hosts. The same nesting model powers create/edit forms, read-only infolists, and custom panel pages.
+Layouts (`Section`, `Tabs`, `Grid`, `Wizard`, …) organize children without caring whether those children are form fields or infolist entries. Primes, callouts, and empty states add non-field chrome when you need display-only pieces beside inputs.
+
+Compose with `.schema([...])` / `.components([...])`, hydrate with `.state()` / `.fill()`, read back with `.get_state()` / `.dehydrate()`, and render HTML for Conduit hosts. Start here when you need structure; jump to [Forms](/forms/overview/) or [Infolists](/infolists/overview/) when you need typed fields or entries.
 
 ## Available components
 

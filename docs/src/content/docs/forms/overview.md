@@ -5,9 +5,11 @@ description: Build Orbit forms with fluent fields — labels, defaults, visibili
 
 ## Introduction
 
-A form is how Orbit collects and validates user input in an admin panel. In Python you declare fields with a fluent API; Conduit hosts turn that config into HTML. A `Form` is a [`Schema`](/schemas/overview/) specialized for input: compose with `.schema([...])`, hydrate with `.fill(...)`, collect values with `.dehydrate()`, and check rules with `.validate(...)`. Your Python config owns chrome, visibility, and dehydration — the host only renders and posts state.
+A **form** is how Orbit collects and validates user input in an admin panel — create a post, edit a profile, configure settings. In Python you declare fields with a fluent API; Conduit hosts turn that config into HTML and post state back. Think of the form as the writable counterpart to an [infolist](/infolists/overview/): same nesting fabric, different job.
 
-Use `.operation("create" | "edit" | "view")` so `.disabled_on` / `.hidden_on` / `.visible_on` can branch without bespoke callables. Nest fields in [Sections](/schemas/sections/), [Tabs](/schemas/tabs/), [Grids](/schemas/grid/), and [Wizards](/schemas/wizards/).
+A `Form` is a [`Schema`](/schemas/overview/) specialized for input: compose with `.schema([...])`, hydrate with `.fill(...)`, collect values with `.dehydrate()`, and check rules with `.validate(...)`. Your Python config owns chrome, visibility, and dehydration — the host only renders and posts state. On a [resource](/resources/overview/), wire `form()` once and create / edit pages reuse it; you can also embed a standalone `Form` on a custom page.
+
+Use `.operation("create" | "edit" | "view")` so `.disabled_on` / `.hidden_on` / `.visible_on` can branch without bespoke callables. Nest fields in [Sections](/schemas/sections/), [Tabs](/schemas/tabs/), [Grids](/schemas/grid/), and [Wizards](/schemas/wizards/) when a flat list of fields is not enough.
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.forms import Form, TextInput, Select, Toggle
@@ -54,8 +56,6 @@ TextInput.make("name").required()
 Select.make("role").options({"editor": "Editor", "admin": "Admin"})
 Toggle.make("active").default(True)
 ```
-![Orbit Forms overview (light)](/examples/light/forms/overview.png)
-![Orbit Forms overview (dark)](/examples/dark/forms/overview.png)
 
 ## Validating fields
 
@@ -75,8 +75,8 @@ form = Form.make("signup").schema([
 ])
 errors = form.validate({"email": "a", "password": "x", "password_confirmation": "y", "role": "admin"})
 ```
-![Orbit Forms overview (light)](/examples/light/forms/overview.png)
-![Orbit Forms overview (dark)](/examples/dark/forms/overview.png)
+![Orbit required field (light)](/examples/light/forms/text-input/required.png)
+![Orbit required field (dark)](/examples/dark/forms/text-input/required.png)
 
 ## Setting a field's label
 
@@ -174,8 +174,6 @@ Select.make("status")
 TextInput.make("published_at")
     .visible(lambda state=None, **_: (state or {}).get("status") == "published")
 ```
-![Orbit operation-aware fields (light)](/examples/light/forms/overview/operation.png)
-![Orbit operation-aware fields (dark)](/examples/dark/forms/overview/operation.png)
 
 ### Hiding a field based on the current operation
 
@@ -187,8 +185,6 @@ from almasix.orbit.forms import TextInput
 TextInput.make("created_by").hidden_on("create")
 TextInput.make("migration_token").visible_on("create")
 ```
-![Orbit operation visibility (light)](/examples/light/forms/overview/operation.png)
-![Orbit operation visibility (dark)](/examples/dark/forms/overview/operation.png)
 
 ## Inline labels
 
@@ -200,8 +196,8 @@ from almasix.orbit.forms import TextInput, Toggle
 TextInput.make("timezone").inline_label().placeholder("UTC")
 Toggle.make("marketing_emails").label("Marketing emails").inline_label()
 ```
-![Orbit field labels (light)](/examples/light/forms/overview/labels.png)
-![Orbit field labels (dark)](/examples/dark/forms/overview/labels.png)
+![Orbit inline labels (light)](/examples/light/forms/overview/inline-label.png)
+![Orbit inline labels (dark)](/examples/dark/forms/overview/inline-label.png)
 
 ## Autofocusing a field when the schema is loaded
 
@@ -213,8 +209,8 @@ from almasix.orbit.forms import TextInput, Textarea
 TextInput.make("title").autofocus().required()
 Textarea.make("body").rows(8)
 ```
-![Orbit Forms overview (light)](/examples/light/forms/overview.png)
-![Orbit Forms overview (dark)](/examples/dark/forms/overview.png)
+![Orbit autofocus (light)](/examples/light/forms/overview/autofocus.png)
+![Orbit autofocus (dark)](/examples/dark/forms/overview/autofocus.png)
 
 ## Setting the placeholder of a field
 
@@ -228,8 +224,8 @@ TextInput.make("email")
     .placeholder("you@acme.test")
     .helper_text("We never share this address.")
 ```
-![Orbit field labels (light)](/examples/light/forms/overview/labels.png)
-![Orbit field labels (dark)](/examples/dark/forms/overview/labels.png)
+![Orbit field placeholder (light)](/examples/light/forms/overview/placeholder.png)
+![Orbit field placeholder (dark)](/examples/dark/forms/overview/placeholder.png)
 
 ## Adding extra content to a field
 
@@ -262,8 +258,8 @@ TextInput.make("title")
     .extra_input_attributes({"data-testid": "post-title", "spellcheck": "true"})
     .extra_field_wrapper_attributes({"data-tour": "title-field"})
 ```
-![Orbit Forms overview (light)](/examples/light/forms/overview.png)
-![Orbit Forms overview (dark)](/examples/dark/forms/overview.png)
+![Orbit extra attributes (light)](/examples/light/forms/overview/extra-attributes.png)
+![Orbit extra attributes (dark)](/examples/dark/forms/overview/extra-attributes.png)
 
 ## Field utility injection
 
@@ -280,8 +276,6 @@ Select.make("assignee_id")
     .options(lambda **ctx: ctx.get("assignees", {}))
     .disabled(lambda user=None, **_: not getattr(user, "is_manager", False))
 ```
-![Orbit Forms overview (light)](/examples/light/forms/overview.png)
-![Orbit Forms overview (dark)](/examples/dark/forms/overview.png)
 
 ## The basics of reactivity
 
@@ -313,8 +307,6 @@ form = Form.make("account").schema([
 form.fill({"email": "  Ada@Example.COM  ", "phone": "(555) 010-0200"})
 payload = form.dehydrate()
 ```
-![Orbit live field (light)](/examples/light/forms/overview/live.png)
-![Orbit live field (dark)](/examples/dark/forms/overview/live.png)
 
 ## Saving data to relationships
 
@@ -334,8 +326,8 @@ Repeater.make("tracks").relationship("tracks").schema([
     TextInput.make("duration").numeric(),
 ])
 ```
-![Orbit Forms overview (light)](/examples/light/forms/overview.png)
-![Orbit Forms overview (dark)](/examples/dark/forms/overview.png)
+![Orbit relationship select (light)](/examples/light/forms/select/searchable.png)
+![Orbit relationship select (dark)](/examples/dark/forms/select/searchable.png)
 
 ## Global settings
 
@@ -348,8 +340,6 @@ from almasix.orbit.forms import Form
 Schema.configure_using(lambda schema: schema.columns(1))
 Form.make("settings").schema([...])
 ```
-![Orbit Forms overview (light)](/examples/light/forms/overview.png)
-![Orbit Forms overview (dark)](/examples/dark/forms/overview.png)
 
 ## Field catalog
 
@@ -375,5 +365,3 @@ TextInput.make("title")
     .required().mark_as_required().trim().live(debounce=300)
     .extra_input_attributes({"autocomplete": "off"})
 ```
-![Orbit Forms overview (light)](/examples/light/forms/overview.png)
-![Orbit Forms overview (dark)](/examples/dark/forms/overview.png)

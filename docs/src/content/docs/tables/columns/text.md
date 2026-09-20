@@ -230,8 +230,8 @@ You may switch to a serif or monospaced font for identifiers, code, or amounts:
 TextColumn.make("reference").font_family("mono")
 ```
 
-![Text size, weight, and font family (light)](/examples/light/tables/text-formatting.png)
-![Text size, weight, and font family (dark)](/examples/dark/tables/text-formatting.png)
+![Text size, weight, and font family (light)](/examples/light/tables/text-features.png)
+![Text size, weight, and font family (dark)](/examples/dark/tables/text-features.png)
 
 ## Limiting text length
 
@@ -355,14 +355,3 @@ Table.make("orders").columns([
 | `.format_state_using(callback)` | Transform the display value only |
 
 See [Columns overview](/tables/columns/overview/) for the shared APIs every column type gets for free — state, sorting, searching, tooltips, visibility, and more.
-
-## Preview
-
-![Text column formatting (light)](/examples/light/tables/text-formatting.png)
-![Text column formatting (dark)](/examples/dark/tables/text-formatting.png)
-
-![Text column icons (light)](/examples/light/tables/text-icons.png)
-![Text column icons (dark)](/examples/dark/tables/text-icons.png)
-
-![Money (light)](/examples/light/tables/money.png)
-![Money (dark)](/examples/dark/tables/money.png)

@@ -5,7 +5,9 @@ description: IconEntry renders a Heroicon from state, or boolean true/false icon
 
 ## Introduction
 
-`IconEntry` is icon-forward: the value itself is treated as an icon name, or you pass `.icon(...)` / `.boolean()` for check / x display. Shared [Entry chrome](/infolists/overview/) (label, helper, placeholder, tooltip) still applies.
+`IconEntry` is icon-forward: the value itself is treated as an icon name, or you pass `.icon(...)` / `.boolean()` for check / x display. Use it when the show page should lead with a glyph — status pictogram, feature flag, presence — instead of a text string.
+
+Shared [Entry chrome](/infolists/overview/) (label, helper, placeholder, tooltip) still applies — labels stack above the icon by default.
 
 ## Basic icon entry
 

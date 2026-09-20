@@ -7,7 +7,7 @@ description: Define Orbit tables — columns, search, sort, filters, actions, pa
 
 A **table** is how Orbit lists records in the admin UI: one row per record, columns for fields, and toolbar chrome for search, filters, and actions. You configure the table in Python with a fluent API (`Table.make(...).columns([...]).filters([...])` and so on). Orbit renders HTML; the Conduit list host hydrates interactivity (typing in search, clicking sort headers, changing page, bulk-selecting rows).
 
-You usually attach a table to a [Resource](/resources/listing-records/) so list / create / edit pages stay wired together. You can also embed a [standalone table](/components/table/) on a custom page. Column types, filters, actions, grouping, summaries, and cell layouts each have dedicated guides (see [Guides](#guides) below).
+You usually attach a table to a [Resource](/resources/listing-records/) so list / create / edit pages stay wired together — the list page is often the first screen operators live in. You can also embed a [standalone table](/components/table/) on a custom page or inside a [table widget](/widgets/tables/). Column types, filters, actions, grouping, summaries, and cell layouts each have dedicated guides (see [Guides](#guides) below).
 
 ![Table overview (light)](/examples/light/tables/overview.png)
 

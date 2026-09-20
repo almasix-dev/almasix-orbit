@@ -113,8 +113,3 @@ Component-specific:
 - `Split.from_breakpoint("md")` — stack below, split from breakpoint up
 - `Grid.columns(n)` — column count
 - `View.content(html)` — wrapper with `{children}` placeholder
-
-## Preview
-
-![Cell layout (light)](/examples/light/tables/layout.png)
-![Cell layout (dark)](/examples/dark/tables/layout.png)

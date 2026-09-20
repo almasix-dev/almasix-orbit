@@ -142,6 +142,12 @@ class Component:
         self._inline_label = condition
         return self
 
+    def is_inline_label(self) -> bool:
+        return self._inline_label
+
+    def is_label_hidden(self) -> bool:
+        return self._hidden_label
+
     def is_dehydrated(self) -> bool:
         return self._dehydrated
 

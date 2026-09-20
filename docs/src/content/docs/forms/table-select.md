@@ -54,10 +54,6 @@ TableSelect.make('author_id')
     .preload()
 ```
 
-![Orbit Relationship-backed options (light)](/examples/light/forms/select/searchable.png)
-
-![Orbit Relationship-backed options (dark)](/examples/dark/forms/select/searchable.png)
-
 ## Multiple selection
 
 `.multiple()` emits a multi select with table CSS classes. True checkbox-table embedding remains deferred.

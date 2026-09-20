@@ -8,8 +8,9 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 |------:|---------|------|--------|
 | 1–98 | Prior modules (tables → notifications) | (prior) | **closed** |
 | 99 | Multi-tenancy | `docs/src/content/docs/users/tenancy.md` | **closed** |
-| 100+ | Remaining Orbit doc features | docs nav | queued |
+| 100 | Infolists UI default layout + docs depth | `docs/src/content/docs/infolists/overview.md` | **closed** |
+| 101+ | Remaining Orbit doc features | docs nav | queued |
 
-## Tenancy autopilot — closed
+## Infolists layout + docs depth — closed
 
-**Bar:** Full multi-tenancy API + UX on the panel (switcher, registration/profile/billing hooks, query scoping, resource opt-out, tenant middleware, user HasTenants), Orbit-first Filament-depth docs, 100% coverage on tenancy surface, orbit-admin sample + light/dark shots.
+**Bar:** Stacked label-above-value default (`.or-entry-inline` for side-by-side), Orbit-first overview depth (hidden/inline labels, sections, extra attrs, utility injection) with unique gallery shots, 100% coverage on infolists surface, vendor CSS synced.
