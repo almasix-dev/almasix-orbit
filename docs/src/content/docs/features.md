@@ -104,9 +104,9 @@ See [Navigation overview](/navigation/overview/).
 - Text / select / boolean / date / number constraints with typed value widgets
 - Operators: equals, contains, comparisons, set checks, `in`
 - AND / OR rule logic, `.add_rule()`, table `QueryBuilderFilter`
-- Fluent `Component` base, colors, Heroicons, `e` / `tag` helpers
+- Fluent `Component` base (`.key()`, `.grow()`, `.when()`, `.live()`), colors with 50–950 palettes, Heroicon aliases, `HtmlString` / `e` / `classes` / `tag`
 
-See [Query builder](/query-builder/overview/).
+See [Query builder](/query-builder/overview/) and [Support](/support/overview/).
 
 ## Rendering stack
 

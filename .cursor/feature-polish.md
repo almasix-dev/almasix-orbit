@@ -18,11 +18,15 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 107 | Notifications production adapters (SQLite store + broadcast hub + `/orbit-live`) | `docs/src/content/docs/notifications/{database,broadcast}-notifications.md` | **closed** |
 | 108 | Panels platform (SPA mode, billing adapters, multi-panel registry) | `docs/src/content/docs/panels/configuration.md` | **closed** |
 | 109 | Docs completeness pass (thin pages, unique shots, alignment) | `docs/src/content/docs/**` | **closed** |
-| 110 | Support toolkit polish | `docs/src/content/docs/support/*` | queued |
+| 110 | Support toolkit polish | `docs/src/content/docs/support/*` | **closed** |
 
 ## Infolists layout + docs depth — closed
 
 **Bar:** Stacked label-above-value default (`.or-entry-inline` for side-by-side), Orbit-first overview depth (hidden/inline labels, sections, extra attrs, utility injection) with unique gallery shots, 100% coverage on infolists surface, vendor CSS synced.
+
+## Support toolkit — closed
+
+**Bar:** `HtmlString` / `classes` / `e()` `__html__`, `Component.key` / `.grow` / `.when`, `Colors.palette` + `css_var`, Heroicon aliases, Orbit-first support docs with unique gallery shots, 100% coverage.
 
 ## Docs completeness — closed
 

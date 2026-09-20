@@ -1,4 +1,4 @@
-"""Evaluate static values or callables with a shared context (Filament-style)."""
+"""Evaluate static values or callables with a shared render context."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ T = TypeVar("T")
 
 
 def _callable_kwargs(candidate: Any, ctx: dict[str, Any]) -> dict[str, Any]:
-    """Keep only kwargs the callable accepts (Filament-style utility injection)."""
+    """Keep only kwargs the callable accepts (utility injection)."""
     try:
         sig = inspect.signature(candidate)
     except (TypeError, ValueError):

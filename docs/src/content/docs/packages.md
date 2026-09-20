@@ -38,7 +38,7 @@ from almasix.orbit.schemas import Section, Grid, Tabs
 from almasix.orbit.notifications import Notification, Notifier, get_notifier
 from almasix.orbit.widgets import StatsOverviewWidget
 from almasix.orbit.query_builder import QueryBuilder, TextConstraint
-from almasix.orbit.support import Color, icon, evaluate
+from almasix.orbit.support import Color, icon, evaluate, HtmlString
 from almasix.orbit.testing import LiveResource
 ```
 
