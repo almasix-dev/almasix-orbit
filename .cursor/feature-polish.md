@@ -16,6 +16,7 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 114 | Third-party plugin scaffold + listing YAML | `docs/src/content/docs/panels/plugins.md` | **closed** |
 | 115 | Marketplace Star → GitHub API | `docs/src/content/docs/plugins/overview.md` | **closed** |
 | 116 | Docs version trees (`/0.x/` vs `/main/`) | `docs/src/content/docs/prologue/versions.md` | **closed** |
+| 117 | Official plugin: Orbit Permission | `docs/src/data/marketplace/plugins/orbit-permission.yaml` | **closed** |
 | 102 | Resources depth (relation managers, global search, record titles, soft deletes) | `docs/src/content/docs/resources/*` | **closed** |
 | 103 | Forms leftovers (FileUpload endpoint, RichEditor, MorphTo live search, ModalTableSelect / KeyValue hosts) | `docs/src/content/docs/forms/{file-upload,rich-editor,morph-to-select,modal-table-select,key-value}.md` | **closed** |
 | 104 | Import / export job runners | `docs/src/content/docs/actions/{import,export}.md` | **closed** |
@@ -25,6 +26,10 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 108 | Panels platform (SPA mode, billing adapters, multi-panel registry) | `docs/src/content/docs/panels/configuration.md` | **closed** |
 | 109 | Docs completeness pass (thin pages, unique shots, alignment) | `docs/src/content/docs/**` | **closed** |
 | 110 | Support toolkit polish | `docs/src/content/docs/support/*` | **closed** |
+
+## Official Orbit Permission plugin — closed
+
+**Bar:** First official marketplace product plugin (`almasix-orbit-permission`): Users / Roles / Permissions resources, generator, super-admin command, Access widget, listing + images, Orbit-first README. Repo: [almasix-dev/almasix-orbit-permission](https://github.com/almasix-dev/almasix-orbit-permission).
 
 ## Docs version trees — closed
 

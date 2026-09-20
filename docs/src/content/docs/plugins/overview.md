@@ -56,7 +56,7 @@ Draft templates (`example-plugin`, `example-author`) ship in the repo so you can
 
 ## Official vs community
 
-Listings marked **Official** are built and maintained by Almasix. The author slug must be `almasix`; validators reject `official: true` on anyone else. Everything else is third-party: useful, often excellent, but not security-reviewed by the Orbit team. A plugin runs with the same privileges as the rest of your application — read the source before you deploy it.
+Listings marked **Official** are built and maintained by Almasix. The author slug must be `almasix`; validators reject `official: true` on anyone else. The first product plugin is [Orbit Permission](/plugins/orbit-permission/) — Users, Roles, and Permissions on a panel. Everything else is third-party: useful, often excellent, but not security-reviewed by the Orbit team. A plugin runs with the same privileges as the rest of your application — read the source before you deploy it.
 
 If you find malware or a security problem an author will not fix, [open a security advisory](https://github.com/almasix-dev/almasix-orbit/security/advisories/new) and we will unlist the plugin while we investigate.
 

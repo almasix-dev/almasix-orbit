@@ -12,6 +12,8 @@ header switcher.
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+- Official plugin [Orbit Permission](/plugins/orbit-permission/) (`almasix-orbit-permission`) — Users, Roles, and Permissions UI on `almasix-permission`
+
 ## 0.4.1
 
 Patch: the default panel home (`GET /admin`) failed under Almasix’s controller binder because dashboard (and other) route actions used `**_e` / `**_extra`. Those catch-alls are gone; handlers take `request` plus optional `tenant` / `record_id` only.
