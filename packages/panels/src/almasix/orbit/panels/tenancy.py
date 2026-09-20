@@ -301,15 +301,9 @@ class Tenancy:
         return _resolve_tenancy_page(self._profile, default_cls=EditTenantProfile)
 
     def billing_page(self) -> type[Any] | None:
+        from almasix.orbit.panels.pages.tenancy import ManageBilling
 
-        # Billing slot reuses a profile-like page stub unless a custom class is given.
-        if self._billing is False:
-            return None
-        if self._billing is True:
-            return None  # flag-only until a provider / page is supplied
-        if isinstance(self._billing, type):
-            return self._billing
-        return None
+        return _resolve_tenancy_page(self._billing, default_cls=ManageBilling)
 
     def route_prefix_segment(self) -> str:
         """URL segment before ``{tenant}``, or empty when prefix is a bare bool."""

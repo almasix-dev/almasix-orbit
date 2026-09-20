@@ -1460,6 +1460,26 @@ html:not([data-theme-preference]) .or-theme-icon-system {
   box-shadow: var(--or-shadow-card);
 }
 
+.or-billing-plans {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  margin-top: 1rem;
+}
+
+.or-billing-plan {
+  padding: 1rem 1.15rem;
+}
+
+.or-billing-plan.is-current {
+  outline: 2px solid var(--or-primary);
+}
+
+.or-billing-price {
+  font-weight: 600;
+  margin: 0.25rem 0 0.5rem;
+}
+
 .or-auth-shell {
   min-height: 100dvh;
   display: grid;

@@ -75,7 +75,8 @@ See [Notifications overview](/notifications/overview/).
 - Login / Register / Profile auth pages
 - MFA: authenticator TOTP + email codes (`AppAuthentication` / `EmailAuthentication`)
 - Multi-tenancy: `Panel.tenant` / `Tenancy`, switcher, `HasTenants`, query scoping, resource opt-out
-- Tenant registration / profile / billing page slots, route prefix, tenant middleware
+- Tenant registration / profile / billing (`ManageBilling` + pluggable `BillingProvider`)
+- Multi-panel registry (`get_by_path` / `get_by_domain`) and per-panel `.spa()` navigation
 
 See [Users overview](/users/overview/) and [Multi-tenancy](/users/tenancy/).
 
@@ -115,5 +116,5 @@ See [Query builder](/query-builder/overview/).
 - Publishable `orbit-assets` tag
 
 :::note[Still cooking]
-SPA mode is still landing. Relation managers, global search, record titles, and soft deletes ship today — see [Resources](/resources/overview/).
+SPA mode ships as `.spa()` — in-panel links swap `main.or-content` without a full reload. Relation managers, global search, record titles, and soft deletes are documented under [Resources](/resources/overview/).
 :::

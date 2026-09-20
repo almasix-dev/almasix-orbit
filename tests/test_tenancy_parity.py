@@ -8,6 +8,7 @@ import pytest
 from almasix.orbit.panels import (
     EditTenantProfile,
     HasTenants,
+    ManageBilling,
     Panel,
     RegisterTenant,
     Resource,
@@ -355,6 +356,8 @@ def test_package_exports() -> None:
     assert panels_pkg.HasTenants is HasTenants
     assert panels_pkg.RegisterTenant is RegisterTenant
     assert panels_pkg.EditTenantProfile is EditTenantProfile
+    assert panels_pkg.ManageBilling is ManageBilling
+    assert panels_pkg.ManageBilling is ManageBilling
 
 
 def test_tenancy_edge_branches() -> None:
@@ -364,8 +367,8 @@ def test_tenancy_edge_branches() -> None:
     assert Tenancy().find_by_slug(None) is None
     assert Tenancy().path_prefix_for("x") == ""
     assert Tenancy().associate_record({"a": 1}) == {"a": 1}
-    assert Tenancy().billing(True).billing_page() is None
-    assert Tenancy().billing("nope").billing_page() is None  # type: ignore[arg-type]
+    assert Tenancy().billing(True).billing_page() is ManageBilling
+    assert Tenancy().billing("nope").billing_page() is ManageBilling  # type: ignore[arg-type]
     assert Tenancy().registration(False).registration_page() is None
     assert _resolve_tenancy_page(False, default_cls=RegisterTenant) is None
     assert _resolve_tenancy_page(True, default_cls=RegisterTenant) is RegisterTenant

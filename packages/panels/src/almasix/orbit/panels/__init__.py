@@ -1,4 +1,5 @@
 from almasix.orbit.panels.auth import Login, MfaChallenge, Register
+from almasix.orbit.panels.billing import BillingPlan, MemoryBillingProvider
 from almasix.orbit.panels.cluster import Cluster
 from almasix.orbit.panels.mfa import AppAuthentication, EmailAuthentication
 from almasix.orbit.panels.navigation import (
@@ -9,7 +10,7 @@ from almasix.orbit.panels.navigation import (
 )
 from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.pages.dashboard import Dashboard
-from almasix.orbit.panels.pages.tenancy import EditTenantProfile, RegisterTenant
+from almasix.orbit.panels.pages.tenancy import EditTenantProfile, ManageBilling, RegisterTenant
 from almasix.orbit.panels.panel import Panel, PanelRegistry
 from almasix.orbit.panels.relation_manager import RelationManager
 from almasix.orbit.panels.resource import Resource
@@ -41,4 +42,7 @@ __all__ = [
     "HasTenants",
     "RegisterTenant",
     "EditTenantProfile",
+    "ManageBilling",
+    "BillingPlan",
+    "MemoryBillingProvider",
 ]

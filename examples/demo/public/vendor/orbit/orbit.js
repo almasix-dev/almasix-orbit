@@ -63,6 +63,82 @@
         } catch (_) {
           /* ignore */
         }
+        this._initSpa();
+      },
+      destroy() {
+        if (this._spaClick) {
+          document.removeEventListener("click", this._spaClick);
+        }
+        if (this._spaPop) {
+          window.removeEventListener("popstate", this._spaPop);
+        }
+      },
+      _initSpa() {
+        const rootEl = document.documentElement;
+        if (rootEl.getAttribute("data-orbit-spa") !== "true") return;
+        this._spaRoot = rootEl.getAttribute("data-orbit-spa-root") || "/";
+        this._spaExceptions = (rootEl.getAttribute("data-orbit-spa-exceptions") || "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        this._spaClick = (event) => this._onSpaClick(event);
+        this._spaPop = () => this._spaLoad(location.href, false);
+        document.addEventListener("click", this._spaClick);
+        window.addEventListener("popstate", this._spaPop);
+      },
+      _spaShouldHandle(anchor) {
+        if (!anchor || !anchor.getAttribute) return false;
+        if (anchor.target === "_blank" || anchor.hasAttribute("download")) return false;
+        if (anchor.getAttribute("data-orbit-spa") === "false") return false;
+        let url;
+        try {
+          url = new URL(anchor.href, location.origin);
+        } catch (_) {
+          return false;
+        }
+        if (url.origin !== location.origin) return false;
+        if (url.pathname === location.pathname && url.search === location.search) return false;
+        const path = url.pathname;
+        const root = this._spaRoot === "/" ? "" : String(this._spaRoot).replace(/\/$/, "");
+        if (root && path !== root && !path.startsWith(`${root}/`)) return false;
+        return !this._spaExceptions.some(
+          (ex) => path === ex || path.endsWith(ex) || path.includes(ex),
+        );
+      },
+      _onSpaClick(event) {
+        if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+          return;
+        }
+        const anchor = event.target?.closest?.("a[href]");
+        if (!this._spaShouldHandle(anchor)) return;
+        event.preventDefault();
+        this._spaLoad(anchor.href, true);
+      },
+      async _spaLoad(href, push) {
+        try {
+          const res = await fetch(href, {
+            headers: { "X-Orbit-Spa": "1", Accept: "text/html" },
+            credentials: "same-origin",
+          });
+          if (!res.ok) {
+            location.href = href;
+            return;
+          }
+          const html = await res.text();
+          const doc = new DOMParser().parseFromString(html, "text/html");
+          const nextMain = doc.querySelector("main.or-content");
+          const curMain = document.querySelector("main.or-content");
+          if (!nextMain || !curMain) {
+            location.href = href;
+            return;
+          }
+          curMain.replaceWith(nextMain);
+          document.title = doc.title;
+          if (push) history.pushState({}, "", href);
+          window.dispatchEvent(new CustomEvent("orbit:spa-navigated", { detail: { href } }));
+        } catch (_) {
+          location.href = href;
+        }
       },
       resolvedTheme() {
         if (this.theme === "dark") return "dark";
