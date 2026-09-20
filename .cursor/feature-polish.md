@@ -6,22 +6,10 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 
 | Order | Feature | Docs | Status |
 |------:|---------|------|--------|
-| 1–17 | Panel / Tables / Columns / Filters | (prior) | **closed** |
-| 18–30 | Schemas module | `docs/src/content/docs/schemas/*` | **closed** |
-| 31–65 | Forms module | `docs/src/content/docs/forms/*` | **closed** |
-| 66–74 | Infolists module | `docs/src/content/docs/infolists/*` | **closed** |
-| 75–86 | Actions module | `docs/src/content/docs/actions/*` | **closed** |
-| 87–91 | Widgets + Dashboard | `docs/src/content/docs/widgets/*`, `panels/dashboard.md` | **closed** |
-| 92–95 | Navigation | `docs/src/content/docs/navigation/*` | **closed** |
-| 96 | Notifications overview | `docs/src/content/docs/notifications/overview.md` | **closed** |
-| 97 | Database notifications | `docs/src/content/docs/notifications/database-notifications.md` | **closed** |
-| 98 | Broadcast notifications | `docs/src/content/docs/notifications/broadcast-notifications.md` | **closed** |
-| 99+ | Remaining Orbit doc features | docs nav | queued |
+| 1–98 | Prior modules (tables → notifications) | (prior) | **closed** |
+| 99 | Multi-tenancy | `docs/src/content/docs/users/tenancy.md` | **closed** |
+| 100+ | Remaining Orbit doc features | docs nav | queued |
 
-## Notifications autopilot — closed
+## Tenancy autopilot — closed
 
-**Bar:** 100% Filament 5 Notifications parity (API + UX + DX), toast host + JS client, database bell, broadcast adapter, Filament-depth docs + light/dark screenshots, 100% coverage, orbit-admin sample.
-
-### Scope
-
-Fluent API (title/body/icon/color/duration/persistent/actions/send), Alpine toast host, OrbitNotification JS client, action→toast wiring, database notifications panel UI, broadcast/live notifier, testing helpers.
+**Bar:** Full multi-tenancy API + UX on the panel (switcher, registration/profile/billing hooks, query scoping, resource opt-out, tenant middleware, user HasTenants), Orbit-first Filament-depth docs, 100% coverage on tenancy surface, orbit-admin sample + light/dark shots.

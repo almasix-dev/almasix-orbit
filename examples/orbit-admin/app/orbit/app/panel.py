@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from almasix.orbit import Panel, PanelRegistry
 from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem, NavigationSubgroup
+from almasix.orbit.panels.tenancy import Tenancy, Tenant
 from almasix.orbit.panels.users import PanelNotification, UserMenuItem
 from app.orbit.app.clusters.settings_hub_cluster import SettingsHubCluster
 from app.orbit.app.pages.nav_account_pages import NavAccountPage, NavPreferencesPage
@@ -26,6 +27,7 @@ from app.orbit.app.resources.notifications_overview_resource import Notification
 from app.orbit.app.resources.post_resource import PostResource
 from app.orbit.app.resources.settings_resource import SettingsResource
 from app.orbit.app.resources.tables_overview_resource import TablesOverviewResource
+from app.orbit.app.resources.tenancy_overview_resource import TenancyOverviewResource
 from app.orbit.app.resources.text_columns_resource import TextColumnsResource
 from app.orbit.app.widgets import (
     OverviewStats,
@@ -34,6 +36,35 @@ from app.orbit.app.widgets import (
     SignupsChart,
     WelcomeWidget,
 )
+
+
+def _demo_tenancy() -> Tenancy:
+    """Two fake teams + scoping that only filters rows with ``tenant_id``."""
+    acme = Tenant(1, "Acme Corp", slug="acme")
+    beta = Tenant(2, "Beta Labs", slug="beta")
+    return (
+        Tenancy()
+        .tenants([acme, beta])
+        .current(acme)
+        .registration(True)
+        .profile(True)
+        .scope_using(
+            lambda rows, tenant: [
+                r
+                for r in rows
+                if not isinstance(r, dict)
+                or "tenant_id" not in r
+                or r.get("tenant_id") == tenant.id
+            ]
+        )
+        .associate_using(
+            lambda record, tenant: (
+                {**record, "tenant_id": tenant.id}
+                if isinstance(record, dict)
+                else record
+            )
+        )
+    )
 
 
 def register_app_panel(registry: PanelRegistry) -> Panel:
@@ -59,6 +90,9 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
         .signup()
         .auth_guard("web")
         .middleware(["web"], replace=True)
+        .tenant(_demo_tenancy())
+        .tenant_registration(True)
+        .tenant_profile(True)
         .plugin(BrandingPlugin())
         .boot_using(lambda p: None)
         .render_hook(
@@ -96,14 +130,19 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
             .sort(9)
         )
         .navigation_group(
+            NavigationGroup.make("Tenancy")
+            .icon("heroicon-o-building-office-2")
+            .sort(10)
+        )
+        .navigation_group(
             NavigationGroup.make("Demos")
             .icon("heroicon-o-beaker")
-            .sort(10)
+            .sort(20)
         )
         .navigation_group(
             NavigationGroup.make("System")
             .icon("heroicon-o-cog-6-tooth")
-            .sort(11)
+            .sort(30)
         )
         .navigation_subgroup(
             NavigationSubgroup.make("Samples")
@@ -175,6 +214,7 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
                 ActionsOverviewResource,
                 NavigationOverviewResource,
                 NotificationsOverviewResource,
+                TenancyOverviewResource,
                 NavColorsResource,
                 NavFontsResource,
                 PostResource,

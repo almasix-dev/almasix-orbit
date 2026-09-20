@@ -108,6 +108,7 @@ from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.pages.dashboard import Dashboard
 from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.resource import Resource
+from almasix.orbit.panels.tenancy import Tenancy, Tenant
 from almasix.orbit.panels.users import OrbitUser, PanelNotification, UserMenuItem
 
 
@@ -3712,5 +3713,133 @@ def build_notification_variants() -> dict[str, tuple[str, str]]:
         "notifications/broadcast-notifications/live-host": (
             "Broadcast — live host",
             live_html,
+        ),
+    }
+
+
+def _open_tenant_menu(html: str) -> str:
+    """Force the tenant switcher menu open for static screenshots."""
+    return html.replace(
+        'class="or-tenant-menu" x-show="open" x-cloak',
+        'class="or-tenant-menu" style="display:block"',
+        1,
+    )
+
+
+def _tenancy_demo_panel() -> Panel:
+    acme = Tenant(1, "Acme Corp", slug="acme")
+    beta = Tenant(2, "Beta Labs", slug="beta")
+    tenancy = (
+        Tenancy()
+        .tenants([acme, beta])
+        .current(acme)
+        .registration(True)
+        .profile(True)
+        .menu_items([{"label": "Invite members", "url": "/admin/invite"}])
+        .scope_using(
+            lambda rows, tenant: [
+                r
+                for r in rows
+                if not isinstance(r, dict)
+                or "tenant_id" not in r
+                or r.get("tenant_id") == tenant.id
+            ]
+        )
+    )
+    return (
+        Panel.make("admin")
+        .path("admin")
+        .brand_name("Orbit")
+        .apps_navigation()
+        .dashboard(False)
+        .tenant(tenancy)
+        .tenant_registration(True)
+        .tenant_profile(True)
+        .navigation_group(
+            NavigationGroup.make("Tenancy").icon("heroicon-o-building-office-2").sort(10)
+        )
+        .resources([_GalleryTenantProjectResource])
+        .default_user()
+    )
+
+
+class _GalleryTenantProjectResource(Resource):
+    model = type("Project", (), {})
+    slug = "tenant-projects"
+    navigation_label = "Projects"
+    navigation_group = "Tenancy"
+    navigation_icon = "heroicon-o-folder"
+    records: list[dict] = [
+        {"id": 1, "title": "Launch site", "tenant_id": 1, "status": "Active"},
+        {"id": 2, "title": "Billing revamp", "tenant_id": 1, "status": "Draft"},
+        {"id": 3, "title": "Beta onboarding", "tenant_id": 2, "status": "Active"},
+    ]
+
+    @classmethod
+    def get_records(cls) -> list[dict]:
+        return list(cls.records)
+
+    @classmethod
+    def table(cls, table: Table) -> Table:
+        return (
+            table.heading("Projects")
+            .description("Scoped to the current tenant.")
+            .columns(
+                [
+                    TextColumn.make("title").searchable(),
+                    TextColumn.make("status").label("Status"),
+                ]
+            )
+        )
+
+
+def build_tenancy_variants() -> dict[str, tuple[str, str]]:
+    """Return ``{shot_id: (label, html)}`` for multi-tenancy docs shots."""
+    panel = _tenancy_demo_panel()
+    user = OrbitUser.default()
+    tenancy = panel.get_tenancy()
+    assert tenancy is not None
+
+    closed = _nav_shell(
+        panel,
+        _nav_placeholder("Projects"),
+        active_path="/admin/tenant-projects",
+        user=user,
+    )
+    opened = _open_tenant_menu(closed)
+
+    scoped_rows = tenancy.scope_query(_GalleryTenantProjectResource.get_records())
+    scoped_table = (
+        Table.make()
+        .heading("Projects")
+        .description("Showing Acme Corp only — switch tenants to see Beta Labs.")
+        .columns(
+            [
+                TextColumn.make("title").searchable(),
+                TextColumn.make("status").label("Status"),
+            ]
+        )
+        .records(scoped_rows)
+        .render()
+    )
+    scoped_shell = _nav_shell(
+        panel,
+        scoped_table,
+        active_path="/admin/tenant-projects",
+        user=user,
+    )
+
+    return {
+        "users/tenancy/switcher": (
+            "Tenancy — switcher",
+            closed,
+        ),
+        "users/tenancy/menu": (
+            "Tenancy — switcher menu",
+            opened,
+        ),
+        "users/tenancy/scoped-list": (
+            "Tenancy — scoped list",
+            scoped_shell,
         ),
     }

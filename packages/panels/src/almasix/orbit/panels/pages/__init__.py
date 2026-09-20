@@ -7,6 +7,7 @@ from almasix.orbit.panels.pages.resource_pages import (
     Tab,
     ViewRecord,
 )
+from almasix.orbit.panels.pages.tenancy import EditTenantProfile, RegisterTenant
 
 __all__ = [
     "Dashboard",
@@ -16,4 +17,6 @@ __all__ = [
     "CreateRecord",
     "EditRecord",
     "ViewRecord",
+    "RegisterTenant",
+    "EditTenantProfile",
 ]

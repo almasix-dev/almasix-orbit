@@ -214,6 +214,38 @@ def _instantiate_host(host_cls: type, extras: dict[str, Any] | None = None) -> A
     return Conduit.component(name, **payload)
 
 
+def _apply_tenant_slug(panel: Panel, slug: str | None, user: Any = None) -> None:
+    """Resolve ``slug`` against panel tenancy and set the current tenant."""
+    tenancy = panel.get_tenancy()
+    if tenancy is None or not tenancy.is_enabled() or not slug:
+        return
+    found = tenancy.find_by_slug(str(slug))
+    if found is None:
+        # Also search user-resolved tenants (HasTenants).
+        for t in tenancy.resolve_tenants(user=user, panel=panel):
+            if t.slug == str(slug) or str(t.id) == str(slug):
+                found = t
+                break
+    if found is None:
+        return
+    if user is not None:
+        checker = getattr(user, "can_access_tenant", None)
+        if callable(checker) and not checker(found):
+            return
+    tenancy.current(found)
+    stamp = getattr(panel, "_stamp_tenant_paths", None)
+    if callable(stamp):
+        stamp(found)
+
+
+def _tenant_path_prefix(panel: Panel) -> str:
+    """``team/{tenant}`` or ``{tenant}`` fragment when route prefixes are enabled."""
+    tenancy = panel.get_tenancy()
+    if tenancy is None or not tenancy.is_enabled() or not tenancy.get_tenant_route_prefix():
+        return ""
+    return tenancy.path_prefix_for("{tenant}")
+
+
 def make_panel_page_action(
     panel: Panel,
     host_cls: type,
@@ -226,13 +258,21 @@ def make_panel_page_action(
 
     if pass_record_id:
 
-        async def action_with_record(request: Request, record_id: str) -> Any:
+        async def action_with_record(
+            request: Request,
+            record_id: str,
+            tenant: str | None = None,
+            **_extra: Any,
+        ) -> Any:
             path = _request_path(request)
             user = _current_user(panel) if auth_shell else None
             gated = _auth_gate(panel, path, user) if auth_shell else None
             if gated is not None:
                 return gated
+            _apply_tenant_slug(panel, tenant, user)
             extras = {**(params or {}), "record_id": record_id}
+            if tenant:
+                extras["tenant"] = tenant
             instance = _instantiate_host(host_cls, extras)
             slot = await _embed_async(instance)
             body = panel.render_shell(
@@ -246,13 +286,21 @@ def make_panel_page_action(
 
         return action_with_record
 
-    async def action(request: Request) -> Any:
+    async def action(
+        request: Request,
+        tenant: str | None = None,
+        **_extra: Any,
+    ) -> Any:
         path = _request_path(request)
         user = _current_user(panel) if auth_shell else None
         gated = _auth_gate(panel, path, user) if auth_shell else None
         if gated is not None:
             return gated
-        instance = _instantiate_host(host_cls, params)
+        _apply_tenant_slug(panel, tenant, user)
+        mount_params = dict(params or {})
+        if tenant:
+            mount_params["tenant"] = tenant
+        instance = _instantiate_host(host_cls, mount_params or None)
         slot = await _embed_async(instance)
         body = panel.render_shell(
             slot,
@@ -313,18 +361,20 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
     if dash_cls is not None:
 
-        async def dashboard_home(request: Request) -> Any:
+        async def dashboard_home(request: Request, tenant: str | None = None, **_e: Any) -> Any:
             page_cls = dash_cls
             path = _request_path(request)
             user = _current_user(panel)
             gated = _auth_gate(panel, path, user)
             if gated is not None:
                 return gated
+            _apply_tenant_slug(panel, tenant, user)
             page_filters = _dashboard_page_filters(request, page_cls)
             html_body = page_cls.render(
                 brand=getattr(panel, "_brand", "Orbit"),
                 user=user,
                 panel=panel,
+                tenant=panel.get_tenant(),
                 page_filters=page_filters,
                 request=request,
             )
@@ -337,6 +387,13 @@ def mount_panel(router: Any, panel: Panel) -> None:
             return _html_response(body)
 
         _add(home_uri, dashboard_home, name=f"orbit.{panel.id}.home")
+        tenant_prefix = _tenant_path_prefix(panel)
+        if tenant_prefix:
+            _add(
+                f"/{tenant_prefix}" if not tenant_prefix.startswith("/") else tenant_prefix,
+                dashboard_home,
+                name=f"orbit.{panel.id}.home.tenant",
+            )
     elif resources:
         home_host = ListRecordsHost.bind(panel=panel, resource=resources[0])
         _add(
@@ -440,6 +497,9 @@ def mount_panel(router: Any, panel: Panel) -> None:
             else:
                 cluster_prefix = str(cluster.path_prefix()).strip("/")
         resource_base = f"{cluster_prefix}/{slug}" if cluster_prefix else slug
+        tenant_prefix = _tenant_path_prefix(panel)
+        if tenant_prefix:
+            resource_base = f"{tenant_prefix}/{resource_base}"
 
         list_host = ListRecordsHost.bind(panel=panel, resource=resource)
         create_host = CreateRecordHost.bind(panel=panel, resource=resource)
@@ -487,15 +547,27 @@ def mount_panel(router: Any, panel: Panel) -> None:
             else:
                 cluster_prefix = str(cluster.path_prefix()).strip("/")
         page_base = f"{cluster_prefix}/{slug}" if cluster_prefix else slug
+        tenant_prefix = _tenant_path_prefix(panel)
+        if tenant_prefix:
+            page_base = f"{tenant_prefix}/{page_base}"
 
         def _make_page_action(page_cls: Any) -> Any:
-            async def page_action(request: Request) -> Any:
+            async def page_action(
+                request: Request,
+                tenant: str | None = None,
+                **_e: Any,
+            ) -> Any:
                 path = _request_path(request)
                 user = _current_user(panel)
                 gated = _auth_gate(panel, path, user)
                 if gated is not None:
                     return gated
-                html_body = page_cls.render() if hasattr(page_cls, "render") else ""
+                _apply_tenant_slug(panel, tenant, user)
+                html_body = (
+                    page_cls.render(panel=panel, user=user, tenant=panel.get_tenant())
+                    if hasattr(page_cls, "render")
+                    else ""
+                )
                 body = panel.render_shell(
                     html_body,
                     user=user,
@@ -511,6 +583,80 @@ def mount_panel(router: Any, panel: Panel) -> None:
             _make_page_action(page),
             name=f"orbit.{panel.id}.page.{slug}",
         )
+
+    # Tenant registration / profile pages (when enabled).
+    tenancy = panel.get_tenancy()
+    if tenancy is not None and tenancy.is_enabled():
+        reg_page = tenancy.registration_page()
+        if reg_page is not None:
+            reg_slug = getattr(reg_page, "get_slug", lambda: "new")()
+            tenant_prefix = _tenant_path_prefix(panel)
+
+            async def tenant_register_action(
+                request: Request,
+                tenant: str | None = None,
+                **_e: Any,
+            ) -> Any:
+                path = _request_path(request)
+                user = _current_user(panel)
+                gated = _auth_gate(panel, path, user)
+                if gated is not None:
+                    return gated
+                _apply_tenant_slug(panel, tenant, user)
+                html_body = reg_page.render(
+                    panel=panel, user=user, tenant=panel.get_tenant()
+                )
+                return _html_response(
+                    panel.render_shell(
+                        html_body,
+                        user=user,
+                        active_path=path,
+                        extra_head=_conduit_assets(),
+                    )
+                )
+
+            _add(
+                reg_slug,
+                tenant_register_action,
+                name=f"orbit.{panel.id}.tenant.register",
+            )
+
+        profile_page = tenancy.profile_page()
+        if profile_page is not None:
+            profile_slug = getattr(profile_page, "get_slug", lambda: "profile")()
+            tenant_prefix = _tenant_path_prefix(panel)
+            profile_uri = (
+                f"{tenant_prefix}/{profile_slug}" if tenant_prefix else profile_slug
+            )
+
+            async def tenant_profile_action(
+                request: Request,
+                tenant: str | None = None,
+                **_e: Any,
+            ) -> Any:
+                path = _request_path(request)
+                user = _current_user(panel)
+                gated = _auth_gate(panel, path, user)
+                if gated is not None:
+                    return gated
+                _apply_tenant_slug(panel, tenant, user)
+                html_body = profile_page.render(
+                    panel=panel, user=user, tenant=panel.get_tenant()
+                )
+                return _html_response(
+                    panel.render_shell(
+                        html_body,
+                        user=user,
+                        active_path=path,
+                        extra_head=_conduit_assets(),
+                    )
+                )
+
+            _add(
+                profile_uri,
+                tenant_profile_action,
+                name=f"orbit.{panel.id}.tenant.profile",
+            )
 
 
 def mount_orbit_assets(router: Any) -> None:

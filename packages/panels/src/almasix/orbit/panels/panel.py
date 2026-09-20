@@ -133,6 +133,7 @@ class Panel:
         self._simple_page_max_content_width: str = DEFAULT_SIMPLE_PAGE_MAX_CONTENT_WIDTH
         # Back-compat alias used by older callers / routing.
         self._demo_user: Any = None
+        self._tenancy: Any = None
 
     @classmethod
     def make(cls, panel_id: str = "admin") -> Self:
@@ -350,6 +351,70 @@ class Panel:
     def auth_guard(self, guard: str) -> Self:
         self._auth_guard = guard
         return self
+
+    def tenant(
+        self,
+        model: type[Any] | Any | bool | None = None,
+        *,
+        ownership_relationship: str | None = None,
+        slug_attribute: str | None = None,
+    ) -> Self:
+        """Enable multi-tenancy with a model, a :class:`Tenancy` config, or ``False``."""
+        from almasix.orbit.panels.tenancy import Tenancy
+
+        if model is False or model is None:
+            self._tenancy = None
+            return self
+        if isinstance(model, Tenancy):
+            self._tenancy = model
+        else:
+            tenancy = Tenancy().model(model)  # type: ignore[arg-type]
+            if ownership_relationship:
+                tenancy.ownership_relationship(ownership_relationship)
+            if slug_attribute:
+                tenancy.slug_attribute(slug_attribute)
+            self._tenancy = tenancy
+        return self
+
+    def tenant_registration(self, page: PageOption | type[Any] = True) -> Self:
+        tenancy = self._ensure_tenancy()
+        tenancy.registration(page)  # type: ignore[arg-type]
+        return self
+
+    def tenant_profile(self, page: PageOption | type[Any] = True) -> Self:
+        tenancy = self._ensure_tenancy()
+        tenancy.profile(page)  # type: ignore[arg-type]
+        return self
+
+    def tenant_billing(self, page: PageOption | type[Any] | bool = True) -> Self:
+        tenancy = self._ensure_tenancy()
+        tenancy.billing(page)  # type: ignore[arg-type]
+        return self
+
+    def tenant_middleware(
+        self,
+        middleware: Sequence[Any],
+        is_persistent: bool = False,
+    ) -> Self:
+        tenancy = self._ensure_tenancy()
+        tenancy.tenant_middleware(middleware, is_persistent=is_persistent)
+        return self
+
+    def get_tenancy(self) -> Any | None:
+        return self._tenancy
+
+    def get_tenant(self) -> Any | None:
+        tenancy = self._tenancy
+        if tenancy is None:
+            return None
+        return tenancy.get_current()
+
+    def _ensure_tenancy(self) -> Any:
+        from almasix.orbit.panels.tenancy import Tenancy
+
+        if self._tenancy is None:
+            self._tenancy = Tenancy()
+        return self._tenancy
 
     def dark_mode(self, condition: bool = True) -> Self:
         """Enable dark-mode CSS / preference boot. Use :meth:`theme_switcher` for the toggle."""
@@ -811,7 +876,19 @@ class Panel:
         return list(self._widgets)
 
     def get_middleware(self) -> list[Any]:
-        return list(self._middleware)
+        stack = list(self._middleware)
+        tenancy = self._tenancy
+        if tenancy is not None and tenancy.is_enabled():
+            for item in tenancy.get_tenant_middleware():
+                if item not in stack:
+                    stack.append(item)
+        return stack
+
+    def get_tenant_middleware(self) -> list[Any]:
+        tenancy = self._tenancy
+        if tenancy is None:
+            return []
+        return tenancy.get_tenant_middleware()
 
     def _collect_navigation_items(
         self,
@@ -828,7 +905,14 @@ class Panel:
         for page in self._pages:
             page._panel_path = self.get_path()  # type: ignore[attr-defined]
 
-        ctx: dict[str, Any] = {"user": user, "active_path": active_path, "panel": self}
+        tenant = self.get_tenant()
+        ctx: dict[str, Any] = {
+            "user": user,
+            "active_path": active_path,
+            "panel": self,
+            "tenant": tenant,
+        }
+        self._stamp_tenant_paths(tenant)
 
         # Custom builder replaces auto-generated navigation entirely.
         if self._navigation_builder is not None:
@@ -906,6 +990,20 @@ class Panel:
             items.append(item.to_nav_dict(**ctx))
         items.sort(key=lambda i: (i.get("sort") or 0, i.get("label") or ""))
         return items
+
+    def _stamp_tenant_paths(self, tenant: Any = None) -> None:
+        """Stamp ``_tenant_path`` on resources/pages when tenant URL prefixes are on."""
+        tenancy = self._tenancy
+        segment = ""
+        if tenancy is not None and tenancy.is_enabled() and tenancy.get_tenant_route_prefix():
+            slug = None
+            if tenant is not None:
+                slug = getattr(tenant, "slug", None) or str(getattr(tenant, "id", "") or "")
+            segment = tenancy.path_prefix_for(slug or None)
+        for res in self._resources:
+            res._tenant_path = segment  # type: ignore[attr-defined]
+        for page in self._pages:
+            page._tenant_path = segment  # type: ignore[attr-defined]
 
     def _should_register(self, obj: Any, **ctx: Any) -> bool:
         getter = getattr(obj, "get_should_register_navigation", None)
@@ -1310,6 +1408,20 @@ class Panel:
                     f'{self._render_user_menu(user=user, placement="sidebar")}</aside>',
                     1,
                 )
+            # Tenant switcher in sidebar when the topbar is off (still tenancy-aware).
+            if (
+                not show_topbar
+                and show_sidebar
+                and self._tenancy is not None
+                and self._tenancy.is_enabled()
+            ):
+                switcher = self._tenancy.render_switcher(user=user, panel=self)
+                if switcher:
+                    sidebar_html = sidebar_html.replace(
+                        "</aside>",
+                        f'<div class="or-tenant-switcher-sidebar">{switcher}</div></aside>',
+                        1,
+                    )
             cluster, cluster_items = self.collect_cluster_sub_navigation(
                 active_path, user=user
             )
@@ -2113,6 +2225,12 @@ class Panel:
         parts.append('<div class="or-global-search-slot" data-orbit-global-search></div>')
         parts.append(render_hook("panels::global-search.after", scope=scope, user=user))
 
+        tenancy = self._tenancy
+        if tenancy is not None and tenancy.is_enabled():
+            switcher = tenancy.render_switcher(user=user, panel=self)
+            if switcher:
+                parts.append(switcher)
+
         if self._dark_mode and self._theme_switcher:
             sun = render_icon("heroicon-o-sun", size=_TOPBAR_ICON)
             moon = render_icon("heroicon-o-moon", size=_TOPBAR_ICON)
@@ -2258,6 +2376,7 @@ class Panel:
             "theme_switcher": self._theme_switcher,
             "default_theme_mode": self._default_theme_mode,
             "breadcrumbs": self._breadcrumbs_enabled,
+            "tenancy": self._tenancy.to_dict() if self._tenancy is not None else None,
         }
 
 

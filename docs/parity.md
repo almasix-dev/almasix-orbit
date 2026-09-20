@@ -143,7 +143,8 @@ this framing into learner-facing pages.
 | List/Create/Edit/View page hosts + list tabs | Done |
 | Dashboard home + multi-dashboard `route_path` | Done |
 | Global search helpers | Done |
-| Clusters / auth pages / MFA protocol / tenancy | Done |
+| Clusters / auth pages / MFA protocol | Done |
+| Multi-tenancy (`Tenancy`, switcher, scoping, HasTenants, RegisterTenant / EditTenantProfile, middleware, route prefix, docs + gallery + orbit-admin) | Done |
 | Render hooks + Plugin base | Done |
 | `discover_*` + `load_discovered` + scaffolding writes files | Done |
 | Multi-panel domains / SPA / billing adapters | Partial (domains Done; SPA/billing later) |
