@@ -9,11 +9,63 @@ header switcher.
 
 ## Unreleased (`main`)
 
-### Tables overview parity ([Filament 5.x](https://filamentphp.com/docs/5.x/tables/overview))
+Working from the tip of `main`? Switch the docs to **main** in the header.
+Changes land here before they become a tagged release.
 
-- Dot-notation relationship columns, `push_columns`, `default_sort`, `record_actions` / `toolbar_actions`
-- Pagination: `paginated([...])`, `PaginationMode`, extreme links, query-string id, per-page `"all"`
-- Heading/description/header, poll, defer loading, reorder chrome, `record_classes`, session persist helpers, `Table.configure_using`
+## 0.4.0
+
+Feature release after 0.3.1 — resources, forms, tables, actions, users, panels,
+plugins, and the docs site.
+
+**Breaking:** `app/orbit/{id}_panel.py` is no longer loaded. Move the registrar
+to `app/orbit/{id}/panel.py` (the layout 0.3 already scaffolded). See
+[Installation](/getting-started/installation/).
+
+### Resources
+
+- Relation managers on view/edit pages (ORM or in-memory rows)
+- Panel global search (resource attributes → grouped results → topbar)
+- Record titles in page headings and breadcrumbs
+- Resource-level soft deletes (trashed filter, restore, force delete)
+
+### Forms and schemas
+
+- File upload via panel `/orbit-upload` (`UploadStorage`, memory default)
+- Rich editor toolbar, merge tags, min-height
+- MorphToSelect live search (`.options_using`)
+- Modal table select and KeyValue host actions
+- Searchable select combobox; remaining form/schema field depth
+
+### Tables, actions, widgets, query builder
+
+- Table overview: relationship columns, pagination modes, header chrome, poll, reorder
+- Column types and filters
+- In-process import/export (`ImmediateJobRunner`, CSV/JSON, `orbit-export-ready`)
+- Widgets and dashboard
+- Query builder AND/OR rules, typed widgets, `QueryBuilderFilter`
+
+### Users, notifications, panels
+
+- Multi-tenancy API and UX
+- TOTP (`AppAuthentication`) and email MFA (`EmailAuthentication`) with `/mfa-challenge`
+- SQLite notification store, broadcast hub, `/orbit-live`
+- SPA navigation (`.spa()`), billing adapters, `PanelRegistry.get_by_path` / `get_by_domain`
+
+### Plugins and support
+
+- `smith make:orbit-plugin` / `python -m almasix.orbit plugin new` — package + listing YAML
+- Community plugin catalog at [`/plugins/`](/plugins/) (docs-hosted YAML, catalog API)
+- Support toolkit: `HtmlString`, palettes, icon aliases, `Component.key` / `.grow` / `.when`
+
+### Docs
+
+- Orbit-first learner pages, unique gallery shots
+- Header Docs + Plugins menus; marketplace catalog layout
+- Version trees: `/0.x/` from the latest `v0.*` tag, `/main/` from this commit
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.4.0'
+```
 
 ## 0.3.1
 
@@ -165,8 +217,3 @@ Highlights:
 - Query builder UI render over the constraint apply model
 - `LiveResource` test helper
 - Auto-discovered `OrbitServiceProvider` via `almasix.providers`
-
-## Unreleased (`main`)
-
-Working from the tip of `main`? Switch the docs to **main** in the header.
-Breaking changes will land here before they become a new major.

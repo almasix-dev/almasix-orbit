@@ -129,7 +129,7 @@ acme-orbit-branding/
 name = "acme-orbit-branding"
 version = "0.1.0"
 dependencies = [
-  "almasix-orbit>=0.3.0",
+  "almasix-orbit>=0.4.0",
 ]
 
 [project.entry-points."almasix.providers"]

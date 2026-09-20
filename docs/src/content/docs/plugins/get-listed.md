@@ -85,7 +85,7 @@ categories:
   - panel-kit
   - developer-tool
 orbit_versions:
-  - "0.3"
+  - "0.4"
 price: free
 package: acme-orbit-audit-log
 repository: https://github.com/your-handle/acme-orbit-audit-log
@@ -118,7 +118,7 @@ checkout_url: https://store.example.com/acme-audit-log-pro
 | `description` | yes | Markdown. Headings, code fences, and links all render. |
 | `author` | yes | An author slug from `authors/`. |
 | `categories` | yes | One or more keys from `categories.yaml`. |
-| `orbit_versions` | yes | Versions you actually support, e.g. `["0.3"]`. |
+| `orbit_versions` | yes | Versions you actually support, e.g. `["0.4"]`. |
 | `price` | yes | `free`, or `{ amount, currency }` with an ISO 4217 code. |
 | `checkout_url` | paid only | Where a buyer completes the purchase. |
 | `package` | free plugins | PyPI name; drives the `pip install` line. |

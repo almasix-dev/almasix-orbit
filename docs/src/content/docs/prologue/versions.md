@@ -10,7 +10,7 @@ Each selection is a **separate documentation tree**:
 
 | Switcher label | URL | Meaning |
 | --- | --- | --- |
-| **0.x** | [`/0.x/`](/0.x/) | Docs frozen at the latest 0.x **release** (today `v0.3.1`) — **latest** (default) |
+| **0.x** | [`/0.x/`](/0.x/) | Docs frozen at the latest 0.x **release** (today `v0.4.0`) — **latest** (default) |
 | **main** | [`/main/`](/main/) | Unreleased tip from the `main` branch (opt-in) |
 | **1.x** *(later)* | `/1.x/` | Docs for the 1.x package line, once that major ships |
 
@@ -32,7 +32,7 @@ Match the switcher to the package you have installed. APIs on `main` can move be
 
 ## What “0.x” contains
 
-The `/0.x/` tree is built from the newest stable `v0.*` git tag — the same docs that shipped with that release. Pages added on `main` after `v0.3.1` (plugin marketplace, later APIs) are **not** on `0.x` until the next 0.x release.
+The `/0.x/` tree is built from the newest stable `v0.*` git tag — the same docs that shipped with that release. Pages added on `main` after `v0.4.0` are **not** on `0.x` until the next 0.x release.
 
 When a new 0.x tag is published, the next docs deploy rebuilds `/0.x/` from that tag automatically.
 

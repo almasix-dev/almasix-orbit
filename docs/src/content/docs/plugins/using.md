@@ -25,7 +25,7 @@ Click through to the listing for the long description, screenshots, license, and
 
 Before you install:
 
-- `orbit_versions` must include the Orbit line you run (`0.3` today).
+- `orbit_versions` must include the Orbit line you run (`0.4` today).
 - `requires_python`, when present, must match your interpreter.
 - Read the source (or the paid-plugin license terms) and decide whether you trust the author. A plugin runs with the same privileges as the rest of your application.
 

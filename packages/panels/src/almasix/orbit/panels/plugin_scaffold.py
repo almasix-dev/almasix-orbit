@@ -98,7 +98,7 @@ def parse_plugin_spec(
     package: str = "",
     category: str = "developer-tool",
     paid: bool = False,
-    orbit_line: str = "0.3",
+    orbit_line: str = "0.4",
 ) -> PluginSpec:
     raw = kebab(str(name or "").removesuffix("-plugin"))
     if not raw:
@@ -160,7 +160,7 @@ def parse_plugin_spec(
         author=author_slug,
         vendor=vendor_slug,
         category=category_slug,
-        orbit_line=str(orbit_line or "0.3"),
+        orbit_line=str(orbit_line or "0.4"),
         paid=bool(paid),
         summary=f"{display} for Orbit panels.",
     )
