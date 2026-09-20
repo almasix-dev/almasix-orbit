@@ -1,6 +1,6 @@
 ---
 title: Select
-description: Select fields render native or searchable dropdowns with static options, grouped options, enums, or relationship-backed search.
+description: Select fields render native selects or a Filament-parity combobox for searchable, multiple, HTML, and non-native modes.
 ---
 
 ## Introduction
@@ -29,7 +29,9 @@ Select.make('status')
 
 ## Native vs custom select
 
-`.native(True)` (the default) keeps the browser select. Call `.native(False)` when you need Orbit’s richer dropdown chrome — search, HTML labels, create/edit actions, and wrapping — instead of the platform control.
+`.native(True)` (the default) keeps the browser `<select>` for short, simple lists. Orbit switches to a **Filament-style combobox** when you call `.searchable()`, `.multiple()`, `.allow_html()`, or `.native(False)` — the same rule Filament uses.
+
+The combobox is one control: trigger, optional search field, listbox dropdown, keyboard navigation (↑/↓/Enter/Esc), a clear button, and chips for multi-select. A visually hidden `<select>` stays wired to Conduit/`wire:model` so dehydration is unchanged.
 
 ```python title="app/orbit/resources/post_resource.py"
 Select.make('status')
@@ -48,7 +50,7 @@ Select.make('status')
 
 ## Searching options
 
-Long option lists benefit from a filter input. `.searchable()` enables client- or server-driven filtering depending on whether options are static or relationship-backed.
+`.searchable()` enables the combobox search field. Static options filter client-side as you type. Relationship selects without `.preload()` set `data-ajax-search` and call Conduit `searchSelectOptions`, so the host re-renders matching rows (default limit **50**).
 
 ```python title="app/orbit/resources/post_resource.py"
 Select.make('author_id')

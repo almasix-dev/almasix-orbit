@@ -36,7 +36,8 @@ Orbit targets FilamentPHP **5.x** API familiarity on Almasix (Conduit + Alpine).
 | Nested `validate()` / `dehydrate()` via layout walk | Done |
 | Field chrome (hint / prefix / suffix / prefix+suffix actions / helper / autofocus) | Done |
 | Validation catalog (+ `required_if` / `required_unless` / `prohibited` / `prohibited_if`) | Done |
-| Select: searchable Alpine, enum, AJAX attrs, create/edit option mounts | Partial |
+| Select: Filament combobox (searchable / multiple / HTML / non-native), relationship AJAX, create/edit mounts | Done |
+
 | FileUpload: disk/visibility/editor/download attrs + preview chrome | Partial |
 | Repeater/Builder: defaultItems, simple, table head, grid, clone/reorder + **host mutations** | Done |
 | KeyValue / MorphToSelect / ModalTableSelect host mounts | Partial |

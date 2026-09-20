@@ -235,7 +235,8 @@ def test_select_file_repeater_builder_depth_render() -> None:
         .selectable_placeholder()
         .relationship("roles", "name", search_columns=["name"], preload=True)
     )
-    assert "orbitSearchableSelect" in sel.render("red")
+    assert "orbitCombobox" in sel.render("red")
+    assert "or-combobox" in sel.render("red")
     assert "data-ajax-search" in sel.render()
 
     fu = (

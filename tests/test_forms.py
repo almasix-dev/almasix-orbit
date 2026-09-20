@@ -201,7 +201,9 @@ def test_select_searchable_groups_create_edit() -> None:
     )
     shtml = searchable.render()
     assert "data-searchable" in shtml
-    assert "orbitSearchableSelect" in shtml
+    assert "orbitCombobox" in shtml
+    assert "or-combobox" in shtml
+    assert "or-combobox-dropdown" in shtml
     assert "mountCreateOption" in shtml
     assert "mountAction('editTag')" in shtml
     assert "data-relationship" in (
