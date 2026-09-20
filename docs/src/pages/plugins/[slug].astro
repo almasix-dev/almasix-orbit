@@ -1,0 +1,118 @@
+---
+/** A single marketplace listing. */
+import type { GetStaticPaths } from 'astro';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import {
+	getMarketplacePlugins,
+	renderListingMarkdown,
+	RESERVED_PLUGIN_SLUGS,
+	type MarketplacePlugin,
+} from '../../data/marketplace';
+import '../../styles/marketplace.css';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+	const plugins = await getMarketplacePlugins();
+	return plugins
+		.filter((plugin) => !RESERVED_PLUGIN_SLUGS.includes(plugin.slug))
+		.map((plugin) => ({ params: { slug: plugin.slug }, props: { plugin } }));
+};
+
+const { plugin } = Astro.props as { plugin: MarketplacePlugin };
+const description = await renderListingMarkdown(plugin.description);
+const published = plugin.publishedAt.toLocaleDateString('en-US', {
+	year: 'numeric',
+	month: 'long',
+	day: 'numeric',
+});
+---
+
+<StarlightPage
+	frontmatter={{
+		title: plugin.name,
+		description: plugin.summary,
+		tableOfContents: false,
+	}}
+>
+	<div class="market">
+		<a class="market-back" href="/plugins/">← All plugins</a>
+
+		<div class="market-detail-head">
+			<ul class="market-tags">
+				<li class="market-chip is-price">{plugin.priceLabel}</li>
+				{plugin.official && <li class="market-chip is-official">Official</li>}
+				{plugin.categories.map((category) => <li class="market-chip">{category.label}</li>)}
+				{plugin.darkMode && <li class="market-chip">Dark mode ready</li>}
+			</ul>
+			<p class="market-lede">{plugin.summary}</p>
+			<div class="market-detail-actions">
+				{
+					plugin.isPaid ? (
+						<a class="market-button is-primary" href={plugin.checkoutUrl} rel="nofollow noopener">
+							Buy for {plugin.priceLabel}
+						</a>
+					) : (
+						plugin.repository && (
+							<a class="market-button is-primary" href={plugin.repository}>
+								View source
+							</a>
+						)
+					)
+				}
+				{plugin.docsUrl && <a class="market-button" href={plugin.docsUrl}>Documentation</a>}
+				{
+					plugin.isPaid && plugin.repository && (
+						<a class="market-button" href={plugin.repository}>
+							Repository
+						</a>
+					)
+				}
+			</div>
+			{plugin.installCommand && <code class="market-install">{plugin.installCommand}</code>}
+		</div>
+
+		<dl class="market-facts">
+			<div>
+				<dt>Author</dt>
+				<dd><a href={`/plugins/authors/${plugin.author.slug}/`}>{plugin.author.name}</a></dd>
+			</div>
+			<div>
+				<dt>Orbit versions</dt>
+				<dd>{plugin.orbitVersions.join(', ')}</dd>
+			</div>
+			<div>
+				<dt>Package</dt>
+				<dd>{plugin.package ?? 'Distributed by the author'}</dd>
+			</div>
+			<div>
+				<dt>Listed</dt>
+				<dd>{published}</dd>
+			</div>
+		</dl>
+
+		<section class="market-description" set:html={description} />
+
+		{
+			plugin.screenshots.length > 0 && (
+				<section class="market-shots" aria-label="Screenshots">
+					{plugin.screenshots.map((shot) => (
+						<img src={shot.src} alt={shot.alt} loading="lazy" />
+					))}
+				</section>
+			)
+		}
+
+		<div class="market-note">
+			<p>
+				{
+					plugin.official
+						? 'This plugin is maintained by the Orbit team.'
+						: 'This is a third-party plugin. Almasix does not review or vet its code, and installing it gives it full access to your application.'
+				}
+				{
+					plugin.isPaid &&
+						' Payment, licensing, and support are handled by the author on their own store — Orbit is not part of the transaction.'
+				}
+			</p>
+		</div>
+	</div>
+</StarlightPage>

@@ -373,6 +373,18 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'Plugins',
+					collapsed: true,
+					items: [
+						{ label: 'Marketplace overview', slug: 'plugins/overview' },
+						{ label: 'Browse plugins', link: '/plugins/' },
+						{ label: 'Build a plugin', slug: 'panels/plugins' },
+						{ label: 'Get listed', slug: 'plugins/get-listed' },
+						{ label: 'Listing guidelines', slug: 'plugins/guidelines' },
+						{ label: 'Paid vs free', slug: 'plugins/paid-vs-free' },
+					],
+				},
+				{
 					label: 'Navigation',
 					collapsed: true,
 					items: [

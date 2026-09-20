@@ -98,6 +98,14 @@ See [Widgets overview](/widgets/overview/).
 
 See [Navigation overview](/navigation/overview/).
 
+## Plugins & marketplace
+
+- `Plugin` base with `register` / `boot` hooks and `panel.plugin(...)` / `.plugins([...])`
+- Publishable package layout, optional `ServiceProvider` entry-point auto-boot
+- Community [plugin marketplace](/plugins/) — browse by price, category, Orbit version, dark mode
+- Registry-backed listings with author profiles, screenshots, and free or paid distribution
+- Submission path via pull request: [Get listed](/plugins/get-listed/), [Listing guidelines](/plugins/guidelines/), [Paid vs free](/plugins/paid-vs-free/)
+
 ## Query builder & support
 
 - Text / select / boolean / date / number constraints

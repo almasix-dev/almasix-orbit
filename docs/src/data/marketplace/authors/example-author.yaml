@@ -1,0 +1,10 @@
+# Template author profile. Copy to <your-handle>.yaml and fill it in.
+# An author page renders only once one of their listings is published.
+
+name: Example Author
+slug: example-author
+bio: One or two sentences about you or your company, shown on your author page.
+# avatar: /plugins/authors/example-author.jpg
+# website: https://example.com
+# github: example
+# sponsor_url: https://github.com/sponsors/example

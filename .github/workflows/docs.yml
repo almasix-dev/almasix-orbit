@@ -48,5 +48,8 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Validate plugin marketplace registry
+        run: npm run validate:marketplace
+
       - name: Build
         run: npm run build
