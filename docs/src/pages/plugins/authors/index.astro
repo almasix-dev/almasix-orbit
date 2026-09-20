@@ -2,6 +2,7 @@
 /** Index of authors who have at least one published listing. */
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import { getMarketplaceAuthors } from '../../../data/marketplace';
+import { authorStarsTotal, formatStat } from '../../../../scripts/marketplace-lib.mjs';
 import '../../../styles/marketplace.css';
 
 const authors = await getMarketplaceAuthors();
@@ -14,7 +15,7 @@ const authors = await getMarketplaceAuthors();
 		tableOfContents: false,
 	}}
 >
-	<div class="market">
+	<div class="market" data-marketplace>
 		<a class="market-back" href="/plugins/">← All plugins</a>
 		<p class="market-lede">
 			Each author page lists every published plugin they maintain. Want to appear here? Add an
@@ -37,6 +38,8 @@ const authors = await getMarketplaceAuthors();
 										<p class="market-summary">{author.bio}</p>
 										<p class="market-meta">
 											{plugins.length} {plugins.length === 1 ? 'plugin' : 'plugins'}
+											<span>·</span>
+											<span>{formatStat(authorStarsTotal(plugins))} stars</span>
 										</p>
 									</div>
 								</div>

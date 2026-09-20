@@ -13,7 +13,7 @@ The **marketplace** is the directory people use to find them. It lives at [orbit
 
 ## What a listing gives you
 
-Each listing renders a page with the plugin’s name, summary, price, supported Orbit versions, license, screenshots, related plugins, and a long description written by its author. Visitors can filter the directory by price, category, Orbit version, and whether a plugin is dark-mode ready, then jump straight to `pip install` for free plugins or to the author’s checkout for paid ones.
+Each listing renders a page with the plugin’s name, summary, price, supported Orbit versions, license, screenshots, install counts, GitHub stars, and a long description written by its author. The listing uses a wide catalog layout: author details, combined star totals, and the author’s other plugins sit in a right-hand aside; related plugins sit in the footer. Visitors can filter the directory by price, category, Orbit version, and whether a plugin is dark-mode ready, then jump to `pip install` for free plugins, to GitHub to star a repository, or to the author’s checkout for paid ones.
 
 Filters are shareable: `/plugins/?q=branding&category=theme&official=1`.
 
@@ -63,12 +63,15 @@ If you find malware or a security problem an author will not fix, [open a securi
 | URL | What it is |
 |-----|------------|
 | [`/plugins/`](/plugins/) | Browse grid |
+| [`/plugins/paid/`](/plugins/paid/) | Paid listings only |
 | [`/plugins/authors/`](/plugins/authors/) | Authors with published listings |
 | [`/plugins/categories/`](/plugins/categories/) | Category index |
 | [`/plugins/categories/<slug>/`](/plugins/categories/theme/) | One category |
 | [`/plugins/feed.json`](/plugins/feed.json) | JSON catalog for tooling |
 
-The JSON feed includes slug, summary, author, categories, versions, price, package, repository, license, and official/featured flags. It is regenerated with the docs site.
+The JSON feed includes slug, summary, author, categories, versions, price, package, repository, license, official/featured flags, stars, and installs. It is regenerated with the docs site.
+
+Marketplace pages use a dedicated sidebar (all plugins, paid, authors, building, listing) and a wider content column than the rest of the docs. The home page and the top bar both link to `/plugins/`.
 
 ## The path from idea to listing
 

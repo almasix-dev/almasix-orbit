@@ -61,6 +61,12 @@ const plugins = defineCollection({
 			license: z.string().optional(),
 			keywords: z.array(z.string()).default([]),
 			requires_python: z.string().optional(),
+			github_repo: z
+				.string()
+				.regex(/^[\w.-]+\/[\w.-]+$/, 'Use GitHub owner/repo, e.g. acme/orbit-kit')
+				.optional(),
+			stars: z.number().int().nonnegative().optional(),
+			installs: z.number().int().nonnegative().optional(),
 			thumbnail: z.string().optional(),
 			screenshots: z.array(screenshot).default([]),
 			features: z

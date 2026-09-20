@@ -33,7 +33,7 @@ this framing into learner-facing pages.
 
 ## Marketplace — Done
 
-Docs-hosted YAML registry (`docs/src/data/marketplace/`), `/plugins` browse + listing + author + category pages, JSON feed, validator tests, official `orbit-branding` listing, PR template + review pack. Orbit takes no payment.
+Docs-hosted YAML registry (`docs/src/data/marketplace/`), `/plugins` catalog (wide layout, dedicated sidebar, install/star stats, author aside, GitHub star button), JSON feed, validator tests, official `orbit-branding` listing, PR template + review pack. Orbit takes no payment.
 
 ## Support — Done
 

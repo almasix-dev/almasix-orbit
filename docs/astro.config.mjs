@@ -76,6 +76,8 @@ export default defineConfig({
 			customCss: ['./src/styles/landing.css'],
 			components: {
 				Hero: './src/components/Hero.astro',
+				Sidebar: './src/components/Sidebar.astro',
+				SiteTitle: './src/components/SiteTitle.astro',
 			},
 			head: [
 				{
@@ -181,6 +183,7 @@ export default defineConfig({
 			],
 			sidebar: [
 				{ label: 'Home', slug: 'index' },
+				{ label: 'Plugins', link: '/plugins/' },
 				{
 					label: 'Prologue',
 					collapsed: false,
@@ -369,19 +372,6 @@ export default defineConfig({
 						{ label: 'Dashboard', slug: 'panels/dashboard' },
 						{ label: 'Actions in the panel', slug: 'panels/actions' },
 						{ label: 'Render hooks', slug: 'panels/render-hooks' },
-					],
-				},
-				{
-					label: 'Plugins',
-					collapsed: true,
-					items: [
-						{ label: 'Marketplace', link: '/plugins/' },
-						{ label: 'How listings work', slug: 'plugins/overview' },
-						{ label: 'Using a plugin', slug: 'plugins/using' },
-						{ label: 'Get listed', slug: 'plugins/get-listed' },
-						{ label: 'Listing guidelines', slug: 'plugins/guidelines' },
-						{ label: 'Paid vs free', slug: 'plugins/paid-vs-free' },
-						{ label: 'Plugin development', slug: 'panels/plugins' },
 					],
 				},
 				{

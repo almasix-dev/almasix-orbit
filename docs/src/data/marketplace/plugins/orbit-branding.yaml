@@ -29,6 +29,7 @@ categories:
 orbit_versions:
   - "0.3"
 price: free
+github_repo: almasix-dev/almasix-orbit
 repository: https://github.com/almasix-dev/almasix-orbit
 docs_url: https://orbit.almasix.com/panels/plugins/
 homepage: https://orbit.almasix.com/plugins/

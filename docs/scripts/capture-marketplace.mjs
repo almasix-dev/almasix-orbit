@@ -13,9 +13,9 @@ const examplesRoot = path.join(__dirname, '../public/examples');
 const docsUrl = (process.env.DOCS_URL ?? 'http://localhost:4321').replace(/\/$/, '');
 
 const shots = [
-	{ id: 'plugins/browse', url: '/plugins/', selector: '.market' },
-	{ id: 'plugins/listing', url: '/plugins/orbit-branding/', selector: '.market' },
-	{ id: 'plugins/author', url: '/plugins/authors/almasix/', selector: '.market' },
+	{ id: 'plugins/browse', url: '/plugins/', selector: '.page' },
+	{ id: 'plugins/listing', url: '/plugins/orbit-branding/', selector: '.page' },
+	{ id: 'plugins/author', url: '/plugins/authors/almasix/', selector: '.page' },
 	{ id: 'plugins/using', url: '/plugins/using/', selector: 'main' },
 ];
 
@@ -52,7 +52,7 @@ async function main() {
 			const outDir = path.join(examplesRoot, theme, path.dirname(shot.id));
 			await mkdir(outDir, { recursive: true });
 			const outPath = path.join(examplesRoot, theme, `${shot.id}.png`);
-			await loc.screenshot({ path: outPath, animations: 'disabled' });
+			await page.screenshot({ path: outPath, animations: 'disabled' });
 			console.log(`wrote ${theme}/${shot.id}.png`);
 		}
 	}

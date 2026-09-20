@@ -3,28 +3,46 @@
 import type { GetStaticPaths } from 'astro';
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import PluginCard from '../../components/marketplace/PluginCard.astro';
+import StarButton from '../../components/marketplace/StarButton.astro';
 import {
+	authorGithubHref,
+	getMarketplaceAuthors,
 	getMarketplacePlugins,
 	getRelatedPlugins,
 	renderListingMarkdown,
 	RESERVED_PLUGIN_SLUGS,
 	type MarketplacePlugin,
 } from '../../data/marketplace';
+import { authorStarsTotal, formatStat } from '../../../scripts/marketplace-lib.mjs';
 import '../../styles/marketplace.css';
 
 export const getStaticPaths: GetStaticPaths = async () => {
-	const plugins = await getMarketplacePlugins();
+	const [plugins, authors] = await Promise.all([
+		getMarketplacePlugins(),
+		getMarketplaceAuthors(),
+	]);
 	return plugins
 		.filter((plugin) => !RESERVED_PLUGIN_SLUGS.includes(plugin.slug))
-		.map((plugin) => ({
-			params: { slug: plugin.slug },
-			props: { plugin, related: getRelatedPlugins(plugin, plugins) },
-		}));
+		.map((plugin) => {
+			const group = authors.find((row) => row.author.slug === plugin.author.slug);
+			const authorPlugins = group?.plugins ?? [plugin];
+			return {
+				params: { slug: plugin.slug },
+				props: {
+					plugin,
+					related: getRelatedPlugins(plugin, plugins),
+					authorPlugins,
+					authorStars: authorStarsTotal(authorPlugins),
+				},
+			};
+		});
 };
 
-const { plugin, related } = Astro.props as {
+const { plugin, related, authorPlugins, authorStars } = Astro.props as {
 	plugin: MarketplacePlugin;
 	related: MarketplacePlugin[];
+	authorPlugins: MarketplacePlugin[];
+	authorStars: number;
 };
 const description = await renderListingMarkdown(plugin.description);
 const published = plugin.publishedAt.toLocaleDateString('en-US', {
@@ -32,6 +50,7 @@ const published = plugin.publishedAt.toLocaleDateString('en-US', {
 	month: 'long',
 	day: 'numeric',
 });
+const otherPlugins = authorPlugins.filter((item) => item.slug !== plugin.slug);
 ---
 
 <StarlightPage
@@ -41,147 +60,239 @@ const published = plugin.publishedAt.toLocaleDateString('en-US', {
 		tableOfContents: false,
 	}}
 >
-	<div class="market">
+	<div class="market market-detail-page" data-marketplace>
 		<a class="market-back" href="/plugins/">← All plugins</a>
 
-		<div class="market-detail-head">
-			<ul class="market-tags">
-				<li class="market-chip is-price">{plugin.priceLabel}</li>
-				{plugin.official && <li class="market-chip is-official">Official</li>}
-				{plugin.featured && <li class="market-chip is-featured">Featured</li>}
-				{plugin.categories.map((category) => (
-					<li class="market-chip">
-						<a href={`/plugins/categories/${category.slug}/`}>{category.label}</a>
-					</li>
-				))}
-				{plugin.darkMode && <li class="market-chip">Dark mode ready</li>}
-			</ul>
-			<p class="market-lede">{plugin.summary}</p>
-			<div class="market-detail-actions">
-				{
-					plugin.isPaid ? (
-						<a class="market-button is-primary" href={plugin.checkoutUrl} rel="nofollow noopener">
-							Buy for {plugin.priceLabel}
-						</a>
-					) : (
-						plugin.repository && (
-							<a class="market-button is-primary" href={plugin.repository}>
-								View source
-							</a>
+		<div class="market-detail">
+			<div class="market-detail-main">
+				<div class="market-detail-head">
+					<ul class="market-tags">
+						<li class="market-chip is-price">{plugin.priceLabel}</li>
+						{plugin.official && <li class="market-chip is-official">Official</li>}
+						{plugin.featured && <li class="market-chip is-featured">Featured</li>}
+						{plugin.categories.map((category) => (
+							<li class="market-chip">
+								<a href={`/plugins/categories/${category.slug}/`}>{category.label}</a>
+							</li>
+						))}
+						{plugin.darkMode && <li class="market-chip">Dark mode ready</li>}
+					</ul>
+					<p class="market-lede">{plugin.summary}</p>
+					<div class="market-detail-actions">
+						{
+							plugin.githubUrl && (
+								<StarButton
+									slug={plugin.slug}
+									githubUrl={plugin.githubUrl}
+									stars={plugin.stars}
+									primary={!plugin.isPaid}
+								/>
+							)
+						}
+						{
+							plugin.isPaid ? (
+								<a class="market-button is-primary" href={plugin.checkoutUrl} rel="nofollow noopener">
+									Buy for {plugin.priceLabel}
+								</a>
+							) : (
+								plugin.repository &&
+								!plugin.githubUrl && (
+									<a class="market-button is-primary" href={plugin.repository}>
+										View source
+									</a>
+								)
+							)
+						}
+						{plugin.docsUrl && <a class="market-button" href={plugin.docsUrl}>Documentation</a>}
+						{plugin.homepage && <a class="market-button" href={plugin.homepage}>Homepage</a>}
+						{plugin.changelogUrl && <a class="market-button" href={plugin.changelogUrl}>Changelog</a>}
+						{
+							plugin.pypiUrl && (
+								<a class="market-button" href={plugin.pypiUrl} rel="noopener noreferrer">
+									PyPI
+								</a>
+							)
+						}
+					</div>
+					{
+						plugin.installCommand && (
+							<div class="market-install-row">
+								<code class="market-install" id="market-install">{plugin.installCommand}</code>
+								<button
+									type="button"
+									class="market-reset"
+									id="market-copy"
+									data-copy={plugin.installCommand}
+								>
+									Copy
+								</button>
+							</div>
 						)
-					)
-				}
-				{plugin.docsUrl && <a class="market-button" href={plugin.docsUrl}>Documentation</a>}
-				{plugin.homepage && <a class="market-button" href={plugin.homepage}>Homepage</a>}
-				{plugin.changelogUrl && <a class="market-button" href={plugin.changelogUrl}>Changelog</a>}
+					}
+					<ul class="market-stats market-stats-lg">
+						<li>
+							<span class="market-stats-label">Installs</span>
+							<strong>{formatStat(plugin.installs)}</strong>
+						</li>
+						<li>
+							<span class="market-stats-label">Stars</span>
+							<strong data-star-count-page={plugin.slug}>{formatStat(plugin.stars)}</strong>
+						</li>
+					</ul>
+				</div>
+
+				<dl class="market-facts">
+					<div>
+						<dt>Author</dt>
+						<dd>
+							<a href={`/plugins/authors/${plugin.author.slug}/`}>{plugin.author.name}</a>
+						</dd>
+					</div>
+					<div>
+						<dt>Orbit versions</dt>
+						<dd>{plugin.orbitVersions.join(', ')}</dd>
+					</div>
+					<div>
+						<dt>Package</dt>
+						<dd>
+							{
+								plugin.pypiUrl ? (
+									<a href={plugin.pypiUrl} rel="noopener noreferrer">
+										{plugin.package}
+									</a>
+								) : (
+									(plugin.package ?? 'Distributed by the author')
+								)
+							}
+						</dd>
+					</div>
+					{
+						plugin.license && (
+							<div>
+								<dt>License</dt>
+								<dd>{plugin.license}</dd>
+							</div>
+						)
+					}
+					{
+						plugin.requiresPython && (
+							<div>
+								<dt>Python</dt>
+								<dd>{plugin.requiresPython}</dd>
+							</div>
+						)
+					}
+					<div>
+						<dt>Listed</dt>
+						<dd>{published}</dd>
+					</div>
+				</dl>
+
 				{
-					plugin.isPaid && plugin.repository && (
-						<a class="market-button" href={plugin.repository}>
-							Repository
-						</a>
+					plugin.keywords.length > 0 && (
+						<ul class="market-tags">
+							{plugin.keywords.map((keyword) => (
+								<li class="market-chip">{keyword}</li>
+							))}
+						</ul>
 					)
 				}
+
+				<section class="market-description" set:html={description} />
+
+				{
+					plugin.screenshots.length > 0 && (
+						<section class="market-shots" aria-label="Screenshots">
+							{plugin.screenshots.map((shot) => (
+								<img src={shot.src} alt={shot.alt} loading="lazy" />
+							))}
+						</section>
+					)
+				}
+
+				<div class="market-note">
+					<p>
+						{
+							plugin.official
+								? 'This plugin is maintained by the Orbit team.'
+								: 'This is a third-party plugin. Almasix does not review or vet its code, and installing it gives it full access to your application.'
+						}
+						{
+							plugin.isPaid &&
+								' Payment, licensing, and support are handled by the author on their own store — Orbit is not part of the transaction.'
+						}
+					</p>
+					<p>
+						How to install and wire a plugin: <a href="/plugins/using/">Using a plugin</a>. Report
+						security issues on the
+						<a href="https://github.com/almasix-dev/almasix-orbit/security/advisories/new">
+							advisory form</a
+						>.
+					</p>
+				</div>
 			</div>
-			{
-				plugin.installCommand && (
-					<div class="market-install-row">
-						<code class="market-install" id="market-install">{plugin.installCommand}</code>
-						<button type="button" class="market-reset" id="market-copy" data-copy={plugin.installCommand}>
-							Copy
-						</button>
+
+			<aside class="market-aside" aria-label="Author">
+				<div class="market-aside-card">
+					<div class="market-author-head">
+						{plugin.author.avatar && <img class="market-avatar" src={plugin.author.avatar} alt="" />}
+						<div>
+							<p class="market-aside-kicker">Author</p>
+							<h2 class="market-aside-title">
+								<a href={`/plugins/authors/${plugin.author.slug}/`}>{plugin.author.name}</a>
+							</h2>
+						</div>
 					</div>
-				)
-			}
+					<p class="market-summary">{plugin.author.bio}</p>
+					<p class="market-meta">
+						{plugin.author.website && <a href={plugin.author.website}>Website</a>}
+						{plugin.author.github && (
+							<a href={authorGithubHref(plugin.author.github)}>GitHub</a>
+						)}
+						{plugin.author.sponsorUrl && <a href={plugin.author.sponsorUrl}>Sponsor</a>}
+					</p>
+					<dl class="market-aside-facts">
+						<div>
+							<dt>Listed plugins</dt>
+							<dd>{authorPlugins.length}</dd>
+						</div>
+						<div>
+							<dt>Total stars</dt>
+							<dd>{formatStat(authorStars)}</dd>
+						</div>
+					</dl>
+				</div>
+
+				{
+					otherPlugins.length > 0 && (
+						<div class="market-aside-card">
+							<h3 class="market-aside-title">More from this author</h3>
+							<ul class="market-aside-plugins">
+								{otherPlugins.map((item) => (
+									<li>
+										<a href={item.url}>{item.name}</a>
+										<span class="market-meta">{formatStat(item.stars)} stars</span>
+									</li>
+								))}
+							</ul>
+						</div>
+					)
+				}
+			</aside>
 		</div>
-
-		<dl class="market-facts">
-			<div>
-				<dt>Author</dt>
-				<dd><a href={`/plugins/authors/${plugin.author.slug}/`}>{plugin.author.name}</a></dd>
-			</div>
-			<div>
-				<dt>Orbit versions</dt>
-				<dd>{plugin.orbitVersions.join(', ')}</dd>
-			</div>
-			<div>
-				<dt>Package</dt>
-				<dd>{plugin.package ?? 'Distributed by the author'}</dd>
-			</div>
-			{
-				plugin.license && (
-					<div>
-						<dt>License</dt>
-						<dd>{plugin.license}</dd>
-					</div>
-				)
-			}
-			{
-				plugin.requiresPython && (
-					<div>
-						<dt>Python</dt>
-						<dd>{plugin.requiresPython}</dd>
-					</div>
-				)
-			}
-			<div>
-				<dt>Listed</dt>
-				<dd>{published}</dd>
-			</div>
-		</dl>
-
-		{
-			plugin.keywords.length > 0 && (
-				<ul class="market-tags">
-					{plugin.keywords.map((keyword) => <li class="market-chip">{keyword}</li>)}
-				</ul>
-			)
-		}
-
-		<section class="market-description" set:html={description} />
-
-		{
-			plugin.screenshots.length > 0 && (
-				<section class="market-shots" aria-label="Screenshots">
-					{plugin.screenshots.map((shot) => (
-						<img src={shot.src} alt={shot.alt} loading="lazy" />
-					))}
-				</section>
-			)
-		}
 
 		{
 			related.length > 0 && (
-				<section aria-labelledby="market-related">
+				<footer class="market-related" aria-labelledby="market-related">
 					<h2 id="market-related">Related plugins</h2>
 					<ul class="market-grid">
 						{related.map((item) => (
 							<PluginCard plugin={item} />
 						))}
 					</ul>
-				</section>
+				</footer>
 			)
 		}
-
-		<div class="market-note">
-			<p>
-				{
-					plugin.official
-						? 'This plugin is maintained by the Orbit team.'
-						: 'This is a third-party plugin. Almasix does not review or vet its code, and installing it gives it full access to your application.'
-				}
-				{
-					plugin.isPaid &&
-						' Payment, licensing, and support are handled by the author on their own store — Orbit is not part of the transaction.'
-				}
-			</p>
-			<p>
-				How to install and wire a plugin: <a href="/plugins/using/">Using a plugin</a>. Report
-				security issues on the
-				<a href="https://github.com/almasix-dev/almasix-orbit/security/advisories/new">
-					advisory form</a
-				>.
-			</p>
-		</div>
 	</div>
 </StarlightPage>
 
@@ -199,4 +310,42 @@ const published = plugin.publishedAt.toLocaleDateString('en-US', {
 			button.textContent = 'Copy failed';
 		}
 	});
+
+	const starKey = (slug: string) => `orbit-plugin-star:${slug}`;
+	const starBtn = document.querySelector<HTMLButtonElement>('.market-star-btn');
+	if (starBtn) {
+		const slug = starBtn.dataset.starSlug ?? '';
+		const href = starBtn.dataset.starHref ?? '';
+		const baseRaw = starBtn.dataset.starBase ?? '';
+		const base = baseRaw === '' ? null : Number(baseRaw);
+		const label = starBtn.querySelector('[data-star-label]');
+		const counts = document.querySelectorAll<HTMLElement>(
+			'[data-star-count], [data-star-count-page]',
+		);
+
+		const format = (value: number | null) => {
+			if (value == null || Number.isNaN(value)) return '—';
+			if (value >= 1000) {
+				const k = value / 1000;
+				return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`;
+			}
+			return String(value);
+		};
+
+		const liked = () => Boolean(slug && localStorage.getItem(starKey(slug)));
+		const render = () => {
+			const extra = liked() ? 1 : 0;
+			const shown = base == null ? (extra ? extra : null) : base + extra;
+			for (const node of counts) node.textContent = format(shown);
+			starBtn.classList.toggle('is-starred', liked());
+			if (label) label.textContent = liked() ? 'Starred on GitHub' : 'Star on GitHub';
+		};
+
+		render();
+		starBtn.addEventListener('click', () => {
+			if (href) window.open(href, '_blank', 'noopener');
+			if (slug) localStorage.setItem(starKey(slug), '1');
+			render();
+		});
+	}
 </script>
