@@ -314,6 +314,14 @@ export default defineConfig({
 					collapsed: true,
 					items: [
 						{ label: 'Overview', slug: 'infolists/overview' },
+						{ label: 'Text entry', slug: 'infolists/text-entry' },
+						{ label: 'Icon entry', slug: 'infolists/icon-entry' },
+						{ label: 'Image entry', slug: 'infolists/image-entry' },
+						{ label: 'Color entry', slug: 'infolists/color-entry' },
+						{ label: 'Code entry', slug: 'infolists/code-entry' },
+						{ label: 'Key-value entry', slug: 'infolists/key-value-entry' },
+						{ label: 'Repeatable entry', slug: 'infolists/repeatable-entry' },
+						{ label: 'View entry', slug: 'infolists/view-entry' },
 					],
 				},
 				{

@@ -2870,6 +2870,19 @@ html.dark .or-login-logo-dark {
   display: grid;
   gap: 0.85rem;
   margin: 0;
+  padding: 1.25rem;
+}
+
+.or-infolist-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.or-infolist-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.or-infolist-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .or-entry {
@@ -2880,9 +2893,136 @@ html.dark .or-login-logo-dark {
   border-bottom: 1px solid var(--or-line);
 }
 
+.or-entry.or-align-center {
+  text-align: center;
+}
+
+.or-entry.or-align-end {
+  text-align: end;
+}
+
 .or-entry-label {
   font-weight: 600;
   color: var(--or-muted);
+}
+
+.or-entry-value {
+  color: var(--or-ink);
+}
+
+.or-entry-placeholder {
+  color: var(--or-muted);
+  font-weight: 400;
+}
+
+.or-entry-image,
+.or-entry-image.or-avatar {
+  display: inline-block;
+  max-width: 100%;
+  object-fit: cover;
+  vertical-align: middle;
+}
+
+.or-entry-icon {
+  display: inline-flex;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.or-entry-icon-after {
+  margin-right: 0;
+  margin-left: 0.35rem;
+}
+
+.or-entry-wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.or-entry-affix {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.or-entry-action {
+  border: 1px solid var(--or-line);
+  background: var(--or-cream);
+  border-radius: var(--or-radius);
+  padding: 0.15rem 0.4rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.or-icon-entry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.or-code {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--or-radius);
+  border: 1px solid var(--or-line);
+  background: var(--or-cream);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.85rem;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.or-key-value {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.or-key-value th,
+.or-key-value td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--or-line);
+  text-align: start;
+  vertical-align: top;
+}
+
+.or-key-value thead th {
+  color: var(--or-muted);
+  font-weight: 600;
+}
+
+.or-prose {
+  line-height: 1.55;
+  max-width: 65ch;
+}
+
+.or-prose p {
+  margin: 0 0 0.65em;
+}
+
+.or-repeatable-cols-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.or-repeatable-cols-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.or-repeatable-cols-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.or-repeatable-bare {
+  border: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .or-stats {
@@ -3901,6 +4041,12 @@ html.dark .or-login-logo-dark {
   .or-grid-cols-2,
   .or-grid-cols-3,
   .or-schema-cols-2,
+  .or-infolist-cols-2,
+  .or-infolist-cols-3,
+  .or-infolist-cols-4,
+  .or-repeatable-cols-2,
+  .or-repeatable-cols-3,
+  .or-repeatable-cols-4,
   .or-entry {
     grid-template-columns: 1fr;
   }

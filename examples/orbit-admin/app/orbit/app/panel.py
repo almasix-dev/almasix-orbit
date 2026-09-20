@@ -10,6 +10,7 @@ from app.orbit.app.resources.columns_overview_resource import ColumnsOverviewRes
 from app.orbit.app.resources.editable_columns_resource import EditableColumnsResource
 from app.orbit.app.resources.generated_post_resource import GeneratedPostResource
 from app.orbit.app.resources.grouped_posts_resource import GroupedPostsResource
+from app.orbit.app.resources.infolists_overview_resource import InfolistsOverviewResource
 from app.orbit.app.resources.kitchen_sink_resource import KitchenSinkResource
 from app.orbit.app.resources.layout_columns_resource import LayoutColumnsResource
 from app.orbit.app.resources.media_columns_resource import MediaColumnsResource
@@ -60,6 +61,11 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
             .sort(5)
         )
         .navigation_group(
+            NavigationGroup.make("Infolists")
+            .icon("heroicon-o-queue-list")
+            .sort(6)
+        )
+        .navigation_group(
             NavigationGroup.make("Demos")
             .icon("heroicon-o-beaker")
             .sort(8)
@@ -73,6 +79,7 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
             [
                 TablesOverviewResource,
                 ColumnsOverviewResource,
+                InfolistsOverviewResource,
                 PostResource,
                 AuthorResource,
                 SettingsResource,
