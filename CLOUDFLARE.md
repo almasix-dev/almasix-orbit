@@ -24,6 +24,19 @@ GitHub Actions ([`.github/workflows/docs.yml`](./.github/workflows/docs.yml) and
 | Project name | `almasix-orbit-docs` |
 | Node | `22` (or `24`) |
 
+### Header GitHub chip
+
+`@almasix/starlight-theme` fetches stars/forks/release at **build time**. Anonymous
+GitHub API calls from Workers Builds are often rate-limited, which used to collapse
+the chip to a plain icon. Theme **0.1.1+** always keeps the pill chrome; to populate
+counts, add a build env var in the Workers Builds project:
+
+| Variable | Value |
+|----------|--------|
+| `GITHUB_TOKEN` | A fine-scoped PAT (or GitHub App token) with `public_repo` / metadata read |
+
+No secrets are required in GitHub Actions for docs (build-only).
+
 ## Cutover checklist
 
 1. Cloudflare Dashboard → **Workers & Pages** → **Create** → connect **`almasix-dev/almasix-orbit`**.
