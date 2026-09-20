@@ -5,7 +5,9 @@ description: ViewEntry is the escape hatch for custom HTML inside an Infolist �
 
 ## Introduction
 
-`ViewEntry` is the escape hatch for custom HTML inside an infolist. Supply markup with `.view(...)` or `.content(...)` (aliases). Content is not auto-escaped — sanitize untrusted data yourself. Shared [Entry chrome](/infolists/overview/) (label, helper, hidden label) still wraps the custom markup.
+`ViewEntry` is the escape hatch for custom HTML inside an infolist. Supply markup with `.view(...)` or `.content(...)` (aliases). Content is not auto-escaped — sanitize untrusted data yourself.
+
+Reach for ViewEntry when no typed entry fits — counters, custom badges, or small composed HTML blocks that still need an accessible label. Shared [Entry chrome](/infolists/overview/) (label, helper, hidden label) still wraps the custom markup in the usual stacked entry shell.
 
 ## Basic view entry
 

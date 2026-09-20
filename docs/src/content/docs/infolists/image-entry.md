@@ -5,7 +5,9 @@ description: ImageEntry renders covers and avatars — circular, square, sized, 
 
 ## Introduction
 
-`ImageEntry` displays one URL or a stack of images from list state. Use it for avatars, covers, and team stacks. Empty state uses `.placeholder(...)` or `.default_image_url(...)` — placeholders never become `<img>` tags.
+`ImageEntry` displays one URL or a stack of images from list state — avatars, covers, and team stacks on a record view. Empty state uses `.placeholder(...)` or `.default_image_url(...)`; placeholders never become `<img>` tags.
+
+Like other entries, the label stacks above the image by default so covers and avatars read as labeled fields on the detail sheet. Reach for `.circular()` / `.stacked()` when the layout should match social-style avatars rather than a rectangular cover.
 
 ## Basic image
 

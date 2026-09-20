@@ -529,6 +529,8 @@ class Entry(Component):
         eval_ctx = {**ctx, "record": record, "state": state}
         align = self._alignment or "start"
         align_c = f" or-align-{align}" if align and align != "start" else ""
+        inline = self.is_inline_label() or bool(ctx.get("inline_label"))
+        inline_c = " or-entry-inline" if inline else ""
         wrapper_attrs = _attrs_to_html(
             {
                 **self.get_extra_attributes(**eval_ctx),
@@ -541,7 +543,7 @@ class Entry(Component):
         tip = self._resolved_tooltip(record, state, **ctx)
         title_attr = f' title="{e(tip)}"' if tip else ""
 
-        if self._hidden_label:
+        if self.is_label_hidden():
             label_html = (
                 f'<dt class="or-entry-label or-sr-only">{e(self.get_label(**eval_ctx))}</dt>'
             )
@@ -564,7 +566,7 @@ class Entry(Component):
             f"{self._slot_html(self._below_content, 'or-below-content', **eval_ctx)}"
             f"{self._helper_html(**eval_ctx)}"
         )
-        return f'<div class="or-entry{align_c}"{wrapper_attrs}>{body}</div>'
+        return f'<div class="or-entry{align_c}{inline_c}"{wrapper_attrs}>{body}</div>'
 
     def _render_formatted_value(
         self,

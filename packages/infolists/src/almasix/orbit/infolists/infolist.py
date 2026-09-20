@@ -18,6 +18,8 @@ class Infolist(Schema):
         render_ctx = {**ctx}
         if self._operation is not None and "operation" not in render_ctx:
             render_ctx["operation"] = self._operation
+        if self.is_inline_label() or ctx.get("inline_label"):
+            render_ctx["inline_label"] = True
         parts: list[str] = []
         for c in self.get_components():
             if not c.is_visible(record=record, **render_ctx):

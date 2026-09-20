@@ -56,10 +56,13 @@ class Layout(Component):
 
     def render_children(self, state: Any = None, **ctx: Any) -> str:
         data = state if isinstance(state, dict) else {}
+        child_ctx = {**ctx}
+        if self.is_inline_label() or ctx.get("inline_label"):
+            child_ctx["inline_label"] = True
         return "".join(
-            c.render(child_render_state(c, data), **ctx)
+            c.render(child_render_state(c, data), **child_ctx)
             for c in self._schema
-            if c.is_visible(**ctx)
+            if c.is_visible(**child_ctx)
         )
 
 

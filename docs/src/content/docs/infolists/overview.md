@@ -1,13 +1,15 @@
 ---
 title: Infolists overview
-description: Build read-only record views with Orbit entries — labels, placeholders, copyable state, formatters, and schema layouts.
+description: Build read-only record views with Orbit entries — stacked labels, placeholders, copyable state, formatters, sections, and schema layouts.
 ---
 
 ## Introduction
 
 **Infolists** are Orbit’s show / detail UI: a definition list of typed **entries** over one record. Where a [form](/forms/overview/) collects input, an infolist only displays — titles, badges, images, copyable slugs, and so on.
 
-An `Infolist` is a [`Schema`](/schemas/overview/) specialized for display. Compose entries with `.schema([...])`, nest [Sections](/schemas/sections/) / [Grids](/schemas/grid/) for layout, and render with `.render(record)`. On a resource, wire `infolist()` and the view page (or `ViewAction`) shows it automatically.
+An `Infolist` is a [`Schema`](/schemas/overview/) specialized for display. Compose entries with `.schema([...])`, nest [Sections](/schemas/sections/) and [Grids](/schemas/grid/) for layout, and render with `.render(record)`. On a resource, implement `infolist()` and the view page (or `ViewAction`) shows it automatically.
+
+By default each entry is **stacked**: a muted label above the value, like a clean detail sheet. Use `.inline_label()` when you need a dense side-by-side row instead.
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.infolists import Infolist, TextEntry, ImageEntry
@@ -27,7 +29,7 @@ Infolist.make("post").schema([
 
 ![Orbit Infolists overview (dark)](/examples/dark/infolists/overview.png)
 
-Markup is a `<dl class="or-infolist">` — semantic, styleable, no surprise div soup. Call `.columns(2)` (or `3` / `4`) on the infolist for a multi-column layout.
+Markup is a `<dl class="or-infolist">` wrapping entry chrome (`or-entry` with `<dt>` / `<dd>`). Call `.columns(2)` (or `3` / `4`) on the infolist for a multi-column grid of those stacked entries.
 
 ## Entry types
 
@@ -71,7 +73,7 @@ Then `PostResource.get_infolist().render(record)` on custom pages, or open the r
 
 ## Setting an entry's label
 
-By default Orbit humanizes the name (`first_name` → `First Name`). Override with `.label(...)` when UI copy should differ from the state key. Callables receive injected utilities such as `record`.
+By default Orbit humanizes the name (`first_name` → `First Name`). Override with `.label(...)` when UI copy should differ from the state key. Callables receive injected utilities such as `record` — see [Utility injection](#utility-injection--closures).
 
 ```python title="app/orbit/infolists/labels.py"
 from almasix.orbit.infolists import TextEntry
@@ -89,7 +91,7 @@ TextEntry.make("name")
 
 ### Helper text and hints
 
-`.helper_text(...)` sits below the value; `.hint(...)` / `.hint_icon(...)` sit near the label — same chrome pattern as form fields.
+`.helper_text(...)` sits below the value; `.hint(...)` / `.hint_icon(...)` sit near the label — the same chrome pattern as form fields.
 
 ```python title="app/orbit/infolists/helper.py"
 from almasix.orbit.infolists import TextEntry
@@ -107,17 +109,42 @@ TextEntry.make("email")
 
 ### Hiding a label
 
-`.hidden_label()` keeps an accessible name while omitting the visible label row.
+`.hidden_label()` keeps an accessible name (screen-reader-only `<dt>`) while omitting the visible label row. Use it for hero titles, subtitle lines, or any value that already communicates its meaning.
 
 ```python title="app/orbit/infolists/hidden_label.py"
 from almasix.orbit.infolists import TextEntry
 
-TextEntry.make("title").hidden_label().weight("bold")
+TextEntry.make("title").hidden_label().weight("bold").size("lg")
+TextEntry.make("subtitle").hidden_label().color("gray")
 ```
+
+![Orbit Infolist hidden label (light)](/examples/light/infolists/overview/hidden-label.png)
+
+![Orbit Infolist hidden label (dark)](/examples/dark/infolists/overview/hidden-label.png)
+
+### Inline labels
+
+The default layout stacks **label above value**. Call `.inline_label()` on an entry to place the label beside the value (two-column row) — useful for dense settings-style detail rows.
+
+You can also call `.inline_label()` on a [Section](/schemas/sections/) (or other layout): Orbit cascades `inline_label` to nested entries when that layout renders.
+
+```python title="app/orbit/infolists/inline_label.py"
+from almasix.orbit.infolists import TextEntry
+
+TextEntry.make("timezone").label("Timezone").inline_label()
+TextEntry.make("locale").label("Locale").inline_label()
+TextEntry.make("email").label("Email").inline_label()
+```
+
+![Orbit Infolist inline label (light)](/examples/light/infolists/overview/inline-label.png)
+
+![Orbit Infolist inline label (dark)](/examples/dark/infolists/overview/inline-label.png)
+
+On narrow viewports, inline rows fold back to stacked so labels stay readable.
 
 ## Placeholder vs default
 
-`.placeholder(...)` is display-only chrome when state is empty — it does **not** become real state for Image / Color / Icon entries. `.default(...)` fills missing state before formatting (same as form fields).
+`.placeholder(...)` is display-only chrome when state is empty — it does **not** become real state for Image / Color / Icon entries. `.default(...)` fills missing state before formatting (same idea as form fields).
 
 ```python title="app/orbit/infolists/placeholder.py"
 from almasix.orbit.infolists import TextEntry
@@ -229,7 +256,26 @@ TextEntry.make("slug").prefix_action("edit").suffix_action("copy")
 
 ![Orbit Infolist affix actions (dark)](/examples/dark/infolists/overview/affix.png)
 
+## Extra attributes
+
+`.extra_attributes(...)` and `.extra_entry_wrapper_attributes(...)` add HTML attributes to the entry wrapper — useful for test hooks, analytics, or host styling. Values may be callables evaluated at render time.
+
+```python title="app/orbit/infolists/extra_attributes.py"
+from almasix.orbit.infolists import TextEntry
+
+TextEntry.make("title")
+    .label("Title")
+    .extra_attributes({"data-tour": "title"})
+    .extra_entry_wrapper_attributes({"data-qa": "post-title"})
+```
+
+![Orbit Infolist extra attributes (light)](/examples/light/infolists/overview/extra-attributes.png)
+
+![Orbit Infolist extra attributes (dark)](/examples/dark/infolists/overview/extra-attributes.png)
+
 ## Multi-column layout
+
+`.columns(2)` (or `3` / `4`) lays entries out in a responsive grid. Each cell still uses the stacked label-above-value default unless you opt into `.inline_label()`.
 
 ```python title="app/orbit/infolists/columns.py"
 from almasix.orbit.infolists import Infolist, TextEntry
@@ -245,6 +291,51 @@ Infolist.make("post").columns(2).schema([
 ![Orbit Infolist columns (light)](/examples/light/infolists/overview/columns.png)
 
 ![Orbit Infolist columns (dark)](/examples/dark/infolists/overview/columns.png)
+
+## Sections and grids
+
+Nest [Section](/schemas/sections/) and [Grid](/schemas/grid/) inside the infolist schema to group related fields. Sections render a heading (and optional description) above their child entries — ideal for multi-block view pages.
+
+```python title="app/orbit/infolists/sections.py"
+from almasix.orbit.infolists import Infolist, TextEntry, ImageEntry
+from almasix.orbit.schemas import Section
+
+Infolist.make("post").schema([
+    Section.make("basics")
+        .heading("Basics")
+        .description("Core fields for this post.")
+        .schema([
+            TextEntry.make("title").weight("bold"),
+            TextEntry.make("status").badge().color("success"),
+            TextEntry.make("slug").copyable(),
+        ]),
+    Section.make("author")
+        .heading("Author")
+        .schema([
+            TextEntry.make("author.name").label("Name"),
+            TextEntry.make("email"),
+            ImageEntry.make("photo").label("Avatar").circular().size(40),
+        ]),
+])
+```
+
+![Orbit Infolist sections (light)](/examples/light/infolists/overview/sections.png)
+
+![Orbit Infolist sections (dark)](/examples/dark/infolists/overview/sections.png)
+
+## Utility injection / closures
+
+When a fluent helper accepts a callable (`.label`, `.state`, `.format_state_using`, `.tooltip`, slot content, …), Orbit’s `evaluate()` injects only the kwargs the callable declares. Common utilities on view pages: `state`, `record`, and sometimes `operation`. See [Support closures](/support/closures/) for the shared model.
+
+```python title="app/orbit/infolists/utility_injection.py"
+from almasix.orbit.infolists import TextEntry
+
+TextEntry.make("greeting").state(
+    lambda record, **_: f"Hello, {record.get('author', {}).get('name', 'friend')}"
+)
+
+TextEntry.make("email").format_state_using(lambda state, **_: str(state or "").lower())
+```
 
 ## Empty infolist → readonly form fallback
 
@@ -281,6 +372,7 @@ So create/edit and view stay in sync until you’re ready to hand-craft badges, 
 |--------|-------|
 | `.label` | Override humanized name |
 | `.hidden_label` | Screen-reader-only label |
+| `.inline_label` | Label beside value (default is stacked) |
 | `.helper_text` / `.hint` / `.hint_icon` | Chrome under / beside the entry |
 | `.placeholder` | Empty-state display (not real state) |
 | `.default` | Fallback when state is missing |

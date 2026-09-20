@@ -5,9 +5,9 @@ description: Dashboard widgets — cards you register on a panel home page for s
 
 ## Introduction
 
-**Widgets** are dashboard-sized cards on a panel home page. Each widget is a Python class (or fluent instance) that renders a self-contained block of UI — a KPI strip, a chart, an embedded table, or custom HTML.
+**Widgets** are dashboard-sized cards on a panel home page. Each widget is a Python class (or fluent instance) that renders a self-contained block of UI — a KPI strip, a chart, an embedded table, or custom HTML. Operators land on the dashboard for a glanceable summary; widgets are how you fill that glance without building a bespoke page for every metric.
 
-Register widget classes on the panel with `.widgets([...])`. The default [Dashboard](/panels/dashboard/) collects them, checks who can see each one, sorts by `.sort(...)`, and lays them out in a responsive grid.
+Register widget classes on the panel with `.widgets([...])`. The default [Dashboard](/panels/dashboard/) collects them, checks who can see each one, sorts by `.sort(...)`, and lays them out in a responsive grid by column span. Prefer many small widgets over one kitchen-sink card so visibility and layout stay independent.
 
 ```python title="app/providers/orbit_panel_provider.py"
 from almasix.orbit import Panel

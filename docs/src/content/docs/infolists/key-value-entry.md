@@ -5,7 +5,9 @@ description: KeyValueEntry displays a dict as a two-column table with customizab
 
 ## Introduction
 
-`KeyValueEntry` turns a mapping into an `or-key-value` table — useful for meta blobs, settings maps, and sparse attribute bags.
+`KeyValueEntry` turns a mapping into an `or-key-value` table — the right fit when a record stores a dict of sparse attributes (meta blobs, feature flags, settings maps) and you want operators to scan keys beside values without opening a JSON blob.
+
+The entry label still stacks above the table; customize the inner column headers with `.key_label` / `.value_label` so the table reads in domain language (`Property` / `Content`) instead of generic `Key` / `Value`.
 
 ## Basic key-value entry
 

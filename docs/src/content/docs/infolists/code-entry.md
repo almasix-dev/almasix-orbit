@@ -5,7 +5,9 @@ description: CodeEntry renders monospace blocks for source or JSON, with optiona
 
 ## Introduction
 
-`CodeEntry` wraps content in `<pre class="or-code"><code>…</code></pre>`. Dicts and lists are pretty-printed as JSON. Strings render as-is (escaped).
+`CodeEntry` wraps content in `<pre class="or-code"><code>…</code></pre>` so payloads, snippets, and config blobs stay monospace and scannable on a show page. Dicts and lists are pretty-printed as JSON; strings render as-is (escaped).
+
+Use it when operators need to inspect structured data without leaving the record view. Shared entry chrome (label above the block by default) still applies — see the [overview](/infolists/overview/). Pair with `.grammar(...)` for host highlighters and `.copyable()` when the payload should be one click from the clipboard.
 
 ## Basic code entry
 

@@ -5,7 +5,11 @@ description: Buttons, links, icon buttons, badges, modals, notifications, and CR
 
 ## Introduction
 
-**Actions** are the verbs in your admin UI — save, delete, “archive selected”, or any custom operation that should feel like a button with a story. In Orbit you build an `Action` with a fluent API: set chrome (label, color, icon), optionally require confirmation or open a modal / form, authorize who may run it, then attach a callback with `.action(...)` or `.using(...)`.
+**Actions** are the verbs in your admin UI — save, delete, “archive selected”, open a report, or any custom operation that should feel like a button with a story. Tables, forms, widgets, empty states, and page headers all mount the same `Action` type: one fluent API for chrome, confirmation, modals, authorization, and the callback that does the work.
+
+Build an `Action` with label, color, and icon; optionally require confirmation or open a modal / nested form; gate who may run it with `.authorize(...)`; then attach behavior with `.action(...)` or `.using(...)`. Presets such as [Create](/actions/create/), [Edit](/actions/edit/), and [Delete](/actions/delete/) encode common CRUD flows so you only customize the edges.
+
+On a resource, header and row/bulk actions wire into the list and record pages automatically. On a custom page, render triggers yourself and let the Conduit host call `mountAction('…')`.
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.actions import Action

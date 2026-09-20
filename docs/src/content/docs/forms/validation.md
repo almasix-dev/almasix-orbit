@@ -37,10 +37,6 @@ errors = form.validate({
 })
 ```
 
-![Orbit Running validation (light)](/examples/light/forms/overview.png)
-
-![Orbit Running validation (dark)](/examples/dark/forms/overview.png)
-
 ## Attaching rules
 
 `.rules(*rules)` appends string tokens and/or callables. Fluent helpers below are thin wrappers that call `.rules(...)` (and sometimes set input `type`). Empty values skip most rules except presence-style ones (`required`, `filled`, `accepted`, and the conditional required/prohibited family).
@@ -144,9 +140,9 @@ TextInput.make('country_id')
     .exists('countries', 'id')
 ```
 
-![Orbit Unique and exists (light)](/examples/light/forms/text-input/email.png)
+![Orbit Unique and exists (light)](/examples/light/forms/text-input/copyable.png)
 
-![Orbit Unique and exists (dark)](/examples/dark/forms/text-input/email.png)
+![Orbit Unique and exists (dark)](/examples/dark/forms/text-input/copyable.png)
 
 ## Distinct
 
@@ -236,9 +232,9 @@ TextInput.make('display_name')
     .filled()
 ```
 
-![Orbit Filled and present (light)](/examples/light/forms/text-input/basic.png)
+![Orbit Filled and present (light)](/examples/light/forms/text-input/mark-as-required.png)
 
-![Orbit Filled and present (dark)](/examples/dark/forms/text-input/basic.png)
+![Orbit Filled and present (dark)](/examples/dark/forms/text-input/mark-as-required.png)
 
 ## String character classes
 
@@ -341,10 +337,6 @@ TextInput.make('email')
     })
 ```
 
-![Orbit Validation messages (light)](/examples/light/forms/text-input/email.png)
-
-![Orbit Validation messages (dark)](/examples/dark/forms/text-input/email.png)
-
 ## Callable rules cookbook
 
 Return `True`/`None` to pass, `False` for the default invalid message, or a string for a custom message. Signatures can request `value`, `state`, `field`, `attribute`, `operation`, and any host-provided utilities.
@@ -357,10 +349,6 @@ TextInput.make('slug')
         else 'That slug is reserved.'
     ))
 ```
-
-![Orbit Callable rules (light)](/examples/light/forms/text-input/basic.png)
-
-![Orbit Callable rules (dark)](/examples/dark/forms/text-input/basic.png)
 
 ## Complete fluent helper index
 
@@ -375,10 +363,6 @@ TextInput.make('email')
     .validation_attribute('Email address')
     .validation_messages({'unique': 'That :attribute is taken.'})
 ```
-
-![Orbit Complete fluent helper index (light)](/examples/light/forms/text-input/email.png)
-
-![Orbit Complete fluent helper index (dark)](/examples/dark/forms/text-input/email.png)
 
 Fluent helpers: `required`, `mark_as_required`, `rules`, `email`, `url`, `numeric`, `integer`, `tel` (type only), `password` (type only), `min_length`, `max_length`, `length`, `between`, `regex`, `tel_regex`, `unique`, `exists`, `distinct`, `required_if`, `required_unless`, `required_with`, `required_with_all`, `required_without`, `required_without_all`, `required_if_accepted`, `prohibited`, `prohibited_if`, `prohibits`, `confirmed`, `same`, `different`, `filled`, `present`, `alpha`, `alpha_num`, `alpha_dash`, `ascii`, `starts_with`, `ends_with`, `doesnt_start_with`, `doesnt_end_with`, `ip`, `ipv4`, `ipv6`, `mac_address`, `active_url`, `uuid`, `ulid`, `json`, `hex_color`, `multiple_of`, `after`, `after_or_equal`, `before`, `before_or_equal`, `date_equals`, `validation_attribute`, `validation_messages`, `format_validation_message`.
 
