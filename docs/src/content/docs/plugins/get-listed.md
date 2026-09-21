@@ -168,13 +168,20 @@ git push -u origin HEAD
 gh pr create --repo almasix-dev/orbit-plugins --title "Plugin: Acme Audit Log" --body "New marketplace listing"
 ```
 
-Open the PR with the [plugin submission template](https://github.com/almasix-dev/orbit-plugins/compare?template=plugin.md), keep it to your listing and images, and leave “Allow edits by maintainers” enabled so a reviewer can fix small things instead of sending the PR back.
+Open the PR with the matching template (keep the diff to your listing/author files and images, and leave “Allow edits by maintainers” enabled so a reviewer can fix small things instead of sending the PR back):
+
+| Intent | Pull request | Issue (optional) |
+|--------|--------------|------------------|
+| New plugin | [new-plugin](https://github.com/almasix-dev/orbit-plugins/compare?template=new-plugin.md) | [propose](https://github.com/almasix-dev/orbit-plugins/issues/new?template=new-plugin.yml) |
+| Edit plugin | [edit-plugin](https://github.com/almasix-dev/orbit-plugins/compare?template=edit-plugin.md) | [request](https://github.com/almasix-dev/orbit-plugins/issues/new?template=edit-plugin.yml) |
+| New author | [new-author](https://github.com/almasix-dev/orbit-plugins/compare?template=new-author.md) | [propose](https://github.com/almasix-dev/orbit-plugins/issues/new?template=new-author.yml) |
+| Edit author | [edit-author](https://github.com/almasix-dev/orbit-plugins/compare?template=edit-author.md) | [request](https://github.com/almasix-dev/orbit-plugins/issues/new?template=edit-author.yml) |
 
 After merge, the public catalog at [/plugins](/plugins/) rebuilds from the registry. You do not need a second PR against almasix-orbit.
 
 ## Updating or removing a listing
 
-- **Update:** edit your YAML file in orbit-plugins and open another PR. Bump `orbit_versions` when you add support for a new release.
+- **Update:** edit your YAML in orbit-plugins and open a PR with the [edit-plugin](https://github.com/almasix-dev/orbit-plugins/compare?template=edit-plugin.md) template. Bump `orbit_versions` when you add support for a new release.
 - **Pause:** set `status: draft` to hide a listing without deleting its history.
 - **Retire:** set `status: archived` when the plugin is no longer offered. Same hiding rules as draft, with a clearer intent.
 - **Remove:** delete the YAML file and your images. Tell us in the PR description why, so we can redirect people if the plugin was popular.
