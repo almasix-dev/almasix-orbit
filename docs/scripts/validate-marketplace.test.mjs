@@ -16,17 +16,17 @@ function fixture(overrides = {}) {
 	const root = mkdtempSync(path.join(tmpdir(), 'orbit-market-'));
 	write(
 		root,
-		'src/data/marketplace/categories.yaml',
+		'.marketplace/categories.yaml',
 		'theme:\n  label: Theme\n  description: Panel themes.\n',
 	);
 	write(
 		root,
-		'src/data/marketplace/authors/almasix.yaml',
+		'.marketplace/authors/almasix.yaml',
 		'name: Almasix\nslug: almasix\nbio: The Orbit team.\n',
 	);
 	write(
 		root,
-		'src/data/marketplace/plugins/orbit-branding.yaml',
+		'.marketplace/plugins/orbit-branding.yaml',
 		[
 			'name: Orbit Branding',
 			'slug: orbit-branding',
@@ -70,7 +70,7 @@ test('reserved slugs include marketplace routes', () => {
 
 test('unknown author, category, reserved slug, and paid checkout', () => {
 	const root = fixture({
-		'src/data/marketplace/plugins/overview.yaml': [
+		'.marketplace/plugins/overview.yaml': [
 			'name: Reserved',
 			'slug: overview',
 			'summary: x',
@@ -99,7 +99,7 @@ test('unknown author, category, reserved slug, and paid checkout', () => {
 
 test('free plugins need a package or repository', () => {
 	const root = fixture({
-		'src/data/marketplace/plugins/no-dist.yaml': [
+		'.marketplace/plugins/no-dist.yaml': [
 			'name: No Dist',
 			'slug: no-dist',
 			'summary: Missing distribution.',
@@ -121,8 +121,8 @@ test('free plugins need a package or repository', () => {
 
 test('official is reserved for the almasix author', () => {
 	const root = fixture({
-		'src/data/marketplace/authors/acme.yaml': 'name: Acme\nslug: acme\nbio: A vendor.\n',
-		'src/data/marketplace/plugins/acme-kit.yaml': [
+		'.marketplace/authors/acme.yaml': 'name: Acme\nslug: acme\nbio: A vendor.\n',
+		'.marketplace/plugins/acme-kit.yaml': [
 			'name: Acme Kit',
 			'slug: acme-kit',
 			'summary: Not official.',
@@ -147,7 +147,7 @@ test('official is reserved for the almasix author', () => {
 
 test('missing local images and relative paths fail', () => {
 	const root = fixture({
-		'src/data/marketplace/plugins/orbit-branding.yaml': [
+		'.marketplace/plugins/orbit-branding.yaml': [
 			'name: Orbit Branding',
 			'slug: orbit-branding',
 			'summary: Sample panel branding plugin from the Orbit examples.',
@@ -167,7 +167,7 @@ test('missing local images and relative paths fail', () => {
 	});
 	try {
 		const errors = validateMarketplace(root).join('\n');
-		assert.match(errors, /missing from docs\/public/);
+		assert.match(errors, /missing from public/);
 		assert.match(errors, /site-absolute path/);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
@@ -178,7 +178,7 @@ test('invalid status, http URLs, and missing category file', () => {
 	const root = fixture();
 	write(
 		root,
-		'src/data/marketplace/plugins/orbit-branding.yaml',
+		'.marketplace/plugins/orbit-branding.yaml',
 		[
 			'name: Orbit Branding',
 			'slug: orbit-branding',
@@ -203,11 +203,11 @@ test('invalid status, http URLs, and missing category file', () => {
 	}
 });
 
-test('missing categories file is reported', () => {
+test('missing marketplace checkout is reported', () => {
 	const root = mkdtempSync(path.join(tmpdir(), 'orbit-market-empty-'));
 	try {
 		const errors = validateMarketplace(root).join('\n');
-		assert.match(errors, /the registry needs a category list/);
+		assert.match(errors, /marketplace:sync/);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
@@ -215,9 +215,9 @@ test('missing categories file is reported', () => {
 
 test('invalid YAML, slug mismatch, and missing directories', () => {
 	const root = fixture({
-		'src/data/marketplace/authors/broken.yaml': 'name: [unterminated',
-		'src/data/marketplace/authors/wrong-name.yaml': 'name: Wrong\nslug: other-slug\nbio: Bio.\n',
-		'src/data/marketplace/plugins/orbit-branding.yaml': [
+		'.marketplace/authors/broken.yaml': 'name: [unterminated',
+		'.marketplace/authors/wrong-name.yaml': 'name: Wrong\nslug: other-slug\nbio: Bio.\n',
+		'.marketplace/plugins/orbit-branding.yaml': [
 			'name: Orbit Branding',
 			'slug: not-the-filename',
 			'summary: Sample.',
@@ -247,8 +247,8 @@ test('invalid YAML, slug mismatch, and missing directories', () => {
 
 test('paid price shape and category labels', () => {
 	const root = fixture({
-		'src/data/marketplace/categories.yaml': 'theme:\n  description: No label.\n',
-		'src/data/marketplace/plugins/orbit-branding.yaml': [
+		'.marketplace/categories.yaml': 'theme:\n  description: No label.\n',
+		'.marketplace/plugins/orbit-branding.yaml': [
 			'name: Orbit Branding',
 			'slug: orbit-branding',
 			'summary: Sample.',
@@ -277,7 +277,7 @@ test('paid price shape and category labels', () => {
 
 test('github_repo and stats must be well-shaped', () => {
 	const root = fixture({
-		'src/data/marketplace/plugins/orbit-branding.yaml': [
+		'.marketplace/plugins/orbit-branding.yaml': [
 			'name: Orbit Branding',
 			'slug: orbit-branding',
 			'summary: Sample.',
@@ -308,7 +308,7 @@ test('missing authors directory is reported', () => {
 	const root = mkdtempSync(path.join(tmpdir(), 'orbit-market-no-authors-'));
 	write(
 		root,
-		'src/data/marketplace/categories.yaml',
+		'.marketplace/categories.yaml',
 		'theme:\n  label: Theme\n  description: Panel themes.\n',
 	);
 	try {
@@ -319,4 +319,3 @@ test('missing authors directory is reported', () => {
 		rmSync(root, { recursive: true, force: true });
 	}
 });
-

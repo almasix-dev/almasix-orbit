@@ -33,7 +33,7 @@ this framing into learner-facing pages.
 
 ## Marketplace — Done
 
-Docs-hosted YAML registry (`docs/src/data/marketplace/`), `/plugins` catalog on the **main** docs tree (`/main/plugins/`; `/0.x/` is the latest release tag and does not include post-release catalog work until that ships), JSON feed + `/plugins/develop` catalog API, `smith make:orbit-plugin` / `python -m almasix.orbit plugin new` scaffold + draft listing YAML, validator tests, official `orbit-branding` listing, PR template + review pack. Plugin overview/build/publish stay in Docs. Orbit takes no payment. Parallel docs trees: `/0.x/` from the latest `v0.*` tag, `/main/` from this commit, `/` → `/0.x/`.
+Docs-hosted catalog UI at `/plugins/` (on the **main** docs tree; `/0.x/` is the latest release tag). Listing YAML and images live in [almasix-dev/orbit-plugins](https://github.com/almasix-dev/orbit-plugins); the docs build syncs that registry. JSON feed + `/plugins/develop` catalog API, `smith make:orbit-plugin` / `python -m almasix.orbit plugin new` scaffold + draft listing YAML, validator tests, official `orbit-branding` / `orbit-permission` listings. Plugin overview/build/publish stay in Docs. Orbit takes no payment. Parallel docs trees: `/0.x/` from the latest `v0.*` tag, `/main/` from this commit, `/` → `/0.x/`.
 
 ## Support — Done
 

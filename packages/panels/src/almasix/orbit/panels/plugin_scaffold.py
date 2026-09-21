@@ -259,9 +259,9 @@ panel.plugin({spec.class_name}())
 
 ## Marketplace listing
 
-This package ships draft YAML under `marketplace/`. Copy those files into the
-Orbit repository (`docs/src/data/marketplace/`) when you are ready to list it
-({price}). See https://orbit.almasix.com/plugins/get-listed/
+This package ships draft YAML under `marketplace/`. Open a pull request against
+[orbit-plugins](https://github.com/almasix-dev/orbit-plugins) when you are ready
+to list it ({price}). See https://orbit.almasix.com/plugins/get-listed/
 
 Do **not** ship an `almasix/__init__.py` in this wheel.
 '''
@@ -332,8 +332,10 @@ checkout_url: https://example.com/checkout  # replace with a real purchase URL
 package: {spec.package}
 repository: {repo}
 """
-    return f"""# Draft marketplace listing. Copy to the Orbit repo:
-#   docs/src/data/marketplace/plugins/{spec.slug}.yaml
+    return f"""# Draft marketplace listing. Open a PR against orbit-plugins:
+#   https://github.com/almasix-dev/orbit-plugins — plugins/{spec.slug}.yaml
+# Copy this file there, fill it in, add images under public/plugins/{spec.slug}/,
+# and set status: published.
 # Fill in summary, description, images, then set status: published.
 # Field reference: https://orbit.almasix.com/plugins/get-listed/
 
@@ -374,8 +376,8 @@ published_at: {published_at}
 
 
 def _author_yaml(spec: PluginSpec) -> str:
-    return f"""# Draft author profile. Copy to the Orbit repo:
-#   docs/src/data/marketplace/authors/{spec.author}.yaml
+    return f"""# Draft author profile. Open a PR against orbit-plugins:
+#   https://github.com/almasix-dev/orbit-plugins — authors/{spec.author}.yaml
 # Skip this file if you already have an author listing.
 
 name: {title_words(spec.author)}

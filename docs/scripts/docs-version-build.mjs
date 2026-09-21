@@ -153,6 +153,9 @@ if (!process.env.SKIP_DOCS_0X) {
 	overlaySwitcher(extractedDocs);
 	ensureVersionBase(join(extractedDocs, 'astro.config.mjs'), '0.x');
 	run('npm', ['ci'], { cwd: extractedDocs });
+	if (existsSync(join(extractedDocs, 'scripts', 'marketplace-sync.mjs'))) {
+		run('npm', ['run', 'marketplace:sync'], { cwd: extractedDocs });
+	}
 	run('npx', ['astro', 'build', '--force', '--outDir', 'dist'], {
 		cwd: extractedDocs,
 		env: { ...process.env, DOCS_VERSION: '0.x' },

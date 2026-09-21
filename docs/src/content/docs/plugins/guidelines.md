@@ -34,7 +34,7 @@ Write for someone who knows Orbit and nothing else. Explain your own concepts; d
 | Screenshots | any | readable at full width | Every one needs meaningful `alt` text |
 | Author avatar | 1:1 | 400×400 | JPEG or PNG |
 
-Use site-absolute paths (`/plugins/your-slug/thumbnail.jpg`) for files you commit under `docs/public/plugins/`, or absolute `https://` URLs for images you host. Relative paths do not resolve on the marketplace and will fail validation.
+Use site-absolute paths (`/plugins/your-slug/thumbnail.jpg`) for files you commit under `public/plugins/` in [orbit-plugins](https://github.com/almasix-dev/orbit-plugins), or absolute `https://` URLs for images you host. Relative paths do not resolve on the marketplace and will fail validation.
 
 If your plugin has a UI, make sure it is legible in both light and dark themes before you set `features.dark_mode: true`.
 

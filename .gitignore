@@ -20,6 +20,9 @@ node_modules/
 docs/dist/
 docs/.astro/
 docs/.version-build/
+docs/.marketplace/
+docs/.marketplace-tmp/
+docs/public/plugins/
 docs/.dev.vars
 assets/node_modules/
 assets/dist/

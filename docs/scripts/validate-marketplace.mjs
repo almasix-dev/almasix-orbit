@@ -1,9 +1,10 @@
 /**
  * Validate the plugin marketplace registry before the docs build.
  *
- * Checks what the Astro schema cannot: cross-file references, filename/slug
- * agreement, reserved slugs, duplicate ids, and whether local images exist.
+ * Expects a synced checkout at docs/.marketplace (from orbit-plugins):
+ *   categories.yaml, authors/*.yaml, plugins/*.yaml, public/plugins/**
  *
+ *   npm run marketplace:sync
  *   npm run validate:marketplace
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -74,24 +75,37 @@ function checkLocalImage(errors, file, root, publicDir, field, value) {
 		return;
 	}
 	if (!existsSync(path.join(publicDir, value))) {
-		fail(errors, file, root, `${field} points at ${value}, which is missing from docs/public`);
+		fail(
+			errors,
+			file,
+			root,
+			`${field} points at ${value}, which is missing from public (run marketplace:sync)`,
+		);
 	}
 }
 
 /**
- * Validate a docs-root marketplace registry.
+ * Validate a synced marketplace registry.
  *
- * @param {string} [root]
+ * @param {string} [docsRoot] docs/ directory
  * @returns {string[]} error messages (empty when the registry is OK)
  */
-export function validateMarketplace(root = defaultRoot) {
+export function validateMarketplace(docsRoot = defaultRoot) {
 	const errors = [];
-	const registry = path.join(root, 'src/data/marketplace');
-	const publicDir = path.join(root, 'public');
-	const failFile = (file, message) => fail(errors, file, root, message);
+	const registry = path.join(docsRoot, '.marketplace');
+	const publicDir = path.join(docsRoot, 'public');
+	const failFile = (file, message) => fail(errors, file, docsRoot, message);
+
+	if (!existsSync(registry)) {
+		failFile(
+			registry,
+			'missing — run `npm run marketplace:sync` (fetches almasix-dev/orbit-plugins)',
+		);
+		return errors;
+	}
 
 	const categoriesFile = path.join(registry, 'categories.yaml');
-	const categories = existsSync(categoriesFile) ? (read(errors, categoriesFile, root) ?? {}) : {};
+	const categories = existsSync(categoriesFile) ? (read(errors, categoriesFile, docsRoot) ?? {}) : {};
 	if (!existsSync(categoriesFile)) {
 		failFile(categoriesFile, 'missing — the registry needs a category list');
 	} else if (categories === null || typeof categories !== 'object' || Array.isArray(categories)) {
@@ -109,28 +123,28 @@ export function validateMarketplace(root = defaultRoot) {
 	const authors = new Set();
 	const authorsDir = path.join(registry, 'authors');
 	if (!existsSync(authorsDir)) {
-		failFile(authorsDir, 'missing — add at least one author profile');
+		failFile(authorsDir, 'missing — add at least one author profile in orbit-plugins');
 	}
 	for (const file of listYaml(authorsDir)) {
-		const author = read(errors, file, root);
+		const author = read(errors, file, docsRoot);
 		if (!author) continue;
 		const expected = path.basename(file, '.yaml');
 		if (author.slug !== expected) failFile(file, `slug "${author.slug}" must match the filename`);
 		if (!SLUG.test(expected)) failFile(file, 'filename must be kebab-case');
 		if (!author.name) failFile(file, 'name is required');
 		if (!author.bio) failFile(file, 'bio is required');
-		checkUrl(errors, file, root, 'website', author.website);
-		checkUrl(errors, file, root, 'sponsor_url', author.sponsor_url);
-		checkLocalImage(errors, file, root, publicDir, 'avatar', author.avatar);
+		checkUrl(errors, file, docsRoot, 'website', author.website);
+		checkUrl(errors, file, docsRoot, 'sponsor_url', author.sponsor_url);
+		checkLocalImage(errors, file, docsRoot, publicDir, 'avatar', author.avatar);
 		authors.add(expected);
 	}
 
 	const pluginsDir = path.join(registry, 'plugins');
 	if (!existsSync(pluginsDir)) {
-		failFile(pluginsDir, 'missing — add plugin YAML files here');
+		failFile(pluginsDir, 'missing — add plugin YAML files in orbit-plugins');
 	}
 	for (const file of listYaml(pluginsDir)) {
-		const plugin = read(errors, file, root);
+		const plugin = read(errors, file, docsRoot);
 		if (!plugin) continue;
 		const expected = path.basename(file, '.yaml');
 
@@ -196,16 +210,16 @@ export function validateMarketplace(root = defaultRoot) {
 			}
 		}
 
-		checkUrl(errors, file, root, 'checkout_url', plugin.checkout_url);
-		checkUrl(errors, file, root, 'repository', plugin.repository);
-		checkUrl(errors, file, root, 'docs_url', plugin.docs_url);
-		checkUrl(errors, file, root, 'homepage', plugin.homepage);
-		checkUrl(errors, file, root, 'changelog_url', plugin.changelog_url);
-		checkLocalImage(errors, file, root, publicDir, 'thumbnail', plugin.thumbnail);
+		checkUrl(errors, file, docsRoot, 'checkout_url', plugin.checkout_url);
+		checkUrl(errors, file, docsRoot, 'repository', plugin.repository);
+		checkUrl(errors, file, docsRoot, 'docs_url', plugin.docs_url);
+		checkUrl(errors, file, docsRoot, 'homepage', plugin.homepage);
+		checkUrl(errors, file, docsRoot, 'changelog_url', plugin.changelog_url);
+		checkLocalImage(errors, file, docsRoot, publicDir, 'thumbnail', plugin.thumbnail);
 
 		for (const [index, shot] of (plugin.screenshots ?? []).entries()) {
 			if (!shot?.alt) failFile(file, `screenshots[${index}] needs alt text`);
-			checkLocalImage(errors, file, root, publicDir, `screenshots[${index}].src`, shot?.src);
+			checkLocalImage(errors, file, docsRoot, publicDir, `screenshots[${index}].src`, shot?.src);
 		}
 	}
 
@@ -217,7 +231,9 @@ function runCli() {
 	if (errors.length > 0) {
 		console.error(`Marketplace registry has ${errors.length} problem(s):\n`);
 		for (const error of errors) console.error(`  - ${error}`);
-		console.error('\nSee docs/src/content/docs/plugins/get-listed.md for the listing format.');
+		console.error(
+			'\nSync from https://github.com/almasix-dev/orbit-plugins then see /plugins/get-listed/.',
+		);
 		process.exit(1);
 	}
 	console.log('Marketplace registry OK.');

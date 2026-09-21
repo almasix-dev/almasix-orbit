@@ -21,6 +21,8 @@ on:
       - "docs/**"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
+  repository_dispatch:
+    types: [marketplace-registry-updated]
 
 permissions:
   contents: read
@@ -51,6 +53,9 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Sync plugin marketplace registry
+        run: npm run marketplace:sync
+
       - name: Validate plugin marketplace registry
         run: npm run validate:marketplace
 
@@ -59,3 +64,4 @@ jobs:
 
       - name: Build
         run: npm run build
+
