@@ -107,7 +107,7 @@ python -m almasix.orbit plugin new AuditLog --vendor=acme --author=jane
 
 That creates `acme-orbit-audit-log/` with `src/acme_orbit_audit_log/plugin.py`, `tests/test_plugin.py`, and `marketplace/*.yaml` (`status: draft`). `--listing-only` writes just the YAML; `--no-listing` skips it; `--paid` stubs a checkout URL instead of a PyPI name.
 
-Copy the YAML into the Orbit repository when the plugin is ready to list — [Get listed](/plugins/get-listed/).
+Copy the YAML into [orbit-plugins](https://github.com/almasix-dev/orbit-plugins) when the plugin is ready to list — [Get listed](/plugins/get-listed/).
 
 ## Package layout (publishable)
 

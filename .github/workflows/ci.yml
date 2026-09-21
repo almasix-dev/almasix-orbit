@@ -47,6 +47,8 @@ jobs:
           cache-dependency-path: docs/package-lock.json
       - name: Install
         run: npm ci
+      - name: Sync plugin marketplace registry
+        run: npm run marketplace:sync
       - name: Validate plugin marketplace registry
         run: npm run validate:marketplace
       - name: Marketplace validator tests

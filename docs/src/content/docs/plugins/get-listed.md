@@ -3,7 +3,7 @@ title: Get listed
 description: Publish an Orbit plugin and add it to the marketplace — registry fields, images, author profile, and the pull request.
 ---
 
-Listing a plugin takes one pull request against the Orbit repository. You add two small YAML files — an author profile and the listing itself — plus a thumbnail. A maintainer reviews it against the [listing guidelines](/plugins/guidelines/), and once merged the plugin appears on [/plugins](/plugins/) on the next docs deploy.
+Listing a plugin takes one pull request against the **[orbit-plugins](https://github.com/almasix-dev/orbit-plugins)** registry repository. You add two small YAML files — an author profile and the listing itself — plus a thumbnail. A maintainer reviews it against the [listing guidelines](/plugins/guidelines/), and once merged the public catalog on [/plugins](/plugins/) rebuilds from that registry.
 
 ## Before you start
 
@@ -18,20 +18,21 @@ smith make:orbit-plugin AuditLog --vendor=acme --author=jane
 # or: python -m almasix.orbit plugin new AuditLog --vendor=acme --author=jane
 ```
 
-That writes a package shell plus draft YAML under `marketplace/`. Copy those YAML files into the paths below, fill in summary, description, and images, then set `status: published`. Full walkthrough: [Plugin development](/panels/plugins/).
+That writes a package shell plus draft YAML under `marketplace/`. Copy those YAML files into the paths below in **orbit-plugins**, fill in summary, description, and images, then set `status: published`. Full walkthrough: [Plugin development](/panels/plugins/).
 
 ## Where the registry lives
 
 ```text
-docs/src/data/marketplace/
+https://github.com/almasix-dev/orbit-plugins
   categories.yaml          # the allowed category list (maintainer-owned)
   authors/
     your-handle.yaml       # one file per author, filename = slug
   plugins/
     your-plugin.yaml       # one file per listing, filename = slug
+  public/plugins/          # thumbnails, screenshots, avatars
 ```
 
-Images live under `docs/public/plugins/` and are referenced with site-absolute paths such as `/plugins/your-plugin/thumbnail.jpg`. You may also point at an `https://` URL you control.
+Images live under `public/plugins/` in that repo and are referenced with site-absolute paths such as `/plugins/your-plugin/thumbnail.jpg` (the same paths the docs site serves). You may also point at an `https://` URL you control.
 
 `plugins/example-plugin.yaml` and `authors/example-author.yaml` are filled-in templates carrying `status: draft`, so they never appear on the site. Copy one rather than starting from a blank file. The live official sample is `orbit-branding` — use it to see a published listing, not as a template to overwrite.
 
@@ -41,7 +42,7 @@ Filters on `/plugins` are shareable query strings (`?q=`, `price=`, `category=`,
 
 Skip this if you already have one.
 
-```yaml title="docs/src/data/marketplace/authors/your-handle.yaml"
+```yaml title="authors/your-handle.yaml"
 name: Your Name
 slug: your-handle
 bio: One or two sentences about you or your company. This shows on your author page.
@@ -57,11 +58,11 @@ Only `name`, `slug`, and `bio` are required, and `slug` must match the filename.
 
 ![Orbit plugin author page (dark)](/examples/dark/plugins/author.png)
 
-Need a category that is not in `categories.yaml`? Open a [marketplace category issue](https://github.com/almasix-dev/almasix-orbit/issues/new?template=marketplace-category.yml) before you send the listing PR.
+Need a category that is not in `categories.yaml`? Open a [marketplace category issue](https://github.com/almasix-dev/orbit-plugins/issues/new?template=marketplace-category.yml) before you send the listing PR.
 
 ## 2. Add the listing
 
-````yaml title="docs/src/data/marketplace/plugins/acme-audit-log.yaml"
+````yaml title="plugins/acme-audit-log.yaml"
 name: Acme Audit Log
 slug: acme-audit-log
 summary: Records every create, edit, and delete in your panels and shows them in a resource.
@@ -101,7 +102,7 @@ published_at: 2026-09-20
 
 A paid listing swaps the price block and adds a checkout link:
 
-```yaml title="docs/src/data/marketplace/plugins/acme-audit-log-pro.yaml"
+```yaml title="plugins/acme-audit-log-pro.yaml"
 price:
   amount: 79
   currency: USD
@@ -142,35 +143,38 @@ checkout_url: https://store.example.com/acme-audit-log-pro
 
 ## 3. Add your images
 
-Put files under `docs/public/plugins/<your-slug>/`. Keep the thumbnail under about 400 KB — it loads on the browse grid. Crop tightly on the feature: a full panel screenshot with sidebar and topbar reads as noise at card size.
+Put files under `public/plugins/<your-slug>/` in **orbit-plugins**. Keep the thumbnail under about 400 KB — it loads on the browse grid. Crop tightly on the feature: a full panel screenshot with sidebar and topbar reads as noise at card size.
 
 ## 4. Check it locally
 
 ```bash title="terminal"
-cd docs
+git clone https://github.com/almasix-dev/orbit-plugins.git
+cd orbit-plugins
 npm ci
-npm run validate:marketplace   # schema, cross-references, missing images
-npm test                       # validator unit tests
-npm run dev                    # then open http://localhost:4321/plugins/
+npm run validate   # schema, cross-references, missing images
+npm test
+npm run build      # minimal preview under dist/
 ```
 
-`validate:marketplace` also runs before every docs build, so a broken entry fails CI rather than shipping a half-rendered card.
+The Orbit docs site also validates the synced registry on every build, so a broken entry fails CI rather than shipping a half-rendered card.
 
 ## 5. Open the pull request
 
 ```bash title="terminal"
 git checkout -b plugin/acme-audit-log
-git add docs/src/data/marketplace docs/public/plugins
+git add authors plugins public/plugins
 git commit -m "Add Acme Audit Log to the plugin marketplace"
 git push -u origin HEAD
-gh pr create --title "Plugin: Acme Audit Log" --body "New marketplace listing"
+gh pr create --repo almasix-dev/orbit-plugins --title "Plugin: Acme Audit Log" --body "New marketplace listing"
 ```
 
-Open the PR with the [plugin submission template](https://github.com/almasix-dev/almasix-orbit/compare?template=plugin.md), keep it to your listing and images, and leave “Allow edits by maintainers” enabled so a reviewer can fix small things instead of sending the PR back.
+Open the PR with the [plugin submission template](https://github.com/almasix-dev/orbit-plugins/compare?template=plugin.md), keep it to your listing and images, and leave “Allow edits by maintainers” enabled so a reviewer can fix small things instead of sending the PR back.
+
+After merge, the public catalog at [/plugins](/plugins/) rebuilds from the registry. You do not need a second PR against almasix-orbit.
 
 ## Updating or removing a listing
 
-- **Update:** edit your YAML file and open another PR. Bump `orbit_versions` when you add support for a new release.
+- **Update:** edit your YAML file in orbit-plugins and open another PR. Bump `orbit_versions` when you add support for a new release.
 - **Pause:** set `status: draft` to hide a listing without deleting its history.
 - **Retire:** set `status: archived` when the plugin is no longer offered. Same hiding rules as draft, with a clearer intent.
 - **Remove:** delete the YAML file and your images. Tell us in the PR description why, so we can redirect people if the plugin was popular.

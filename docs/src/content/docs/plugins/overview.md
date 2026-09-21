@@ -5,7 +5,7 @@ description: Overview of the Orbit plugin directory — registry, review, feeds,
 
 A **plugin** is a Python package that extends Orbit: a new form field, a table column, a dashboard widget, a theme, or a whole feature set such as a blog or a CRM. Because plugins are ordinary packages, anyone can publish one without asking permission.
 
-The **marketplace** is the directory people use to find them. It lives at [orbit.almasix.com/plugins](/plugins/) and is built from a YAML registry inside this repository, so every listing is reviewed through a pull request and every change has an author and a history.
+The **marketplace** is the directory people use to find them. It lives at [orbit.almasix.com/plugins](/plugins/) and is built from a YAML registry in the separate [orbit-plugins](https://github.com/almasix-dev/orbit-plugins) repository, so every listing is reviewed through a pull request and every change has an author and a history. The docs site fetches that registry when it builds.
 
 ![Orbit plugin marketplace (light)](/examples/light/plugins/browse.png)
 
@@ -36,13 +36,14 @@ Orbit never takes a cut and never processes a payment. A paid listing is a link 
 ## How the registry is built
 
 ```text
-docs/src/data/marketplace/
+https://github.com/almasix-dev/orbit-plugins
   categories.yaml     # maintainer-owned category list
   authors/*.yaml      # one file per author, filename = slug
   plugins/*.yaml      # one file per listing, filename = slug
+  public/plugins/     # thumbnails, screenshots, avatars
 ```
 
-Astro content collections validate each file against a schema (paid listings need a `checkout_url`; free listings need a package or repository). `npm run validate:marketplace` then checks the things the schema cannot see: filename/slug agreement, reserved URLs, unknown categories or authors, `features.official` only on Almasix listings, and images that are missing from `docs/public`. That script runs in CI and as the docs `prebuild` step, so a bad entry fails the build instead of shipping a half-empty card.
+Authors open listing PRs against **orbit-plugins**. The Orbit docs build clones that repo, validates it, and renders [/plugins](/plugins/). Astro content collections check the schema (paid listings need a `checkout_url`; free listings need a package or repository). `npm run validate:marketplace` then checks the things the schema cannot see: filename/slug agreement, reserved URLs, unknown categories or authors, `features.official` only on Almasix listings, and images that are missing from the synced `public/plugins` tree. That script runs in CI and as the docs `prebuild` step, so a bad entry fails the build instead of shipping a half-empty card.
 
 Status values:
 

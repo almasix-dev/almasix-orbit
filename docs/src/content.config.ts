@@ -3,7 +3,7 @@ import { file, glob } from 'astro/loaders';
 import { docsLoader } from '@astrojs/starlight/loaders';
 import { docsSchema } from '@astrojs/starlight/schema';
 
-const marketplaceBase = './src/data/marketplace';
+const marketplaceBase = './.marketplace';
 
 /** `free`, or a price shown on the listing with an external checkout. */
 const price = z.union([
