@@ -319,3 +319,99 @@ test('missing authors directory is reported', () => {
 		rmSync(root, { recursive: true, force: true });
 	}
 });
+
+test('published article validates author, images, and related plugins', () => {
+	const root = fixture({
+		'.marketplace/articles/how-listings-work.yaml': [
+			'name: How listings work',
+			'slug: how-listings-work',
+			'summary: A short guide.',
+			'body: |',
+			'  Hello world.',
+			'author: almasix',
+			'tags: [marketplace]',
+			'related_plugins: [orbit-branding]',
+			'thumbnail: /articles/how-listings-work/thumbnail.png',
+			'images:',
+			'  - src: /articles/how-listings-work/figure.png',
+			'    alt: A figure',
+			'features:',
+			'  official: true',
+			'status: published',
+			'published_at: 2026-09-21',
+			'',
+		].join('\n'),
+	});
+	write(root, 'public/articles/how-listings-work/thumbnail.png', 'png');
+	write(root, 'public/articles/how-listings-work/figure.png', 'png');
+	try {
+		assert.deepEqual(validateMarketplace(root), []);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test('article reserved slug, unknown related plugin, and official author', () => {
+	const root = fixture({
+		'.marketplace/authors/acme.yaml': 'name: Acme\nslug: acme\nbio: A vendor.\n',
+		'.marketplace/articles/feed.yaml': [
+			'name: Feed',
+			'slug: feed',
+			'summary: Reserved.',
+			'body: Body',
+			'author: acme',
+			'related_plugins: [missing-plugin]',
+			'features:',
+			'  official: true',
+			'status: published',
+			'published_at: 2026-09-21',
+			'',
+		].join('\n'),
+	});
+	try {
+		const errors = validateMarketplace(root).join('\n');
+		assert.match(errors, /reserved articles URL/);
+		assert.match(errors, /unknown related plugin/);
+		assert.match(errors, /features.official is reserved/);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test('published article cannot relate to a draft plugin', () => {
+	const root = fixture({
+		'.marketplace/plugins/draft-kit.yaml': [
+			'name: Draft Kit',
+			'slug: draft-kit',
+			'summary: Hidden.',
+			'description: Body',
+			'author: almasix',
+			'categories: [theme]',
+			'orbit_versions: ["0.3"]',
+			'price: free',
+			'repository: https://github.com/almasix-dev/almasix-orbit',
+			'status: draft',
+			'published_at: 2026-01-01',
+			'',
+		].join('\n'),
+		'.marketplace/articles/about-draft.yaml': [
+			'name: About draft',
+			'slug: about-draft',
+			'summary: Points at a draft.',
+			'body: Body',
+			'author: almasix',
+			'related_plugins: [draft-kit]',
+			'status: published',
+			'published_at: 2026-09-21',
+			'',
+		].join('\n'),
+	});
+	try {
+		assert.match(
+			validateMarketplace(root).join('\n'),
+			/related plugin "draft-kit" must be published/,
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});

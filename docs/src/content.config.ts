@@ -104,9 +104,44 @@ const plugins = defineCollection({
 		}),
 });
 
+const articles = defineCollection({
+	loader: glob({ pattern: '**/*.yaml', base: `${marketplaceBase}/articles` }),
+	schema: z
+		.object({
+			name: z.string(),
+			slug: z.string().regex(/^[a-z0-9-]+$/),
+			summary: z.string().max(200),
+			body: z.string(),
+			author: z.string().regex(/^[a-z0-9-]+$/),
+			tags: z.array(z.string()).default([]),
+			related_plugins: z.array(z.string().regex(/^[a-z0-9-]+$/)).default([]),
+			thumbnail: z.string().optional(),
+			images: z.array(screenshot).default([]),
+			canonical_url: z.string().url().optional(),
+			features: z
+				.object({
+					official: z.boolean().default(false),
+					featured: z.boolean().default(false),
+				})
+				.default({}),
+			status: z.enum(['published', 'draft', 'archived']).default('published'),
+			published_at: z.coerce.date(),
+		})
+		.superRefine((article, ctx) => {
+			if (article.features.official && article.author !== 'almasix') {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['features', 'official'],
+					message: '`features.official` is reserved for listings whose author is `almasix`.',
+				});
+			}
+		}),
+});
+
 export const collections = {
 	docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
 	pluginCategories,
 	pluginAuthors,
 	plugins,
+	articles,
 };

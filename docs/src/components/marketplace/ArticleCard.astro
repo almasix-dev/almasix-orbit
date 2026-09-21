@@ -1,0 +1,54 @@
+---
+/** Listing card for marketplace articles. */
+import type { MarketplaceArticle } from '../../data/marketplace';
+
+interface Props {
+	article: MarketplaceArticle;
+}
+
+const { article } = Astro.props;
+const initials = article.name
+	.split(/\s+/)
+	.slice(0, 2)
+	.map((word) => word[0]?.toUpperCase() ?? '')
+	.join('');
+const haystack = [article.name, article.summary, article.author.name, article.tags.join(' ')]
+	.join(' ')
+	.toLowerCase();
+---
+
+<li
+	class="market-card"
+	data-article
+	data-name={article.name.toLowerCase()}
+	data-search={haystack}
+	data-tags={article.tags.join(' ')}
+	data-official={String(article.official)}
+	data-published={article.publishedAt.toISOString()}
+>
+	<a class="market-thumb" href={article.url} aria-hidden="true" tabindex="-1">
+		{
+			article.thumbnail ? (
+				<img src={article.thumbnail} alt="" loading="lazy" />
+			) : (
+				<span class="market-thumb-initials">{initials}</span>
+			)
+		}
+	</a>
+	<div class="market-card-body">
+		<ul class="market-tags">
+			{article.official && <li class="market-chip is-official">Official</li>}
+			{article.featured && <li class="market-chip is-featured">Featured</li>}
+			{article.tags.slice(0, 3).map((tag) => (
+				<li class="market-chip">{tag}</li>
+			))}
+		</ul>
+		<h3 class="market-card-title">
+			<a href={article.url}>{article.name}</a>
+		</h3>
+		<p class="market-card-summary">{article.summary}</p>
+		<p class="market-card-meta">
+			by <a href={`/plugins/authors/${article.author.slug}/`}>{article.author.name}</a>
+		</p>
+	</div>
+</li>

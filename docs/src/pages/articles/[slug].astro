@@ -1,0 +1,149 @@
+---
+/** A single marketplace article. */
+import type { GetStaticPaths } from 'astro';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import PluginCard from '../../components/marketplace/PluginCard.astro';
+import {
+	authorGithubHref,
+	getMarketplaceArticles,
+	getMarketplacePlugins,
+	getRelatedPluginsForArticle,
+	renderListingMarkdown,
+	RESERVED_ARTICLE_SLUGS,
+	type MarketplaceArticle,
+	type MarketplacePlugin,
+} from '../../data/marketplace';
+import '../../styles/marketplace.css';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+	const [articles, plugins] = await Promise.all([
+		getMarketplaceArticles(),
+		getMarketplacePlugins(),
+	]);
+	return articles
+		.filter((article) => !RESERVED_ARTICLE_SLUGS.includes(article.slug))
+		.map((article) => ({
+			params: { slug: article.slug },
+			props: {
+				article,
+				related: getRelatedPluginsForArticle(article, plugins),
+			},
+		}));
+};
+
+const { article, related } = Astro.props as {
+	article: MarketplaceArticle;
+	related: MarketplacePlugin[];
+};
+const body = await renderListingMarkdown(article.body);
+const published = article.publishedAt.toLocaleDateString('en-US', {
+	year: 'numeric',
+	month: 'long',
+	day: 'numeric',
+});
+---
+
+<StarlightPage
+	frontmatter={{
+		title: article.name,
+		description: article.summary,
+		tableOfContents: false,
+		prev: false,
+		next: false,
+	}}
+>
+	<div class="market market-detail-page" data-marketplace>
+		<a class="market-back" href="/articles/">← All articles</a>
+
+		<div class="market-detail">
+			<div class="market-detail-main">
+				<div class="market-detail-head">
+					<ul class="market-tags">
+						{article.official && <li class="market-chip is-official">Official</li>}
+						{article.featured && <li class="market-chip is-featured">Featured</li>}
+						{article.tags.map((tag) => (
+							<li class="market-chip">{tag}</li>
+						))}
+					</ul>
+					<p class="market-lede">{article.summary}</p>
+					{
+						article.canonicalUrl && (
+							<div class="market-detail-actions">
+								<a class="market-button" href={article.canonicalUrl} rel="noopener">
+									Original publication
+								</a>
+							</div>
+						)
+					}
+				</div>
+
+				{
+					article.thumbnail && (
+						<figure class="market-shots">
+							<img src={article.thumbnail} alt="" />
+						</figure>
+					)
+				}
+
+				<section class="market-description" set:html={body} />
+
+				{
+					article.images.length > 0 && (
+						<section class="market-shots" aria-labelledby="article-images">
+							<h2 id="article-images">Figures</h2>
+							{article.images.map((image) => (
+								<figure>
+									<img src={image.src} alt={image.alt} loading="lazy" />
+									<figcaption class="market-meta">{image.alt}</figcaption>
+								</figure>
+							))}
+						</section>
+					)
+				}
+
+				{
+					related.length > 0 && (
+						<section class="market-related" aria-labelledby="article-related">
+							<h2 id="article-related">Related plugins</h2>
+							<ul class="market-grid">
+								{related.map((plugin) => (
+									<PluginCard plugin={plugin} />
+								))}
+							</ul>
+						</section>
+					)
+				}
+			</div>
+
+			<aside class="market-aside" aria-label="Author">
+				<div class="market-aside-card">
+					<div class="market-author-head">
+						{article.author.avatar && (
+							<img class="market-avatar" src={article.author.avatar} alt="" />
+						)}
+						<div>
+							<p class="market-aside-kicker">Author</p>
+							<h2 class="market-aside-title">
+								<a href={`/plugins/authors/${article.author.slug}/`}>{article.author.name}</a>
+							</h2>
+						</div>
+					</div>
+					<p class="market-summary">{article.author.bio}</p>
+					<p class="market-meta">
+						{article.author.website && <a href={article.author.website}>Website</a>}
+						{article.author.github && (
+							<a href={authorGithubHref(article.author.github)}>GitHub</a>
+						)}
+					</p>
+				</div>
+				<div class="market-aside-card">
+					<p class="market-aside-kicker">Published</p>
+					<p class="market-meta">{published}</p>
+					<p class="market-meta">
+						<a href="/plugins/write-an-article/">Write an article</a>
+					</p>
+				</div>
+			</aside>
+		</div>
+	</div>
+</StarlightPage>

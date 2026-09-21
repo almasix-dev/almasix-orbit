@@ -21,6 +21,8 @@ const shots = [
 	{ id: 'plugins/paid', url: '/plugins/paid/' },
 	{ id: 'plugins/listing', url: '/plugins/orbit-branding/' },
 	{ id: 'plugins/author', url: '/plugins/authors/almasix/' },
+	{ id: 'articles/browse', url: '/articles/' },
+	{ id: 'articles/listing', url: '/articles/how-marketplace-listings-work/' },
 ];
 
 async function setTheme(page, theme) {

@@ -40,10 +40,12 @@ https://github.com/almasix-dev/orbit-plugins
   categories.yaml     # maintainer-owned category list
   authors/*.yaml      # one file per author, filename = slug
   plugins/*.yaml      # one file per listing, filename = slug
+  articles/*.yaml     # marketplace articles (Markdown body)
   public/plugins/     # thumbnails, screenshots, avatars
+  public/articles/    # article heroes and figures
 ```
 
-Authors open listing PRs against **orbit-plugins**. The Orbit docs build clones that repo, validates it, and renders [/plugins](/plugins/). Astro content collections check the schema (paid listings need a `checkout_url`; free listings need a package or repository). `npm run validate:marketplace` then checks the things the schema cannot see: filename/slug agreement, reserved URLs, unknown categories or authors, `features.official` only on Almasix listings, and images that are missing from the synced `public/plugins` tree. That script runs in CI and as the docs `prebuild` step, so a bad entry fails the build instead of shipping a half-empty card.
+Authors open listing and article PRs against **orbit-plugins**. The Orbit docs build clones that repo, validates it, and renders [/plugins](/plugins/) and [/articles](/articles/). Astro content collections check the schema (paid listings need a `checkout_url`; free listings need a package or repository). `npm run validate:marketplace` then checks the things the schema cannot see: filename/slug agreement, reserved URLs, unknown categories or authors, `features.official` only on Almasix listings, related plugins on articles, and images that are missing from the synced `public/plugins` and `public/articles` trees. That script runs in CI and as the docs `prebuild` step, so a bad entry fails the build instead of shipping a half-empty card.
 
 Status values:
 
@@ -72,10 +74,12 @@ If you find malware or a security problem an author will not fix, [open a securi
 | [`/plugins/categories/<slug>/`](/plugins/categories/theme/) | One category |
 | [`/plugins/feed.json`](/plugins/feed.json) | JSON catalog for tooling |
 | [`/plugins/develop/`](/plugins/develop/) | Catalog API — feed shape, HTML routes, shareable filters |
+| [`/articles/`](/articles/) | Marketplace articles |
+| [`/articles/feed.json`](/articles/feed.json) | JSON feed of published articles |
 
 The JSON feed includes slug, summary, author, categories, versions, price, package, repository, license, official/featured flags, stars, and installs. It is regenerated with the docs site. Field-level notes live on the [Catalog API](/plugins/develop/) page next to the live feed.
 
-The marketplace itself is a full-width listing UI with its own sidebar (browse, authors, categories, catalog API). These pages — overview, using, building, listing — stay in the Docs sidebar. The home page and the top bar **Plugins** menu both open [`/plugins/`](/plugins/).
+The marketplace itself is a full-width listing UI with its own sidebar (browse, articles, authors, categories, catalog API). These pages — overview, using, building, listing, write an article — stay in the Docs sidebar. The home page and the top bar **Plugins** / **Articles** menus open [`/plugins/`](/plugins/) and [`/articles/`](/articles/).
 
 ## The path from idea to listing
 
@@ -96,6 +100,8 @@ flowchart LR
 ## Related
 
 - [Browse the marketplace](/plugins/) — the live directory
+- [Marketplace articles](/articles/) — editorial write-ups
+- [Write an article](/plugins/write-an-article/) — submit Markdown to the registry
 - [Catalog API](/plugins/develop/) — JSON feed and listing URLs
 - [Using a plugin](/plugins/using/) — install and register
 - [Plugin development](/panels/plugins/) — write the code

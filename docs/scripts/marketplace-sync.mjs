@@ -1,7 +1,7 @@
 /**
  * Fetch almasix-dev/orbit-plugins into docs/.marketplace and copy images into
- * docs/public/plugins so the catalog can build without shipping listing YAML
- * in this repository.
+ * docs/public/plugins and docs/public/articles so the catalog can build without
+ * shipping listing YAML in this repository.
  *
  *   npm run marketplace:sync
  *
@@ -17,6 +17,7 @@ import { spawnSync } from 'node:child_process';
 const docsRoot = path.resolve(fileURLToPath(import.meta.url), '../..');
 const dest = path.join(docsRoot, '.marketplace');
 const publicPlugins = path.join(docsRoot, 'public', 'plugins');
+const publicArticles = path.join(docsRoot, 'public', 'articles');
 
 const REPO = process.env.ORBIT_PLUGINS_REPO || 'https://github.com/almasix-dev/orbit-plugins.git';
 const REF = process.env.ORBIT_PLUGINS_REF || 'main';
@@ -47,14 +48,24 @@ function cloneRegistry() {
 	rmSync(tmp, { recursive: true, force: true });
 }
 
-function copyImages() {
-	const source = path.join(dest, 'public', 'plugins');
+function copyTree(sourceRelative, target) {
+	const source = path.join(dest, 'public', sourceRelative);
+	rmSync(target, { recursive: true, force: true });
 	if (!existsSync(source)) {
-		throw new Error(`registry is missing public/plugins at ${source}`);
+		mkdirSync(target, { recursive: true });
+		return;
 	}
-	rmSync(publicPlugins, { recursive: true, force: true });
-	mkdirSync(path.dirname(publicPlugins), { recursive: true });
-	cpSync(source, publicPlugins, { recursive: true });
+	mkdirSync(path.dirname(target), { recursive: true });
+	cpSync(source, target, { recursive: true });
+}
+
+function copyImages() {
+	const pluginsSource = path.join(dest, 'public', 'plugins');
+	if (!existsSync(pluginsSource)) {
+		throw new Error(`registry is missing public/plugins at ${pluginsSource}`);
+	}
+	copyTree('plugins', publicPlugins);
+	copyTree('articles', publicArticles);
 }
 
 try {

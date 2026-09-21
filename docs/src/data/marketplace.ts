@@ -20,7 +20,11 @@ export const RESERVED_PLUGIN_SLUGS = [
 	'paid',
 	'paid-vs-free',
 	'using',
+	'write-an-article',
 ];
+
+/** Article catalog indexes under `/articles/`. */
+export const RESERVED_ARTICLE_SLUGS = ['feed'];
 
 export interface MarketplaceCategory {
 	slug: string;
@@ -70,6 +74,23 @@ export interface MarketplacePlugin {
 	githubUrl?: string;
 	pypiUrl?: string;
 	githubRepo?: string;
+}
+
+export interface MarketplaceArticle {
+	slug: string;
+	name: string;
+	summary: string;
+	body: string;
+	author: MarketplaceAuthor;
+	tags: string[];
+	relatedPluginSlugs: string[];
+	thumbnail?: string;
+	images: { src: string; alt: string }[];
+	canonicalUrl?: string;
+	official: boolean;
+	featured: boolean;
+	publishedAt: Date;
+	url: string;
 }
 
 function formatPrice(price: CollectionEntry<'plugins'>['data']['price']): string {
@@ -192,27 +213,105 @@ export async function getMarketplacePlugins(): Promise<MarketplacePlugin[]> {
 	return plugins.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
 }
 
+/**
+ * Published marketplace articles, joined to their author.
+ */
+export async function getMarketplaceArticles(): Promise<MarketplaceArticle[]> {
+	const [authors, entries] = await Promise.all([loadAuthors(), getCollection('articles')]);
+
+	const articles = entries
+		.filter((entry) => entry.data.status === 'published')
+		.map((entry) => {
+			const data = entry.data;
+			const author = authors.get(data.author);
+			if (!author) {
+				throw new Error(
+					`Article "${data.slug}" references unknown author "${data.author}". ` +
+						'Add authors/<slug>.yaml in orbit-plugins first.',
+				);
+			}
+			return {
+				slug: data.slug,
+				name: data.name,
+				summary: data.summary,
+				body: data.body,
+				author,
+				tags: data.tags ?? [],
+				relatedPluginSlugs: data.related_plugins ?? [],
+				thumbnail: data.thumbnail,
+				images: data.images,
+				canonicalUrl: data.canonical_url,
+				official: data.features.official,
+				featured: data.features.featured,
+				publishedAt: data.published_at,
+				url: `/articles/${data.slug}/`,
+			} satisfies MarketplaceArticle;
+		});
+
+	return articles.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+}
+
 /** Authors with at least one published listing, alphabetical. */
 export async function getMarketplaceAuthors(): Promise<
-	{ author: MarketplaceAuthor; plugins: MarketplacePlugin[] }[]
+	{
+		author: MarketplaceAuthor;
+		plugins: MarketplacePlugin[];
+		articles: MarketplaceArticle[];
+	}[]
 > {
-	const plugins = await getMarketplacePlugins();
-	const grouped = new Map<string, { author: MarketplaceAuthor; plugins: MarketplacePlugin[] }>();
+	const [plugins, articles] = await Promise.all([
+		getMarketplacePlugins(),
+		getMarketplaceArticles(),
+	]);
+	const grouped = new Map<
+		string,
+		{ author: MarketplaceAuthor; plugins: MarketplacePlugin[]; articles: MarketplaceArticle[] }
+	>();
 	for (const plugin of plugins) {
-		const group = grouped.get(plugin.author.slug) ?? { author: plugin.author, plugins: [] };
+		const group = grouped.get(plugin.author.slug) ?? {
+			author: plugin.author,
+			plugins: [],
+			articles: [],
+		};
 		group.plugins.push(plugin);
 		grouped.set(plugin.author.slug, group);
+	}
+	for (const article of articles) {
+		const group = grouped.get(article.author.slug) ?? {
+			author: article.author,
+			plugins: [],
+			articles: [],
+		};
+		group.articles.push(article);
+		grouped.set(article.author.slug, group);
 	}
 	return [...grouped.values()].sort((a, b) => a.author.name.localeCompare(b.author.name));
 }
 
 let processor: Awaited<ReturnType<typeof createMarkdownProcessor>> | undefined;
 
-/** Render a listing's markdown `description` to HTML. */
+/** Render a listing's markdown `description` or article `body` to HTML. */
 export async function renderListingMarkdown(markdown: string): Promise<string> {
 	processor ??= await createMarkdownProcessor({ gfm: true, smartypants: true });
 	const { code } = await processor.render(markdown);
 	return code;
+}
+
+/** Unique tags across published articles, alphabetical. */
+export function collectArticleTags(articles: MarketplaceArticle[]): string[] {
+	const tags = new Set<string>();
+	for (const article of articles) {
+		for (const tag of article.tags) tags.add(tag);
+	}
+	return [...tags].sort((a, b) => a.localeCompare(b));
+}
+
+export function getRelatedPluginsForArticle(
+	article: MarketplaceArticle,
+	all: MarketplacePlugin[],
+): MarketplacePlugin[] {
+	const wanted = new Set(article.relatedPluginSlugs);
+	return all.filter((plugin) => wanted.has(plugin.slug));
 }
 
 /** Versions offered in the browse filter, newest first. */
@@ -273,5 +372,24 @@ export function pluginToFeedItem(plugin: MarketplacePlugin) {
 		github_url: plugin.githubUrl ?? null,
 		pypi_url: plugin.pypiUrl ?? null,
 		published_at: plugin.publishedAt.toISOString().slice(0, 10),
+	};
+}
+
+export function articleToFeedItem(article: MarketplaceArticle) {
+	return {
+		slug: article.slug,
+		name: article.name,
+		summary: article.summary,
+		url: article.url,
+		author: {
+			slug: article.author.slug,
+			name: article.author.name,
+		},
+		tags: article.tags,
+		related_plugins: article.relatedPluginSlugs,
+		official: article.official,
+		featured: article.featured,
+		canonical_url: article.canonicalUrl ?? null,
+		published_at: article.publishedAt.toISOString().slice(0, 10),
 	};
 }
