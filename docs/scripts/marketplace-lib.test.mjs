@@ -34,6 +34,15 @@ test('marketplace paths are the catalog, not plugin guides or panel docs', () =>
 	assert.equal(isMarketplacePath('/0.x/forms/overview/'), false);
 	assert.equal(isMarketplacePath('/forms/overview/'), false);
 	assert.equal(isMarketplacePath('/panels/configuration/'), false);
+	assert.equal(isMarketplacePath('/articles/'), true);
+	assert.equal(isMarketplacePath('/articles/how-marketplace-listings-work/'), true);
+	assert.equal(isMarketplacePath('/main/articles/'), true);
+	assert.equal(isMarketplacePath('/plugins/write-an-article/'), false);
+	assert.equal(isDocsPath('/articles/'), false);
+	assert.equal(isDocsPath('/plugins/write-an-article/'), true);
+	assert.equal(isPluginDocPath('/plugins/write-an-article/'), true);
+	assert.equal(isNavCurrent('/articles/', '/articles/'), true);
+	assert.equal(isNavCurrent('/articles/', '/articles/how-marketplace-listings-work/'), true);
 });
 
 test('docs vs home vs marketplace for the top-bar menus', () => {

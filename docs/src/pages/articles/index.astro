@@ -1,0 +1,172 @@
+---
+/** Marketplace articles — browse published editorial posts. */
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import ArticleCard from '../../components/marketplace/ArticleCard.astro';
+import {
+	collectArticleTags,
+	getMarketplaceArticles,
+} from '../../data/marketplace';
+import '../../styles/marketplace.css';
+
+const articles = await getMarketplaceArticles();
+const tags = collectArticleTags(articles);
+const featured = articles.filter((article) => article.featured);
+---
+
+<StarlightPage
+	frontmatter={{
+		title: 'Marketplace articles',
+		description:
+			'Guides and write-ups from the Orbit plugin marketplace — how listings work, how to publish, and more.',
+		tableOfContents: false,
+		prev: false,
+		next: false,
+	}}
+>
+	<div class="market" data-marketplace data-articles>
+		<p class="market-lede">
+			Articles are full write-ups hosted with the marketplace registry. They are not installable
+			plugins — for packages, browse the <a href="/plugins/">plugin directory</a>. Want to publish
+			one? See <a href="/plugins/write-an-article/">Write an article</a>.
+		</p>
+
+		{
+			articles.length === 0 ? (
+				<div class="market-empty">
+					<h2>No articles yet</h2>
+					<p>The first marketplace article could be yours.</p>
+					<p>
+						<a class="market-button is-primary" href="/plugins/write-an-article/">
+							Read the article guide
+						</a>
+					</p>
+				</div>
+			) : (
+				<>
+					{featured.length > 0 && (
+						<section class="market-section" aria-labelledby="articles-featured">
+							<h2 id="articles-featured">Featured</h2>
+							<ul class="market-grid">
+								{featured.map((article) => (
+									<ArticleCard article={article} />
+								))}
+							</ul>
+						</section>
+					)}
+
+					<section class="market-section" aria-labelledby="articles-all">
+						<h2 id="articles-all">All articles</h2>
+
+						<form class="market-filters" id="article-filters" role="search">
+							<div class="market-filter-grid">
+								<div class="market-field">
+									<label for="article-search">Search</label>
+									<input
+										type="search"
+										id="article-search"
+										name="search"
+										placeholder="Title, author, tag…"
+										autocomplete="off"
+									/>
+								</div>
+								{
+									tags.length > 0 && (
+										<div class="market-field">
+											<label for="article-tag">Tag</label>
+											<select id="article-tag" name="tag">
+												<option value="">All</option>
+												{tags.map((tag) => (
+													<option value={tag}>{tag}</option>
+												))}
+											</select>
+										</div>
+									)
+								}
+								<div class="market-field">
+									<label for="article-sort">Sort</label>
+									<select id="article-sort" name="sort">
+										<option value="newest">Newest</option>
+										<option value="name">Name</option>
+									</select>
+								</div>
+							</div>
+							<p class="market-filter-status" id="article-filter-status" aria-live="polite"></p>
+						</form>
+
+						<ul class="market-grid" id="article-grid">
+							{articles.map((article) => (
+								<ArticleCard article={article} />
+							))}
+						</ul>
+					</section>
+				</>
+			)
+		}
+	</div>
+</StarlightPage>
+
+<script>
+	const form = document.getElementById('article-filters');
+	const grid = document.getElementById('article-grid');
+	const status = document.getElementById('article-filter-status');
+	if (form && grid) {
+		const cards = [...grid.querySelectorAll('[data-article]')];
+
+		function apply() {
+			const data = new FormData(form);
+			const q = String(data.get('search') ?? '')
+				.trim()
+				.toLowerCase();
+			const tag = String(data.get('tag') ?? '');
+			const sort = String(data.get('sort') ?? 'newest');
+
+			let visible = 0;
+			for (const card of cards) {
+				const hay = card.getAttribute('data-search') ?? '';
+				const tags = (card.getAttribute('data-tags') ?? '').split(/\s+/).filter(Boolean);
+				const matchQ = !q || hay.includes(q);
+				const matchTag = !tag || tags.includes(tag);
+				const show = matchQ && matchTag;
+				card.hidden = !show;
+				if (show) visible += 1;
+			}
+
+			const sorted = [...cards].sort((a, b) => {
+				if (sort === 'name') {
+					return (a.getAttribute('data-name') ?? '').localeCompare(b.getAttribute('data-name') ?? '');
+				}
+				return (b.getAttribute('data-published') ?? '').localeCompare(
+					a.getAttribute('data-published') ?? '',
+				);
+			});
+			for (const card of sorted) grid.appendChild(card);
+
+			if (status) {
+				status.textContent =
+					visible === cards.length
+						? `${visible} article${visible === 1 ? '' : 's'}`
+						: `Showing ${visible} of ${cards.length}`;
+			}
+
+			const params = new URLSearchParams();
+			if (q) params.set('q', q);
+			if (tag) params.set('tag', tag);
+			if (sort && sort !== 'newest') params.set('sort', sort);
+			const next = params.toString();
+			const url = next ? `${location.pathname}?${next}` : location.pathname;
+			history.replaceState(null, '', url);
+		}
+
+		const params = new URLSearchParams(location.search);
+		const search = form.querySelector('#article-search');
+		const tagSelect = form.querySelector('#article-tag');
+		const sortSelect = form.querySelector('#article-sort');
+		if (search && params.get('q')) search.value = params.get('q');
+		if (tagSelect && params.get('tag')) tagSelect.value = params.get('tag');
+		if (sortSelect && params.get('sort')) sortSelect.value = params.get('sort');
+
+		form.addEventListener('input', apply);
+		form.addEventListener('change', apply);
+		apply();
+	}
+</script>

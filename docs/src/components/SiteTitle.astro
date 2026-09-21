@@ -1,21 +1,27 @@
 ---
 /**
- * Almasix mark plus the primary top-bar menus: Docs and Plugins.
+ * Almasix mark plus the primary top-bar menus: Docs, Plugins, and Articles.
  */
 import ThemeSiteTitle from '@almasix/starlight-theme/components/SiteTitle.astro';
-import { isDocsPath, isMarketplacePath } from '../../scripts/marketplace-lib.mjs';
+import {
+	isArticlesPath,
+	isDocsPath,
+	isMarketplacePath,
+} from '../../scripts/marketplace-lib.mjs';
 import { withDocsBase } from '../versions.mjs';
 
 const base = import.meta.env.BASE_URL;
 const path = Astro.url.pathname;
 const onDocs = isDocsPath(path);
-const onMarketplace = isMarketplacePath(path);
+const onArticles = isArticlesPath(path);
+const onPlugins = isMarketplacePath(path) && !onArticles;
 ---
 
 <ThemeSiteTitle />
 <nav class="header-menus" aria-label="Primary">
 	<a href={withDocsBase('/getting-started/installation/', base)} aria-current={onDocs ? 'page' : undefined}>Docs</a>
-	<a href={withDocsBase('/plugins/', base)} aria-current={onMarketplace ? 'page' : undefined}>Plugins</a>
+	<a href={withDocsBase('/plugins/', base)} aria-current={onPlugins ? 'page' : undefined}>Plugins</a>
+	<a href={withDocsBase('/articles/', base)} aria-current={onArticles ? 'page' : undefined}>Articles</a>
 </nav>
 
 <style>

@@ -8,7 +8,14 @@ import { stripVersionPrefix } from '../src/versions.mjs';
 export const MARKETPLACE_INDEX_SEGMENTS = ['authors', 'categories', 'develop', 'feed', 'paid'];
 
 /** Plugin guides that live under `/plugins/` but use the docs sidebar. */
-export const PLUGIN_DOC_SEGMENTS = ['get-listed', 'guidelines', 'overview', 'paid-vs-free', 'using'];
+export const PLUGIN_DOC_SEGMENTS = [
+	'get-listed',
+	'guidelines',
+	'overview',
+	'paid-vs-free',
+	'using',
+	'write-an-article',
+];
 
 export const MARKETPLACE_NAV = [
 	{
@@ -16,13 +23,17 @@ export const MARKETPLACE_NAV = [
 		items: [
 			{ label: 'All plugins', href: '/plugins/' },
 			{ label: 'Paid plugins', href: '/plugins/paid/' },
+			{ label: 'Articles', href: '/articles/' },
 			{ label: 'Authors', href: '/plugins/authors/' },
 			{ label: 'Categories', href: '/plugins/categories/' },
 		],
 	},
 	{
 		label: 'Catalog API',
-		items: [{ label: 'JSON feed', href: '/plugins/develop/' }],
+		items: [
+			{ label: 'JSON feed', href: '/plugins/develop/' },
+			{ label: 'Articles feed', href: '/articles/feed.json' },
+		],
 	},
 ];
 
@@ -41,7 +52,14 @@ export function pluginPathSegment(pathname) {
 	return path.slice('/plugins/'.length).split('/')[0].replace(/\.[a-z0-9]+$/i, '');
 }
 
+/** True when the path is under `/articles/` (catalog, not docs). */
+export function isArticlesPath(pathname) {
+	const path = stripVersionPrefix((pathname ?? '/').split('?')[0]).replace(/\/+$/, '') || '/';
+	return path === '/articles' || path.startsWith('/articles/');
+}
+
 export function isMarketplacePath(pathname) {
+	if (isArticlesPath(pathname)) return true;
 	const segment = pluginPathSegment(pathname);
 	if (segment === null) return false;
 	if (segment === '') return true;
@@ -73,6 +91,9 @@ export function isNavCurrent(href, pathname) {
 	const target = normalizePath(href);
 	if (target === '/plugins/paid/') {
 		return current === target;
+	}
+	if (target === '/articles/') {
+		return current === '/articles/' || current.startsWith('/articles/');
 	}
 	if (target === '/plugins/') {
 		if (current === '/plugins/') return true;

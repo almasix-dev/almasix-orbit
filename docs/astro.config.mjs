@@ -192,6 +192,7 @@ export default defineConfig({
 						{ label: 'Using a plugin', slug: 'plugins/using' },
 						{ label: 'Building a plugin', slug: 'panels/plugins' },
 						{ label: 'Listing a plugin', slug: 'plugins/get-listed' },
+						{ label: 'Write an article', slug: 'plugins/write-an-article' },
 						{ label: 'Listing guidelines', slug: 'plugins/guidelines' },
 						{ label: 'Paid vs free', slug: 'plugins/paid-vs-free' },
 					],

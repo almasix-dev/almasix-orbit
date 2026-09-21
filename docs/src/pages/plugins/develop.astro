@@ -64,7 +64,8 @@ import '../../styles/marketplace.css';
 				<li>Draft and archived registry entries never appear.</li>
 			</ul>
 			<p>
-				<a class="market-button is-primary" href="/plugins/feed.json">Open feed.json</a>
+				<a class="market-button is-primary" href="/plugins/feed.json">Open plugins feed</a>
+				<a class="market-button" href="/articles/feed.json">Open articles feed</a>
 			</p>
 		</section>
 
@@ -106,6 +107,18 @@ import '../../styles/marketplace.css';
 						<tr>
 							<td><code>/plugins/&lt;slug&gt;/</code></td>
 							<td>A single listing (same <code>slug</code> as the feed)</td>
+						</tr>
+						<tr>
+							<td><a href="/articles/"><code>/articles/</code></a></td>
+							<td>Browse marketplace articles</td>
+						</tr>
+						<tr>
+							<td><code>/articles/&lt;slug&gt;/</code></td>
+							<td>A single article</td>
+						</tr>
+						<tr>
+							<td><a href="/articles/feed.json"><code>/articles/feed.json</code></a></td>
+							<td>JSON feed of published articles</td>
 						</tr>
 					</tbody>
 				</table>

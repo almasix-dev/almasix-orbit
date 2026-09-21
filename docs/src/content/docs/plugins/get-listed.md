@@ -176,8 +176,10 @@ Open the PR with the matching template (keep the diff to your listing/author fil
 | Edit plugin | [edit-plugin](https://github.com/almasix-dev/orbit-plugins/compare?template=edit-plugin.md) | [request](https://github.com/almasix-dev/orbit-plugins/issues/new?template=edit-plugin.yml) |
 | New author | [new-author](https://github.com/almasix-dev/orbit-plugins/compare?template=new-author.md) | [propose](https://github.com/almasix-dev/orbit-plugins/issues/new?template=new-author.yml) |
 | Edit author | [edit-author](https://github.com/almasix-dev/orbit-plugins/compare?template=edit-author.md) | [request](https://github.com/almasix-dev/orbit-plugins/issues/new?template=edit-author.yml) |
+| New article | [new-article](https://github.com/almasix-dev/orbit-plugins/compare?template=new-article.md) | [propose](https://github.com/almasix-dev/orbit-plugins/issues/new?template=new-article.yml) |
+| Edit article | [edit-article](https://github.com/almasix-dev/orbit-plugins/compare?template=edit-article.md) | [request](https://github.com/almasix-dev/orbit-plugins/issues/new?template=edit-article.yml) |
 
-After merge, the public catalog at [/plugins](/plugins/) rebuilds from the registry. You do not need a second PR against almasix-orbit.
+After merge, the public catalog at [/plugins](/plugins/) rebuilds from the registry. You do not need a second PR against almasix-orbit. For editorial write-ups (not packages), see [Write an article](/plugins/write-an-article/).
 
 ## Updating or removing a listing
 
@@ -190,6 +192,7 @@ Abandoned plugins that no longer install on any supported Orbit version may be u
 
 ## Related
 
+- [Write an article](/plugins/write-an-article/) — marketplace articles instead of a package listing
 - [Using a plugin](/plugins/using/) — what visitors do after they find you
 - [Listing guidelines](/plugins/guidelines/) — what reviewers check
 - [Paid vs free](/plugins/paid-vs-free/) — rules for commercial plugins

@@ -18,6 +18,7 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 116 | Docs version trees (`/0.x/` vs `/main/`) | `docs/src/content/docs/prologue/versions.md` | **closed** |
 | 117 | Official plugin: Orbit Permission | `orbit-plugins` + `/plugins/orbit-permission/` | **closed** |
 | 118 | Marketplace registry split | `docs/scripts/marketplace-sync.mjs` | **closed** |
+| 119 | Marketplace articles | `docs/src/pages/articles/**` · `orbit-plugins/articles` | **closed** |
 | 102 | Resources depth (relation managers, global search, record titles, soft deletes) | `docs/src/content/docs/resources/*` | **closed** |
 | 103 | Forms leftovers (FileUpload endpoint, RichEditor, MorphTo live search, ModalTableSelect / KeyValue hosts) | `docs/src/content/docs/forms/{file-upload,rich-editor,morph-to-select,modal-table-select,key-value}.md` | **closed** |
 | 104 | Import / export job runners | `docs/src/content/docs/actions/{import,export}.md` | **closed** |
@@ -27,6 +28,10 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 108 | Panels platform (SPA mode, billing adapters, multi-panel registry) | `docs/src/content/docs/panels/configuration.md` | **closed** |
 | 109 | Docs completeness pass (thin pages, unique shots, alignment) | `docs/src/content/docs/**` | **closed** |
 | 110 | Support toolkit polish | `docs/src/content/docs/support/*` | **closed** |
+
+## Marketplace articles — closed
+
+**Bar:** Articles are first-class registry entries (`articles/*.yaml` + `public/articles/`) with full Markdown bodies, tags, related plugins, and issue/PR templates. Orbit syncs them at build and renders `/articles/` with marketplace chrome, top-bar Articles menu, author cross-list, and `/articles/feed.json`.
 
 ## Marketplace registry split — closed
 

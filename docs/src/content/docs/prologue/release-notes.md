@@ -9,11 +9,15 @@ header switcher.
 
 ## Unreleased (`main`)
 
+- Marketplace articles: full Markdown posts in orbit-plugins, rendered at `/articles/`
+- Marketplace listings move to [orbit-plugins](https://github.com/almasix-dev/orbit-plugins); docs sync the registry at build time
+
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
 - Official plugin [Orbit Permission](/plugins/orbit-permission/) (`almasix-orbit-permission`) — Users, Roles, and Permissions UI on `almasix-permission`
 - Marketplace listings move to [orbit-plugins](https://github.com/almasix-dev/orbit-plugins); docs sync the registry at build time
+- Marketplace articles: full Markdown posts in orbit-plugins, rendered at [`/articles/`](/articles/)
 
 ## 0.4.1
 

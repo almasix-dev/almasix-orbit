@@ -23,6 +23,7 @@ docs/.version-build/
 docs/.marketplace/
 docs/.marketplace-tmp/
 docs/public/plugins/
+docs/public/articles/
 docs/.dev.vars
 assets/node_modules/
 assets/dist/

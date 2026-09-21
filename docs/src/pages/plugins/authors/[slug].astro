@@ -1,11 +1,13 @@
 ---
-/** Author profile — bio plus every listing they maintain. */
+/** Author profile — bio plus every listing and article they maintain. */
 import type { GetStaticPaths } from 'astro';
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import ArticleCard from '../../../components/marketplace/ArticleCard.astro';
 import PluginCard from '../../../components/marketplace/PluginCard.astro';
 import {
 	authorGithubHref,
 	getMarketplaceAuthors,
+	type MarketplaceArticle,
 	type MarketplaceAuthor,
 	type MarketplacePlugin,
 } from '../../../data/marketplace';
@@ -14,15 +16,16 @@ import '../../../styles/marketplace.css';
 
 export const getStaticPaths: GetStaticPaths = async () => {
 	const authors = await getMarketplaceAuthors();
-	return authors.map(({ author, plugins }) => ({
+	return authors.map(({ author, plugins, articles }) => ({
 		params: { slug: author.slug },
-		props: { author, plugins },
+		props: { author, plugins, articles },
 	}));
 };
 
-const { author, plugins } = Astro.props as {
+const { author, plugins, articles } = Astro.props as {
 	author: MarketplaceAuthor;
 	plugins: MarketplacePlugin[];
+	articles: MarketplaceArticle[];
 };
 ---
 
@@ -46,15 +49,42 @@ const { author, plugins } = Astro.props as {
 					{author.website && <a href={author.website}>Website</a>}
 					{author.github && <a href={authorGithubHref(author.github)}>GitHub</a>}
 					{author.sponsorUrl && <a href={author.sponsorUrl}>Sponsor</a>}
-					<span>·</span>
-					<span>{formatStat(authorStarsTotal(plugins))} stars across listings</span>
+					{
+						plugins.length > 0 && (
+							<>
+								<span>·</span>
+								<span>{formatStat(authorStarsTotal(plugins))} stars across listings</span>
+							</>
+						)
+					}
 				</p>
 			</div>
 		</div>
 
-		<h2>Plugins</h2>
-		<ul class="market-grid">
-			{plugins.map((plugin) => <PluginCard plugin={plugin} />)}
-		</ul>
+		{
+			plugins.length > 0 && (
+				<>
+					<h2>Plugins</h2>
+					<ul class="market-grid">
+						{plugins.map((plugin) => (
+							<PluginCard plugin={plugin} />
+						))}
+					</ul>
+				</>
+			)
+		}
+
+		{
+			articles.length > 0 && (
+				<>
+					<h2>Articles</h2>
+					<ul class="market-grid">
+						{articles.map((article) => (
+							<ArticleCard article={article} />
+						))}
+					</ul>
+				</>
+			)
+		}
 	</div>
 </StarlightPage>
