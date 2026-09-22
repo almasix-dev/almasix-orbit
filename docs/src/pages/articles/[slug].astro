@@ -3,8 +3,8 @@
 import type { GetStaticPaths } from 'astro';
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import PluginCard from '../../components/marketplace/PluginCard.astro';
+import AuthorAside from '../../components/marketplace/AuthorAside.astro';
 import {
-	authorGithubHref,
 	getMarketplaceArticles,
 	getMarketplacePlugins,
 	getRelatedPluginsForArticle,
@@ -115,35 +115,15 @@ const published = article.publishedAt.toLocaleDateString('en-US', {
 				}
 			</div>
 
-			<aside class="market-aside" aria-label="Author">
-				<div class="market-aside-card">
-					<div class="market-author-head">
-						{article.author.avatar && (
-							<img class="market-avatar" src={article.author.avatar} alt="" />
-						)}
-						<div>
-							<p class="market-aside-kicker">Author</p>
-							<h2 class="market-aside-title">
-								<a href={`/plugins/authors/${article.author.slug}/`}>{article.author.name}</a>
-							</h2>
-						</div>
-					</div>
-					<p class="market-summary">{article.author.bio}</p>
-					<p class="market-meta">
-						{article.author.website && <a href={article.author.website}>Website</a>}
-						{article.author.github && (
-							<a href={authorGithubHref(article.author.github)}>GitHub</a>
-						)}
-					</p>
-				</div>
+			<AuthorAside author={article.author}>
 				<div class="market-aside-card">
 					<p class="market-aside-kicker">Published</p>
 					<p class="market-meta">{published}</p>
-					<p class="market-meta">
-						<a href="/plugins/write-an-article/">Write an article</a>
-					</p>
+					<div class="market-card-links">
+						<a class="market-card-link" href="/plugins/write-an-article/">Write an article</a>
+					</div>
 				</div>
-			</aside>
+			</AuthorAside>
 		</div>
 	</div>
 </StarlightPage>

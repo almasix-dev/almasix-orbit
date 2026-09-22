@@ -13,6 +13,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse } from 'yaml';
 
+import { isListingDocsUrl } from './marketplace-docs.mjs';
+
 const defaultRoot = path.resolve(fileURLToPath(import.meta.url), '../..');
 
 export const RESERVED_SLUGS = new Set([
@@ -221,6 +223,12 @@ export function validateMarketplace(docsRoot = defaultRoot) {
 		checkUrl(errors, file, docsRoot, 'checkout_url', plugin.checkout_url);
 		checkUrl(errors, file, docsRoot, 'repository', plugin.repository);
 		checkUrl(errors, file, docsRoot, 'docs_url', plugin.docs_url);
+		if (plugin.docs_url && isListingDocsUrl(plugin.docs_url, `/plugins/${plugin.slug}/`)) {
+			failFile(
+				file,
+				'docs_url must not point at this listing page — use the GitHub README or external docs instead',
+			);
+		}
 		checkUrl(errors, file, docsRoot, 'homepage', plugin.homepage);
 		checkUrl(errors, file, docsRoot, 'changelog_url', plugin.changelog_url);
 		checkLocalImage(errors, file, docsRoot, publicDir, 'thumbnail', plugin.thumbnail);

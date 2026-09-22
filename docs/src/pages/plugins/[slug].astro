@@ -3,9 +3,9 @@
 import type { GetStaticPaths } from 'astro';
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import PluginCard from '../../components/marketplace/PluginCard.astro';
-import StarButton from '../../components/marketplace/StarButton.astro';
+import PluginActions from '../../components/marketplace/PluginActions.astro';
+import AuthorAside from '../../components/marketplace/AuthorAside.astro';
 import {
-	authorGithubHref,
 	getMarketplaceAuthors,
 	getMarketplacePlugins,
 	getRelatedPlugins,
@@ -13,6 +13,7 @@ import {
 	RESERVED_PLUGIN_SLUGS,
 	type MarketplacePlugin,
 } from '../../data/marketplace';
+import { fetchListingDocsMarkdown } from '../../../scripts/marketplace-docs.mjs';
 import { authorStarsTotal, formatStat } from '../../../scripts/marketplace-lib.mjs';
 import '../../styles/marketplace.css';
 
@@ -45,6 +46,12 @@ const { plugin, related, authorPlugins, authorStars } = Astro.props as {
 	authorStars: number;
 };
 const description = await renderListingMarkdown(plugin.description);
+const docsMarkdown = await fetchListingDocsMarkdown(plugin.docsUrl, plugin.url);
+const docsEmbedded = Boolean(
+	docsMarkdown && docsMarkdown.trim() !== plugin.description.trim(),
+);
+const docsHtml = docsEmbedded ? await renderListingMarkdown(docsMarkdown!) : null;
+const showDocsLink = Boolean(plugin.docsUrl && !docsEmbedded);
 const published = plugin.publishedAt.toLocaleDateString('en-US', {
 	year: 'numeric',
 	month: 'long',
@@ -80,43 +87,7 @@ const otherPlugins = authorPlugins.filter((item) => item.slug !== plugin.slug);
 						{plugin.darkMode && <li class="market-chip">Dark mode ready</li>}
 					</ul>
 					<p class="market-lede">{plugin.summary}</p>
-					<div class="market-detail-actions">
-						{
-							plugin.githubUrl && (
-								<StarButton
-									slug={plugin.slug}
-									githubUrl={plugin.githubUrl}
-									githubRepo={plugin.githubRepo}
-									stars={plugin.stars}
-									primary={!plugin.isPaid}
-								/>
-							)
-						}
-						{
-							plugin.isPaid ? (
-								<a class="market-button is-primary" href={plugin.checkoutUrl} rel="nofollow noopener">
-									Buy for {plugin.priceLabel}
-								</a>
-							) : (
-								plugin.repository &&
-								!plugin.githubUrl && (
-									<a class="market-button is-primary" href={plugin.repository}>
-										View source
-									</a>
-								)
-							)
-						}
-						{plugin.docsUrl && <a class="market-button" href={plugin.docsUrl}>Documentation</a>}
-						{plugin.homepage && <a class="market-button" href={plugin.homepage}>Homepage</a>}
-						{plugin.changelogUrl && <a class="market-button" href={plugin.changelogUrl}>Changelog</a>}
-						{
-							plugin.pypiUrl && (
-								<a class="market-button" href={plugin.pypiUrl} rel="noopener noreferrer">
-									PyPI
-								</a>
-							)
-						}
-					</div>
+					<PluginActions plugin={plugin} showDocsLink={showDocsLink} />
 					{
 						plugin.installCommand && (
 							<div class="market-install-row">
@@ -201,7 +172,7 @@ const otherPlugins = authorPlugins.filter((item) => item.slug !== plugin.slug);
 					)
 				}
 
-				<section class="market-description" set:html={description} />
+				<section class="market-description" aria-label="Overview" set:html={description} />
 
 				{
 					plugin.screenshots.length > 0 && (
@@ -209,6 +180,29 @@ const otherPlugins = authorPlugins.filter((item) => item.slug !== plugin.slug);
 							{plugin.screenshots.map((shot) => (
 								<img src={shot.src} alt={shot.alt} loading="lazy" />
 							))}
+						</section>
+					)
+				}
+
+				{
+					docsHtml && (
+						<section class="market-docs" aria-labelledby="market-docs-heading">
+							<div class="market-docs-head">
+								<h2 id="market-docs-heading">Documentation</h2>
+								{
+									plugin.docsUrl && (
+										<a
+											class="market-docs-source"
+											href={plugin.docsUrl}
+											target="_blank"
+											rel="noopener noreferrer"
+										>
+											View source
+										</a>
+									)
+								}
+							</div>
+							<div class="market-description" set:html={docsHtml} />
 						</section>
 					)
 				}
@@ -235,53 +229,12 @@ const otherPlugins = authorPlugins.filter((item) => item.slug !== plugin.slug);
 				</div>
 			</div>
 
-			<aside class="market-aside" aria-label="Author">
-				<div class="market-aside-card">
-					<div class="market-author-head">
-						{plugin.author.avatar && <img class="market-avatar" src={plugin.author.avatar} alt="" />}
-						<div>
-							<p class="market-aside-kicker">Author</p>
-							<h2 class="market-aside-title">
-								<a href={`/plugins/authors/${plugin.author.slug}/`}>{plugin.author.name}</a>
-							</h2>
-						</div>
-					</div>
-					<p class="market-summary">{plugin.author.bio}</p>
-					<p class="market-meta">
-						{plugin.author.website && <a href={plugin.author.website}>Website</a>}
-						{plugin.author.github && (
-							<a href={authorGithubHref(plugin.author.github)}>GitHub</a>
-						)}
-						{plugin.author.sponsorUrl && <a href={plugin.author.sponsorUrl}>Sponsor</a>}
-					</p>
-					<dl class="market-aside-facts">
-						<div>
-							<dt>Listed plugins</dt>
-							<dd>{authorPlugins.length}</dd>
-						</div>
-						<div>
-							<dt>Total stars</dt>
-							<dd>{formatStat(authorStars)}</dd>
-						</div>
-					</dl>
-				</div>
-
-				{
-					otherPlugins.length > 0 && (
-						<div class="market-aside-card">
-							<h3 class="market-aside-title">More from this author</h3>
-							<ul class="market-aside-plugins">
-								{otherPlugins.map((item) => (
-									<li>
-										<a href={item.url}>{item.name}</a>
-										<span class="market-meta">{formatStat(item.stars)} stars</span>
-									</li>
-								))}
-							</ul>
-						</div>
-					)
-				}
-			</aside>
+			<AuthorAside
+				author={plugin.author}
+				pluginCount={authorPlugins.length}
+				stars={authorStars}
+				otherPlugins={otherPlugins}
+			/>
 		</div>
 
 		{

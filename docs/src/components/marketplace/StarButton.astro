@@ -1,50 +1,46 @@
 ---
 /**
- * Star the plugin's GitHub repo. When OAuth is configured on the Worker, the
- * click stars via the GitHub API as the visitor; otherwise the repo opens.
+ * Star the plugin's GitHub repo via OAuth when configured; otherwise opens GitHub.
+ * Count always reflects the build-time GitHub API figure — never client-side bumps.
  */
-import { formatStat, parseGithubRepo } from '../../../scripts/marketplace-lib.mjs';
+import { formatStat } from '../../../scripts/marketplace-lib.mjs';
 
 interface Props {
 	slug: string;
 	githubUrl: string;
 	stars: number | null;
 	githubRepo?: string | null;
-	primary?: boolean;
 }
 
-const { slug, githubUrl, stars, githubRepo, primary = true } = Astro.props;
-const repo = githubRepo || parseGithubRepo(githubUrl) || '';
+const { slug, githubUrl, stars, githubRepo } = Astro.props;
+const repo = githubRepo ?? '';
 ---
 
 <button
 	type="button"
-	class:list={['market-button', 'market-star-btn', { 'is-primary': primary }]}
+	class="market-button market-star-btn"
 	data-star-slug={slug}
 	data-star-href={githubUrl}
 	data-star-repo={repo}
-	data-star-base={stars ?? ''}
+	aria-pressed="false"
 >
-	<span class="market-star-icon" aria-hidden="true">★</span>
-	<span data-star-label>Star on GitHub</span>
+	<svg class="market-button-icon market-star-icon" viewBox="0 0 20 20" aria-hidden="true">
+		<path
+			fill="currentColor"
+			d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292Z"
+		></path>
+	</svg>
+	<span data-star-label>Star</span>
 	<span class="market-star-num" data-star-count>{formatStat(stars)}</span>
 </button>
 
 <script>
 	const starKey = (slug: string) => `orbit-plugin-star:${slug}`;
 
-	const format = (value: number | null) => {
-		if (value == null || Number.isNaN(value)) return '—';
-		if (value >= 1000) {
-			const k = value / 1000;
-			return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`;
-		}
-		return String(value);
-	};
-
 	const params = new URLSearchParams(location.search);
 	const oauthStarred = params.get('starred') === '1';
-	if (oauthStarred || params.has('star')) {
+	const starError = params.get('star');
+	if (oauthStarred || starError) {
 		params.delete('starred');
 		params.delete('star');
 		const next = `${location.pathname}${params.toString() ? `?${params}` : ''}${location.hash}`;
@@ -55,43 +51,35 @@ const repo = githubRepo || parseGithubRepo(githubUrl) || '';
 		const slug = starBtn.dataset.starSlug ?? '';
 		const href = starBtn.dataset.starHref ?? '';
 		const repo = starBtn.dataset.starRepo ?? '';
-		const baseRaw = starBtn.dataset.starBase ?? '';
-		const base = baseRaw === '' ? null : Number(baseRaw);
 		const label = starBtn.querySelector('[data-star-label]');
-		const counts = document.querySelectorAll<HTMLElement>(
-			'[data-star-count], [data-star-count-page]',
-		);
 
 		const liked = () => Boolean(slug && localStorage.getItem(starKey(slug)));
 		const markLiked = () => {
 			if (slug) localStorage.setItem(starKey(slug), '1');
 		};
 		const render = () => {
-			const extra = liked() ? 1 : 0;
-			const shown = base == null ? (extra ? extra : null) : base + extra;
-			for (const node of counts) node.textContent = format(shown);
-			starBtn.classList.toggle('is-starred', liked());
-			if (label) label.textContent = liked() ? 'Starred on GitHub' : 'Star on GitHub';
+			const starred = liked();
+			starBtn.classList.toggle('is-starred', starred);
+			starBtn.setAttribute('aria-pressed', starred ? 'true' : 'false');
+			if (label) label.textContent = starred ? 'Starred' : 'Star';
 		};
 
 		if (oauthStarred) markLiked();
 		render();
 
-		const fallback = () => {
+		const openGithub = () => {
 			if (href) window.open(href, '_blank', 'noopener');
-			markLiked();
-			render();
 		};
 
 		starBtn.addEventListener('click', async () => {
 			if (liked()) {
-				if (href) window.open(href, '_blank', 'noopener');
+				openGithub();
 				return;
 			}
 			starBtn.disabled = true;
 			try {
 				if (!repo) {
-					fallback();
+					openGithub();
 					return;
 				}
 				const returnPath = `${location.pathname}${location.search}`;
@@ -100,7 +88,7 @@ const repo = githubRepo || parseGithubRepo(githubUrl) || '';
 					{ method: 'POST', headers: { Accept: 'application/json' }, credentials: 'same-origin' },
 				);
 				if (response.status === 501) {
-					fallback();
+					openGithub();
 					return;
 				}
 				if (response.status === 401) {
@@ -109,17 +97,17 @@ const repo = githubRepo || parseGithubRepo(githubUrl) || '';
 						location.href = data.authorize;
 						return;
 					}
-					fallback();
+					openGithub();
 					return;
 				}
 				if (!response.ok) {
-					fallback();
+					openGithub();
 					return;
 				}
 				markLiked();
 				render();
 			} catch {
-				fallback();
+				openGithub();
 			} finally {
 				starBtn.disabled = false;
 			}

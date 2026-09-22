@@ -124,7 +124,7 @@ checkout_url: https://store.example.com/acme-audit-log-pro
 | `checkout_url` | paid only | Where a buyer completes the purchase. |
 | `package` | free plugins | PyPI name; drives the `pip install` line. |
 | `repository` | recommended | Public source. Required for free plugins without a PyPI name. |
-| `docs_url` | no | External documentation. |
+| `docs_url` | no | Full documentation. GitHub repository URLs embed the README on the listing page (alongside `description`). Other URLs stay link-only — do not point `docs_url` at your own listing URL. |
 | `homepage` | no | Marketing or product page. |
 | `changelog_url` | no | Release notes. |
 | `license` | recommended | SPDX id such as `MIT` or `LicenseRef-Proprietary`. |

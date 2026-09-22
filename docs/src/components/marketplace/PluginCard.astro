@@ -27,7 +27,7 @@ const haystack = [
 ---
 
 <li
-	class="market-card"
+	class="market-card not-content"
 	data-plugin
 	data-name={plugin.name.toLowerCase()}
 	data-search={haystack}
@@ -52,49 +52,159 @@ const haystack = [
 	<div class="market-card-body">
 		<div class="market-card-head">
 			<h3 class="market-card-title"><a href={plugin.url}>{plugin.name}</a></h3>
-			<span class="market-chip is-price">{plugin.priceLabel}</span>
+			<span class:list={['market-chip', 'is-price', { 'is-paid': plugin.isPaid }]}>
+				{plugin.priceLabel}
+			</span>
 		</div>
 		<p class="market-summary">{plugin.summary}</p>
 		<ul class="market-tags">
-			{plugin.official && <li class="market-chip is-official">Official</li>}
-			{plugin.featured && <li class="market-chip is-featured">Featured</li>}
+			{
+				plugin.official && (
+					<li class="market-chip is-official">
+						<svg class="market-chip-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+							<path
+								fill="currentColor"
+								d="M8 0 9.9 5.1 15.5 6l-4.1 3.7.9 5.7L8 13l-4.3 2.4.9-5.7L.5 6l5.6-.9L8 0Z"
+							></path>
+						</svg>
+						Official
+					</li>
+				)
+			}
+			{
+				plugin.featured && (
+					<li class="market-chip is-featured">
+						<svg class="market-chip-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+							<path
+								fill="currentColor"
+								d="M2 8a6 6 0 1 1 12 0A6 6 0 0 1 2 8Zm6-4.25a.75.75 0 0 0-.75.75v3.19l-1.72 1.72a.75.75 0 1 0 1.06 1.06l2-2A.75.75 0 0 0 8.75 8V4.5A.75.75 0 0 0 8 3.75Z"
+							></path>
+						</svg>
+						Featured
+					</li>
+				)
+			}
 			{plugin.categories.map((category) => <li class="market-chip">{category.label}</li>)}
-			{plugin.darkMode && <li class="market-chip">Dark mode</li>}
-		</ul>
-		<ul class="market-stats">
-			<li title="PyPI downloads in the last 30 days">
-				<span class="market-stats-label">Installs</span>
-				<strong>{formatStat(plugin.installs)}</strong>
-			</li>
-			<li title="GitHub stars">
-				<span class="market-stats-label">Stars</span>
-				<strong>{formatStat(plugin.stars)}</strong>
-			</li>
 			{
-				plugin.githubUrl && (
-					<li>
-						<a href={plugin.githubUrl} rel="noopener noreferrer">
-							GitHub
-						</a>
-					</li>
-				)
-			}
-			{
-				plugin.pypiUrl && (
-					<li>
-						<a href={plugin.pypiUrl} rel="noopener noreferrer">
-							PyPI
-						</a>
+				plugin.darkMode && (
+					<li class="market-chip">
+						<svg class="market-chip-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+							<path
+								fill="currentColor"
+								d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 1.5v11a5.5 5.5 0 0 0 0-11Z"
+							></path>
+						</svg>
+						Dark mode
 					</li>
 				)
 			}
 		</ul>
+
+		<div class="market-card-foot">
+			<ul class="market-stats">
+				<li title="PyPI downloads in the last 30 days">
+					<svg class="market-stat-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+						<path
+							fill="currentColor"
+							d="M8 1.5a.75.75 0 0 1 .75.75v6.19l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 0 1 1.06-1.06l2.22 2.22V2.25A.75.75 0 0 1 8 1.5ZM2.5 12.25a.75.75 0 0 1 .75-.75h9.5a.75.75 0 0 1 0 1.5h-9.5a.75.75 0 0 1-.75-.75Z"
+						></path>
+					</svg>
+					<strong>{formatStat(plugin.installs)}</strong>
+					<span class="market-stats-label">Installs</span>
+				</li>
+				<li title="GitHub stars">
+					<svg class="market-stat-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+						<path
+							fill="currentColor"
+							d="M8 1.5 9.6 5.7l4.6.4-3.5 3.1 1.1 4.5L8 11.6 4.2 13.7l1.1-4.5-3.5-3.1 4.6-.4L8 1.5Z"
+						></path>
+					</svg>
+					<strong>{formatStat(plugin.stars)}</strong>
+					<span class="market-stats-label">Stars</span>
+				</li>
+			</ul>
+
+			<div class="market-card-links">
+				{
+					plugin.githubUrl && (
+						<a
+							class="market-card-link"
+							href={plugin.githubUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							title="GitHub repository"
+						>
+							<svg class="market-card-link-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+								<path
+									fill="currentColor"
+									d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.18.82a7.52 7.52 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.51-1.04 2.18-.82 2.18-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+								></path>
+							</svg>
+							<span>GitHub</span>
+						</a>
+					)
+				}
+				{
+					plugin.pypiUrl && (
+						<a
+							class="market-card-link"
+							href={plugin.pypiUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							title="PyPI package"
+						>
+							<svg class="market-card-link-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+								<path
+									fill="currentColor"
+									d="M2.5 2A1.5 1.5 0 0 1 4 0.5h8A1.5 1.5 0 0 1 13.5 2v12A1.5 1.5 0 0 1 12 15.5H4A1.5 1.5 0 0 1 2.5 14V2Zm1.5-.5a.5.5 0 0 0-.5.5v12a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V2a.5.5 0 0 0-.5-.5H4Zm1.25 2.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 0 1.5h-3.5a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 0 1.5h-3.5a.75.75 0 0 1-.75-.75Z"
+								></path>
+							</svg>
+							<span>PyPI</span>
+						</a>
+					)
+				}
+				{
+					plugin.docsUrl && (
+						<a
+							class="market-card-link"
+							href={plugin.docsUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							title="Documentation"
+						>
+							<svg class="market-card-link-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+								<path
+									fill="currentColor"
+									d="M3 1.5A1.5 1.5 0 0 1 4.5 0h4.086a1.5 1.5 0 0 1 1.06.44l2.914 2.914A1.5 1.5 0 0 1 13 4.414V14.5A1.5 1.5 0 0 1 11.5 16h-7A1.5 1.5 0 0 1 3 14.5v-13ZM4.5 1a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V5H9.5A1.5 1.5 0 0 1 8 3.5V1H4.5Zm5 0v2h2.086L9.5 1Z"
+								></path>
+							</svg>
+							<span>Docs</span>
+						</a>
+					)
+				}
+			</div>
+		</div>
+
 		<p class="market-meta">
-			<span>
-				by <a href={`/plugins/authors/${plugin.author.slug}/`}>{plugin.author.name}</a>
+			<span class="market-meta-author">
+				<svg class="market-meta-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+					<path
+						fill="currentColor"
+						d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.5 6a5.5 5.5 0 0 1 11 0 .75.75 0 0 1-.75.75h-9.5a.75.75 0 0 1-.75-.75Z"
+					></path>
+				</svg>
+				<a href={`/plugins/authors/${plugin.author.slug}/`}>{plugin.author.name}</a>
 			</span>
-			<span>·</span>
-			<span>Orbit {plugin.orbitVersions.join(', ')}</span>
+			<span class="market-meta-sep" aria-hidden="true">·</span>
+			<span class="market-meta-version" title="Supported Orbit versions">
+				<svg class="market-meta-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+					<path
+						fill="currentColor"
+						d="M2.5 2.75A.75.75 0 0 1 3.25 2h9.5a.75.75 0 0 1 0 1.5h-9.5a.75.75 0 0 1-.75-.75Zm0 5A.75.75 0 0 1 3.25 7h9.5a.75.75 0 0 1 0 1.5h-9.5A.75.75 0 0 1 2.5 7.75Zm0 5a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5a.75.75 0 0 1-.75-.75Z"
+					></path>
+				</svg>
+				Orbit {plugin.orbitVersions.join(', ')}
+			</span>
 		</p>
 	</div>
 </li>
