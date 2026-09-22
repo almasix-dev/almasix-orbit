@@ -119,6 +119,31 @@ test('free plugins need a package or repository', () => {
 	}
 });
 
+test('docs_url must not point at the listing page itself', () => {
+	const root = fixture({
+		'.marketplace/authors/acme.yaml': 'name: Acme\nslug: acme\nbio: A vendor.\n',
+		'.marketplace/plugins/acme-kit.yaml': [
+			'name: Acme Kit',
+			'slug: acme-kit',
+			'summary: Not official.',
+			'description: Body',
+			'author: acme',
+			'categories: [theme]',
+			'orbit_versions: ["0.3"]',
+			'price: free',
+			'repository: https://github.com/acme/kit',
+			'docs_url: https://orbit.almasix.com/plugins/acme-kit/',
+			'published_at: 2026-01-01',
+			'',
+		].join('\n'),
+	});
+	try {
+		assert.match(validateMarketplace(root).join('\n'), /docs_url must not point at this listing page/);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
 test('official is reserved for the almasix author', () => {
 	const root = fixture({
 		'.marketplace/authors/acme.yaml': 'name: Acme\nslug: acme\nbio: A vendor.\n',

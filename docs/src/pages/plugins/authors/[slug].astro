@@ -27,6 +27,12 @@ const { author, plugins, articles } = Astro.props as {
 	plugins: MarketplacePlugin[];
 	articles: MarketplaceArticle[];
 };
+const initials = author.name
+	.split(/\s+/)
+	.slice(0, 2)
+	.map((word) => word[0]?.toUpperCase() ?? '')
+	.join('');
+const stars = authorStarsTotal(plugins);
 ---
 
 <StarlightPage
@@ -41,49 +47,142 @@ const { author, plugins, articles } = Astro.props as {
 	<div class="market" data-marketplace>
 		<a class="market-back" href="/plugins/authors/">← All authors</a>
 
-		<div class="market-author-head">
-			{author.avatar && <img class="market-avatar" src={author.avatar} alt="" />}
-			<div>
+		<header class="market-author-profile not-content">
+			{
+				author.avatar ? (
+					<img class="market-avatar market-avatar-xl" src={author.avatar} alt="" />
+				) : (
+					<span class="market-avatar market-avatar-xl market-avatar-fallback" aria-hidden="true">
+						{initials}
+					</span>
+				)
+			}
+			<div class="market-author-profile-body">
 				<p class="market-lede">{author.bio}</p>
-				<p class="market-meta">
-					{author.website && <a href={author.website}>Website</a>}
-					{author.github && <a href={authorGithubHref(author.github)}>GitHub</a>}
-					{author.sponsorUrl && <a href={author.sponsorUrl}>Sponsor</a>}
+				<ul class="market-stats market-stats-lg">
+					<li>
+						<svg class="market-stat-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+							<path
+								fill="currentColor"
+								d="M2.5 2A1.5 1.5 0 0 1 4 .5h8A1.5 1.5 0 0 1 13.5 2v12A1.5 1.5 0 0 1 12 15.5H4A1.5 1.5 0 0 1 2.5 14V2Zm1.5-.5a.5.5 0 0 0-.5.5v12a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V2a.5.5 0 0 0-.5-.5H4Z"
+							></path>
+						</svg>
+						<strong>{plugins.length}</strong>
+						<span class="market-stats-label">{plugins.length === 1 ? 'Plugin' : 'Plugins'}</span>
+					</li>
 					{
-						plugins.length > 0 && (
-							<>
-								<span>·</span>
-								<span>{formatStat(authorStarsTotal(plugins))} stars across listings</span>
-							</>
+						articles.length > 0 && (
+							<li>
+								<svg class="market-stat-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+									<path
+										fill="currentColor"
+										d="M3 1.5A1.5 1.5 0 0 1 4.5 0h4.086a1.5 1.5 0 0 1 1.06.44l2.914 2.914A1.5 1.5 0 0 1 13 4.414V14.5A1.5 1.5 0 0 1 11.5 16h-7A1.5 1.5 0 0 1 3 14.5v-13ZM4.5 1a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V5H9.5A1.5 1.5 0 0 1 8 3.5V1H4.5Zm5 0v2h2.086L9.5 1Z"
+									></path>
+								</svg>
+								<strong>{articles.length}</strong>
+								<span class="market-stats-label">
+									{articles.length === 1 ? 'Article' : 'Articles'}
+								</span>
+							</li>
 						)
 					}
-				</p>
+					{
+						plugins.length > 0 && (
+							<li>
+								<svg class="market-stat-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+									<path
+										fill="currentColor"
+										d="M8 1.5 9.6 5.7l4.6.4-3.5 3.1 1.1 4.5L8 11.6 4.2 13.7l1.1-4.5-3.5-3.1 4.6-.4L8 1.5Z"
+									></path>
+								</svg>
+								<strong>{formatStat(stars)}</strong>
+								<span class="market-stats-label">Stars</span>
+							</li>
+						)
+					}
+				</ul>
+				<div class="market-card-links">
+					{
+						author.github && (
+							<a
+								class="market-card-link"
+								href={authorGithubHref(author.github)}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<svg class="market-card-link-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+									<path
+										fill="currentColor"
+										d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.18.82a7.52 7.52 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.51-1.04 2.18-.82 2.18-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+									></path>
+								</svg>
+								<span>GitHub</span>
+							</a>
+						)
+					}
+					{
+						author.website && (
+							<a
+								class="market-card-link"
+								href={author.website}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<svg class="market-card-link-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+									<path
+										fill="currentColor"
+										d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 1.5a5.5 5.5 0 0 1 4.9 3H9.75A12.3 12.3 0 0 0 8 2.5Zm0 11a5.5 5.5 0 0 1-4.9-3h3.15c.3 1.1.76 2.12 1.3 3h.9c.54-.88 1-1.9 1.3-3h3.15A5.5 5.5 0 0 1 8 13.5ZM3.1 8.75A5.52 5.52 0 0 1 2.5 8c0-.26.02-.51.06-.75h3.1A13.7 13.7 0 0 0 5.5 9.5H3.24c-.05-.24-.1-.49-.14-.75Zm9.66 0c-.04.26-.09.51-.14.75H10.5c.08-.4.14-.82.16-1.25h3.1c.04.24.06.49.06.75a5.52 5.52 0 0 1-.6.75ZM5.66 5.5H2.56A5.52 5.52 0 0 1 5.66 5.5Zm5.68 0h3.1A5.52 5.52 0 0 1 11.34 5.5ZM8 3.75c.45.8.84 1.74 1.1 2.75H6.9C7.16 5.49 7.55 4.55 8 3.75Z"
+									></path>
+								</svg>
+								<span>Website</span>
+							</a>
+						)
+					}
+					{
+						author.sponsorUrl && (
+							<a
+								class="market-card-link"
+								href={author.sponsorUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<svg class="market-card-link-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+									<path
+										fill="currentColor"
+										d="M8 14.25S2.5 10.4 2.5 6.75A3.25 3.25 0 0 1 8 4.6a3.25 3.25 0 0 1 5.5 2.15C13.5 10.4 8 14.25 8 14.25Z"
+									></path>
+								</svg>
+								<span>Sponsor</span>
+							</a>
+						)
+					}
+				</div>
 			</div>
-		</div>
+		</header>
 
 		{
 			plugins.length > 0 && (
-				<>
-					<h2>Plugins</h2>
+				<section class="market-section" aria-labelledby="author-plugins">
+					<h2 id="author-plugins">Plugins</h2>
 					<ul class="market-grid">
 						{plugins.map((plugin) => (
 							<PluginCard plugin={plugin} />
 						))}
 					</ul>
-				</>
+				</section>
 			)
 		}
 
 		{
 			articles.length > 0 && (
-				<>
-					<h2>Articles</h2>
+				<section class="market-section" aria-labelledby="author-articles">
+					<h2 id="author-articles">Articles</h2>
 					<ul class="market-grid">
 						{articles.map((article) => (
 							<ArticleCard article={article} />
 						))}
 					</ul>
-				</>
+				</section>
 			)
 		}
 	</div>

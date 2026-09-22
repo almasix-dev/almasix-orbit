@@ -1,8 +1,8 @@
 ---
 /** Index of authors who have at least one published listing. */
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import AuthorCard from '../../../components/marketplace/AuthorCard.astro';
 import { getMarketplaceAuthors } from '../../../data/marketplace';
-import { authorStarsTotal, formatStat } from '../../../../scripts/marketplace-lib.mjs';
 import '../../../styles/marketplace.css';
 
 const authors = await getMarketplaceAuthors();
@@ -31,41 +31,7 @@ const authors = await getMarketplaceAuthors();
 			) : (
 				<ul class="market-grid">
 					{authors.map(({ author, plugins, articles }) => (
-						<li class="market-card">
-							<div class="market-card-body">
-								<div class="market-author-head">
-									{author.avatar && <img class="market-avatar" src={author.avatar} alt="" />}
-									<div>
-										<h2 class="market-card-title">
-											<a href={`/plugins/authors/${author.slug}/`}>{author.name}</a>
-										</h2>
-										<p class="market-summary">{author.bio}</p>
-										<p class="market-meta">
-											{plugins.length} {plugins.length === 1 ? 'plugin' : 'plugins'}
-											{
-												articles.length > 0 && (
-													<>
-														<span>·</span>
-														<span>
-															{articles.length}{' '}
-															{articles.length === 1 ? 'article' : 'articles'}
-														</span>
-													</>
-												)
-											}
-											{
-												plugins.length > 0 && (
-													<>
-														<span>·</span>
-														<span>{formatStat(authorStarsTotal(plugins))} stars</span>
-													</>
-												)
-											}
-										</p>
-									</div>
-								</div>
-							</div>
-						</li>
+						<AuthorCard author={author} plugins={plugins} articles={articles} />
 					))}
 				</ul>
 			)
