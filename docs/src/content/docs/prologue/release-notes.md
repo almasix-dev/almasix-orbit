@@ -9,15 +9,29 @@ header switcher.
 
 ## Unreleased (`main`)
 
-- Marketplace articles: full Markdown posts in orbit-plugins, rendered at `/articles/`
-- Marketplace listings move to [orbit-plugins](https://github.com/almasix-dev/orbit-plugins); docs sync the registry at build time
-
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+## 0.4.2
+
+Marketplace and plugin-scaffold polish after 0.4.1.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.4.2'
+```
+
+### Marketplace
+
+- Listings live in [orbit-plugins](https://github.com/almasix-dev/orbit-plugins); docs sync the registry at build time
+- Marketplace articles at [`/articles/`](/articles/)
+- Listing pages embed GitHub `docs_url` READMEs beside the YAML overview
+- Visit on GitHub and Star are separate actions; star counts match GitHub (no optimistic bumps)
+- Sleeker plugin and author cards (icons, compact action pills)
+
+### Plugins
+
 - Official plugin [Orbit Permission](/plugins/orbit-permission/) (`almasix-orbit-permission`) — Users, Roles, and Permissions UI on `almasix-permission`
-- Marketplace listings move to [orbit-plugins](https://github.com/almasix-dev/orbit-plugins); docs sync the registry at build time
-- Marketplace articles: full Markdown posts in orbit-plugins, rendered at [`/articles/`](/articles/)
+- `smith make:orbit-plugin` draft YAML now points authors at **orbit-plugins** instead of the Orbit docs tree
 
 ## 0.4.1
 
