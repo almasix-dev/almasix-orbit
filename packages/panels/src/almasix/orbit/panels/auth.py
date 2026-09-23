@@ -81,6 +81,7 @@ class Login(Page):
     title = "Sign in"
     slug = "login"
     navigation_label = "Login"
+    should_register_navigation = False
 
     @classmethod
     def get_form(cls) -> Form:
@@ -145,6 +146,7 @@ class Login(Page):
 class Register(Page):
     title = "Register"
     slug = "register"
+    should_register_navigation = False
 
     @classmethod
     def get_form(cls) -> Form:
@@ -205,6 +207,7 @@ class Register(Page):
 class PasswordReset(Page):
     title = "Reset password"
     slug = "password-reset"
+    should_register_navigation = False
 
     @classmethod
     def get_form(cls) -> Form:
@@ -254,6 +257,7 @@ class Profile(Page):
 class MfaChallenge(Page):
     title = "Two-factor authentication"
     slug = "mfa-challenge"
+    should_register_navigation = False
 
     @classmethod
     def render(cls, **ctx: Any) -> str:

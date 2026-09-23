@@ -5,7 +5,7 @@ description: Persist notifications to the panel bell — enable, seed, send, pol
 
 ## Introduction
 
-**Database notifications** stay in a panel **bell** until the user marks them read. Unlike flash toasts (which disappear after a few seconds), these messages accumulate so someone can catch up later.
+**Database notifications** stay in a panel **bell** until the user marks them read. The dropdown shows unread items only; **View all** opens the full history deck (newest first, infinite scroll). A detail modal shows the full message and marks it read.
 
 Enable the feature on the panel, optionally seed demo rows, then send new items with `.send_to_database(...)`. Orbit ships an in-memory store by default. For a process that restarts (or multiple workers sharing a file), call `.sqlite_notifications(...)` — that uses stdlib SQLite and implements the same `DatabaseNotificationStore` contract.
 
@@ -84,7 +84,13 @@ The default `InMemoryDatabaseNotificationStore` is enough for demos and tests. `
 
 ![Orbit Database notifications SQLite store (dark)](/examples/dark/notifications/database-notifications/sqlite.png)
 
-When the bell is enabled, Orbit also mounts **GET/POST** `{panel}/orbit-notifications`. The Alpine `orbitDatabaseNotifications` component polls that URL and posts mark-read updates so the store stays in sync without a full page reload.
+When the bell is enabled, Orbit also mounts **GET/POST** `{panel}/orbit-notifications`. The Alpine `orbitDatabaseNotifications` component polls that URL and posts mark-read updates so the store stays in sync without a full page reload. Rows include a `created_at` timestamp and are listed **newest first**.
+
+## Notifications deck
+
+The bell dropdown lists **unread** notifications only. Use **View all** (or dispatch `open-modal` with `id: "database-notifications"`) to open the **notifications deck** — a right-hand sidebar with the full history, newest first, and infinite scroll as you reach the bottom.
+
+Clicking a row in the dropdown or the deck opens a **detail modal** with the full title and body, and marks that notification as read.
 
 ## Position
 
@@ -121,7 +127,7 @@ Apps can still listen for `orbit:database-notifications-poll` / dispatch `orbit:
 
 ## Marking as read
 
-The panel UI marks a row read on click and exposes **Mark all as read**. From Python, use the store:
+Opening a notification in the detail modal marks it read. The deck and dropdown also expose **Mark all as read**. From Python, use the store:
 
 ```python title="app/orbit/notifications/mark_read.py"
 from almasix.orbit.notifications import get_notifier
@@ -131,7 +137,7 @@ store.mark_read(notification_id, user=user)
 store.mark_all_read(user=user)
 ```
 
-Notification actions can set `.mark_as_read()` / `.mark_as_unread()` for toast/database footers.
+Notification actions can set `.mark_as_read()` / `.mark_as_unread()` for toast/database footers. The detail modal can restore unread with **Mark unread**.
 
 ![Orbit Database notifications mark read (light)](/examples/light/notifications/database-notifications/mark-read.png)
 

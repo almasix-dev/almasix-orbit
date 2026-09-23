@@ -3,8 +3,29 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
+
+
+def utc_now_iso() -> str:
+    """UTC timestamp suitable for JSON / SQLite (``YYYY-MM-DDTHH:MM:SSZ``)."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _normalize_created_at(value: Any) -> str:
+    if value is None or value == "":
+        return utc_now_iso()
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    text = str(value).strip()
+    return text or utc_now_iso()
+
+
+def _created_at_sort_key(row: StoredNotification) -> str:
+    return str(row.created_at or "")
 
 
 @dataclass
@@ -22,6 +43,7 @@ class StoredNotification:
     read: bool = False
     user_key: str | None = None
     data: dict[str, Any] = field(default_factory=dict)
+    created_at: str = field(default_factory=utc_now_iso)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -36,6 +58,7 @@ class StoredNotification:
             "read": self.read,
             "user_key": self.user_key,
             "data": dict(self.data),
+            "created_at": self.created_at,
         }
 
 
@@ -88,7 +111,10 @@ class InMemoryDatabaseNotificationStore:
             read=bool(payload.get("read", False)),
             user_key=user_key(user),
             data=dict(payload.get("data") or {}),
+            created_at=_normalize_created_at(payload.get("created_at")),
         )
+        # Upsert by id so re-saves keep a stable list position via created_at.
+        self._rows = [r for r in self._rows if r.id != row.id]
         self._rows.append(row)
         return row
 
@@ -113,8 +139,10 @@ class InMemoryDatabaseNotificationStore:
     def get_for_user(self, user: Any = None) -> list[StoredNotification]:
         key = user_key(user)
         if key is None:
-            return list(self._rows)
-        return [row for row in self._rows if row.user_key == key]
+            rows = list(self._rows)
+        else:
+            rows = [row for row in self._rows if row.user_key == key]
+        return sorted(rows, key=_created_at_sort_key, reverse=True)
 
     def clear(self) -> None:
         self._rows.clear()
@@ -142,7 +170,8 @@ class SqliteNotificationStore:
     """SQLite-backed :class:`DatabaseNotificationStore` (stdlib ``sqlite3``).
 
     Pass ``':memory:'`` for tests, or a file path so the panel bell survives
-    process restarts. Rows upsert on ``id``.
+    process restarts. Rows upsert on ``id``. Listed newest-first by
+    ``created_at``.
     """
 
     def __init__(self, path: str = "orbit-notifications.sqlite") -> None:
@@ -164,11 +193,23 @@ class SqliteNotificationStore:
                 actions TEXT,
                 read INTEGER NOT NULL DEFAULT 0,
                 user_key TEXT,
-                data TEXT
+                data TEXT,
+                created_at TEXT
             )
             """
         )
+        self._ensure_created_at_column()
         self._conn.commit()
+
+    def _ensure_created_at_column(self) -> None:
+        cols = {
+            str(row[1])
+            for row in self._conn.execute("PRAGMA table_info(orbit_notifications)").fetchall()
+        }
+        if "created_at" not in cols:
+            self._conn.execute(
+                "ALTER TABLE orbit_notifications ADD COLUMN created_at TEXT"
+            )
 
     def save(self, payload: dict[str, Any], *, user: Any = None) -> StoredNotification:
         import json
@@ -179,6 +220,20 @@ class SqliteNotificationStore:
         data = payload.get("data") or {}
         if not isinstance(data, dict):
             data = {}
+        existing_created: str | None = None
+        nid = payload.get("id")
+        if nid:
+            found = self._conn.execute(
+                "SELECT created_at FROM orbit_notifications WHERE id = ?",
+                (str(nid),),
+            ).fetchone()
+            if found is not None and found["created_at"]:
+                existing_created = str(found["created_at"])
+        created = (
+            _normalize_created_at(payload["created_at"])
+            if payload.get("created_at")
+            else (existing_created or utc_now_iso())
+        )
         row = StoredNotification(
             id=str(payload.get("id") or uuid4()),
             title=str(payload.get("title") or "Notification"),
@@ -191,12 +246,13 @@ class SqliteNotificationStore:
             read=bool(payload.get("read", False)),
             user_key=user_key(user),
             data=dict(data),
+            created_at=created,
         )
         self._conn.execute(
             """
             INSERT OR REPLACE INTO orbit_notifications
-                (id, title, body, status, icon, icon_color, color, actions, read, user_key, data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, title, body, status, icon, icon_color, color, actions, read, user_key, data, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row.id,
@@ -210,6 +266,7 @@ class SqliteNotificationStore:
                 1 if row.read else 0,
                 row.user_key,
                 json.dumps(row.data),
+                row.created_at,
             ),
         )
         self._conn.commit()
@@ -250,10 +307,13 @@ class SqliteNotificationStore:
     def get_for_user(self, user: Any = None) -> list[StoredNotification]:
         key = user_key(user)
         if key is None:
-            records = self._conn.execute("SELECT * FROM orbit_notifications").fetchall()
+            records = self._conn.execute(
+                "SELECT * FROM orbit_notifications ORDER BY created_at DESC, id DESC"
+            ).fetchall()
         else:
             records = self._conn.execute(
-                "SELECT * FROM orbit_notifications WHERE user_key = ?",
+                "SELECT * FROM orbit_notifications WHERE user_key = ? "
+                "ORDER BY created_at DESC, id DESC",
                 (key,),
             ).fetchall()
         return [self._from_sql(record) for record in records]
@@ -266,6 +326,8 @@ class SqliteNotificationStore:
         self._conn.close()
 
     def _from_sql(self, record: Any) -> StoredNotification:
+        keys = record.keys() if hasattr(record, "keys") else ()
+        created = record["created_at"] if "created_at" in keys else None
         return StoredNotification(
             id=str(record["id"]),
             title=str(record["title"] or "Notification"),
@@ -278,5 +340,6 @@ class SqliteNotificationStore:
             read=bool(record["read"]),
             user_key=record["user_key"],
             data=_decode_json(record["data"], {}),
+            # Missing timestamps sort last when listing newest-first.
+            created_at=str(created).strip() if created else "",
         )
-

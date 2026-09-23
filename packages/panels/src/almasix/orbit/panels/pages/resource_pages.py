@@ -247,9 +247,13 @@ class Tab:
         if badge_value is not None:
             color = f" or-color-{e(self._badge_color)}" if self._badge_color else ""
             badge = f'<span class="or-list-tab-badge{color}">{e(badge_value)}</span>'
+        # Dual conduit/wire click — keep "'" unescaped inside double-quoted attrs
+        # (same pattern as table pagination / sort handlers).
+        click = f"setTab('{self.id}')".replace("&", "&amp;").replace('"', "&quot;")
         return (
             f'<button type="button" class="or-list-tab{active_cls}" data-tab="{e(self.id)}" '
-            f'wire:click="setTab(\'{e(self.id)}\')">{ic}<span>{e(self._label)}</span>{badge}</button>'
+            f'conduit:click="{click}" wire:click="{click}">'
+            f"{ic}<span>{e(self._label)}</span>{badge}</button>"
         )
 
 

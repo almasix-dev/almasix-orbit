@@ -5,26 +5,34 @@ from __future__ import annotations
 from importlib import resources
 from pathlib import Path
 
+from almasix.orbit.forms import FilesystemUploadStorage, set_upload_storage
 from almasix.providers import ServiceProvider
 
 
-def _copy_vendor(dest_css: Path, dest_js: Path) -> None:
-    """Copy Orbit CSS/JS from the installed ``almasix-orbit`` wheel."""
+def _copy_vendor(dest_dir: Path) -> None:
+    """Copy Orbit CSS/JS (+ FilePond) from the installed ``almasix-orbit`` wheel."""
     root = resources.files("almasix.orbit")
-    css = root.joinpath("resources/css/orbit.css")
-    js = root.joinpath("resources/js/orbit.js")
-    if css.is_file():
-        dest_css.write_bytes(css.read_bytes())
-    if js.is_file():
-        dest_js.write_bytes(js.read_bytes())
+    mapping = (
+        ("resources/css/orbit.css", "orbit.css"),
+        ("resources/js/orbit.js", "orbit.js"),
+        ("resources/vendor/filepond.bundle.min.js", "filepond.bundle.min.js"),
+        ("resources/vendor/filepond.bundle.min.css", "filepond.bundle.min.css"),
+    )
+    for rel, name in mapping:
+        src = root.joinpath(rel)
+        if src.is_file():
+            (dest_dir / name).write_bytes(src.read_bytes())
 
 
 class AppServiceProvider(ServiceProvider):
     def boot(self) -> None:
-        dest_css = Path(self.app.path("public", "vendor", "orbit", "orbit.css"))
-        dest_js = Path(self.app.path("public", "vendor", "orbit", "orbit.js"))
-        dest_css.parent.mkdir(parents=True, exist_ok=True)
+        dest_dir = Path(self.app.path("public", "vendor", "orbit"))
+        dest_dir.mkdir(parents=True, exist_ok=True)
         try:
-            _copy_vendor(dest_css, dest_js)
+            _copy_vendor(dest_dir)
         except Exception:
             pass
+
+        storage_root = Path(self.app.path("storage", "app"))
+        storage_root.mkdir(parents=True, exist_ok=True)
+        set_upload_storage(FilesystemUploadStorage(base_url="/storage"))

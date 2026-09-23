@@ -63,6 +63,7 @@
         } catch (_) {
           /* ignore */
         }
+        if (this.collapsed) this.expandSidebarNav();
         this._initSpa();
       },
       destroy() {
@@ -133,11 +134,64 @@
             return;
           }
           curMain.replaceWith(nextMain);
+          this._spaSwapNav(doc);
+          if (this.collapsed) this.expandSidebarNav();
+          // Re-bind Alpine + Conduit on the swapped main (list tabs, tables, forms).
+          try {
+            window.Alpine?.initTree?.(nextMain);
+          } catch (_) {
+            /* ignore */
+          }
+          try {
+            window.Conduit?.boot?.(nextMain);
+          } catch (_) {
+            /* ignore */
+          }
           document.title = doc.title;
           if (push) history.pushState({}, "", href);
           window.dispatchEvent(new CustomEvent("orbit:spa-navigated", { detail: { href } }));
         } catch (_) {
           location.href = href;
+        }
+      },
+      _spaSwapNav(doc) {
+        // Sidebar + topbar carry active states; swap them with the fetched shell.
+        const selectors = [
+          "nav.or-sidebar-nav",
+          "nav.or-topnav",
+          ".or-topbar-active-root",
+        ];
+        for (const selector of selectors) {
+          const nextNodes = doc.querySelectorAll(selector);
+          const curNodes = document.querySelectorAll(selector);
+          if (!nextNodes.length || curNodes.length !== nextNodes.length) continue;
+          curNodes.forEach((el, i) => {
+            const replacement = nextNodes[i].cloneNode(true);
+            el.replaceWith(replacement);
+            try {
+              window.Alpine?.initTree?.(replacement);
+            } catch (_) {
+              /* ignore */
+            }
+          });
+        }
+        // Breadcrumbs sit outside main.or-content — swap/insert/remove them too.
+        this._spaSwapBreadcrumbs(doc);
+      },
+      _spaSwapBreadcrumbs(doc) {
+        const next = doc.querySelector("nav.or-breadcrumbs");
+        const cur = document.querySelector("nav.or-breadcrumbs");
+        const main = document.querySelector("main.or-content");
+        if (next && cur) {
+          cur.replaceWith(next.cloneNode(true));
+          return;
+        }
+        if (next && !cur && main) {
+          main.insertAdjacentElement("beforebegin", next.cloneNode(true));
+          return;
+        }
+        if (!next && cur) {
+          cur.remove();
         }
       },
       resolvedTheme() {
@@ -177,6 +231,27 @@
         } catch (_) {
           /* ignore */
         }
+        if (this.collapsed) this.expandSidebarNav();
+      },
+      expandSidebarNav() {
+        // Collapsed rail shows every link — force groups/subgroups open.
+        this.$nextTick?.(() => {
+          const root = this.$el?.querySelector?.(".or-sidebar") || document;
+          root
+            .querySelectorAll?.(
+              ".or-nav-group-collapsible[x-data], .or-nav-accordion[x-data]"
+            )
+            ?.forEach((el) => {
+              try {
+                const data = window.Alpine?.$data?.(el);
+                if (data && Object.prototype.hasOwnProperty.call(data, "open")) {
+                  data.open = true;
+                }
+              } catch (_) {
+                /* ignore */
+              }
+            });
+        });
       },
       openDrawer() {
         this.drawerOpen = true;
@@ -927,47 +1002,160 @@
 
     window.Alpine.data("orbitDatabaseNotifications", () => ({
       open: false,
+      deckOpen: false,
+      detailOpen: false,
+      selected: null,
+      detailTitleId: "or-notify-detail-title",
       notifications: [],
+      unreadList: [],
+      deckList: [],
+      deckPageSize: 20,
+      deckVisibleCount: 20,
       _pollTimer: null,
       get unreadCount() {
-        return this.notifications.filter((n) => !n.read).length;
+        return this.unreadList.length;
+      },
+      get deckHasMore() {
+        return this.deckVisibleCount < this.notifications.length;
       },
       init() {
         try {
           const raw = this.$el.getAttribute("data-notifications") || "[]";
-          this.notifications = JSON.parse(raw);
+          this.notifications = this._sortLatest(JSON.parse(raw));
         } catch (_) {
           this.notifications = [];
         }
+        this._syncLists();
+        // Keep list mirrors in sync — Alpine x-for is more reliable on
+        // plain arrays than on filtered getters after poll()/init().
+        this.$watch("notifications", () => this._syncLists());
+        this.$watch("deckVisibleCount", () => this._syncLists());
         const polling = Number(this.$el.getAttribute("data-polling") || 0);
         if (polling > 0) {
           this._pollTimer = setInterval(() => this.poll(), polling);
         }
         window.addEventListener("orbit:database-notifications-refresh", () => this.poll());
         window.addEventListener("open-modal", (event) => {
-          if (event.detail?.id === "database-notifications") this.open = true;
+          if (event.detail?.id === "database-notifications") this.openDeck();
         });
       },
       destroy() {
         if (this._pollTimer) clearInterval(this._pollTimer);
       },
+      _isRead(note) {
+        const value = note?.read;
+        return value === true || value === 1 || value === "1" || value === "true";
+      },
+      _syncLists() {
+        const list = Array.isArray(this.notifications) ? this.notifications : [];
+        this.unreadList = list.filter((n) => !this._isRead(n));
+        this.deckList = list.slice(0, this.deckVisibleCount);
+      },
       toggle() {
         this.open = !this.open;
+        if (this.open) this.deckOpen = false;
+      },
+      openDeck() {
+        this.open = false;
+        this.deckVisibleCount = this.deckPageSize;
+        this.deckOpen = true;
+        this._syncLists();
+        this.$nextTick?.(() => {
+          const list = this.$refs?.deckList;
+          if (list) list.scrollTop = 0;
+        });
+      },
+      closeDeck() {
+        this.deckOpen = false;
+      },
+      onDeckScroll(event) {
+        const el = event?.target;
+        if (!el || !this.deckHasMore) return;
+        const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+        if (remaining < 120) this.loadMoreDeck();
+      },
+      loadMoreDeck() {
+        if (!this.deckHasMore) return;
+        this.deckVisibleCount = Math.min(
+          this.notifications.length,
+          this.deckVisibleCount + this.deckPageSize
+        );
+      },
+      openDetail(note) {
+        if (!note) return;
+        this.selected = { ...note };
+        this.detailOpen = true;
+        this.open = false;
+        if (!this._isRead(note)) this.markRead(note.id);
+      },
+      closeDetail() {
+        this.detailOpen = false;
+        this.selected = null;
+      },
+      onEscape() {
+        if (this.detailOpen) {
+          this.closeDetail();
+          return;
+        }
+        if (this.deckOpen) {
+          this.closeDeck();
+          return;
+        }
+        this.open = false;
+      },
+      formatTime(value) {
+        if (!value) return "";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        const diffMs = Date.now() - date.getTime();
+        const sec = Math.round(diffMs / 1000);
+        if (sec < 45) return "just now";
+        const min = Math.round(sec / 60);
+        if (min < 60) return `${min}m ago`;
+        const hr = Math.round(min / 60);
+        if (hr < 24) return `${hr}h ago`;
+        const day = Math.round(hr / 24);
+        if (day < 7) return `${day}d ago`;
+        try {
+          return date.toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        } catch (_) {
+          return date.toISOString();
+        }
+      },
+      _sortLatest(list) {
+        if (!Array.isArray(list)) return [];
+        return [...list].sort((a, b) => {
+          const ac = String(a?.created_at || "");
+          const bc = String(b?.created_at || "");
+          if (ac === bc) return String(b?.id || "").localeCompare(String(a?.id || ""));
+          return bc.localeCompare(ac);
+        });
       },
       markRead(id) {
         this.notifications = this.notifications.map((n) =>
           n.id === id ? { ...n, read: true } : n
         );
+        if (this.selected?.id === id) this.selected = { ...this.selected, read: true };
+        this._syncLists();
         this._sync({ id, read: true });
       },
       markUnread(id) {
         this.notifications = this.notifications.map((n) =>
           n.id === id ? { ...n, read: false } : n
         );
+        if (this.selected?.id === id) this.selected = { ...this.selected, read: false };
+        this._syncLists();
         this._sync({ id, read: false });
       },
       markAllRead() {
         this.notifications = this.notifications.map((n) => ({ ...n, read: true }));
+        if (this.selected) this.selected = { ...this.selected, read: true };
+        this._syncLists();
         this._sync({ all: true });
       },
       async _sync(payload) {
@@ -996,12 +1184,18 @@
             if (res.ok) {
               const data = await res.json();
               if (Array.isArray(data.notifications)) {
-                this.notifications = data.notifications;
+                this.notifications = this._sortLatest(data.notifications);
+                if (this.deckVisibleCount > this.notifications.length) {
+                  this.deckVisibleCount = Math.max(
+                    this.deckPageSize,
+                    this.notifications.length
+                  );
+                }
+                this._syncLists();
               }
             }
           } catch (_) {}
         }
-        // Hook for Conduit / apps: replace list via custom event detail.
         window.dispatchEvent(
           new CustomEvent("orbit:database-notifications-poll", {
             detail: { notifications: this.notifications },
@@ -1699,11 +1893,106 @@
           styles.getPropertyValue(`--or-chart-${token}`).trim() ||
           styles.getPropertyValue(`--or-${token}`).trim() ||
           styles.getPropertyValue("--or-primary").trim() ||
-          "#4f46e5"
+          "#f1511b"
         );
       } catch (_) {
-        return "#4f46e5";
+        return "#f1511b";
       }
+    };
+
+    const chartThemeTokens = () => ["primary", "success", "warning", "info", "danger"];
+
+    const chartThemePalette = () => chartThemeTokens().map((token) => chartCssColor(token));
+
+    const chartTokenFromEl = (el) => {
+      const match = [...(el?.classList || [])].find((c) => c.startsWith("or-color-"));
+      return match ? match.slice("or-color-".length) : "primary";
+    };
+
+    const chartColorWithAlpha = (color, alpha) => {
+      const raw = String(color || "").trim();
+      if (/^#([0-9a-f]{6})$/i.test(raw)) {
+        const hex = raw.slice(1);
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+      if (/^#([0-9a-f]{3})$/i.test(raw)) {
+        const hex = raw.slice(1);
+        const r = parseInt(hex[0] + hex[0], 16);
+        const g = parseInt(hex[1] + hex[1], 16);
+        const b = parseInt(hex[2] + hex[2], 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+      const rgb = raw.match(
+        /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i,
+      );
+      if (rgb) {
+        return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${alpha})`;
+      }
+      return raw;
+    };
+
+    const applyThemeToChartJsDatasets = (type, datasets, accent, palette) => {
+      const series = Array.isArray(datasets) ? datasets : [];
+      return series.map((ds, index) => {
+        const next = { ...ds };
+        const seriesColor = palette[index % palette.length] || accent;
+        const pointCount = Array.isArray(next.data) ? next.data.length : 0;
+        const multiPoint =
+          series.length === 1 &&
+          pointCount > 1 &&
+          (type === "bar" || type === "pie" || type === "doughnut" || type === "polarArea");
+
+        if (multiPoint) {
+          if (next.backgroundColor == null) {
+            next.backgroundColor = Array.from(
+              { length: pointCount },
+              (_, i) => palette[i % palette.length] || seriesColor,
+            );
+          }
+          if (next.borderColor == null) {
+            next.borderColor = Array.isArray(next.backgroundColor)
+              ? next.backgroundColor
+              : seriesColor;
+          }
+          if (next.borderWidth == null) next.borderWidth = 1;
+          return next;
+        }
+
+        if (next.borderColor == null) next.borderColor = seriesColor;
+        if (next.backgroundColor == null) {
+          next.backgroundColor =
+            type === "line" || type === "radar"
+              ? chartColorWithAlpha(seriesColor, 0.18)
+              : seriesColor;
+        }
+        if (next.fill == null && (type === "line" || type === "radar")) next.fill = true;
+        if (next.tension == null && type === "line") next.tension = 0.35;
+        return next;
+      });
+    };
+
+    const applyThemeToApexOptions = (options, accent, palette) => {
+      const next = { ...options };
+      if (!next.colors || !next.colors.length) {
+        next.colors = palette.length ? palette : [accent];
+      }
+      if (!next.stroke) next.stroke = {};
+      if (next.stroke.curve == null) next.stroke.curve = "smooth";
+      if (!next.fill) next.fill = {};
+      if (next.fill.type == null && (next.chart?.type === "area" || next.chart?.type === "line")) {
+        next.fill.type = "gradient";
+        next.fill.gradient = {
+          shadeIntensity: 0.35,
+          opacityFrom: 0.45,
+          opacityTo: 0.05,
+          stops: [0, 90, 100],
+          ...(next.fill.gradient || {}),
+        };
+      }
+      return next;
     };
 
     window.Alpine.data("orbitChart", () => ({
@@ -1713,10 +2002,13 @@
         const library = (el.getAttribute("data-chart-library") || "chartjs").toLowerCase();
         const payload = parseJsonAttr(el, "data-chart");
         if (!payload) return;
+        const token = chartTokenFromEl(el);
+        const accent = chartCssColor(token);
+        const palette = chartThemePalette();
 
         if (library === "apex") {
           if (typeof window.ApexCharts === "undefined") return;
-          const options = { ...payload };
+          const options = applyThemeToApexOptions({ ...payload }, accent, palette);
           if (!options.chart) options.chart = {};
           options.chart.height = options.chart.height || el.style.maxHeight || 300;
           this.chart = new window.ApexCharts(el, options);
@@ -1733,7 +2025,12 @@
         const type = payload.type || "line";
         const data = {
           labels: payload.labels || [],
-          datasets: payload.datasets || [],
+          datasets: applyThemeToChartJsDatasets(
+            type,
+            payload.datasets || [],
+            accent,
+            palette,
+          ),
         };
         this.chart = new window.Chart(canvas.getContext("2d"), {
           type,
@@ -1761,38 +2058,87 @@
         const payload = parseJsonAttr(el, "data-sparkline") || {};
         const values = payload.values || [];
         if (!values.length) return;
+
         let canvas = el.querySelector("canvas");
         if (!canvas) {
           canvas = document.createElement("canvas");
-          canvas.width = 120;
-          canvas.height = 36;
           el.appendChild(canvas);
         }
-        const color = chartCssColor(payload.color || "primary");
-        this.chart = new window.Chart(canvas.getContext("2d"), {
+
+        const borderEl = el.querySelector(".or-stat-chart-border");
+        const bgEl = el.querySelector(".or-stat-chart-bg");
+        const fallback = chartCssColor(payload.color || "primary");
+        let borderColor = fallback;
+        let fillBase = chartColorWithAlpha(fallback, 0.35);
+        try {
+          if (borderEl) {
+            const c = getComputedStyle(borderEl).color;
+            if (c && c !== "rgba(0, 0, 0, 0)") borderColor = c;
+          }
+          if (bgEl) {
+            const c = getComputedStyle(bgEl).color;
+            if (c && c !== "rgba(0, 0, 0, 0)") fillBase = c;
+          }
+        } catch (_) {
+          /* ignore */
+        }
+
+        const styles = getComputedStyle(el.closest(".or-stat") || el);
+        const readNum = (name, fallbackVal) => {
+          const raw = styles.getPropertyValue(name).trim();
+          const n = Number(raw);
+          return Number.isFinite(n) ? n : fallbackVal;
+        };
+        const fillMode = (styles.getPropertyValue("--or-stat-chart-fill").trim() || "start").toLowerCase();
+        const fill =
+          fillMode === "none" || fillMode === "false" ? false : fillMode === "origin" ? "origin" : "start";
+        const tension = readNum("--or-stat-chart-line-tension", 0.4);
+        const borderWidth = readNum("--or-stat-chart-border-width", 2);
+
+        const ctx = canvas.getContext("2d");
+        const height = el.clientHeight || 60;
+        let backgroundColor = fillBase;
+        if (fill && ctx) {
+          const gradient = ctx.createLinearGradient(0, 0, 0, height);
+          gradient.addColorStop(0, fillBase);
+          gradient.addColorStop(1, chartColorWithAlpha(borderColor, 0));
+          backgroundColor = gradient;
+        }
+
+        this.chart = new window.Chart(ctx, {
           type: "line",
           data: {
             labels: values.map((_, i) => String(i)),
             datasets: [
               {
                 data: values,
-                borderColor: color,
-                backgroundColor: color,
-                fill: false,
-                tension: 0.35,
+                borderColor,
+                backgroundColor,
+                fill,
+                tension,
                 pointRadius: 0,
-                borderWidth: 2,
+                borderWidth,
               },
             ],
           },
           options: {
-            responsive: false,
+            responsive: true,
             maintainAspectRatio: false,
+            animation: { duration: 0 },
+            layout: { padding: 0 },
             plugins: { legend: { display: false }, tooltip: { enabled: false } },
             scales: {
-              x: { display: false },
-              y: { display: false },
+              x: { display: false, grid: { display: false }, border: { display: false } },
+              y: {
+                display: false,
+                grid: { display: false },
+                border: { display: false },
+                // Leave a little headroom so the stroke isn't clipped at the top.
+                suggestedMin: Math.min(...values) * 0.92,
+                suggestedMax: Math.max(...values) * 1.05,
+              },
             },
+            elements: { line: { borderJoinStyle: "round", borderCapStyle: "round" } },
           },
         });
       },
@@ -1805,186 +2151,248 @@
     }));
 
     const bootFileUploads = () => {
-      const fields = document.querySelectorAll('[data-upload-field]');
-      if (!fields.length) return;
+      const FilePond = window.FilePond;
+      if (!FilePond) return;
 
-      const bytesFromKb = (kb) => Number(kb) * 1024;
+      const register = [
+        window.FilePondPluginFileValidateType,
+        window.FilePondPluginFileValidateSize,
+        window.FilePondPluginImageExifOrientation,
+        window.FilePondPluginFilePoster,
+        window.FilePondPluginImagePreview,
+        window.FilePondPluginImageCrop,
+        window.FilePondPluginImageResize,
+        window.FilePondPluginImageTransform,
+      ].filter(Boolean);
+      if (register.length && !window.__orbitFilePondPlugins) {
+        FilePond.registerPlugin(...register);
+        window.__orbitFilePondPlugins = true;
+      }
 
-      const accepts = (file, accept) => {
-        if (!accept) return true;
-        return accept
-          .split(",")
-          .map((part) => part.trim().toLowerCase())
-          .filter(Boolean)
-          .some((rule) => {
-            if (rule.startsWith(".")) return file.name.toLowerCase().endsWith(rule);
-            if (rule.endsWith("/*")) return (file.type || "").startsWith(rule.slice(0, -1));
-            return (file.type || "").toLowerCase() === rule;
-          });
+      const csrfHeader = () => {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        const token = meta?.getAttribute?.("content");
+        return token ? { "X-CSRF-TOKEN": token } : {};
+      };
+
+      const parseExisting = (root) => {
+        const raw = root.getAttribute("data-existing");
+        if (!raw) return [];
+        try {
+          const list = JSON.parse(raw);
+          return Array.isArray(list) ? list : [];
+        } catch (_) {
+          return [];
+        }
       };
 
       const initField = (root) => {
         if (root.dataset.uploadBound === "1") return;
-        root.dataset.uploadBound = "1";
-
         const input = root.querySelector("input.or-file");
-        const grid = root.querySelector("[data-preview-grid]");
-        const progress = root.querySelector("[data-upload-progress]");
-        const bar = root.querySelector("[data-upload-progress-bar]");
         const endpoint = root.getAttribute("data-upload-url");
         const field = root.getAttribute("data-upload-field") || "";
         const resource = root.getAttribute("data-upload-resource") || "";
-        const multiple = Boolean(input && input.multiple);
-        const maxFiles = Number(root.getAttribute("data-max-files") || 0);
-        const maxSize = root.getAttribute("data-max-size");
-        const minSize = root.getAttribute("data-min-size");
-        const accept = input ? input.getAttribute("accept") : "";
         if (!input || !endpoint) return;
+        root.dataset.uploadBound = "1";
 
-        const paths = () =>
-          Array.from(grid ? grid.querySelectorAll("[data-file-path]") : []).map((card) =>
-            card.getAttribute("data-file-path"),
-          );
+        // FilePond owns the chrome — hide progressive-enhancement cards.
+        root.querySelectorAll(".or-file-preview-fallback").forEach((el) => {
+          el.setAttribute("hidden", "hidden");
+        });
 
-        const pushState = () => {
+        const multiple = Boolean(input.multiple);
+        const maxFilesAttr = Number(root.getAttribute("data-max-files") || 0);
+        const maxSizeKb = Number(root.getAttribute("data-max-size") || 0);
+        const minSizeKb = Number(root.getAttribute("data-min-size") || 0);
+        const accepted = (input.getAttribute("accept") || "")
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean);
+        const imagePreview = root.getAttribute("data-image-preview") === "true";
+        const reorderable = root.getAttribute("data-reorderable") === "true";
+        const avatar = root.getAttribute("data-avatar") === "true";
+        const imageEditor = root.getAttribute("data-image-editor") === "true";
+        const previewHeight = root.getAttribute("data-preview-height");
+        const aspectRaw = root.getAttribute("data-aspect-ratios") || "";
+        const aspect = aspectRaw
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean)[0];
+
+        const pushState = (pond) => {
           const wire = window.orbitWire?.(root);
           if (!wire || typeof wire.set_property !== "function") return;
-          const list = paths();
-          wire.set_property(field, multiple ? list : list[0] || null);
+          const paths = pond
+            .getFiles()
+            .map((item) => item.serverId || (typeof item.source === "string" ? item.source : null))
+            .filter(Boolean);
+          wire.set_property(field, multiple || maxFilesAttr > 1 ? paths : paths[0] || null);
         };
 
-        const fail = (message) => {
-          root.setAttribute("data-upload-error", message);
-          window.dispatchEvent(
-            new CustomEvent("orbit-upload-failed", { detail: { field, message } }),
-          );
+        const existing = parseExisting(root).map((file) => ({
+          source: file.path,
+          options: {
+            type: "local",
+            file: {
+              name: file.name || String(file.path).split("/").pop(),
+              type: file.mime || undefined,
+            },
+            metadata: {
+              poster: file.url || file.path,
+            },
+          },
+        }));
+
+        let stylePanelLayout = null;
+        if (avatar) stylePanelLayout = "circle";
+        // panel_layout uses Orbit CSS grid widths on .filepond--item (not FilePond compact).
+
+        const options = {
+          credits: false,
+          allowMultiple: multiple || maxFilesAttr > 1,
+          maxFiles: maxFilesAttr > 0 ? maxFilesAttr : null,
+          maxFileSize: maxSizeKb > 0 ? `${maxSizeKb}KB` : null,
+          minFileSize: minSizeKb > 0 ? `${minSizeKb}KB` : null,
+          acceptedFileTypes: accepted.length ? accepted : null,
+          allowReorder: reorderable,
+          allowPaste: true,
+          allowDrop: true,
+          allowBrowse: true,
+          allowReplace: !(multiple || maxFilesAttr > 1),
+          instantUpload: true,
+          stylePanelLayout,
+          stylePanelAspectRatio: avatar ? "1:1" : null,
+          imagePreviewHeight: previewHeight ? Number(previewHeight) : imagePreview ? 160 : null,
+          allowImagePreview: imagePreview || avatar,
+          allowFilePoster: true,
+          files: existing,
+          labelIdle:
+            'Drag & drop files, or <span class="filepond--label-action">Browse</span>',
+          server: {
+            process: (_fieldName, file, _metadata, load, error, progress, abort) => {
+              const body = new FormData();
+              body.append("file", file, file.name);
+              body.append("field", field);
+              body.append("resource", resource);
+              const request = new XMLHttpRequest();
+              request.open("POST", endpoint);
+              Object.entries(csrfHeader()).forEach(([key, value]) => {
+                request.setRequestHeader(key, value);
+              });
+              request.upload.onprogress = (event) => {
+                progress(event.lengthComputable, event.loaded, event.total || 0);
+              };
+              request.onload = () => {
+                try {
+                  const result = JSON.parse(request.responseText || "{}");
+                  if (result.ok && result.file?.path) {
+                    load(result.file.path);
+                  } else {
+                    error(result.error || "Upload failed.");
+                  }
+                } catch (_) {
+                  error("Upload failed.");
+                }
+              };
+              request.onerror = () => error("Upload failed.");
+              request.send(body);
+              return {
+                abort: () => {
+                  request.abort();
+                  abort();
+                },
+              };
+            },
+            revert: (uniqueFileId, load, error) => {
+              const body = new FormData();
+              body.append("intent", "delete");
+              body.append("path", uniqueFileId);
+              body.append("field", field);
+              body.append("resource", resource);
+              fetch(endpoint, {
+                method: "POST",
+                body,
+                headers: csrfHeader(),
+                credentials: "same-origin",
+              })
+                .then((res) => (res.ok ? load() : error("Could not remove file.")))
+                .catch(() => error("Could not remove file."));
+            },
+            remove: (source, load, error) => {
+              const body = new FormData();
+              body.append("intent", "delete");
+              body.append("path", source);
+              body.append("field", field);
+              body.append("resource", resource);
+              fetch(endpoint, {
+                method: "POST",
+                body,
+                headers: csrfHeader(),
+                credentials: "same-origin",
+              })
+                .then((res) => (res.ok ? load() : error("Could not remove file.")))
+                .catch(() => error("Could not remove file."));
+            },
+            load: (source, load, error, progress, abort) => {
+              const match = parseExisting(root).find((file) => file.path === source);
+              const url = match?.url || source;
+              const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+              fetch(url, {
+                credentials: "same-origin",
+                signal: controller?.signal,
+              })
+                .then((res) => {
+                  if (!res.ok) throw new Error("load failed");
+                  return res.blob();
+                })
+                .then((blob) => {
+                  progress(true, blob.size, blob.size);
+                  load(blob);
+                })
+                .catch(() => error("Could not load file."));
+              return {
+                abort: () => {
+                  controller?.abort();
+                  abort();
+                },
+              };
+            },
+          },
         };
 
-        const card = (file) => {
-          const el = document.createElement("div");
-          el.className = "or-file-card";
-          el.setAttribute("data-file-path", file.path);
-          const isImage = (file.mime || "").startsWith("image/");
-          el.innerHTML = isImage
-            ? `<img class="or-file-thumb" src="${file.url}" alt="${file.name}" />`
-            : `<span class="or-file-name">${file.name}</span>`;
-          const actions = document.createElement("div");
-          actions.className = "or-file-card-actions";
-          const remove = document.createElement("button");
-          remove.type = "button";
-          remove.className = "or-file-remove";
-          remove.setAttribute("data-file-remove", "");
-          remove.setAttribute("aria-label", "Remove file");
-          remove.innerHTML = "&times;";
-          actions.appendChild(remove);
-          el.appendChild(actions);
-          return el;
-        };
-
-        const send = (file) =>
-          new Promise((resolve) => {
-            const body = new FormData();
-            body.append("file", file);
-            body.append("field", field);
-            body.append("resource", resource);
-            const request = new XMLHttpRequest();
-            request.open("POST", endpoint, true);
-            request.upload.addEventListener("progress", (event) => {
-              if (!bar || !event.lengthComputable) return;
-              progress?.removeAttribute("hidden");
-              bar.style.width = `${Math.round((event.loaded / event.total) * 100)}%`;
-            });
-            request.addEventListener("loadend", () => {
-              progress?.setAttribute("hidden", "hidden");
-              if (bar) bar.style.width = "0%";
-              try {
-                resolve(JSON.parse(request.responseText || "{}"));
-              } catch (_error) {
-                resolve({ ok: false, error: "Upload failed." });
-              }
-            });
-            request.send(body);
-          });
-
-        input.addEventListener("change", async () => {
-          root.removeAttribute("data-upload-error");
-          const files = Array.from(input.files || []);
-          for (const file of files) {
-            if (maxFiles && paths().length >= maxFiles) {
-              fail(`At most ${maxFiles} file(s).`);
-              break;
+        if (imageEditor) {
+          options.allowImageCrop = true;
+          options.allowImageResize = true;
+          options.allowImageTransform = true;
+          if (aspect) {
+            // "16:9" → 16/9
+            const parts = aspect.split(":").map(Number);
+            if (parts.length === 2 && parts[0] > 0 && parts[1] > 0) {
+              options.imageCropAspectRatio = parts[0] / parts[1];
             }
-            if (maxSize && file.size > bytesFromKb(maxSize)) {
-              fail(`${file.name} is larger than ${maxSize} KB.`);
-              continue;
-            }
-            if (minSize && file.size < bytesFromKb(minSize)) {
-              fail(`${file.name} is smaller than ${minSize} KB.`);
-              continue;
-            }
-            if (!accepts(file, accept)) {
-              fail(`${file.name} is not an accepted type.`);
-              continue;
-            }
-            const result = await send(file);
-            if (!result.ok) {
-              fail(result.error || "Upload failed.");
-              continue;
-            }
-            if (grid) {
-              if (!multiple) grid.innerHTML = "";
-              grid.appendChild(card(result.file));
-            }
-            pushState();
+          } else if (avatar) {
+            options.imageCropAspectRatio = 1;
           }
-          input.value = "";
-        });
-
-        root.addEventListener("click", (event) => {
-          const button =
-            event.target instanceof Element ? event.target.closest("[data-file-remove]") : null;
-          if (!button) return;
-          event.preventDefault();
-          const target = button.closest("[data-file-path]");
-          if (!target) return;
-          const body = new FormData();
-          body.append("intent", "delete");
-          body.append("path", target.getAttribute("data-file-path") || "");
-          body.append("field", field);
-          body.append("resource", resource);
-          fetch(endpoint, { method: "POST", body }).finally(() => {
-            target.remove();
-            pushState();
-          });
-        });
-
-        if (root.getAttribute("data-reorderable") === "true" && grid) {
-          grid.querySelectorAll("[data-file-path]").forEach((el) => {
-            el.setAttribute("draggable", "true");
-          });
-          let dragged = null;
-          grid.addEventListener("dragstart", (event) => {
-            dragged = event.target instanceof Element ? event.target.closest("[data-file-path]") : null;
-          });
-          grid.addEventListener("dragover", (event) => event.preventDefault());
-          grid.addEventListener("drop", (event) => {
-            const target =
-              event.target instanceof Element ? event.target.closest("[data-file-path]") : null;
-            if (!dragged || !target || dragged === target) return;
-            event.preventDefault();
-            grid.insertBefore(dragged, target);
-            pushState();
-          });
         }
+
+        const pond = FilePond.create(input, options);
+        root._orbitFilePond = pond;
+        const sync = () => pushState(pond);
+        pond.on("processfile", sync);
+        pond.on("removefile", sync);
+        pond.on("reorderfiles", sync);
+        pond.on("updatefiles", sync);
       };
 
-      fields.forEach(initField);
+      document.querySelectorAll("[data-upload-field]").forEach(initField);
     };
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", bootFileUploads);
     } else {
       bootFileUploads();
     }
+    // SPA navigations remount form hosts — rebind FilePond on new fields.
+    window.addEventListener("orbit:spa-navigated", () => bootFileUploads());
 
     const bootTipTap = () => {
       const nodes = document.querySelectorAll(".or-editor-rich[data-tiptap]");

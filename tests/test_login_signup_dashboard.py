@@ -163,6 +163,23 @@ def test_dashboard_nav_root_named_and_first() -> None:
     assert content.active is False
 
 
+def test_dashboard_first_with_apps_navigation_and_registered_group() -> None:
+    """Explicit NavigationGroup order must not push Dashboard after Catalog."""
+    from almasix.orbit.panels.navigation import NavigationGroup
+
+    panel = (
+        Panel.make("demo")
+        .path("/")
+        .apps_navigation()
+        .login(False)
+        .navigation_group(NavigationGroup.make("Content").sort(0))
+        .resources([PostResource])
+    )
+    labels = [r.label for r in panel.menu_layout_context(active_path="/").menu_roots]
+    assert labels[0] == "Dashboard"
+    assert labels.index("Dashboard") < labels.index("Content")
+
+
 def test_root_panel_dashboard_active_not_content() -> None:
     panel = Panel.make("root").path("/").resources([PostResource]).login(False)
     home = panel.menu_layout_context(active_path="/")

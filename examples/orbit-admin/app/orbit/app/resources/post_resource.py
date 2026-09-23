@@ -109,7 +109,10 @@ class PostResource(Resource):
                 .image()
                 .directory("post-covers")
                 .max_size(2048)
-                .image_preview()
+                .panel_layout()
+                .image_preview_height(160)
+                .image_editor()
+                .image_editor_aspect_ratios(["16:9", "1:1"])
                 .openable()
                 .downloadable(),
                 RichEditor.make("body")

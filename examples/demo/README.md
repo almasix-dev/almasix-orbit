@@ -1,11 +1,26 @@
-# Orbit Demo — music catalog
+# Orbit Demo — Orbit Records catalog
 
-Slim public demo of [Orbit](https://orbit.almasix.com/) on Almasix + Conduit +
-**SQLite**. Catalog resources: **Artists** and **Albums** (Tracks later).
+Public showcase of [Orbit](https://orbit.almasix.com/) on Almasix + Conduit +
+**SQLite**. Domain: a fictional label catalog (**Artists → Albums → Tracks**)
+wired to exercise dashboards, widgets, resources, relation managers, rich forms,
+tables, infolists, custom pages, import/export, query builder, soft deletes,
+notifications, SPA mode, and theme switching.
 
-Uses **production PyPI** releases of `almasix`, `almasix-orbit`, and
-`almasix-conduit` (local and Render). Leave [`../orbit-admin`](../orbit-admin)
-as the kitchen-sink playground against editable checkouts.
+Kitchen-sink API galleries stay in [`../orbit-admin`](../orbit-admin).
+
+## Feature map
+
+| Area | What to open |
+|------|----------------|
+| Dashboard | Stats, Chart.js releases, ApexCharts streams, recent albums table |
+| Artists | Avatar upload, tags, color, platforms, albums relation manager, infolist |
+| Albums | Wizard form, ModalTableSelect artist, cover upload, money, rich notes, KeyValue, query builder, import/export, tracks relation manager |
+| Tracks | Soft deletes, ternary filter, global search |
+| Insights | Custom page + release checklist Wizard |
+| Chrome | Theme switcher, dark mode, database notifications, SPA |
+
+**Omitted on purpose** (see orbit-admin / docs): MFA, tenancy/billing, MorphTo,
+Builder blocks, Code/Markdown editors, editable columns.
 
 ## Local setup
 
@@ -17,31 +32,33 @@ smith migrate --seed
 smith serve
 ```
 
-Open the printed URL (panel is mounted at `/`).
+Open the printed URL (panel at `/`).
 
 **Demo login:** `demo@orbit.test` / `secret`
+
+`bootstrap.sh` installs local Almasix / Orbit / Conduit checkouts when the
+sibling repos exist; otherwise it uses PyPI.
 
 ## Deploy on Render (free)
 
 Render Free can run this ASGI app. The SQLite file is **ephemeral** (lost on
-spin-down, restart, and redeploy). That is intentional for a public demo: the
-Docker entrypoint always runs `smith migrate --force --seed`, so the catalog and
-demo user reset to a clean seed on every cold start.
+spin-down, restart, and redeploy). That is intentional: the Docker entrypoint
+always runs `smith migrate --force --seed`.
 
 ### Option A — Blueprint
 
 1. Push this repo to GitHub.
 2. Render Dashboard → **New** → **Blueprint** → select the repo.
-3. Root / blueprint file: `examples/demo/render.yaml`.
-4. Set `APP_URL` to the service URL once known (or leave and update later).
+3. Blueprint file: `examples/demo/render.yaml` (build context = repo root).
+4. Set `APP_URL` to the service URL once known.
 5. Deploy. Health check: `/login`.
 
 ### Option B — Web Service (Docker)
 
 1. **New** → **Web Service** → connect the repo.
-2. Root directory: `examples/demo`.
-3. Runtime: **Docker**.
-4. Instance: **Free**.
+2. Root directory: leave empty / repo root (not `examples/demo`).
+3. Dockerfile path: `examples/demo/Dockerfile`.
+4. Runtime: **Docker**. Instance: **Free**.
 5. Env vars (minimum):
 
 | Key | Value |
@@ -54,23 +71,19 @@ demo user reset to a clean seed on every cold start.
 | `DB_DATABASE` | `/app/database/database.sqlite` |
 | `SESSION_SECURE_COOKIE` | `true` |
 
-Render sets `PORT`; the entrypoint honours it.
-
 ### Durable SQLite (optional, paid)
 
-Free cannot attach disks. For data that survives deploys:
-
-1. Upgrade the service to **Starter** (~$7/mo).
-2. Attach a **persistent disk** (~$0.25/GB/mo) mounted at `/app/database`.
+1. Upgrade to **Starter**.
+2. Attach a disk mounted at `/app/database`.
 3. Keep `DB_DATABASE=/app/database/database.sqlite`.
-4. Prefer migrate without re-seeding on every boot (adjust entrypoint once the
-   volume exists), or keep `--seed` — seeders no-op when rows already exist.
+4. Prefer migrate without re-seeding every boot, or keep `--seed` (seeders no-op when rows exist).
 
 ## Docker locally
 
+From the **monorepo root**:
+
 ```bash
-cd examples/demo
-docker build -t orbit-demo .
+docker build -f examples/demo/Dockerfile -t orbit-demo .
 docker run --rm -p 8000:8000 \
   -e APP_KEY=base64:orbit-demo-local-dev-key-change-me \
   -e APP_URL=http://127.0.0.1:8000 \
@@ -78,8 +91,7 @@ docker run --rm -p 8000:8000 \
   orbit-demo
 ```
 
-## Next iterations
+## Seed data
 
-- Tracks resource
-- Richer forms / filters / relation managers
-- Custom domain + durable disk if the demo should keep edits
+Idempotent catalog seeder: **8 artists**, **15 albums**, **~60 tracks** with
+varied play counts, formats, and statuses so widgets and charts look real.

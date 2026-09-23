@@ -52,7 +52,7 @@ Docs-hosted catalog UI at `/plugins/` (on the **main** docs tree; `/0.x/` is the
 | Validation catalog (+ `required_if` / `required_unless` / `prohibited` / `prohibited_if`) | Done |
 | Select: Orbit combobox (searchable / multiple / HTML / non-native), relationship AJAX, create/edit mounts | Done |
 
-| FileUpload: disk/visibility/editor + **panel upload endpoint** + `UploadStorage` | Done |
+| FileUpload: FilePond UI + disk/visibility/editor + **panel upload endpoint** + `UploadStorage` | Done |
 | Repeater/Builder: defaultItems, simple, table head, grid, clone/reorder + **host mutations** | Done |
 | KeyValue / MorphToSelect / ModalTableSelect host mounts | Done |
 | TagsInput suggestions + separator + reorderable flag | Done |
@@ -138,7 +138,7 @@ Docs-hosted catalog UI at `/plugins/` (on the **main** docs tree; `/0.x/` is the
 | Flash `.send()` + panel toast host (`orbitNotifications`) | Done |
 | `OrbitNotification` / `OrbitNotificationAction` JS client + close-by-id | Done |
 | Toast alignment (`Notifications.alignment` / `vertical_alignment`) | Done |
-| Database bell (panel enable / seeds / position / polling / mark read) | Done |
+| Database bell (deck / detail modal / timestamps / mark read / position / polling) | Done |
 | Pluggable `DatabaseNotificationStore` + in-memory default | Done |
 | `LiveNotifier` + `orbit:broadcast` / `orbitLiveNotifications` | Done |
 | Testing helpers (`assert_notified` / `assert_not_notified` / `reset_notifications`) | Done |

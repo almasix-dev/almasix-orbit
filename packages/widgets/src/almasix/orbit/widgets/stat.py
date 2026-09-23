@@ -12,7 +12,7 @@ from almasix.orbit.support.icons import icon as render_icon
 
 
 class Stat(Component):
-    """Filament-style fluent statistic card."""
+    """Fluent statistic card with optional full-bleed sparkline chart."""
 
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
@@ -21,6 +21,7 @@ class Stat(Component):
         self._description: str | None = None
         self._description_icon: str | None = None
         self._color: str = "primary"
+        self._chart_color: str | None = None
         self._icon: str | None = None
         self._chart: list[float | int] = []
         self._url: str | None = None
@@ -52,6 +53,11 @@ class Stat(Component):
 
     def color(self, color: str) -> Self:
         self._color = color
+        return self
+
+    def chart_color(self, color: str) -> Self:
+        """Override sparkline stroke/fill color (defaults to the card ``.color``)."""
+        self._chart_color = color
         return self
 
     def icon(self, icon_name: str) -> Self:
@@ -100,21 +106,32 @@ class Stat(Component):
                 )
             desc = f'<p class="or-stat-desc">{di}{e(self._description)}</p>'
         spark = ""
-        if self._chart:
-            payload = e(json.dumps({"values": self._chart, "color": self._color}))
+        has_chart = bool(self._chart)
+        if has_chart:
+            chart_token = self._chart_color or self._color
+            payload = e(json.dumps({"values": self._chart, "color": chart_token}))
             spark = (
-                f'<div class="or-stat-chart" data-sparkline="{payload}" '
-                f'x-data="orbitSparkline" role="img" aria-label="trend"></div>'
+                f'<div class="or-stat-chart or-color-{e(chart_token)}" data-sparkline="{payload}" '
+                f'x-data="orbitSparkline" role="img" aria-label="trend">'
+                # Themeable color carriers for stroke / fill.
+                f'<span class="or-stat-chart-border" aria-hidden="true"></span>'
+                f'<span class="or-stat-chart-bg" aria-hidden="true"></span>'
+                f"</div>"
             )
         attrs = self.get_extra_attributes(**ctx)
         extra = "".join(f' {e(k)}="{e(v)}"' for k, v in attrs.items())
-        inner = (
-            f'{icon_html}<div class="or-stat-copy">'
+        body = (
+            f'<div class="or-stat-body">'
+            f"{icon_html}"
+            f'<div class="or-stat-copy">'
             f'<p class="or-stat-label">{label}</p>'
-            f'<p class="or-stat-value">{value_html}</p>{desc}{spark}</div>'
+            f'<p class="or-stat-value">{value_html}</p>{desc}'
+            f"</div></div>"
         )
-        if self._url:
-            return (
-                f'<a class="or-stat or-color-{color}" href="{e(self._url)}"{extra}>{inner}</a>'
-            )
-        return f'<div class="or-stat or-color-{color}"{extra}>{inner}</div>'
+        chart_cls = " or-stat-has-chart" if has_chart else ""
+        tag = "a" if self._url else "div"
+        href = f' href="{e(self._url)}"' if self._url else ""
+        return (
+            f'<{tag} class="or-stat{chart_cls} or-color-{color}"{href}{extra}>'
+            f"{body}{spark}</{tag}>"
+        )

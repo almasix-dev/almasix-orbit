@@ -38,6 +38,8 @@ from almasix.orbit.support.icons import icon as render_icon
 
 _TOPBAR_ICON = 20
 DEFAULT_BRAND_NAME_FONT_SIZE = "1.8rem"
+# Fallback when a nav item has no icon — keeps the collapsed rail usable.
+_NAV_FALLBACK_ICON = "heroicon-o-view-columns"
 DEFAULT_BRAND_LOGO_HEIGHT = "2rem"
 DEFAULT_SIMPLE_PAGE_MAX_CONTENT_WIDTH = "lg"
 DEFAULT_SIDEBAR_WIDTH = "16rem"
@@ -674,7 +676,7 @@ class Panel:
         *,
         position: Literal["topbar", "sidebar"] | str | None = None,
     ) -> Self:
-        """Enable the database notifications bell (Filament ``databaseNotifications``).
+        """Enable the database notifications bell.
 
         Pass ``True``/``False`` to toggle the feature, or a sequence of seed items
         (enables the feature and registers demo notifications). Optional
@@ -1480,17 +1482,23 @@ class Panel:
         self, active_path: str | None = None, *, user: Any = None
     ) -> Any:
         meta = dict(self._nav_groups)
-        # Ensure the Dashboard group sorts first when the built-in home page is on.
+        group_order = list(self._nav_group_order)
+        # Ensure the Dashboard group is always the first apps/sidebar root.
         if self.dashboard_enabled():
             dash = self.dashboard_page()
             if dash is not None:
                 group_name = getattr(dash, "navigation_group", None) or dash.get_navigation_label()
-                if group_name and group_name not in meta:
-                    meta[str(group_name)] = (
-                        NavigationGroup.make(str(group_name))
-                        .icon(getattr(dash, "navigation_icon", "heroicon-o-home"))
-                        .sort(getattr(dash, "navigation_sort", -100))
-                    )
+                if group_name:
+                    gname = str(group_name)
+                    if gname not in meta:
+                        meta[gname] = (
+                            NavigationGroup.make(gname)
+                            .icon(getattr(dash, "navigation_icon", "heroicon-o-home"))
+                            .sort(getattr(dash, "navigation_sort", -100))
+                        )
+                    if gname in group_order:
+                        group_order.remove(gname)
+                    group_order.insert(0, gname)
         # Stamp panel path onto resources/pages so URL helpers include it.
         for res in self._resources:
             res._panel_path = self.get_path()  # type: ignore[attr-defined]
@@ -1503,7 +1511,7 @@ class Panel:
             active_path=active_path,
             layout=normalize_nav_layout(self._navigation_layout),
             panel_path=self._path,
-            group_order=list(self._nav_group_order) or None,
+            group_order=group_order or None,
         )
 
     def collect_cluster_sub_navigation(
@@ -1761,11 +1769,13 @@ class Panel:
             # tab spinner alive for tens of seconds. --or-font already falls back to
             # system UI fonts; apps can inject a webfont via panels::head hooks.
             '  <link rel="stylesheet" href="/vendor/orbit/orbit.css" />\n'
-            # Register Alpine data before any Alpine CDN tag (Conduit may inject one in extra_head).
-            '  <script src="/vendor/orbit/orbit.js"></script>\n'
-            # Chart widgets (Chart.js + ApexCharts) — always available in the admin shell.
+            '  <link rel="stylesheet" href="/vendor/orbit/filepond.bundle.min.css" />\n'
+            # Chart + FilePond before orbit.js so boot hooks find globals.
             '  <script src="/vendor/orbit/chart.umd.min.js"></script>\n'
             '  <script src="/vendor/orbit/apexcharts.min.js"></script>\n'
+            '  <script src="/vendor/orbit/filepond.bundle.min.js"></script>\n'
+            # Register Alpine data before any Alpine CDN tag (Conduit may inject one in extra_head).
+            '  <script src="/vendor/orbit/orbit.js"></script>\n'
             f"  <style>:root {{ --or-font: '{font}', ui-sans-serif, system-ui, sans-serif; "
             f"{color_vars}--or-brand-name-size: {brand_name_size}; "
             f"--or-brand-logo-height: {brand_logo_height}; "
@@ -2017,6 +2027,12 @@ class Panel:
             f"{children_html}"
         )
 
+    def _nav_icon(self, name: str | None) -> str:
+        """SVG for a nav item; always returns real SVG (fallback if unknown/empty)."""
+        from almasix.orbit.support.icons import has_icon
+
+        return render_icon(name if has_icon(name) else _NAV_FALLBACK_ICON)
+
     def _nav_badge(
         self,
         badge: str | None,
@@ -2046,7 +2062,7 @@ class Panel:
         nested: bool = False,
     ) -> str:
         display_icon = active_icon if active and active_icon else icon
-        ic = render_icon(display_icon) if display_icon else ""
+        ic = self._nav_icon(display_icon)
         active_cls = " is-active" if active else ""
         nested_cls = " or-nav-link-nested" if nested else ""
         tip = e(label)
@@ -2084,7 +2100,7 @@ class Panel:
 
     def _nav_accordion(self, label: str, icon: str | None, children_html: str, *, open: bool) -> str:
         tip = e(label)
-        ic = render_icon(icon) if icon else ""
+        ic = self._nav_icon(icon)
         chev = render_icon("heroicon-o-chevron-down", size=14, css_class="or-icon or-nav-accordion-chevron")
         open_js = "true" if open else "false"
         active_cls = " is-active" if open else ""
@@ -2102,19 +2118,23 @@ class Panel:
         """Sidebar tree: group labels + optional subgroup accordions + links."""
         nested = nest_parent_items(list(items))
         grouped = group_items(nested)
-        named = [g for g in grouped if g is not None]
-        named.sort(
-            key=lambda g: (
+
+        def _group_sort_key(g: str | None) -> tuple[Any, ...]:
+            members = grouped[g]
+            item_min = min((int(m.get("sort") or 0) for m in members), default=0)
+            if g is None:
+                return (item_min, len(self._nav_group_order), "")
+            order_idx = (
                 self._nav_group_order.index(g)
                 if g in self._nav_group_order
-                else len(self._nav_group_order),
-                self._nav_groups[g]._sort
-                if g in self._nav_groups
-                else min(int(m.get("sort") or 0) for m in grouped[g]),
-                g or "",
+                else len(self._nav_group_order)
             )
-        )
-        ordered: list[str | None] = named + ([None] if None in grouped else [])
+            meta_sort = (
+                self._nav_groups[g]._sort if g in self._nav_groups else item_min
+            )
+            return (min(item_min, int(meta_sort)), order_idx, g)
+
+        ordered = sorted(grouped.keys(), key=_group_sort_key)
         parts: list[str] = []
         for key in ordered:
             members = grouped[key]
@@ -2176,14 +2196,30 @@ class Panel:
                         group_has_active = True
             children_html = "".join(group_children)
             if key:
-                parts.append(
-                    self._nav_group(
-                        str(key),
-                        group=group_meta,
-                        children_html=children_html,
-                        open=group_has_active,
-                    )
+                only = secondary[0] if len(secondary) == 1 else None
+                matching = (
+                    next((m for m in members if m.get("label") == only.label), None)
+                    if only is not None
+                    else None
                 )
+                # Dashboard-style singleton: group label == sole link label →
+                # render the link at the top level (no one-item collapsible nest).
+                if (
+                    only is not None
+                    and str(only.label) == str(key)
+                    and not only.children
+                    and not (matching or {}).get("children")
+                ):
+                    parts.append(children_html)
+                else:
+                    parts.append(
+                        self._nav_group(
+                            str(key),
+                            group=group_meta,
+                            children_html=children_html,
+                            open=group_has_active,
+                        )
+                    )
             else:
                 parts.append(children_html)
         return "".join(parts)
@@ -2560,7 +2596,10 @@ class Panel:
         import json
         from uuid import uuid4
 
-        from almasix.orbit.panels.notification_routes import panel_notifications_url
+        from almasix.orbit.panels.notification_routes import (
+            panel_notifications_url,
+            sort_notifications_latest_first,
+        )
 
         notes = list(self._database_notifications)
         store = self._database_notification_store
@@ -2576,7 +2615,9 @@ class Panel:
             row.setdefault("read", False)
             row.setdefault("title", "Notification")
             row.setdefault("body", "")
+            row.setdefault("created_at", "")
             normalized.append(row)
+        normalized = sort_notifications_latest_first(normalized)
         unread = sum(1 for n in normalized if not n.get("read"))
         polling = self._polling_ms()
         polling_attr = f' data-polling="{polling}"' if polling else ' data-polling=""'
@@ -2592,9 +2633,11 @@ class Panel:
         return (
             f'<div class="or-notify" x-data="orbitDatabaseNotifications" '
             f'data-notifications="{payload}"{polling_attr}{url_attr} '
-            f'@click.outside="open = false">'
+            f'@keydown.escape.window="onEscape()" '
+            f'@click.outside="if (!deckOpen && !detailOpen) open = false">'
             '<button type="button" class="or-icon-btn or-notify-btn" @click="toggle()" '
             f'aria-label="Notifications" aria-haspopup="true">{bell}{badge}</button>'
+            # Compact dropdown — unread only
             '<div class="or-notify-panel" x-show="open" x-cloak role="menu">'
             '<div class="or-notify-header">'
             '<span class="or-notify-heading">Notifications</span>'
@@ -2602,16 +2645,86 @@ class Panel:
             'x-show="unreadCount > 0">Mark all as read</button>'
             "</div>"
             '<ul class="or-notify-list">'
-            '<template x-for="n in notifications" :key="n.id">'
-            '<li class="or-notify-item" :class="{ \'is-unread\': !n.read }" '
-            '@click="markRead(n.id)">'
-            '<span class="or-notify-title" x-text="n.title"></span>'
-            '<span class="or-notify-body" x-text="n.body || \'\'"></span>'
+            '<template x-for="n in unreadList" :key="n.id">'
+            '<li class="or-notify-item is-unread" @click="openDetail(n)">'
+            '<div class="or-notify-item-top">'
+            '<span class="or-notify-title" x-text="n.title || \'Notification\'"></span>'
+            '<time class="or-notify-time" x-text="formatTime(n.created_at)" '
+            'x-show="n.created_at"></time>'
+            "</div>"
+            '<span class="or-notify-body" x-text="n.body || \'\'" x-show="n.body"></span>'
+            "</li>"
+            "</template>"
+            '<li class="or-notify-empty" x-show="unreadList.length === 0">'
+            "No unread notifications</li>"
+            "</ul>"
+            '<div class="or-notify-footer">'
+            '<button type="button" class="or-notify-view-all" @click="openDeck()">'
+            "View all</button>"
+            "</div>"
+            "</div>"
+            # Right-side notifications deck (full history + infinite scroll)
+            '<div class="or-notify-deck-backdrop" x-show="deckOpen" x-cloak '
+            '@click="closeDeck()"></div>'
+            '<aside class="or-notify-deck" x-show="deckOpen" x-cloak '
+            'role="dialog" aria-modal="true" aria-label="Notification history">'
+            '<div class="or-notify-deck-header">'
+            '<h2 class="or-notify-deck-title">All notifications</h2>'
+            '<div class="or-notify-deck-actions">'
+            '<button type="button" class="or-notify-mark-all" @click="markAllRead()" '
+            'x-show="unreadCount > 0">Mark all as read</button>'
+            '<button type="button" class="or-notify-deck-close" @click="closeDeck()" '
+            'aria-label="Close">&times;</button>'
+            "</div></div>"
+            '<ul class="or-notify-deck-list" x-ref="deckList" @scroll="onDeckScroll($event)">'
+            '<template x-for="n in deckList" :key="n.id">'
+            '<li class="or-notify-deck-item" :class="{ \'is-unread\': !n.read }" '
+            '@click="openDetail(n)">'
+            '<div class="or-notify-item-top">'
+            '<span class="or-notify-title" x-text="n.title || \'Notification\'"></span>'
+            '<time class="or-notify-time" x-text="formatTime(n.created_at)" '
+            'x-show="n.created_at"></time>'
+            "</div>"
+            '<span class="or-notify-body" x-text="n.body || \'\'" x-show="n.body"></span>'
             "</li>"
             "</template>"
             '<li class="or-notify-empty" x-show="notifications.length === 0">'
-            "No notifications</li>"
-            "</ul></div></div>"
+            "No notifications yet</li>"
+            '<li class="or-notify-deck-more" x-show="deckHasMore" x-cloak>'
+            '<button type="button" class="or-notify-view-all" @click="loadMoreDeck()">'
+            "Load more</button>"
+            "</li>"
+            '<li class="or-notify-deck-end" '
+            'x-show="notifications.length > 0 && !deckHasMore" x-cloak>'
+            "End of history</li>"
+            "</ul>"
+            "</aside>"
+            # Detail modal
+            '<div class="or-notify-detail-backdrop" x-show="detailOpen" x-cloak '
+            '@click="closeDetail()"></div>'
+            '<div class="or-notify-detail" x-show="detailOpen" x-cloak '
+            'role="dialog" aria-modal="true" :aria-labelledby="detailTitleId">'
+            '<button type="button" class="or-modal-close" @click="closeDetail()" '
+            'aria-label="Close">&times;</button>'
+            '<p class="or-notify-detail-meta">'
+            '<span class="or-notify-detail-status" x-text="selected?.status || \'info\'" '
+            'x-show="selected"></span>'
+            '<time class="or-notify-time" x-text="formatTime(selected?.created_at)" '
+            'x-show="selected?.created_at"></time>'
+            "</p>"
+            '<h2 class="or-modal-title" :id="detailTitleId" '
+            'x-text="selected?.title || \'Notification\'"></h2>'
+            '<p class="or-modal-body" x-text="selected?.body || \'\'" '
+            'x-show="selected?.body"></p>'
+            '<div class="or-notify-detail-actions">'
+            '<button type="button" class="or-btn or-btn-gray" @click="closeDetail()">'
+            "Close</button>"
+            '<button type="button" class="or-btn or-btn-gray" '
+            '@click="markUnread(selected.id)" '
+            'x-show="selected && selected.read">Mark unread</button>'
+            "</div>"
+            "</div>"
+            "</div>"
         )
 
     def _render_toast_host(self) -> str:

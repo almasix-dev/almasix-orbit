@@ -110,13 +110,27 @@ def test_stat_fluent_and_sparkline() -> None:
     )
     html = stat.render()
     assert "Revenue" in html and "$12k" in html and "+12%" in html
+    assert "or-stat-has-chart" in html
+    assert "or-stat-body" in html
     assert "or-stat-chart" in html and "data-sparkline" in html
+    assert "or-stat-chart-border" in html and "or-stat-chart-bg" in html
+    # Chart is a sibling footer (full-bleed), not nested inside copy.
+    assert html.index("or-stat-copy") < html.index("or-stat-chart")
+    assert "&quot;color&quot;: &quot;success&quot;" in html
     assert 'href="/revenue"' in html
     assert 'data-x="1"' in html
     assert "or-stat-icon" in html
 
+    colored = Stat.make("Errors").value(3).color("gray").chart_color("danger").chart([1, 2, 1])
+    colored_html = colored.render()
+    assert "or-color-gray" in colored_html
+    assert 'or-stat-chart or-color-danger' in colored_html
+    assert "&quot;color&quot;: &quot;danger&quot;" in colored_html
+
     plain = Stat.make("Views", "100").placeholder("—").color("primary")
-    assert "100" in plain.render()
+    plain_html = plain.render()
+    assert "100" in plain_html
+    assert "or-stat-has-chart" not in plain_html
     empty = Stat.make("Empty").placeholder("n/a")
     assert "n/a" in empty.render()
 

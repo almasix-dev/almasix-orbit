@@ -1824,8 +1824,30 @@ class FileUpload(Field):
         self._image_max_height = max_height
         return self
 
+    def _existing_files_payload(self, state: Any) -> list[dict[str, str]]:
+        """JSON-serializable existing files for FilePond ``files``."""
+        from almasix.orbit.forms.uploads import is_image
+
+        values = state if isinstance(state, (list, tuple)) else ([state] if state else [])
+        out: list[dict[str, str]] = []
+        for value in values:
+            if isinstance(value, dict):
+                path = str(value.get("path") or value.get("url") or "")
+                url = str(value.get("url") or path)
+                label = str(value.get("name") or path.rsplit("/", 1)[-1])
+                mime = str(value.get("mime") or ("image/*" if is_image(path) else ""))
+            else:
+                path = str(value or "")
+                url = path
+                label = path.rsplit("/", 1)[-1] if path else ""
+                mime = "image/*" if is_image(path) else ""
+            if not path:
+                continue
+            out.append({"path": path, "url": url, "name": label, "mime": mime})
+        return out
+
     def _render_existing_files(self, state: Any) -> str:
-        """Thumbnails / chips for files already on the record."""
+        """Legacy card chrome (kept for progressive enhancement / tests)."""
         from almasix.orbit.forms.uploads import is_image
 
         values = state if isinstance(state, (list, tuple)) else ([state] if state else [])
@@ -1865,6 +1887,8 @@ class FileUpload(Field):
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
             return ""
+        import json
+
         name = e(self.get_state_path() or "")
         accept = ",".join(self._accepted_file_types)
         acc = f' accept="{e(accept)}"' if accept else ""
@@ -1921,6 +1945,9 @@ class FileUpload(Field):
         ):
             if val is not None:
                 attrs.append(f'data-image-{key}="{val}"')
+        existing = self._existing_files_payload(state)
+        if existing:
+            attrs.append(f'data-existing="{e(json.dumps(existing))}"')
         upload_url = self._upload_url or ctx.get("upload_url")
         if upload_url:
             attrs.append(f'data-upload-url="{e(str(upload_url))}"')
@@ -1932,29 +1959,23 @@ class FileUpload(Field):
             attrs.append(f'data-upload-resource="{e(str(slug_fn()))}"')
         attr_str = (" " + " ".join(attrs)) if attrs else ""
         avatar_cls = " or-file-avatar" if self._avatar else ""
+        panel_cls = " or-file-panel" if self._panel_layout else ""
+        # Noscript / progressive-enhancement preview for existing files.
         preview = ""
-        if self._previewable:
+        if self._previewable and existing:
             preview = (
-                '<div class="or-file-preview" data-preview-grid aria-live="polite">'
-                f"{self._render_existing_files(state)}</div>"
+                '<div class="or-file-preview or-file-preview-fallback" data-preview-grid '
+                f'aria-live="polite">{self._render_existing_files(state)}</div>'
             )
-        editor = ""
-        if self._image_editor:
-            editor = '<div class="or-file-image-editor" data-image-editor-ui hidden></div>'
-        progress = (
-            '<div class="or-file-progress" data-upload-progress hidden>'
-            '<div class="or-file-progress-bar" data-upload-progress-bar></div></div>'
-        )
         control = (
-            f"{preview}{editor}"
+            f"{preview}"
             f'<input class="or-file" id="or-{name}" type="file" name="{name}"{acc}{multi}{disabled} '
             f'{self._wire_binding(name)} />'
-            f"{progress}"
         )
         html = self.wrap_field(name, control, **ctx)
         return html.replace(
             'class="or-field or-field-FileUpload"',
-            f'class="or-field or-field-FileUpload{avatar_cls}"',
+            f'class="or-field or-field-FileUpload{avatar_cls}{panel_cls}"',
             1,
         ).replace(f'data-field="{name}"', f'data-field="{name}"{attr_str}', 1)
 
@@ -2017,8 +2038,11 @@ class CheckboxList(Select):
         if self._bulk_toggle:
             bulk = (
                 '<div class="or-checkbox-list-bulk">'
-                '<button type="button" class="or-link-btn" data-select-all>Select all</button>'
-                '<button type="button" class="or-link-btn" data-deselect-all>Deselect all</button>'
+                '<button type="button" class="or-link-btn or-link-primary" '
+                "data-select-all>Select all</button>"
+                '<span class="or-checkbox-list-bulk-sep" aria-hidden="true">·</span>'
+                '<button type="button" class="or-link-btn or-link-danger" '
+                "data-deselect-all>Deselect all</button>"
                 "</div>"
             )
         cols = f' style="--or-options-cols:{self._options_columns}"' if self._options_columns else ""

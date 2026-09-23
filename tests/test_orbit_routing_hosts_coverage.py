@@ -388,10 +388,16 @@ def test_mount_dashboard_pages_logout_and_assets(monkeypatch) -> None:
     assets_router = Router()
     mount_orbit_assets(assets_router)
     assert any(getattr(r, "uri", "") == "/vendor/orbit/orbit.css" for r in assets_router.routes)
+    assert any(getattr(r, "uri", "") == "/vendor/orbit/filepond.bundle.min.js" for r in assets_router.routes)
+    assert any(getattr(r, "uri", "") == "/vendor/orbit/filepond.bundle.min.css" for r in assets_router.routes)
     css_route = next(r for r in assets_router.routes if r.uri.endswith("orbit.css"))
     js_route = next(r for r in assets_router.routes if r.uri.endswith("orbit.js"))
+    pond_js = next(r for r in assets_router.routes if r.uri.endswith("filepond.bundle.min.js"))
+    pond_css = next(r for r in assets_router.routes if r.uri.endswith("filepond.bundle.min.css"))
     assert asyncio.run(css_route.action()) is not None
     assert asyncio.run(js_route.action()) is not None
+    assert asyncio.run(pond_js.action()) is not None
+    assert asyncio.run(pond_css.action()) is not None
     mount_orbit_assets(assets_router)  # idempotent
 
 
@@ -661,6 +667,12 @@ def test_extra_coverage_gaps(monkeypatch) -> None:
 
     assert resolve_content_max_width("   ").token == "screen-2xl"
     assert PanelNotification.make().title("T").body("B").to_dict() == {"title": "T", "body": "B"}
+    assert (
+        PanelNotification.make("Dated")
+        .created_at("2026-09-23T12:00:00Z")
+        .to_dict()["created_at"]
+        == "2026-09-23T12:00:00Z"
+    )
 
     panel = (
         Panel.make("crumb")

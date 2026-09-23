@@ -69,7 +69,8 @@ See `examples/orbit-admin` for a full Almasix app (`./scripts/bootstrap.sh` then
 
 ## Demo
 
-Public music-catalog sample (Artists + Albums) lives in [`examples/demo`](examples/demo).
+Public **Orbit Records** music-catalog sample (Artists → Albums → Tracks, dashboards,
+relation managers, Insights page) lives in [`examples/demo`](examples/demo).
 It targets **Render Free** + SQLite with **intentional reseed on boot**, and depends
 on **PyPI** releases of Almasix / Orbit / Conduit (not editable checkouts). Kitchen-sink
 remains [`examples/orbit-admin`](examples/orbit-admin).
