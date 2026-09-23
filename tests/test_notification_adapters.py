@@ -93,6 +93,7 @@ def test_sqlite_store_round_trip_and_user_scoping(tmp_path: Any) -> None:
             "actions": [{"name": "ok"}],
             "data": {"k": "v"},
             "read": False,
+            "created_at": "2026-01-01T10:00:00Z",
         },
         user=ada,
     )
@@ -100,6 +101,7 @@ def test_sqlite_store_round_trip_and_user_scoping(tmp_path: Any) -> None:
     rows = store.get_for_user(ada)
     assert len(rows) == 1
     assert rows[0].title == "Hello"
+    assert rows[0].created_at == "2026-01-01T10:00:00Z"
     assert rows[0].actions[0]["name"] == "ok"
     store.mark_read("welcome", user=ada)
     assert store.get_for_user(ada)[0].read is True
@@ -118,7 +120,75 @@ def test_sqlite_store_round_trip_and_user_scoping(tmp_path: Any) -> None:
     store.close()
 
 
-def test_sqlite_store_decodes_corrupt_json() -> None:
+def test_notification_stores_order_latest_first() -> None:
+    memory = InMemoryDatabaseNotificationStore()
+    memory.save({"id": "old", "title": "Old", "created_at": "2026-01-01T00:00:00Z"})
+    memory.save({"id": "new", "title": "New", "created_at": "2026-06-01T00:00:00Z"})
+    assert [r.id for r in memory.get_for_user()] == ["new", "old"]
+
+    store = SqliteNotificationStore(":memory:")
+    store.save({"id": "a", "title": "A", "created_at": "2026-02-01T00:00:00Z"})
+    store.save({"id": "b", "title": "B", "created_at": "2026-03-01T00:00:00Z"})
+    assert [r.id for r in store.get_for_user()] == ["b", "a"]
+    # Upsert keeps original created_at unless the payload overrides it.
+    store.save({"id": "a", "title": "A2"})
+    assert store.get_for_user()[-1].title == "A2"
+    assert store.get_for_user()[-1].created_at == "2026-02-01T00:00:00Z"
+    store.close()
+
+
+def test_notification_created_at_accepts_datetime() -> None:
+    from datetime import UTC, datetime
+
+    from almasix.orbit.notifications.store import _normalize_created_at
+
+    naive = datetime(2026, 4, 1, 12, 30, 0)
+    assert _normalize_created_at(naive) == "2026-04-01T12:30:00Z"
+    aware = datetime(2026, 4, 1, 15, 30, 0, tzinfo=UTC)
+    assert _normalize_created_at(aware) == "2026-04-01T15:30:00Z"
+    assert _normalize_created_at(None).endswith("Z")
+    assert _normalize_created_at("").endswith("Z")
+    assert _normalize_created_at("   ").endswith("Z")
+
+
+def test_sqlite_store_migrates_missing_created_at(tmp_path: Any) -> None:
+    import sqlite3
+
+    path = str(tmp_path / "legacy.sqlite")
+    conn = sqlite3.connect(path)
+    conn.execute(
+        """
+        CREATE TABLE orbit_notifications (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            body TEXT,
+            status TEXT,
+            icon TEXT,
+            icon_color TEXT,
+            color TEXT,
+            actions TEXT,
+            read INTEGER NOT NULL DEFAULT 0,
+            user_key TEXT,
+            data TEXT
+        )
+        """
+    )
+    conn.execute(
+        "INSERT INTO orbit_notifications "
+        "(id, title, body, status, icon, icon_color, color, actions, read, user_key, data) "
+        "VALUES ('legacy', 'Old', NULL, 'info', NULL, NULL, NULL, '[]', 0, NULL, '{}')"
+    )
+    conn.commit()
+    conn.close()
+
+    store = SqliteNotificationStore(path)
+    rows = store.get_for_user()
+    assert rows[0].id == "legacy"
+    assert rows[0].created_at == ""
+    store.save({"id": "fresh", "title": "Fresh", "created_at": "2026-09-01T00:00:00Z"})
+    ordered = store.get_for_user()
+    assert [r.id for r in ordered] == ["fresh", "legacy"]
+    store.close()
     store = SqliteNotificationStore(":memory:")
     store.save({"id": "x", "title": "T", "actions": [1], "data": {"a": 1}})
     store._conn.execute(
@@ -333,20 +403,31 @@ def test_handle_live_and_database_payloads() -> None:
     assert seeds["notifications"][0]["title"] == "Seed"
 
     store = InMemoryDatabaseNotificationStore()
-    store.save({"id": "n1", "title": "Stored"})
+    store.save(
+        {
+            "id": "n1",
+            "title": "Stored",
+            "created_at": "2026-12-01T00:00:00Z",
+        }
+    )
     panel.database_notifications_store(store)
     listed = handle_database_notifications(panel, method="GET")
+    ids = [n["id"] for n in listed["notifications"]]
+    assert "n1" in ids
     assert listed["notifications"][0]["id"] == "n1"
     handle_database_notifications(
         panel, method="POST", payload={"id": "n1", "read": True}
     )
-    assert store.get_for_user()[0].read is True
+    by_id = {row.id: row for row in store.get_for_user()}
+    assert by_id["n1"].read is True
     handle_database_notifications(
         panel, method="POST", payload={"id": "n1", "read": False}
     )
-    assert store.get_for_user()[0].read is False
+    assert by_id["n1"].read is False or store.get_for_user()
+    by_id = {row.id: row for row in store.get_for_user()}
+    assert by_id["n1"].read is False
     handle_database_notifications(panel, method="POST", payload={"all": True})
-    assert store.get_for_user()[0].read is True
+    assert all(row.read for row in store.get_for_user())
     assert handle_database_notifications(panel, method="POST", payload={})["ok"] is True
 
     class BareDb:

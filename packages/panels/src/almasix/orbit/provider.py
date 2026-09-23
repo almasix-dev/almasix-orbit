@@ -60,6 +60,18 @@ class OrbitServiceProvider(ServiceProvider):
                 / "apexcharts.min.js": self.app.path(
                     "public", "vendor", "orbit", "apexcharts.min.js"
                 ),
+                _HERE
+                / "resources"
+                / "vendor"
+                / "filepond.bundle.min.js": self.app.path(
+                    "public", "vendor", "orbit", "filepond.bundle.min.js"
+                ),
+                _HERE
+                / "resources"
+                / "vendor"
+                / "filepond.bundle.min.css": self.app.path(
+                    "public", "vendor", "orbit", "filepond.bundle.min.css"
+                ),
             },
             "orbit-assets",
         )

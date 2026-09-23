@@ -264,6 +264,20 @@ def test_panel_nav_group_discovery_csrf_breadcrumbs_menu(
         labeled.navigation_group(NavigationGroup.make(str(gname)).icon("heroicon-o-home"))
     labeled.menu_layout_context()
 
+    # Empty dashboard group/label → skip Dashboard reorder (1491→1503).
+    class _BlankDash:
+        navigation_group = ""
+        navigation_icon = "heroicon-o-home"
+        navigation_sort = -100
+
+        @classmethod
+        def get_navigation_label(cls) -> str:
+            return ""
+
+    blank = Panel.make("blank").path("blank").resources([_PostResource])
+    monkeypatch.setattr(blank, "dashboard_page", lambda: _BlankDash)
+    blank.menu_layout_context()
+
     # csrf Exception path (608-609)
     monkeypatch.setattr(
         "almasix.session.csrf.csrf_token",

@@ -190,16 +190,19 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
                 PanelNotification.make("Welcome to Orbit")
                 .body("Database notifications are enabled on this panel.")
                 .status("success")
-                .id("seed-welcome"),
+                .id("seed-welcome")
+                .created_at("2026-09-23T03:00:00Z"),
                 PanelNotification.make("Deploy finished")
                 .body("v1.4.2 is live on production.")
                 .status("info")
-                .id("seed-deploy"),
+                .id("seed-deploy")
+                .created_at("2026-09-23T05:45:00Z"),
                 PanelNotification.make("Backup complete")
                 .body("Nightly backup finished without errors.")
                 .status("success")
                 .read()
-                .id("seed-backup"),
+                .id("seed-backup")
+                .created_at("2026-09-22T22:10:00Z"),
             ]
         )
         .database_notifications_polling("30s")

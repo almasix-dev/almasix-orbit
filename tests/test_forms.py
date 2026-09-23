@@ -279,10 +279,11 @@ def test_file_upload_depth() -> None:
     assert "data-image-preview" in html
     assert "data-reorderable" in html
     assert "multiple" in html
-    assert "or-file-preview" in html
+    assert 'data-upload-field="avatar"' in html
     assert "image/" in FileUpload.make("img").image().render()
     assert FileUpload.make("h").hidden().render() == ""
     assert "or-file" in FileUpload.make("plain").render()
+    assert "or-file-preview-fallback" in FileUpload.make("logo").render("logo.png")
 
 
 def test_repeater_builder_relationship_controls() -> None:

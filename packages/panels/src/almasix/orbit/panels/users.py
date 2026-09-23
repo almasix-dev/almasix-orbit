@@ -193,6 +193,7 @@ class PanelNotification:
         self._icon: str | None = None
         self._read: bool = False
         self._id: str | None = None
+        self._created_at: str | None = None
 
     @classmethod
     def make(cls, title: str | None = None) -> Self:
@@ -225,6 +226,11 @@ class PanelNotification:
         self._id = value
         return self
 
+    def created_at(self, value: str) -> Self:
+        """ISO-8601 timestamp shown in the notifications deck (optional)."""
+        self._created_at = value
+        return self
+
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {"title": self._title, "body": self._body}
         if self._status and self._status != "info":
@@ -235,4 +241,6 @@ class PanelNotification:
             data["id"] = self._id
         if self._read:
             data["read"] = True
+        if self._created_at:
+            data["created_at"] = self._created_at
         return data

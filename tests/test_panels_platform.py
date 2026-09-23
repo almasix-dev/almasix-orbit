@@ -182,6 +182,15 @@ def test_spa_mode_and_exceptions() -> None:
     assert 'data-orbit-spa-root="/admin"' in shell
     assert panel.to_dict()["spa"] is True
 
+    # SPA must swap breadcrumbs (sibling of main.or-content), not only main.
+    from pathlib import Path
+
+    spa_js = Path("packages/panels/src/almasix/orbit/resources/js/orbit.js").read_text(
+        encoding="utf-8"
+    )
+    assert "_spaSwapBreadcrumbs" in spa_js
+    assert 'nav.or-breadcrumbs' in spa_js
+
     off = Panel.make("off").path("/").login(False).spa(False)
     assert off.spa_enabled() is False
     assert 'data-orbit-spa="true"' not in off.render_shell("<p>x</p>")

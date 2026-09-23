@@ -79,7 +79,7 @@
   },
   "forms/file-upload": {
     "title": "File upload",
-    "intro": "FileUpload handles single or multiple files with image preview, avatar cropping layout, and accepted MIME filters. Image and avatar presets configure accept lists and preview grids automatically.",
+    "intro": "FileUpload is a drag-and-drop uploader with image preview, circular avatar layout, optional crop/resize, and accepted MIME filters. Image and avatar presets configure accept lists and preview automatically.",
     "variants": [
       {"id": "forms/file-upload/basic", "heading": "Basic file upload", "blurb": "Generic attachment picker.", "code": "FileUpload.make('attachment').label('Attachment')"},
       {"id": "forms/file-upload/image", "heading": "Image upload", "blurb": "Image MIME types with preview.", "code": "FileUpload.make('cover').image().label('Cover image')"},

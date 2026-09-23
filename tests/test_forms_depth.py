@@ -244,12 +244,13 @@ def test_file_upload_renders_rules_as_data_attributes() -> None:
         'data-upload-url="/admin/orbit-upload"',
         'data-upload-field="avatar"',
         "or-field-FileUpload or-file-avatar",
-        "or-file-progress",
-        "or-file-image-editor",
+        "or-file-panel",
     ):
         assert attr in html, attr
     assert 'accept="image/*"' in html
     assert " multiple" in html
+    assert "or-file-progress" not in html
+    assert "data-existing=" not in html
 
 
 def test_file_upload_previews_existing_files() -> None:
@@ -261,6 +262,10 @@ def test_file_upload_previews_existing_files() -> None:
             "",
         ]
     )
+    assert 'data-existing="' in html
+    assert "docs/a.png" in html
+    assert "docs/b.pdf" in html
+    assert "or-file-preview-fallback" in html
     assert '<img class="or-file-thumb" src="/storage/docs/a.png"' in html
     assert '<span class="or-file-name">b.pdf</span>' in html
     assert 'href="/storage/docs/a.png" target="_blank"' in html
@@ -270,7 +275,9 @@ def test_file_upload_previews_existing_files() -> None:
 
 def test_file_upload_single_value_and_no_preview() -> None:
     assert "or-file-card" in FileUpload.make("logo").render("logo.png")
+    assert "data-existing=" in FileUpload.make("logo").render("logo.png")
     assert "or-file-preview" not in FileUpload.make("logo").previewable(False).render("logo.png")
+    assert "data-existing=" in FileUpload.make("logo").previewable(False).render("logo.png")
 
 
 def test_file_upload_disabled_and_upload_url_from_context() -> None:

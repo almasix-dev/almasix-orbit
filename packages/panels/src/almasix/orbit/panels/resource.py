@@ -482,7 +482,7 @@ def _resolve_nav_str(cls: type[Any], attr: str, **ctx: Any) -> str | None:
 def _can(user: Any, ability: str, record: Any = None) -> bool:
     if user is None:
         return False
-    for attr in ("can", "has_permission", "hasPermissionTo"):
+    for attr in ("has_permission", "hasPermissionTo"):
         fn = getattr(user, attr, None)
         if callable(fn):
             try:
@@ -496,4 +496,36 @@ def _can(user: Any, ability: str, record: Any = None) -> bool:
     perms = getattr(user, "permissions", None)
     if isinstance(perms, (set, list, tuple)):
         return ability in perms or "*" in perms
+    can_fn = getattr(user, "can", None)
+    if callable(can_fn):
+        try:
+            if record is not None:
+                allowed = bool(can_fn(ability, record))
+            else:
+                allowed = bool(can_fn(ability))
+        except TypeError:
+            allowed = bool(can_fn(ability))
+        if allowed:
+            return True
+        # Gate-backed Authorizable.can() denies unregistered abilities. Fall open
+        # so panels work before policies are registered (matches header chrome).
+        if _gate_ability_unregistered(user, ability):
+            return True
+        return False
     return False
+
+
+def _gate_ability_unregistered(user: Any, ability: str) -> bool:
+    """True when ``user.can`` is Gate-backed and ``ability`` is not defined."""
+    try:
+        from almasix.auth.access.authorizable import Authorizable
+    except Exception:
+        return False
+    if not isinstance(user, Authorizable):
+        return False
+    try:
+        from almasix.auth import Gate
+
+        return not Gate.has(ability)
+    except Exception:
+        return True

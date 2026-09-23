@@ -84,7 +84,7 @@ Stat.make("Failed").value(1).color("danger")
 
 ## Sparklines
 
-`.chart([3, 5, 4, 8, 7])` embeds a mini Chart.js sparkline via Alpine `orbitSparkline`. Values are numeric; color follows the stat’s `.color(...)`.
+`.chart([...])` draws a full-width trend line across the bottom of the card. The area under the line is filled with a soft gradient that matches the card color (or `.chart_color(...)` when set).
 
 ```python title="app/orbit/widgets/stat_chart.py"
 from almasix.orbit.widgets import Stat, StatsOverviewWidget
@@ -98,8 +98,19 @@ StatsOverviewWidget.make("trends").stats([
         .value("4.2k")
         .color("primary")
         .chart([2.1, 2.4, 2.8, 3.1, 3.6, 4.2]),
+    Stat.make("Errors")
+        .value(3)
+        .color("gray")
+        .chart_color("danger")
+        .chart([1, 0, 2, 1, 3, 2]),
 ])
 ```
+
+Theme knobs (optional CSS on `.or-stat`):
+
+- `--or-stat-chart-fill` — `start` (default), `origin`, or `none`
+- `--or-stat-chart-line-tension` — curve softness (default `0.4`)
+- `--or-stat-chart-border-width` — stroke width (default `2`)
 
 ![Orbit Stat sparklines (light)](/examples/light/widgets/stats-overview/chart.png)
 

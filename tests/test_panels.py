@@ -288,11 +288,19 @@ def test_resource_defaults_and_preset_actions() -> None:
 
 
 def test_can_with_alternate_user_apis() -> None:
-    from almasix.orbit.panels.resource import _can
+    from almasix.auth import Gate
+    from almasix.auth.access.authorizable import Authorizable
+    from almasix.orbit.panels.resource import _can, _gate_ability_unregistered
 
     class HasPerm:
         def has_permission(self, ability: str) -> bool:
             return ability == "x.view"
+
+    class HasPermRecordTypeError:
+        """``has_permission`` rejects a record arg → TypeError fallback."""
+
+        def has_permission(self, ability: str) -> bool:
+            return ability == "ok"
 
     class HasPermissionTo:
         def hasPermissionTo(self, ability: str, record: Any = None) -> bool:
@@ -308,8 +316,12 @@ def test_can_with_alternate_user_apis() -> None:
         def can(self, ability: str) -> bool:
             return ability == "only"
 
+    class GateUser(Authorizable):
+        pass
+
     assert _can(HasPerm(), "x.view")
     assert not _can(HasPerm(), "x.edit")
+    assert _can(HasPermRecordTypeError(), "ok", record=object())
     assert _can(HasPermissionTo(), "y.view", record=1)
     assert _can(Super(), "anything")
     assert _can(StarPerms(), "z")
@@ -317,6 +329,38 @@ def test_can_with_alternate_user_apis() -> None:
     # TypeError path: can() rejects record kw/arg
     assert _can(StrictCan(), "only", record=object())
     assert not _can(StrictCan(), "no", record=object())
+    assert _can(StrictCan(), "only")
+
+    # Gate-backed Authorizable: unregistered abilities fall open.
+    assert _gate_ability_unregistered(GateUser(), "posts.view_any") is True
+    assert _can(GateUser(), "posts.view_any")
+    assert _can(GateUser(), "posts.view", record={"id": 1})
+
+    # Registered ability that denies still returns False (not fall-open).
+    Gate.define("posts.locked", lambda *_a, **_k: False)
+    try:
+        assert Gate.has("posts.locked") is True
+        assert _gate_ability_unregistered(GateUser(), "posts.locked") is False
+        assert not _can(GateUser(), "posts.locked")
+    finally:
+        Gate.flush()
+
+    # Exception branches inside ``_gate_ability_unregistered``.
+    import sys
+    import types
+    from unittest.mock import patch
+
+    real_authorizable = sys.modules["almasix.auth.access.authorizable"]
+    sys.modules["almasix.auth.access.authorizable"] = types.ModuleType(
+        "almasix.auth.access.authorizable"
+    )
+    try:
+        assert _gate_ability_unregistered(GateUser(), "x") is False
+    finally:
+        sys.modules["almasix.auth.access.authorizable"] = real_authorizable
+
+    with patch.object(Gate, "has", side_effect=RuntimeError("gate down")):
+        assert _gate_ability_unregistered(GateUser(), "x") is True
 
 
 def test_orbit_service_provider_with_stub() -> None:

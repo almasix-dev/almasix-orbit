@@ -5,13 +5,13 @@ build-backend = "hatchling.build"
 [project]
 name = "orbit-demo"
 version = "0.1.0"
-description = "Orbit music catalog demo (Render + SQLite)"
+description = "Orbit Records music catalog demo (Render + SQLite)"
 requires-python = ">=3.11"
 dependencies = [
     # Production PyPI releases only — no path / editable pins.
     "almasix[conduit]>=0.9.4",
-    "almasix-orbit>=0.2.0",
-    "almasix-conduit>=0.2.0",
+    "almasix-orbit>=0.4.2",
+    "almasix-conduit>=0.2.1",
 ]
 
 [project.scripts]

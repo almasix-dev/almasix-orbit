@@ -217,6 +217,13 @@ def test_panel_database_notifications_and_toast_host() -> None:
     assert "or-notify-btn" in shell
     assert "orbitDatabaseNotifications" in shell
     assert "Mark all as read" in shell
+    assert "or-notify-deck" in shell
+    assert "or-notify-detail" in shell
+    assert "openDetail" in shell
+    assert "View all" in shell
+    assert "unreadList" in shell
+    assert "deckList" in shell
+    assert "onDeckScroll" in shell
     assert "Ping" in shell or "data-notifications=" in shell
 
     side = (

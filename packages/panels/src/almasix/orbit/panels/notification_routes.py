@@ -118,4 +118,16 @@ def handle_database_notifications(
     if not notes:
         seeds = getattr(panel, "_database_notifications", []) or []
         notes = [dict(item) for item in seeds]
+    notes = sort_notifications_latest_first(notes)
     return {"notifications": notes, "ok": True}
+
+
+def sort_notifications_latest_first(notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Stable newest-first order for store rows and panel seeds."""
+
+    def key(row: dict[str, Any]) -> tuple[str, str]:
+        created = str(row.get("created_at") or "")
+        nid = str(row.get("id") or "")
+        return (created, nid)
+
+    return sorted(notes, key=key, reverse=True)

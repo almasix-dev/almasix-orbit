@@ -152,7 +152,11 @@ class KitchenSinkResource(Resource):
                                     DatePicker.make("joined")
                                     .min_date("2020-01-01")
                                     .label("Joined"),
-                                    FileUpload.make("avatar").image().label("Avatar"),
+                                    FileUpload.make("avatar")
+                                    .avatar()
+                                    .image_editor()
+                                    .image_editor_aspect_ratios(["1:1"])
+                                    .label("Avatar"),
                                     MorphToSelect.make("owner")
                                     .label("Owner")
                                     .searchable()

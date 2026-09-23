@@ -5,7 +5,7 @@ description: FileUpload posts selected files to the panel upload endpoint, valid
 
 ## Introduction
 
-`FileUpload` is the field people use to attach files to a record. The operator picks a file; the browser posts it to the panel’s `/orbit-upload` endpoint; the endpoint looks up **this field** on the resource form and uses *its* disk, directory, size limits, and accepted types. The stored path is then written back into form state.
+`FileUpload` is the field people use to attach files to a record. The control is a drag-and-drop uploader with browse, progress, image previews, circular avatar layout, and optional crop/resize. The browser posts each file to the panel’s `/orbit-upload` endpoint; the endpoint looks up **this field** on the resource form and uses *its* disk, directory, size limits, and accepted types. The stored path is then written back into form state.
 
 That split matters: the field owns the rules, the panel owns the HTTP endpoint, and an `UploadStorage` owns where bytes land. Swap storage without touching the field.
 
@@ -54,7 +54,7 @@ FileUpload.make('cover')
 
 ## Avatar upload
 
-`.avatar()` enables circular avatar chrome (`or-file-avatar`), forces image preview, and defaults accept to `image/*` when no types were set. Ideal for profile photos.
+`.avatar()` enables circular avatar chrome (`or-file-avatar`), forces image preview, and defaults accept to `image/*` when no types were set. Pair with `.image_editor()` when operators should crop to a square before upload. Ideal for profile photos.
 
 ```python title="app/orbit/resources/example_resource.py"
 FileUpload.make('avatar')
@@ -215,7 +215,7 @@ FileUpload.make('import')
 
 ## Image editor
 
-`.image_editor()` and `.image_editor_aspect_ratios([...])` reserve a crop region next to the preview (`or-file-image-editor`). Aspect-ratio buttons are data on the field so a host editor can read them; the forms package itself does not crop pixels.
+`.image_editor()` (and `.image_editor_aspect_ratios([...])`, which turns the editor on) enables crop, resize, and transform on image uploads before they are posted. The first aspect ratio in the list becomes the crop guide (`16:9` → width/height); avatars default to a square crop when no ratios are set.
 
 ```python title="app/orbit/resources/example_resource.py"
 FileUpload.make('hero')

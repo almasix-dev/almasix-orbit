@@ -5,6 +5,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 database/database.sqlite
+orbit-notifications.sqlite
+storage/app/
 .env
 *.egg-info/
 dist/

@@ -1021,7 +1021,7 @@ def mount_orbit_assets(router: Any) -> None:
     """Serve Orbit CSS/JS from the package.
 
     Almasix only auto-mounts ``public/{css,js,images,fonts,build}/``, so the
-    Filament-style ``/vendor/orbit/*`` URLs need an explicit route (or a publish
+    ``/vendor/orbit/*`` URLs need an explicit route (or a publish
     into ``public/css`` + ``public/js``).
     """
     css_path = _ASSETS / "css" / "orbit.css"
@@ -1071,6 +1071,32 @@ def mount_orbit_assets(router: Any) -> None:
             "/vendor/orbit/apexcharts.min.js",
             _vendor_js("apexcharts.min.js"),
             name="orbit.assets.apex",
+        )
+    if "/vendor/orbit/filepond.bundle.min.js" not in uris:
+        router.add(
+            ["GET"],
+            "/vendor/orbit/filepond.bundle.min.js",
+            _vendor_js("filepond.bundle.min.js"),
+            name="orbit.assets.filepond.js",
+        )
+
+    async def filepond_css() -> Any:
+        from almasix.http import Response
+
+        path = vendor_dir / "filepond.bundle.min.css"
+        body = (
+            path.read_text(encoding="utf-8")
+            if path.is_file()
+            else "/* missing filepond.bundle.min.css */"
+        )
+        return Response(body, media_type="text/css; charset=utf-8")
+
+    if "/vendor/orbit/filepond.bundle.min.css" not in uris:
+        router.add(
+            ["GET"],
+            "/vendor/orbit/filepond.bundle.min.css",
+            filepond_css,
+            name="orbit.assets.filepond.css",
         )
 
 
