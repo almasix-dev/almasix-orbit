@@ -14,6 +14,13 @@ from almasix.orbit.support.html import e
 # Narrower default for create/edit/view so forms/infolists read comfortably.
 DEFAULT_FORM_CONTENT_MAX_WIDTH = "screen-lg"
 
+# Ctrl/Cmd+S submits the create/edit form.
+_FORM_SAVE_SHORTCUT = (
+    ' x-data'
+    ' @keydown.ctrl.s.window.prevent="$el.requestSubmit()"'
+    ' @keydown.meta.s.window.prevent="$el.requestSubmit()"'
+)
+
 
 def _resource_width_style(resource: type[Any], *, operation: str | None = None) -> str:
     raw = getattr(resource, "content_max_width", None)
@@ -365,7 +372,7 @@ class CreateRecord(ResourcePage):
             f'<header class="or-page-header">'
             f'<h1 class="or-page-title">Create {e(_create_heading(resource))}</h1>'
             f"</header>"
-            f'<form class="or-form"{conduit_attr("submit", "create")}>'
+            f'<form class="or-form"{conduit_attr("submit", "create")}{_FORM_SAVE_SHORTCUT}>'
             f"{form.render(form.get_state() if state is None else state, **ctx)}"
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Create</button></div>'
@@ -417,7 +424,7 @@ class EditRecord(ResourcePage):
             f'<header class="or-page-header">'
             f'<h1 class="or-page-title">Edit {e(heading)}</h1>'
             f"{header_actions}</header>"
-            f'<form class="or-form"{conduit_attr("submit", "save")}>'
+            f'<form class="or-form"{conduit_attr("submit", "save")}{_FORM_SAVE_SHORTCUT}>'
             f"{form.render(data or form.get_state(), **ctx)}"
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Save</button></div>'

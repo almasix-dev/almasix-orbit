@@ -96,6 +96,7 @@ class ArtistResource(Resource):
                         FileUpload.make("avatar")
                         .label("Avatar")
                         .avatar()
+                        .disk("public")
                         .directory("artist-avatars")
                         .max_size(2048)
                         .image_editor()

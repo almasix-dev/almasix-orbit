@@ -94,7 +94,7 @@ class FilesystemUploadStorage:
         from almasix.filesystem import Storage
 
         path = build_upload_path(filename, rules)
-        disk = Storage.disk(rules.disk)
+        disk = Storage.disk(rules.disk) if rules.disk else Storage.disk()
         await _maybe_await(disk.put(path, data, visibility=rules.visibility))
         return StoredUpload(
             path=path,
@@ -107,7 +107,7 @@ class FilesystemUploadStorage:
     async def delete(self, path: str, rules: UploadRules) -> bool:
         from almasix.filesystem import Storage
 
-        disk = Storage.disk(rules.disk)
+        disk = Storage.disk(rules.disk) if rules.disk else Storage.disk()
         await _maybe_await(disk.delete(path))
         return True
 

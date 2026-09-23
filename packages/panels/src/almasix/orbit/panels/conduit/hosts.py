@@ -99,26 +99,60 @@ def _jsonable_value(value: Any) -> Any:
 
 
 def _as_record_dict(record: Any) -> dict[str, Any]:
+    """Flatten a model/row into JSON-safe form state.
+
+    Prefer casted accessors (``get_attribute``) over raw ``get_attributes()`` so
+    ``array`` / ``json`` columns arrive as lists/dicts — raw storage is often a
+    JSON string, which TagsInput would treat as a single comma-split blob.
+    """
     if isinstance(record, dict):
-        return {str(k): _jsonable_value(v) for k, v in record.items()}
+        return {str(k): _jsonable_value(_coerce_json_container(v)) for k, v in record.items()}
     if record is None:
         return {}
     out: dict[str, Any] = {}
     attrs = getattr(record, "get_attributes", None)
+    getter = getattr(record, "get_attribute", None)
     if callable(attrs):
         try:
             raw = attrs()
             if isinstance(raw, dict):
-                return {str(k): _jsonable_value(v) for k, v in raw.items()}
+                for key in raw:
+                    if callable(getter):
+                        try:
+                            value = getter(key)
+                        except Exception:
+                            value = raw.get(key)
+                    else:
+                        value = raw.get(key)
+                    out[str(key)] = _jsonable_value(_coerce_json_container(value))
+                return out
         except Exception:
             pass
     for key in getattr(record, "__dict__", {}):
         if not str(key).startswith("_"):
-            out[str(key)] = _jsonable_value(getattr(record, key, None))
+            out[str(key)] = _jsonable_value(_coerce_json_container(getattr(record, key, None)))
     rid = getattr(record, "id", None)
     if rid is not None:
         out.setdefault("id", _jsonable_value(rid))
     return out
+
+
+def _coerce_json_container(value: Any) -> Any:
+    """If ``value`` is a JSON array/object string, decode it once for form state."""
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text or text[0] not in "[{":
+        return value
+    try:
+        import json
+
+        parsed = json.loads(text)
+    except Exception:
+        return value
+    if isinstance(parsed, (list, dict)):
+        return parsed
+    return value
 
 
 _ORM_WRITE_SKIP = frozenset(
@@ -1076,13 +1110,41 @@ class FormDataMutations:
 
     def set_property(self, name: str, value: Any) -> None:
         if name == "data":
-            self.data = dict(value) if isinstance(value, dict) else {}
+            raw = dict(value) if isinstance(value, dict) else {}
+            self.data = {str(k): _coerce_json_container(v) for k, v in raw.items()}
             return
         if name.startswith("data."):
-            self._form_path_set(name[5:], value)
+            self._form_path_set(name[5:], _coerce_json_container(value))
             self.data = dict(self.data or {})
             return
         super().set_property(name, value)
+
+    def sync_data_path(self, path: str, value: Any) -> None:
+        """Push Alpine-owned field state (TagsInput / CheckboxList / FileUpload).
+
+        Skips HTML remorph so ``wire:ignore`` islands keep their Alpine trees —
+        a full Conduit ``$set`` remorph was wiping chips / checkbox state (e.g. Tab
+        committing a tag cleared the whole list).
+        """
+        name = str(path or "")
+        if not name:
+            return
+        if not name.startswith("data."):
+            name = f"data.{name}"
+        # Decode accidental JSON-string payloads so array columns stay lists.
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith("[") or text.startswith("{"):
+                try:
+                    import json
+
+                    parsed = json.loads(text)
+                except Exception:
+                    parsed = None
+                if isinstance(parsed, (list, dict)):
+                    value = parsed
+        self.set_property(name, value)
+        self.skip_render()
 
     def _form_path_get(self, path: str) -> Any:
         cur: Any = self.data
@@ -1315,6 +1377,9 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
             self.data = dict(kwargs["data"])
 
     def create(self) -> Any:
+        # Prior Alpine sync_data_path calls in the same Conduit batch set skip_render;
+        # create/save must remorph (or redirect) after committing.
+        self.reset_skip_render()
         resource = self.get_resource()
         if not _resource_mutable(resource):
             self.dispatch(
@@ -1487,6 +1552,9 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
             await _await_maybe(self.load_relations(self.data))
 
     def save(self) -> Any:
+        # Prior Alpine sync_data_path calls in the same Conduit batch set skip_render;
+        # create/save must remorph (or redirect) after committing.
+        self.reset_skip_render()
         resource = self.get_resource()
         if not _resource_mutable(resource):
             self.dispatch(
@@ -1720,6 +1788,7 @@ class FormHost(FormDataMutations, ConduitHost):
             self.data = dict(kwargs["data"])
 
     def save(self) -> None:
+        self.reset_skip_render()
         self.dispatch("orbit-form-saved", data=dict(self.data))
 
     def mountAction(
@@ -1741,7 +1810,11 @@ class FormHost(FormDataMutations, ConduitHost):
         title = type(self)._title
         return (
             f'<div class="or-page or-page-form"><h1 class="or-page-title">{title}</h1>'
-            f'<form class="or-form"{conduit_attr("submit", "save")}>{form.render(self.data, select_search=dict(self.select_search or {}), morph_search=dict(self.morph_search or {}), table_select=dict(self.table_select or {}))}'
+            f'<form class="or-form"{conduit_attr("submit", "save")} '
+            f'x-data '
+            f'@keydown.ctrl.s.window.prevent="$el.requestSubmit()" '
+            f'@keydown.meta.s.window.prevent="$el.requestSubmit()">'
+            f'{form.render(self.data, select_search=dict(self.select_search or {}), morph_search=dict(self.morph_search or {}), table_select=dict(self.table_select or {}))}'
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Save</button>'
             f"</div></form></div>"

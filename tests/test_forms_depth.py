@@ -243,14 +243,19 @@ def test_file_upload_renders_rules_as_data_attributes() -> None:
         'data-image-max-height="40"',
         'data-upload-url="/admin/orbit-upload"',
         'data-upload-field="avatar"',
+        'data-upload-path="data.avatar"',
         "or-field-FileUpload or-file-avatar",
         "or-file-panel",
+        "wire:ignore",
+        "conduit:ignore",
     ):
         assert attr in html, attr
     assert 'accept="image/*"' in html
     assert " multiple" in html
     assert "or-file-progress" not in html
     assert "data-existing=" not in html
+    assert "conduit:model=" not in html
+    assert "wire:model=" not in html
 
 
 def test_file_upload_previews_existing_files() -> None:
@@ -280,7 +285,19 @@ def test_file_upload_single_value_and_no_preview() -> None:
     assert "data-existing=" in FileUpload.make("logo").previewable(False).render("logo.png")
 
 
-def test_file_upload_disabled_and_upload_url_from_context() -> None:
+def test_file_upload_js_syncs_data_path_via_sync_data_path() -> None:
+    """Regression: FilePond must sync ``data.{field}`` without remorphing Alpine islands."""
+    from pathlib import Path
+
+    js = Path("packages/panels/src/almasix/orbit/resources/js/orbit.js").read_text(
+        encoding="utf-8"
+    )
+    assert "data-upload-path" in js
+    assert "sync_data_path" in js
+    assert "wire:ignore" in Path(
+        "packages/forms/src/almasix/orbit/forms/components.py"
+    ).read_text(encoding="utf-8")
+
     field = FileUpload.make("attachment").disabled()
     html = field.render(None, upload_url="/panel/orbit-upload", resource=_UploadResource)
     assert " disabled" in html

@@ -76,8 +76,12 @@ def test_list_create_edit_view_pages() -> None:
     assert "AlphaPub" in html
     assert "BetaDraft" not in html
     assert "or-page-create" in PostCreate.render()
-    assert 'wire:submit="create"' in PostCreate.render({"title": "X"})
-    assert 'data-record="1"' in PostEdit.render(record={"id": 1, "title": "Hi"})
+    create_html = PostCreate.render({"title": "X"})
+    assert 'wire:submit="create"' in create_html
+    assert "@keydown.ctrl.s.window.prevent" in create_html
+    edit_html = PostEdit.render(record={"id": 1, "title": "Hi"})
+    assert 'data-record="1"' in edit_html
+    assert "@keydown.ctrl.s.window.prevent" in edit_html
     assert "or-page-view" in PostView.render(record=Post())
     try:
         ListRecords.render()

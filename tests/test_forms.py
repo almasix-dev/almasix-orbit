@@ -280,6 +280,8 @@ def test_file_upload_depth() -> None:
     assert "data-reorderable" in html
     assert "multiple" in html
     assert 'data-upload-field="avatar"' in html
+    assert 'data-upload-path="data.avatar"' in html
+    assert "wire:ignore" in html and "conduit:ignore" in html
     assert "image/" in FileUpload.make("img").image().render()
     assert FileUpload.make("h").hidden().render() == ""
     assert "or-file" in FileUpload.make("plain").render()
