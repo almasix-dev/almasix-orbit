@@ -24,6 +24,18 @@ def _copy_vendor(dest_dir: Path) -> None:
             (dest_dir / name).write_bytes(src.read_bytes())
 
 
+def _register_catalog_notification_observers() -> None:
+    from app.models.album import Album
+    from app.models.artist import Artist
+    from app.models.track import Track
+    from app.orbit.demo.catalog_notifications import CatalogNotificationObserver
+
+    observer = CatalogNotificationObserver()
+    Artist.observe(observer)
+    Album.observe(observer)
+    Track.observe(observer)
+
+
 class AppServiceProvider(ServiceProvider):
     def boot(self) -> None:
         dest_dir = Path(self.app.path("public", "vendor", "orbit"))
@@ -44,3 +56,8 @@ class AppServiceProvider(ServiceProvider):
             except OSError:
                 pass
         set_upload_storage(FilesystemUploadStorage(base_url="/storage"))
+
+        try:
+            _register_catalog_notification_observers()
+        except Exception:
+            pass
