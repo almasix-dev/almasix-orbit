@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
 
 
 def utc_now_iso() -> str:
     """UTC timestamp suitable for JSON / SQLite (``YYYY-MM-DDTHH:MM:SSZ``)."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _normalize_created_at(value: Any) -> str:
@@ -18,8 +18,8 @@ def _normalize_created_at(value: Any) -> str:
         return utc_now_iso()
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            value = value.replace(tzinfo=UTC)
+        return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     text = str(value).strip()
     return text or utc_now_iso()
 
