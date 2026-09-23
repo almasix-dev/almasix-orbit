@@ -137,6 +137,20 @@ def test_notification_stores_order_latest_first() -> None:
     store.close()
 
 
+def test_notification_created_at_accepts_datetime() -> None:
+    from datetime import UTC, datetime
+
+    from almasix.orbit.notifications.store import _normalize_created_at
+
+    naive = datetime(2026, 4, 1, 12, 30, 0)
+    assert _normalize_created_at(naive) == "2026-04-01T12:30:00Z"
+    aware = datetime(2026, 4, 1, 15, 30, 0, tzinfo=UTC)
+    assert _normalize_created_at(aware) == "2026-04-01T15:30:00Z"
+    assert _normalize_created_at(None).endswith("Z")
+    assert _normalize_created_at("").endswith("Z")
+    assert _normalize_created_at("   ").endswith("Z")
+
+
 def test_sqlite_store_migrates_missing_created_at(tmp_path: Any) -> None:
     import sqlite3
 
