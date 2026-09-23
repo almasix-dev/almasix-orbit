@@ -127,7 +127,7 @@ def test_advanced_field_renders() -> None:
     assert "or-field-CheckboxList" in CheckboxList.make("roles").options({"a": "A"}).render(["a"])
     assert CheckboxList.make("h").hidden().render() == ""
     assert "or-tag" in TagsInput.make("tags").render(["x", "y"])
-    assert "or-tags" in TagsInput.make("tags").render("one, two")
+    assert "orbitTagsInput" in TagsInput.make("tags").render("one, two")
     assert TagsInput.make("h").hidden().render() == ""
 
     assert "or-editor-rich" in RichEditor.make("body").render("hi")

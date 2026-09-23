@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Self
 
@@ -38,6 +39,31 @@ def _flatten_options(raw: Any) -> dict[Any, Any]:
         return dict(raw) if raw else {}
     except (TypeError, ValueError):
         return {}
+
+
+def _normalize_string_list(state: Any, *, separator: str = ",") -> list[str]:
+    """Normalize TagsInput / CheckboxList state to a list of strings.
+
+    Handles real lists, comma-separated text, and JSON array strings (common when
+    ORM ``array`` casts leak raw storage into form state).
+    """
+    if isinstance(state, (list, tuple, set)):
+        return [str(t).strip() for t in state if str(t).strip()]
+    if state in (None, ""):
+        return []
+    if isinstance(state, str):
+        text = state.strip()
+        if text.startswith("[") and text.endswith("]"):
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, list):
+                return [str(t).strip() for t in parsed if str(t).strip()]
+        if separator:
+            return [t.strip() for t in text.split(separator) if t.strip()]
+        return [text] if text else []
+    return [str(state).strip()] if str(state).strip() else []
 
 
 def _option_groups(raw: Any) -> list[tuple[str | None, dict[Any, Any]]]:
@@ -1953,6 +1979,9 @@ class FileUpload(Field):
             attrs.append(f'data-upload-url="{e(str(upload_url))}"')
         field_key = self.get_state_path() or self.get_name() or ""
         attrs.append(f'data-upload-field="{e(field_key)}"')
+        # Conduit public path — FormDataMutations accepts ``data.*``.
+        upload_path = field_key if str(field_key).startswith("data.") else f"data.{field_key}"
+        attrs.append(f'data-upload-path="{e(upload_path)}"')
         resource = ctx.get("resource")
         slug_fn = getattr(resource, "get_slug", None)
         if callable(slug_fn):
@@ -1969,13 +1998,15 @@ class FileUpload(Field):
             )
         control = (
             f"{preview}"
-            f'<input class="or-file" id="or-{name}" type="file" name="{name}"{acc}{multi}{disabled} '
-            f'{self._wire_binding(name)} />'
+            # No wire:model — FilePond owns the input; state syncs via data-upload-path + $set.
+            f'<input class="or-file" id="or-{name}" type="file" name="{name}"{acc}{multi}{disabled} />'
         )
         html = self.wrap_field(name, control, **ctx)
+        # Conduit morph must not replace FilePond chrome (parity with Livewire wire:ignore).
         return html.replace(
             'class="or-field or-field-FileUpload"',
-            f'class="or-field or-field-FileUpload{avatar_cls}{panel_cls}"',
+            f'class="or-field or-field-FileUpload{avatar_cls}{panel_cls}" '
+            f'wire:ignore conduit:ignore',
             1,
         ).replace(f'data-field="{name}"', f'data-field="{name}"{attr_str}', 1)
 
@@ -1987,6 +2018,7 @@ class Radio(Select):
         name = e(self.get_state_path() or "")
         label = e(self.get_label(**ctx))
         disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        wire = self._wire_binding(name)
         opts = []
         for k, v in self.get_options(**ctx).items():
             checked = " checked" if str(k) == str(state) else ""
@@ -1994,7 +2026,7 @@ class Radio(Select):
             desc_html = f'<span class="or-option-desc">{e(desc)}</span>' if desc else ""
             opts.append(
                 f'<label class="or-radio-label"><input type="radio" class="or-radio" '
-                f'name="{name}" value="{e(k)}" wire:model="{name}"{checked}{disabled} /> '
+                f'name="{name}" value="{e(k)}"{wire}{checked}{disabled} /> '
                 f'<span class="or-option-body"><span class="or-option-label">{e(v)}</span>{desc_html}</span></label>'
             )
         cols = f' style="--or-options-cols:{self._options_columns}"' if self._options_columns else ""
@@ -2021,17 +2053,20 @@ class CheckboxList(Select):
             return ""
         name = e(self.get_state_path() or "")
         label = e(self.get_label(**ctx))
-        selected = state if isinstance(state, (list, tuple, set)) else ([state] if state not in (None, "") else [])
-        selected_s = {str(s) for s in selected}
+        selected_list = [str(s) for s in _normalize_string_list(state)]
         disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        options = self.get_options(**ctx)
+        option_keys = [str(k) for k in options.keys()]
         opts = []
-        for k, v in self.get_options(**ctx).items():
-            checked = " checked" if str(k) in selected_s else ""
-            desc = self._option_descriptions.get(str(k))
+        for k, v in options.items():
+            key = str(k)
+            desc = self._option_descriptions.get(key)
             desc_html = f'<span class="or-option-desc">{e(desc)}</span>' if desc else ""
+            # Alpine x-model on an array — no :checked (that fights native + Conduit morph).
             opts.append(
-                f'<label class="or-checkbox-label"><input type="checkbox" class="or-checkbox" '
-                f'name="{name}" value="{e(k)}" wire:model="{name}"{checked}{disabled} /> '
+                f'<label class="or-checkbox-label">'
+                f'<input type="checkbox" class="or-checkbox" name="{name}" value="{e(key)}" '
+                f'x-model="selected"{disabled} /> '
                 f'<span class="or-option-body"><span class="or-option-label">{e(v)}</span>{desc_html}</span></label>'
             )
         bulk = ""
@@ -2039,16 +2074,23 @@ class CheckboxList(Select):
             bulk = (
                 '<div class="or-checkbox-list-bulk">'
                 '<button type="button" class="or-link-btn or-link-primary" '
-                "data-select-all>Select all</button>"
+                'data-select-all @click.prevent="selectAll()">Select all</button>'
                 '<span class="or-checkbox-list-bulk-sep" aria-hidden="true">·</span>'
                 '<button type="button" class="or-link-btn or-link-danger" '
-                "data-deselect-all>Deselect all</button>"
+                'data-deselect-all @click.prevent="deselectAll()">Deselect all</button>'
                 "</div>"
             )
         cols = f' style="--or-options-cols:{self._options_columns}"' if self._options_columns else ""
         cols_cls = f" or-options-cols-{self._options_columns}" if self._options_columns else ""
+        state_json = e(json.dumps(selected_list))
+        options_json = e(json.dumps(option_keys))
+        path = f"data.{name}" if name and not str(name).startswith("data.") else name
+        # wire:ignore + key — keep Alpine tree across Conduit morphs; sync via sync_data_path.
         return (
-            f'<div class="or-field or-field-CheckboxList{cols_cls}" data-field="{name}"{cols}>'
+            f'<div class="or-field or-field-CheckboxList{cols_cls}" data-field="{name}" '
+            f'data-path="{e(path)}" data-state="{state_json}" data-options="{options_json}" '
+            f'wire:key="checkbox-list-{name}" conduit:key="checkbox-list-{name}" '
+            f'x-data="orbitCheckboxList" wire:ignore conduit:ignore{cols}>'
             f'<span class="or-label">{label}</span>{bulk}'
             f'<div class="or-checkbox-list">{"".join(opts)}</div></div>'
         )
@@ -2060,6 +2102,9 @@ class TagsInput(Field):
         self._suggestions: list[str] = []
         self._separator: str = ","
         self._reorderable = False
+        self._split_keys: list[str] | None = None
+        self._tag_prefix: str = ""
+        self._tag_suffix: str = ""
 
     def suggestions(self, items: Sequence[str]) -> Self:
         self._suggestions = list(items)
@@ -2069,8 +2114,21 @@ class TagsInput(Field):
         self._separator = value
         return self
 
+    def split_keys(self, keys: Sequence[str]) -> Self:
+        """Keys that commit the current draft tag (in addition to Enter)."""
+        self._split_keys = [str(k) for k in keys]
+        return self
+
     def reorderable(self, condition: bool = True) -> Self:
         self._reorderable = condition
+        return self
+
+    def tag_prefix(self, value: str) -> Self:
+        self._tag_prefix = value
+        return self
+
+    def tag_suffix(self, value: str) -> Self:
+        self._tag_suffix = value
         return self
 
     def render(self, state: Any = None, **ctx: Any) -> str:
@@ -2078,28 +2136,51 @@ class TagsInput(Field):
             return ""
         name = e(self.get_state_path() or "")
         label = e(self.get_label(**ctx))
-        tags = state if isinstance(state, (list, tuple)) else (
-            [t.strip() for t in str(state).split(self._separator) if t.strip()] if state else []
-        )
-        chips = "".join(f'<span class="or-tag">{e(t)}</span>' for t in tags)
-        val = e(self._separator.join(str(t) for t in tags))
-        disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        tags = _normalize_string_list(state, separator=self._separator)
+        disabled = bool(self.is_disabled(**ctx) or self._readonly)
+        disabled_attr = " disabled" if disabled else ""
         suggestions = ""
+        list_attr = ""
         if self._suggestions:
             opts = "".join(f'<option value="{e(s)}"></option>' for s in self._suggestions)
             suggestions = f'<datalist id="or-{name}-suggestions">{opts}</datalist>'
             list_attr = f' list="or-{name}-suggestions"'
-        else:
-            list_attr = ""
         reorder = ' data-reorderable="true"' if self._reorderable else ""
+        split_keys = list(self._split_keys) if self._split_keys is not None else []
+        if self._separator and self._separator not in split_keys:
+            split_keys = [*split_keys, self._separator]
+        if "Tab" not in split_keys:
+            split_keys = [*split_keys, "Tab"]
+        path = f"data.{name}" if name and not str(name).startswith("data.") else name
+        state_json = e(json.dumps(tags))
+        split_json = e(json.dumps(split_keys))
+        prefix = e(self._tag_prefix)
+        suffix = e(self._tag_suffix)
+        placeholder = e(self.get_placeholder(**ctx) or "New tag")
+        # Alpine-driven chips + draft input; state synced via FormDataMutations.sync_data_path.
         return (
             f'<div class="or-field or-field-TagsInput" data-field="{name}" '
-            f'data-separator="{e(self._separator)}"{reorder} x-data="{{ tags: \'{val}\' }}">'
+            f'data-path="{e(path)}" data-state="{state_json}" data-split-keys="{split_json}" '
+            f'data-separator="{e(self._separator)}" data-tag-prefix="{prefix}" '
+            f'data-tag-suffix="{suffix}"{reorder} '
+            f'wire:key="tags-input-{name}" conduit:key="tags-input-{name}" '
+            f'x-data="orbitTagsInput" wire:ignore conduit:ignore">'
             f'<label class="or-label" for="or-{name}">{label}</label>'
-            f'<div class="or-tags">{chips}'
-            f'<input class="or-input or-tags-input" id="or-{name}" name="{name}" value="{val}"'
-            f'{disabled}{list_attr} wire:model="{name}" placeholder="Add tag…" /></div>'
-            f"{suggestions}</div>"
+            f'<div class="or-tags-input-wrap" @click="$refs.tagInput && $refs.tagInput.focus()">'
+            f'<template x-for="tag in state" :key="tag">'
+            f'<span class="or-tag">'
+            f'<span class="or-tag-prefix" x-text="tagPrefix" x-show="tagPrefix"></span>'
+            f'<span class="or-tag-label" x-text="tag"></span>'
+            f'<span class="or-tag-suffix" x-text="tagSuffix" x-show="tagSuffix"></span>'
+            f'<button type="button" class="or-tag-remove" @click.stop="deleteTag(tag)" '
+            f'aria-label="Remove tag" x-show="!disabled">×</button>'
+            f"</span></template>"
+            f'<input class="or-tags-input" id="or-{name}" name="{name}" type="text" '
+            f'x-ref="tagInput" x-model="newTag" placeholder="{placeholder}" autocomplete="off" '
+            f'@keydown.enter.prevent="createTag()" @keydown.tab.prevent="createTag()" '
+            f'@keydown="onKeydown($event)" @blur="createTag()" @paste="onPaste($event)" '
+            f'{disabled_attr}{list_attr} />'
+            f"</div>{suggestions}</div>"
         )
 
 

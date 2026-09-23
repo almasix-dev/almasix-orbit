@@ -189,6 +189,7 @@ class AlbumResource(Resource):
                                         FileUpload.make("cover")
                                         .label("Cover art")
                                         .image()
+                                        .disk("public")
                                         .directory("album-covers")
                                         .max_size(4096)
                                         .panel_layout()

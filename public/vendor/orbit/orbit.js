@@ -2150,6 +2150,177 @@
       },
     }));
 
+    const parseJsonDataset = (el, key, fallback) => {
+      try {
+        const raw = el?.getAttribute?.(`data-${key}`);
+        if (!raw) return fallback;
+        return JSON.parse(raw);
+      } catch (_) {
+        return fallback;
+      }
+    };
+
+    const syncWirePath = (el, path, value) => {
+      if (!path) return;
+      const wire = window.orbitWire?.(el);
+      if (!wire) return;
+      // Prefer renderless host sync — `$set` remorphs the form and can wipe Alpine
+      // state inside TagsInput / CheckboxList even with wire:ignore.
+      if (typeof wire.sync_data_path === "function") {
+        wire.sync_data_path(path, value);
+        return;
+      }
+      if (typeof wire.$set === "function") {
+        wire.$set(path, value);
+        return;
+      }
+      if (typeof wire.set === "function") {
+        wire.set(path, value);
+      }
+    };
+
+    // Before Conduit submit, flush Alpine list fields so Save sees latest chips/checks
+    // even if a coalesce timer hasn't fired yet.
+    if (typeof document !== "undefined" && !window.__orbitAlpineFormFlush) {
+      window.__orbitAlpineFormFlush = true;
+      document.addEventListener(
+        "submit",
+        (event) => {
+          const form = event.target;
+          if (!(form instanceof HTMLFormElement)) return;
+          const hasSubmit =
+            form.hasAttribute("conduit:submit") || form.hasAttribute("wire:submit");
+          if (!hasSubmit) return;
+          form
+            .querySelectorAll(".or-field-TagsInput, .or-field-CheckboxList")
+            .forEach((root) => {
+              try {
+                const data = window.Alpine?.$data?.(root);
+                if (data && typeof data.sync === "function") data.sync();
+              } catch (_) {
+                /* ignore */
+              }
+            });
+        },
+        true
+      );
+    }
+
+    window.Alpine.data("orbitCheckboxList", () => ({
+      selected: [],
+      options: [],
+      path: "",
+      _syncing: false,
+      init() {
+        const el = this.$el;
+        this.path = el.getAttribute("data-path") || "";
+        this.options = parseJsonDataset(el, "options", []).map(String);
+        this.selected = parseJsonDataset(el, "state", []).map(String);
+        // x-model on checkboxes mutates ``selected``; push to Conduit after Alpine settles.
+        this.$watch("selected", () => {
+          if (this._syncing) return;
+          this.$nextTick(() => this.sync());
+        });
+      },
+      selectAll() {
+        this.selected = [...this.options];
+      },
+      deselectAll() {
+        this.selected = [];
+      },
+      sync() {
+        this._syncing = true;
+        try {
+          syncWirePath(this.$el, this.path, [...this.selected]);
+        } finally {
+          // Allow the next user gesture to sync again after Conduit settles.
+          this.$nextTick(() => {
+            this._syncing = false;
+          });
+        }
+      },
+    }));
+
+    window.Alpine.data("orbitTagsInput", () => ({
+      state: [],
+      newTag: "",
+      path: "",
+      splitKeys: [],
+      tagPrefix: "",
+      tagSuffix: "",
+      disabled: false,
+      _syncing: false,
+      init() {
+        const el = this.$el;
+        this.path = el.getAttribute("data-path") || "";
+        this.state = parseJsonDataset(el, "state", []).map(String);
+        this.splitKeys = parseJsonDataset(el, "split-keys", [",", "Tab"]).map(String);
+        this.tagPrefix = el.getAttribute("data-tag-prefix") || "";
+        this.tagSuffix = el.getAttribute("data-tag-suffix") || "";
+        this.disabled = Boolean(el.querySelector("input.or-tags-input[disabled]"));
+        this.$watch("state", () => {
+          if (this._syncing) return;
+          this.sync();
+        });
+      },
+      createTag() {
+        const tag = String(this.newTag || "").trim();
+        this.newTag = "";
+        if (!tag || this.disabled) return;
+        if (this.state.includes(tag)) return;
+        this.state = [...this.state, tag];
+      },
+      deleteTag(tag) {
+        if (this.disabled) return;
+        this.state = this.state.filter((t) => t !== tag);
+      },
+      onKeydown(event) {
+        // Enter / Tab are handled by Alpine `.prevent` modifiers on the input.
+        if (event.key === "Enter" || event.key === "Tab") return;
+        if (this.splitKeys.includes(event.key)) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.createTag();
+          return;
+        }
+        if (event.key === "Backspace" && !this.newTag && this.state.length) {
+          this.deleteTag(this.state[this.state.length - 1]);
+        }
+      },
+      onPaste(event) {
+        this.$nextTick?.(() => {
+          if (!this.splitKeys.length) {
+            this.createTag();
+            return;
+          }
+          // Split only on single-character keys ("," etc.) — never on "Tab"/"Enter" literals.
+          const seps = this.splitKeys.filter((k) => k.length === 1);
+          if (!seps.length) {
+            this.createTag();
+            return;
+          }
+          const escaped = seps
+            .map((k) => k.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&"))
+            .join("|");
+          const parts = String(this.newTag || "").split(new RegExp(escaped, "g"));
+          parts.forEach((part) => {
+            this.newTag = part;
+            this.createTag();
+          });
+        });
+      },
+      sync() {
+        this._syncing = true;
+        try {
+          syncWirePath(this.$el, this.path, [...this.state]);
+        } finally {
+          this.$nextTick(() => {
+            this._syncing = false;
+          });
+        }
+      },
+    }));
+
     const bootFileUploads = () => {
       const FilePond = window.FilePond;
       if (!FilePond) return;
@@ -2187,10 +2358,23 @@
       };
 
       const initField = (root) => {
+        // Morph may have wiped FilePond while leaving the bound flag — allow re-init.
+        if (root.dataset.uploadBound === "1" && !root.querySelector(".filepond--root")) {
+          delete root.dataset.uploadBound;
+          try {
+            root._orbitFilePond?.destroy?.();
+          } catch (_) {
+            /* ignore */
+          }
+          root._orbitFilePond = null;
+        }
         if (root.dataset.uploadBound === "1") return;
         const input = root.querySelector("input.or-file");
         const endpoint = root.getAttribute("data-upload-url");
         const field = root.getAttribute("data-upload-field") || "";
+        const statePath =
+          root.getAttribute("data-upload-path") ||
+          (field && !String(field).startsWith("data.") ? `data.${field}` : field);
         const resource = root.getAttribute("data-upload-resource") || "";
         if (!input || !endpoint) return;
         root.dataset.uploadBound = "1";
@@ -2221,12 +2405,20 @@
 
         const pushState = (pond) => {
           const wire = window.orbitWire?.(root);
-          if (!wire || typeof wire.set_property !== "function") return;
+          if (!wire || !statePath) return;
           const paths = pond
             .getFiles()
             .map((item) => item.serverId || (typeof item.source === "string" ? item.source : null))
             .filter(Boolean);
-          wire.set_property(field, multiple || maxFilesAttr > 1 ? paths : paths[0] || null);
+          const value = multiple || maxFilesAttr > 1 ? paths : paths[0] || null;
+          // Prefer renderless sync_data_path (no remorph); fall back to $set.
+          if (typeof wire.sync_data_path === "function") {
+            wire.sync_data_path(statePath, value);
+          } else if (typeof wire.$set === "function") {
+            wire.$set(statePath, value);
+          } else if (typeof wire.set_property === "function") {
+            wire.set_property(statePath, value);
+          }
         };
 
         const existing = parseExisting(root).map((file) => ({
@@ -2236,6 +2428,7 @@
             file: {
               name: file.name || String(file.path).split("/").pop(),
               type: file.mime || undefined,
+              size: undefined,
             },
             metadata: {
               poster: file.url || file.path,
@@ -2250,7 +2443,7 @@
         const options = {
           credits: false,
           allowMultiple: multiple || maxFilesAttr > 1,
-          maxFiles: maxFilesAttr > 0 ? maxFilesAttr : null,
+          maxFiles: maxFilesAttr > 0 ? maxFilesAttr : avatar ? 1 : null,
           maxFileSize: maxSizeKb > 0 ? `${maxSizeKb}KB` : null,
           minFileSize: minSizeKb > 0 ? `${minSizeKb}KB` : null,
           acceptedFileTypes: accepted.length ? accepted : null,
@@ -2262,12 +2455,19 @@
           instantUpload: true,
           stylePanelLayout,
           stylePanelAspectRatio: avatar ? "1:1" : null,
-          imagePreviewHeight: previewHeight ? Number(previewHeight) : imagePreview ? 160 : null,
+          imagePreviewHeight: previewHeight
+            ? Number(previewHeight)
+            : avatar
+              ? 170
+              : imagePreview
+                ? 160
+                : null,
           allowImagePreview: imagePreview || avatar,
           allowFilePoster: true,
           files: existing,
-          labelIdle:
-            'Drag & drop files, or <span class="filepond--label-action">Browse</span>',
+          labelIdle: avatar
+            ? '<span class="filepond--label-action">Upload avatar</span>'
+            : 'Drag & drop files, or <span class="filepond--label-action">Browse</span>',
           server: {
             process: (_fieldName, file, _metadata, load, error, progress, abort) => {
               const body = new FormData();
@@ -2375,13 +2575,19 @@
           }
         }
 
-        const pond = FilePond.create(input, options);
-        root._orbitFilePond = pond;
-        const sync = () => pushState(pond);
-        pond.on("processfile", sync);
-        pond.on("removefile", sync);
-        pond.on("reorderfiles", sync);
-        pond.on("updatefiles", sync);
+        try {
+          const pond = FilePond.create(input, options);
+          root._orbitFilePond = pond;
+          const sync = () => pushState(pond);
+          pond.on("processfile", sync);
+          pond.on("removefile", sync);
+          pond.on("reorderfiles", sync);
+          // Do not sync on every updatefiles — that fires before upload completes
+          // and can push null into form state while FilePond is still processing.
+        } catch (err) {
+          delete root.dataset.uploadBound;
+          console.error("[orbit] FilePond init failed", err);
+        }
       };
 
       document.querySelectorAll("[data-upload-field]").forEach(initField);
@@ -2393,6 +2599,19 @@
     }
     // SPA navigations remount form hosts — rebind FilePond on new fields.
     window.addEventListener("orbit:spa-navigated", () => bootFileUploads());
+    // Conduit morphs can wipe FilePond; rebind any field that lost its chrome.
+    if (!window.__orbitFilePondObserver) {
+      let pondBootTimer = null;
+      const scheduleBoot = () => {
+        clearTimeout(pondBootTimer);
+        pondBootTimer = setTimeout(() => bootFileUploads(), 40);
+      };
+      window.__orbitFilePondObserver = new MutationObserver(scheduleBoot);
+      window.__orbitFilePondObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    }
 
     const bootTipTap = () => {
       const nodes = document.querySelectorAll(".or-editor-rich[data-tiptap]");

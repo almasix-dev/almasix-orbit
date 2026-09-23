@@ -129,11 +129,33 @@ def test_tags_radio_checkbox_list_affix_actions() -> None:
         .suggestions(["red", "blue"])
         .separator(";")
         .reorderable()
+        .split_keys([" ", "Tab"])
+        .tag_prefix("#")
+        .tag_suffix("!")
         .render(["red"])
     )
     assert "datalist" in tags
     assert 'data-separator=";"' in tags
     assert 'data-reorderable="true"' in tags
+    assert 'x-data="orbitTagsInput"' in tags
+    assert 'data-path="data.tags"' in tags
+    assert 'wire:key="tags-input-tags"' in tags or 'conduit:key="tags-input-tags"' in tags
+    assert "@keydown.tab.prevent" in tags
+    assert "or-tags-input-wrap" in tags
+    assert "or-tag-remove" in tags
+    assert 'data-tag-suffix="!"' in tags
+    empty = TagsInput.make("empty").separator(",").render(None)
+    assert 'data-state="[]"' in empty
+    no_sep = TagsInput.make("plain").separator("").split_keys(["Tab"]).render("")
+    assert "Tab" in no_sep
+    # JSON array strings must become real chips, not one quoted blob.
+    import json as _json
+    import re as _re
+    from html import unescape as _un
+
+    json_state = TagsInput.make("genres").render('["afrobeat","electronic"]')
+    raw_state = _un(_re.search(r'data-state="([^"]*)"', json_state).group(1))
+    assert _json.loads(raw_state) == ["afrobeat", "electronic"]
 
     radio = (
         Radio.make("plan")
@@ -144,14 +166,22 @@ def test_tags_radio_checkbox_list_affix_actions() -> None:
     )
     assert "or-option-desc" in radio
     assert "or-options-cols-2" in radio
+    assert 'conduit:model="data.plan"' in radio or 'wire:model="data.plan"' in radio
 
     checks = (
         CheckboxList.make("feats")
-        .options({"x": "X"})
+        .options({"x": "X", "y": "Y"})
         .bulk_toggleable()
         .render(["x"])
     )
     assert "data-select-all" in checks
+    assert 'x-data="orbitCheckboxList"' in checks
+    assert 'data-path="data.feats"' in checks
+    assert 'wire:key="checkbox-list-feats"' in checks or 'conduit:key="checkbox-list-feats"' in checks
+    assert "wire:ignore" in checks and "conduit:ignore" in checks
+    assert 'x-model="selected"' in checks
+    assert "selectAll()" in checks
+    assert ":checked=" not in checks
 
     affix = TextInput.make("code").prefix_action("gen").suffix_action("copy").render("1")
     assert "mountAction('gen')" in affix

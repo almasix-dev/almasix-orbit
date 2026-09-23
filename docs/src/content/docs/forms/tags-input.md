@@ -5,18 +5,18 @@ description: TagsInput collects a list of string tags with chip chrome, optional
 
 ## Introduction
 
-`TagsInput` renders a chip row plus a text input. State may be a list/tuple of tags or a separator-joined string (default separator `,`). Suggestions use a native `<datalist>`. `.reorderable()` sets `data-reorderable` for client reordering. Dehydrated value is typically the joined string in the input; hosts often normalize to a list.
+`TagsInput` stores an ordered list of string tags. Users type in a draft field and commit with **Enter**, **Tab**, or your configured separator (default `,`). Each tag becomes a removable chip inside a single bordered control. Suggestions use a native `<datalist>`. State is synced to the form host as a list — cast the model attribute to an array/JSON list.
 
 Each variation below includes a detailed explanation, the fluent API to paste into your schema, and light/dark screenshots of the rendered control.
 
 ## Basic tags input
 
-Empty field with placeholder “Add tag…”. Users type and commit tags according to your Alpine/host bridge; chips reflect current state.
+Empty field with placeholder “New tag”. Press Enter to add a chip; click × on a chip to remove it. Backspace on an empty draft removes the last tag.
 
 ```python title="app/orbit/resources/example_resource.py"
 TagsInput.make('tags')
     .label('Tags')
-    .helper_text('Press enter to add a tag.')
+    .helper_text('Press Enter to add a tag.')
 ```
 
 ![Orbit Basic tags input (light)](/examples/light/forms/tags-input/basic.png)
@@ -39,7 +39,7 @@ TagsInput.make('topics')
 
 ## Custom separator
 
-`.separator(';')` changes how string state is split and how chips are joined in the hidden/value input. Keep validation and API consumers aware of the chosen separator.
+`.separator(';')` changes how string state is split when hydrating and which character (besides Enter/Tab) commits a draft tag. Prefer list state on the model when you can.
 
 ```python title="app/orbit/resources/example_resource.py"
 TagsInput.make('labels')
@@ -51,19 +51,26 @@ TagsInput.make('labels')
 
 ![Orbit Custom separator (dark)](/examples/dark/forms/tags-input/separator.png)
 
+## Split keys
+
+`.split_keys([...])` adds extra keys that commit the draft tag. Enter always commits; Tab and your `.separator()` are included by default.
+
+```python title="app/orbit/resources/example_resource.py"
+TagsInput.make('keywords')
+    .label('Keywords')
+    .split_keys([' ', ','])
+```
+
 ## Reorderable tags
 
-`.reorderable()` marks the field for drag/reorder UI in panel assets (`data-reorderable="true"`).
+`.reorderable()` marks the field for client reordering (`data-reorderable`). Use when tag order is meaningful.
 
 ```python title="app/orbit/resources/example_resource.py"
 TagsInput.make('keywords')
     .label('Keywords')
     .reorderable()
-    .suggestions(['seo', 'launch', 'beta'])
 ```
 
 ![Orbit Reorderable tags (light)](/examples/light/forms/tags-input/reorderable.png)
 
 ![Orbit Reorderable tags (dark)](/examples/dark/forms/tags-input/reorderable.png)
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

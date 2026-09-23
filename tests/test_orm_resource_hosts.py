@@ -190,6 +190,9 @@ def test_as_record_dict_and_write_payload() -> None:
     assert _as_record_dict({"id": 1, "created_at": datetime(2026, 1, 1)})["created_at"].startswith(
         "2026"
     )
+    # JSON array/object strings in plain dicts are decoded for form state.
+    assert _as_record_dict({"genres": '["a","b"]'})["genres"] == ["a", "b"]
+    assert _as_record_dict({"meta": '{"x":1}'})["meta"] == {"x": 1}
 
     class BoomAttrs:
         def get_attributes(self):
@@ -210,6 +213,26 @@ def test_as_record_dict_and_write_payload() -> None:
             self.title = "X"
 
     assert _as_record_dict(NonDictAttrs())["title"] == "X"
+
+    class CastedRow:
+        """Simulates ORM raw storage vs casted accessor for array columns."""
+
+        def get_attributes(self):
+            return {"id": 1, "genres": '["rock","jazz"]', "name": "Ada"}
+
+        def get_attribute(self, key: str):
+            raw = self.get_attributes()[key]
+            if key == "genres":
+                import json
+
+                return json.loads(raw)
+            return raw
+
+    assert _as_record_dict(CastedRow()) == {
+        "id": 1,
+        "genres": ["rock", "jazz"],
+        "name": "Ada",
+    }
 
     payload = _orm_write_payload(
         {"id": 1, "title": "A", "status": "draft", "created_at": "x", "extra": 1},

@@ -176,6 +176,28 @@ def test_form_set_property_falls_through_and_nested_list_paths() -> None:
     assert host.data["rows"][0] == "first"
 
 
+def test_sync_data_path_updates_arrays_without_render() -> None:
+    """TagsInput / CheckboxList push lists via sync_data_path (renderless)."""
+    panel = _panel()
+    host = CreateRecordHost.bind(panel=panel, resource=_Rec)()
+    host.mount()
+    host.data = {"title": "Ada", "genres": ["rock"], "platforms": ["spotify"]}
+    host.sync_data_path("data.genres", ["rock", "jazz"])
+    assert host.data["genres"] == ["rock", "jazz"]
+    assert host.should_render() is False
+    host.reset_skip_render()
+    host.sync_data_path("platforms", ["spotify", "apple"])
+    assert host.data["platforms"] == ["spotify", "apple"]
+    assert host.should_render() is False
+    host.sync_data_path("", ["nope"])
+    assert host.data["platforms"] == ["spotify", "apple"]
+    # create() clears skip_render before work, then redirect() sets it again.
+    host.create()
+    assert any(
+        isinstance(r, dict) and r.get("genres") == ["rock", "jazz"] for r in _Rec.records
+    )
+
+
 def test_edit_and_view_render_inject_record_id() -> None:
     panel = _panel()
     edit = EditRecordHost.bind(panel=panel, resource=_Rec)()

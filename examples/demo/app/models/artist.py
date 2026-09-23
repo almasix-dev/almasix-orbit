@@ -19,6 +19,7 @@ class Artist(Model):
     )
     casts = {
         "platforms": "array",
+        "genres": "array",
         "is_active": "bool",
     }
 

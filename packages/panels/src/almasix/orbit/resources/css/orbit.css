@@ -4871,27 +4871,111 @@ html.dark .or-login-logo-dark {
 .or-checkbox-list,
 .or-toggle-buttons,
 .or-key-value-editor,
-.or-repeater,
-.or-tags {
+.or-repeater {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
 }
 
+.or-checkbox-list {
+  width: 100%;
+  align-items: stretch;
+}
+
+.or-options-cols-3 .or-checkbox-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.or-tags-input-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  width: 100%;
+  min-height: 2.65rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: var(--or-input-bg, var(--or-card));
+  cursor: text;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.or-tags-input-wrap:focus-within {
+  border-color: var(--or-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--or-primary) 20%, transparent);
+}
+
 .or-tag {
   display: inline-flex;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: 100%;
+  padding: 0.15rem 0.35rem 0.15rem 0.55rem;
+  border-radius: 0.45rem;
   background: color-mix(in srgb, var(--or-primary) 14%, transparent);
-  color: var(--or-primary-deep);
+  color: var(--or-primary-deep, var(--or-primary));
   font-size: 0.8rem;
   font-weight: 600;
+  line-height: 1.25;
+}
+
+.or-tag-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.or-tag-prefix,
+.or-tag-suffix {
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+.or-tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.or-tag-remove:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--or-primary) 18%, transparent);
 }
 
 .or-tags-input {
   min-width: 8rem;
-  flex: 1;
+  flex: 1 1 8rem;
+  margin: 0;
+  padding: 0.2rem 0.15rem;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+.or-tags-input:focus {
+  outline: none;
+  box-shadow: none !important;
 }
 
 .or-toggle-btn {
@@ -5894,8 +5978,27 @@ html.dark .or-login-logo-dark {
 }
 
 .or-field-FileUpload.or-file-avatar .filepond--root {
-  width: 8.5rem;
+  width: 10rem;
   margin-inline: 0;
+}
+
+.or-field-FileUpload.or-file-avatar .filepond--drop-label {
+  min-height: 10rem;
+  font-size: 0.85rem;
+}
+
+.or-field-FileUpload.or-file-avatar .filepond--panel-root {
+  border-radius: 9999px;
+}
+
+.or-field-FileUpload .filepond--browser.filepond--browser {
+  /* Keep FilePond's hidden native input out of the layout (never show raw chrome). */
+  position: absolute !important;
+  width: 0.1px !important;
+  height: 0.1px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  z-index: -1 !important;
 }
 
 .or-field-FileUpload.or-file-panel .filepond--item {

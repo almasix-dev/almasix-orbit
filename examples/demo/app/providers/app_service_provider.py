@@ -35,4 +35,12 @@ class AppServiceProvider(ServiceProvider):
 
         storage_root = Path(self.app.path("storage", "app"))
         storage_root.mkdir(parents=True, exist_ok=True)
+        public_root = storage_root / "public"
+        public_root.mkdir(parents=True, exist_ok=True)
+        link = Path(self.app.path("public", "storage"))
+        if not link.exists():
+            try:
+                link.symlink_to(public_root, target_is_directory=True)
+            except OSError:
+                pass
         set_upload_storage(FilesystemUploadStorage(base_url="/storage"))
