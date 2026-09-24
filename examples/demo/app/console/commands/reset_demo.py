@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Coroutine
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Coroutine, TypeVar
+from typing import Any, TypeVar
 
 from almasix.console import Command
 from almasix.orm import DB
