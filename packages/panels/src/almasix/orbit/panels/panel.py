@@ -745,12 +745,28 @@ class Panel:
         return self._database_notification_store
 
     def sqlite_notifications(self, path: str = "orbit-notifications.sqlite") -> Self:
-        """Persist the database bell with stdlib SQLite (file path or ``:memory:``)."""
+        """Persist the database bell with stdlib SQLite (file path or ``:memory:``).
+
+        Prefer :meth:`database_notifications_using_almasix` when the app has run
+        ``smith notifications:table`` — that shares the framework inbox table.
+        """
         from almasix.orbit.notifications import SqliteNotificationStore
 
         if not self._database_notifications_enabled:
             self.database_notifications(True)
         return self.database_notifications_store(SqliteNotificationStore(path))
+
+    def database_notifications_using_almasix(self) -> Self:
+        """Persist the bell in Almasix's ``notifications`` table (Filament-style).
+
+        Run ``smith notifications:table`` then ``smith migrate`` first. Enables
+        the bell if it is not already on.
+        """
+        from almasix.orbit.notifications import AlmasixDatabaseNotificationStore
+
+        if not self._database_notifications_enabled:
+            self.database_notifications(True)
+        return self.database_notifications_store(AlmasixDatabaseNotificationStore())
 
     def notifications_url(self) -> str:
         from almasix.orbit.panels.notification_routes import panel_notifications_url

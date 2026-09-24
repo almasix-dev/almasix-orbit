@@ -1,13 +1,13 @@
 ---
 title: Database notifications
-description: Persist notifications to the panel bell — enable, seed, send, poll, position, and mark as read.
+description: Persist notifications to the panel bell using Almasix's notifications table — migrate, enable, send, poll, and mark as read.
 ---
 
 ## Introduction
 
 **Database notifications** stay in a panel **bell** until the user marks them read. The dropdown shows unread items only; **View all** opens the full history deck (newest first, infinite scroll). A detail modal shows the full message and marks it read.
 
-Enable the feature on the panel, optionally seed demo rows, then send new items with `.send_to_database(...)`. Orbit ships an in-memory store by default. For a process that restarts (or multiple workers sharing a file), call `.sqlite_notifications(...)` — that uses stdlib SQLite and implements the same `DatabaseNotificationStore` contract.
+Production apps store those rows in Almasix's polymorphic **`notifications`** table — the same table the framework database channel uses. Generate it with Smith, migrate, mix `Notifiable` onto your user model, then enable the bell with `.database_notifications_using_almasix()`.
 
 ```python title="app/providers/orbit_panel_provider.py"
 from almasix.orbit import Panel
@@ -24,16 +24,44 @@ Panel.make("admin")
             .status("info")
             .read(),
     ])
-    .sqlite_notifications("orbit-notifications.sqlite")
+    .database_notifications_using_almasix()
 ```
 
 ![Orbit Database notifications (light)](/examples/light/notifications/database-notifications.png)
 
 ![Orbit Database notifications (dark)](/examples/dark/notifications/database-notifications.png)
 
+## Prerequisites
+
+### 1. Create the notifications table
+
+```shell
+smith notifications:table
+# or (Laravel 11+ naming)
+smith make:notifications-table
+
+smith migrate
+```
+
+That migration creates UUID `id`, `type`, morph `notifiable_*`, JSON `data`, nullable `read_at`, and timestamps. Orbit writes bell fields (`title`, `body`, `status`, `icon`, `actions`, …) into the `data` column.
+
+### 2. Make users notifiable
+
+```python title="app/models/user.py"
+from almasix.auth import AuthenticatableMixin
+from almasix.notifications import Notifiable
+from almasix.orm import Model
+
+class User(AuthenticatableMixin, Notifiable, Model):
+    fillable = ("name", "email", "password", "remember_token")
+    hidden = ("password", "remember_token")
+```
+
+`Notifiable` is what Almasix uses for `await user.notify(...)` and for morph identity when listing inbox rows. The panel bell scopes by the same morph columns.
+
 ## Enabling the bell
 
-Call `.database_notifications(True)` to enable an empty bell, or pass a sequence of `PanelNotification` / dict seeds (enables and registers items). Optional `position` moves the trigger.
+Call `.database_notifications(True)` (or pass seeds), then `.database_notifications_using_almasix()` so the bell reads and writes the framework table.
 
 ```python title="app/providers/orbit_panel_provider.py"
 from almasix.orbit import Panel
@@ -41,19 +69,18 @@ from almasix.orbit import Panel
 Panel.make("admin")
     .path("admin")
     .database_notifications(True)
-
-Panel.make("admin")
-    .path("admin")
-    .database_notifications(True, position="sidebar")
+    .database_notifications_using_almasix()
+    .database_notifications_polling("30s")
 ```
 
 | Method | Notes |
 |--------|-------|
 | `.database_notifications` | `True` / `False`, or a sequence of seeds |
+| `.database_notifications_using_almasix` | Persist via Almasix `notifications` (recommended) |
 | `.database_notifications_position` | `topbar` (default) or `sidebar` |
 | `.database_notifications_polling` | `'30s'`, ms int, or `None` to disable |
-| `.sqlite_notifications` | SQLite file path or `':memory:'` (also enables the bell) |
 | `.database_notifications_store` | Plug in any `DatabaseNotificationStore` |
+| `.sqlite_notifications` | Optional stdlib SQLite file for tests / no-ORM apps |
 | `.notification` | Append one seed (also enables the feature) |
 
 ![Orbit Database notifications enable (light)](/examples/light/notifications/database-notifications/enable.png)
@@ -62,7 +89,7 @@ Panel.make("admin")
 
 ## Sending database notifications
 
-Use the fluent API’s `.send_to_database(...)` (or `.to_database()` then `.send()`). Pass a user/recipient when your store keys by principal. Set `is_event_dispatched=True` when you want an immediate refresh signal for the bell UI (for example after a live write).
+Use Orbit's fluent API. Pass the signed-in user (or any notifiable) so the row is scoped correctly. Set `is_event_dispatched=True` when you want an immediate refresh signal for the bell UI.
 
 ```python title="app/orbit/notifications/database_send.py"
 from almasix.orbit.notifications import Notification
@@ -78,13 +105,18 @@ Notification.make()
 
 ![Orbit Database notifications send (dark)](/examples/dark/notifications/database-notifications/send.png)
 
-The default `InMemoryDatabaseNotificationStore` is enough for demos and tests. `.sqlite_notifications("orbit-notifications.sqlite")` persists rows with stdlib SQLite (upsert on `id`). Swap in any `DatabaseNotificationStore` via `.database_notifications_store(...)` or `Notifier.use_store(...)` (`save`, `mark_read`, `mark_unread`, `mark_all_read`, `get_for_user`).
+The same `notifications` rows are visible to Almasix helpers:
 
-![Orbit Database notifications SQLite store (light)](/examples/light/notifications/database-notifications/sqlite.png)
+```python title="examples/list_inbox.py"
+unread = await user.unread_notifications()
+await user.mark_notifications_as_read()
+```
 
-![Orbit Database notifications SQLite store (dark)](/examples/dark/notifications/database-notifications/sqlite.png)
+When the bell is enabled, Orbit mounts **GET/POST** `{panel}/orbit-notifications`. The Alpine `orbitDatabaseNotifications` component polls that URL and posts mark-read updates. Rows include `created_at` and are listed **newest first**.
 
-When the bell is enabled, Orbit also mounts **GET/POST** `{panel}/orbit-notifications`. The Alpine `orbitDatabaseNotifications` component polls that URL and posts mark-read updates so the store stays in sync without a full page reload. Rows include a `created_at` timestamp and are listed **newest first**.
+![Orbit Database notifications store (light)](/examples/light/notifications/database-notifications/sqlite.png)
+
+![Orbit Database notifications store (dark)](/examples/dark/notifications/database-notifications/sqlite.png)
 
 ## Notifications deck
 
@@ -102,6 +134,7 @@ from almasix.orbit import Panel
 Panel.make("admin")
     .path("admin")
     .database_notifications(True)
+    .database_notifications_using_almasix()
     .database_notifications_position("sidebar")
 ```
 
@@ -111,7 +144,7 @@ Panel.make("admin")
 
 ## Polling
 
-The Alpine `orbitDatabaseNotifications` component polls on an interval (default **30s**). Pass `'15s'`, a millisecond int, or `None`. When the panel bell is on, each poll hits `{panel}/orbit-notifications` and replaces the list from the store.
+The Alpine `orbitDatabaseNotifications` component polls on an interval (default **30s**). Pass `'15s'`, a millisecond int, or `None`.
 
 ```python title="app/providers/orbit_panel_provider.py"
 from almasix.orbit import Panel
@@ -119,8 +152,8 @@ from almasix.orbit import Panel
 Panel.make("admin")
     .path("admin")
     .database_notifications(True)
+    .database_notifications_using_almasix()
     .database_notifications_polling("15s")
-    .sqlite_notifications("orbit-notifications.sqlite")
 ```
 
 Apps can still listen for `orbit:database-notifications-poll` / dispatch `orbit:database-notifications-refresh` to replace or refresh the list.
@@ -142,5 +175,9 @@ Notification actions can set `.mark_as_read()` / `.mark_as_unread()` for toast/d
 ![Orbit Database notifications mark read (light)](/examples/light/notifications/database-notifications/mark-read.png)
 
 ![Orbit Database notifications mark read (dark)](/examples/dark/notifications/database-notifications/mark-read.png)
+
+## Alternatives (tests and offline)
+
+Unit tests can keep the default in-memory store. Apps without the Almasix ORM table can use `.sqlite_notifications("orbit-notifications.sqlite")` (stdlib SQLite, separate `orbit_notifications` schema). Prefer `.database_notifications_using_almasix()` for real applications.
 
 Related: [Overview](/notifications/overview/), [Broadcast notifications](/notifications/broadcast-notifications/).

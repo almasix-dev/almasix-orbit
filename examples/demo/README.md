@@ -41,10 +41,11 @@ sibling repos exist; otherwise it uses PyPI.
 
 ## Notifications
 
-Database notifications live in the **same** SQLite file as users and the
-catalog (`orbit_notifications` table — see migration
-`0001_01_01_000003_create_orbit_notifications_table`).
+Database notifications use Almasix's polymorphic **`notifications`** table
+(generate with `smith notifications:table`, then migrate). The panel wires
+`.database_notifications_using_almasix()` so the bell shares that inbox.
 
+- **User:** `User` mixes in `Notifiable`.
 - **Seed:** `NotificationSeeder` writes a few unread rows for `demo@orbit.test`.
 - **Live:** creating, updating, or deleting Artists / Albums / Tracks notifies
   the signed-in user (header bell). Try saving an artist while logged in.
@@ -59,7 +60,7 @@ Sessions use the **cookie** driver, so they are not stored in SQLite. A full
 smith demo:reset
 ```
 
-That truncates `tracks` → `albums` → `artists` and `orbit_notifications`, then
+That truncates `tracks` → `albums` → `artists` and `notifications`, then
 runs `db:seed` again. The `users` table is untouched, so existing cookie
 sessions stay valid.
 

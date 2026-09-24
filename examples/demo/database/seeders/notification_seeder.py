@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 from almasix.orm import Seeder
-from almasix.orbit.notifications import Notification, SqliteNotificationStore, get_notifier
+from almasix.orbit.notifications import (
+    AlmasixDatabaseNotificationStore,
+    Notification,
+    get_notifier,
+)
 
 from app.models.user import User
-
-
-def _notification_db_path() -> str:
-    from almasix.config import env
-
-    return str(env("DB_DATABASE", "database/database.sqlite") or "database/database.sqlite")
 
 
 class NotificationSeeder(Seeder):
@@ -20,8 +18,7 @@ class NotificationSeeder(Seeder):
         if user is None:
             return
 
-        store = SqliteNotificationStore(_notification_db_path())
-        get_notifier().use_store(store)
+        get_notifier().use_store(AlmasixDatabaseNotificationStore())
 
         seeds = [
             (

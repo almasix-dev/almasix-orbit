@@ -1,5 +1,6 @@
 from almasix.orbit.notifications.actions import NotificationAction
 from almasix.orbit.notifications.alignment import Alignment, Notifications, VerticalAlignment
+from almasix.orbit.notifications.almasix_store import AlmasixDatabaseNotificationStore
 from almasix.orbit.notifications.broadcast import (
     BroadcastHub,
     CallbackBroadcastHub,
@@ -32,6 +33,7 @@ from almasix.orbit.notifications.testing import (
 
 __all__ = [
     "Alignment",
+    "AlmasixDatabaseNotificationStore",
     "BroadcastHub",
     "CallbackBroadcastHub",
     "DatabaseNotificationStore",

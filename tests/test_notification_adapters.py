@@ -523,3 +523,74 @@ def test_mount_panel_registers_notification_routes() -> None:
     assert b"FromRoute" in live_bytes
 
     get_notifier().use_store(panel.get_notification_store() or InMemoryDatabaseNotificationStore())
+
+
+@pytest.fixture
+async def notifications_db() -> Any:
+    from almasix.notifications import ensure_tables
+    from almasix.orm import DatabaseManager, set_manager
+
+    manager = DatabaseManager(
+        {"default": "sqlite", "connections": {"sqlite": {"driver": "sqlite", "database": ":memory:"}}}
+    )
+    set_manager(manager)
+    await ensure_tables()
+    try:
+        yield manager
+    finally:
+        await manager.disconnect()
+        set_manager(None)
+
+
+def test_almasix_store_round_trip_and_scoping(notifications_db: Any) -> None:
+    del notifications_db
+    from almasix.orbit.notifications import AlmasixDatabaseNotificationStore
+
+    store = AlmasixDatabaseNotificationStore()
+    ada = OrbitUser.make().name("Ada").email("ada@test")
+    # Give a stable id for morph scoping (OrbitUser may not have get_key).
+    object.__setattr__(ada, "id", 42)
+
+    store.save(
+        {
+            "id": "welcome",
+            "title": "Hello",
+            "body": "World",
+            "status": "success",
+            "icon": "heroicon-o-bell",
+            "actions": [{"name": "ok"}],
+            "data": {"k": "v"},
+            "read": False,
+        },
+        user=ada,
+    )
+    bob = OrbitUser.make().name("Bob").email("bob@test")
+    object.__setattr__(bob, "id", 99)
+    store.save({"id": "bob-note", "title": "Bob only"}, user=bob)
+
+    ada_rows = store.get_for_user(ada)
+    assert len(ada_rows) == 1
+    assert ada_rows[0].title == "Hello"
+    assert ada_rows[0].body == "World"
+    assert ada_rows[0].status == "success"
+    assert ada_rows[0].data.get("k") == "v"
+    assert ada_rows[0].read is False
+
+    store.mark_read("welcome", user=ada)
+    assert store.get_for_user(ada)[0].read is True
+    store.mark_unread("welcome", user=ada)
+    assert store.get_for_user(ada)[0].read is False
+    store.mark_all_read(user=ada)
+    assert store.get_for_user(ada)[0].read is True
+
+    # Bob cannot mark Ada's row when scoped.
+    store.mark_unread("welcome", user=bob)
+    assert store.get_for_user(ada)[0].read is True
+
+    panel = (
+        Panel.make("admin")
+        .path("admin")
+        .database_notifications_using_almasix()
+    )
+    assert panel.database_notifications_enabled()
+    assert isinstance(panel.get_notification_store(), AlmasixDatabaseNotificationStore)

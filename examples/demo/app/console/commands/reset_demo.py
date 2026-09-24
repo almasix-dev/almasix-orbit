@@ -45,7 +45,7 @@ class ResetDemo(Command):
         await DB.table("artists").truncate()
         # Clear bell rows so seeded + activity notifications feel fresh.
         try:
-            await DB.table("orbit_notifications").truncate()
+            await DB.table("notifications").truncate()
         except Exception:
             # Table may not exist until migrate runs on older DBs.
             pass

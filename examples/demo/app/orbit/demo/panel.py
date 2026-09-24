@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from almasix.config import env
 from almasix.orbit import Panel, PanelRegistry
 from almasix.orbit.panels.navigation import NavigationGroup
 
@@ -18,11 +17,6 @@ from app.orbit.demo.widgets import (
     StreamsChart,
     WelcomeWidget,
 )
-
-
-def _notification_sqlite_path() -> str:
-    """Use the app database so bell rows live next to users/catalog."""
-    return str(env("DB_DATABASE", "database/database.sqlite") or "database/database.sqlite")
 
 
 def register_demo_panel(registry: PanelRegistry) -> Panel:
@@ -59,11 +53,11 @@ def register_demo_panel(registry: PanelRegistry) -> Panel:
                 RecentAlbumsTable,
             ]
         )
-        # Bell persists in the app SQLite (same file as users/catalog). Seeds for
-        # demo@orbit.test come from NotificationSeeder; catalog edits notify live.
+        # Framework ``notifications`` table (smith notifications:table). Seeds
+        # for demo@orbit.test come from NotificationSeeder; catalog edits notify live.
         .database_notifications(True)
         .database_notifications_polling("30s")
-        .sqlite_notifications(_notification_sqlite_path())
+        .database_notifications_using_almasix()
         .spa()
         .discover_panel_dirs()
     )
