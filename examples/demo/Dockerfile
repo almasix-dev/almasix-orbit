@@ -33,8 +33,11 @@ root = resources.files("almasix.orbit")
 for rel, name in (
     ("resources/css/orbit.css", "orbit.css"),
     ("resources/js/orbit.js", "orbit.js"),
+    ("resources/js/orbit-datepicker.js", "orbit-datepicker.js"),
     ("resources/vendor/filepond.bundle.min.js", "filepond.bundle.min.js"),
     ("resources/vendor/filepond.bundle.min.css", "filepond.bundle.min.css"),
+    ("resources/vendor/flowbite-datepicker.min.js", "flowbite-datepicker.min.js"),
+    ("resources/vendor/flowbite-datepicker.min.css", "flowbite-datepicker.min.css"),
 ):
     src = root.joinpath(rel)
     if src.is_file():

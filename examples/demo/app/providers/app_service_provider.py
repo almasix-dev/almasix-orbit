@@ -10,13 +10,16 @@ from almasix.providers import ServiceProvider
 
 
 def _copy_vendor(dest_dir: Path) -> None:
-    """Copy Orbit CSS/JS (+ FilePond) from the installed ``almasix-orbit`` wheel."""
+    """Copy Orbit CSS/JS (+ FilePond / Flowbite datepicker) from the installed wheel."""
     root = resources.files("almasix.orbit")
     mapping = (
         ("resources/css/orbit.css", "orbit.css"),
         ("resources/js/orbit.js", "orbit.js"),
+        ("resources/js/orbit-datepicker.js", "orbit-datepicker.js"),
         ("resources/vendor/filepond.bundle.min.js", "filepond.bundle.min.js"),
         ("resources/vendor/filepond.bundle.min.css", "filepond.bundle.min.css"),
+        ("resources/vendor/flowbite-datepicker.min.js", "flowbite-datepicker.min.js"),
+        ("resources/vendor/flowbite-datepicker.min.css", "flowbite-datepicker.min.css"),
     )
     for rel, name in mapping:
         src = root.joinpath(rel)

@@ -7,6 +7,7 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | Order | Feature | Docs | Status |
 |------:|---------|------|--------|
 | 1–98 | Prior modules (tables → notifications) | (prior) | **closed** |
+| 120 | Date / time pickers (Flowbite + Week/Month/Year) | `docs/src/content/docs/forms/{date,date-time,time,week,month,year}-picker.md` | **closed** |
 | 99 | Multi-tenancy | `docs/src/content/docs/users/tenancy.md` | **closed** |
 | 100 | Infolists UI default layout + docs depth | `docs/src/content/docs/infolists/overview.md` | **closed** |
 | 101 | Plugins marketplace | `docs/src/content/docs/plugins/*` | **closed** |

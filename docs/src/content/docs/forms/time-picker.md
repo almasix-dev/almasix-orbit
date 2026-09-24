@@ -1,69 +1,58 @@
 ---
 title: Time picker
-description: TimePicker is a native time input sharing DatePicker min/max and display-format helpers.
+description: TimePicker uses Orbit’s time stepper by default (or a native time input) and stores HH:mm or HH:mm:ss.
 ---
 
 ## Introduction
 
-`TimePicker` subclasses `DatePicker` with `type="time"`. Use it for opening hours, shift starts, and time-only preferences. Min/max accept time strings such as `09:00` / `17:30`.
-
-Each variation below includes a detailed explanation, the fluent API to paste into your schema, and light/dark screenshots of the rendered control.
+`TimePicker` stores a time-of-day as `HH:mm` (or `HH:mm:ss` with `.seconds()`). The default UI is Orbit’s stepper popover with optional 12-hour display. Call `.native(True)` for `<input type="time">`.
 
 ## Basic time picker
 
-Renders a browser time control. Dehydrated values follow the browser’s time string (often `HH:MM`).
-
 ```python title="app/orbit/resources/example_resource.py"
-TimePicker.make('opens_at')
-    .label('Opens at')
+TimePicker.make('remind_at')
+    .label('Remind at')
 ```
 
 ![Orbit Basic time picker (light)](/examples/light/forms/time-picker/basic.png)
 
 ![Orbit Basic time picker (dark)](/examples/dark/forms/time-picker/basic.png)
 
-## Bounded range
-
-Constrain selectable times with `.min_date()` / `.max_date()` (same helpers as DatePicker — they emit `min`/`max` regardless of date vs time).
+## Twelve-hour display and minute step
 
 ```python title="app/orbit/resources/example_resource.py"
-TimePicker.make('closes_at')
-    .label('Closes at')
-    .min_date('09:00')
-    .max_date('17:00')
+TimePicker.make('opens_at')
+    .label('Opens at')
+    .hours12()
+    .minute_step(15)
 ```
 
-![Orbit Bounded range (light)](/examples/light/forms/time-picker/min-max.png)
+![Orbit Twelve-hour display (light)](/examples/light/forms/time-picker/hours12.png)
 
-![Orbit Bounded range (dark)](/examples/dark/forms/time-picker/min-max.png)
+![Orbit Twelve-hour display (dark)](/examples/dark/forms/time-picker/hours12.png)
 
-## Display format hint
-
-`.display_format()` stores a client hint on `data-display-format` without server-side reformatting.
+## Seconds
 
 ```python title="app/orbit/resources/example_resource.py"
-TimePicker.make('reminder_at')
-    .label('Reminder')
-    .display_format('H:i')
+TimePicker.make('exact')
+    .label('Exact time')
+    .seconds()
 ```
 
-![Orbit Display format hint (light)](/examples/light/forms/time-picker/display-format.png)
+![Orbit Seconds (light)](/examples/light/forms/time-picker/seconds.png)
 
-![Orbit Display format hint (dark)](/examples/dark/forms/time-picker/display-format.png)
+![Orbit Seconds (dark)](/examples/dark/forms/time-picker/seconds.png)
 
-## Step and input mode
-
-Inherited Field helpers `.step()` and `.input_mode()` emit attributes on the control when you need minute granularity or a numeric keypad. Pair with `.required()` for mandatory windows.
+## Native browser input
 
 ```python title="app/orbit/resources/example_resource.py"
-TimePicker.make('break_at')
-    .label('Break')
-    .step(300)
-    .required()
+TimePicker.make('slot')
+    .label('Time slot')
+    .native(True)
+    .min_date('08:00')
+    .max_date('18:00')
 ```
 
-![Orbit Step and input mode (light)](/examples/light/forms/time-picker/step.png)
+![Orbit Native time (light)](/examples/light/forms/time-picker/native.png)
 
-![Orbit Step and input mode (dark)](/examples/dark/forms/time-picker/step.png)
-
-Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).
+![Orbit Native time (dark)](/examples/dark/forms/time-picker/native.png)

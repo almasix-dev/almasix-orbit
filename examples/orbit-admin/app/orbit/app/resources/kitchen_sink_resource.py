@@ -9,10 +9,12 @@ from almasix.orbit.forms import (
     CheckboxList,
     ColorPicker,
     DatePicker,
+    DateTimePicker,
     FileUpload,
     Form,
     KeyValue,
     MoneyInput,
+    MonthPicker,
     MorphToSelect,
     Radio,
     Repeater,
@@ -21,8 +23,11 @@ from almasix.orbit.forms import (
     TagsInput,
     Textarea,
     TextInput,
+    TimePicker,
     Toggle,
     ToggleButtons,
+    WeekPicker,
+    YearPicker,
 )
 from almasix.orbit.panels.resource import Resource
 from almasix.orbit.schemas import (
@@ -152,6 +157,20 @@ class KitchenSinkResource(Resource):
                                     DatePicker.make("joined")
                                     .min_date("2020-01-01")
                                     .label("Joined"),
+                                    DateTimePicker.make("reviewed_at")
+                                    .label("Reviewed at")
+                                    .seconds()
+                                    .hours12(),
+                                    TimePicker.make("opens_at")
+                                    .label("Opens at")
+                                    .hours12()
+                                    .minute_step(15),
+                                    WeekPicker.make("sprint_week").label("Sprint week"),
+                                    MonthPicker.make("billing_month").label("Billing month"),
+                                    YearPicker.make("vintage").label("Vintage"),
+                                    DatePicker.make("native_day")
+                                    .label("Native date")
+                                    .native(True),
                                     FileUpload.make("avatar")
                                     .avatar()
                                     .image_editor()

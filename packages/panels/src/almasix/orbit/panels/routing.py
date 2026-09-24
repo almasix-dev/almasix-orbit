@@ -1026,6 +1026,7 @@ def mount_orbit_assets(router: Any) -> None:
     """
     css_path = _ASSETS / "css" / "orbit.css"
     js_path = _ASSETS / "js" / "orbit.js"
+    datepicker_js_path = _ASSETS / "js" / "orbit-datepicker.js"
     vendor_dir = _ASSETS / "vendor"
 
     async def orbit_css() -> Any:
@@ -1040,6 +1041,16 @@ def mount_orbit_assets(router: Any) -> None:
         body = js_path.read_text(encoding="utf-8") if js_path.is_file() else "/* missing orbit.js */"
         return Response(body, media_type="application/javascript; charset=utf-8")
 
+    async def orbit_datepicker_js() -> Any:
+        from almasix.http import Response
+
+        body = (
+            datepicker_js_path.read_text(encoding="utf-8")
+            if datepicker_js_path.is_file()
+            else "/* missing orbit-datepicker.js */"
+        )
+        return Response(body, media_type="application/javascript; charset=utf-8")
+
     def _vendor_js(filename: str):
         async def serve() -> Any:
             from almasix.http import Response
@@ -1047,6 +1058,16 @@ def mount_orbit_assets(router: Any) -> None:
             path = vendor_dir / filename
             body = path.read_text(encoding="utf-8") if path.is_file() else f"/* missing {filename} */"
             return Response(body, media_type="application/javascript; charset=utf-8")
+
+        return serve
+
+    def _vendor_css(filename: str, *, missing: str):
+        async def serve() -> Any:
+            from almasix.http import Response
+
+            path = vendor_dir / filename
+            body = path.read_text(encoding="utf-8") if path.is_file() else missing
+            return Response(body, media_type="text/css; charset=utf-8")
 
         return serve
 
@@ -1058,6 +1079,13 @@ def mount_orbit_assets(router: Any) -> None:
         router.add(["GET"], "/vendor/orbit/orbit.css", orbit_css, name="orbit.assets.css")
     if "/vendor/orbit/orbit.js" not in uris:
         router.add(["GET"], "/vendor/orbit/orbit.js", orbit_js, name="orbit.assets.js")
+    if "/vendor/orbit/orbit-datepicker.js" not in uris:
+        router.add(
+            ["GET"],
+            "/vendor/orbit/orbit-datepicker.js",
+            orbit_datepicker_js,
+            name="orbit.assets.datepicker.js",
+        )
     if "/vendor/orbit/chart.umd.min.js" not in uris:
         router.add(
             ["GET"],
@@ -1079,24 +1107,33 @@ def mount_orbit_assets(router: Any) -> None:
             _vendor_js("filepond.bundle.min.js"),
             name="orbit.assets.filepond.js",
         )
-
-    async def filepond_css() -> Any:
-        from almasix.http import Response
-
-        path = vendor_dir / "filepond.bundle.min.css"
-        body = (
-            path.read_text(encoding="utf-8")
-            if path.is_file()
-            else "/* missing filepond.bundle.min.css */"
+    if "/vendor/orbit/flowbite-datepicker.min.js" not in uris:
+        router.add(
+            ["GET"],
+            "/vendor/orbit/flowbite-datepicker.min.js",
+            _vendor_js("flowbite-datepicker.min.js"),
+            name="orbit.assets.flowbite.datepicker.js",
         )
-        return Response(body, media_type="text/css; charset=utf-8")
 
     if "/vendor/orbit/filepond.bundle.min.css" not in uris:
         router.add(
             ["GET"],
             "/vendor/orbit/filepond.bundle.min.css",
-            filepond_css,
+            _vendor_css(
+                "filepond.bundle.min.css",
+                missing="/* missing filepond.bundle.min.css */",
+            ),
             name="orbit.assets.filepond.css",
+        )
+    if "/vendor/orbit/flowbite-datepicker.min.css" not in uris:
+        router.add(
+            ["GET"],
+            "/vendor/orbit/flowbite-datepicker.min.css",
+            _vendor_css(
+                "flowbite-datepicker.min.css",
+                missing="/* missing flowbite-datepicker.min.css */",
+            ),
+            name="orbit.assets.flowbite.datepicker.css",
         )
 
 

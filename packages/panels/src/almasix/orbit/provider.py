@@ -42,7 +42,13 @@ class OrbitServiceProvider(ServiceProvider):
                 _HERE
                 / "resources"
                 / "js"
-                / "orbit.js": self.app.path("public", "vendor", "orbit", "orbit.js")
+                / "orbit.js": self.app.path("public", "vendor", "orbit", "orbit.js"),
+                _HERE
+                / "resources"
+                / "js"
+                / "orbit-datepicker.js": self.app.path(
+                    "public", "vendor", "orbit", "orbit-datepicker.js"
+                ),
             },
             "orbit-assets",
         )
@@ -71,6 +77,18 @@ class OrbitServiceProvider(ServiceProvider):
                 / "vendor"
                 / "filepond.bundle.min.css": self.app.path(
                     "public", "vendor", "orbit", "filepond.bundle.min.css"
+                ),
+                _HERE
+                / "resources"
+                / "vendor"
+                / "flowbite-datepicker.min.js": self.app.path(
+                    "public", "vendor", "orbit", "flowbite-datepicker.min.js"
+                ),
+                _HERE
+                / "resources"
+                / "vendor"
+                / "flowbite-datepicker.min.css": self.app.path(
+                    "public", "vendor", "orbit", "flowbite-datepicker.min.css"
                 ),
             },
             "orbit-assets",

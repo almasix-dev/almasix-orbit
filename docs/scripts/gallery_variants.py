@@ -32,6 +32,7 @@ from almasix.orbit.forms.components import (
     MarkdownEditor,
     ModalTableSelect,
     MoneyInput,
+    MonthPicker,
     MorphToSelect,
     MultiSelect,
     OneTimeCodeInput,
@@ -49,6 +50,8 @@ from almasix.orbit.forms.components import (
     Toggle,
     ToggleButtons,
     ViewField,
+    WeekPicker,
+    YearPicker,
 )
 from almasix.orbit.forms.form import Form
 from almasix.orbit.infolists import (
@@ -615,7 +618,7 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .disabled()
             .render(True),
         ),
-        # Date pickers
+        # Date pickers (Flowbite default)
         "forms/date-picker/basic": (
             "Date picker — basic",
             DatePicker.make("starts").label("Starts on").render("2026-09-18"),
@@ -628,18 +631,11 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .max_date("2026-12-31")
             .render("2026-06-15"),
         ),
-        "forms/date-picker/display-format": (
-            "Date picker — display format",
+        "forms/date-picker/native": (
+            "Date picker — native",
             DatePicker.make("starts")
             .label("Starts on")
-            .display_format("d/m/Y")
-            .render("2026-09-18"),
-        ),
-        "forms/date-picker/non-native": (
-            "Date picker — non-native",
-            DatePicker.make("starts")
-            .label("Starts on")
-            .native(False)
+            .native(True)
             .render("2026-09-18"),
         ),
         "forms/date-time-picker/basic": (
@@ -654,42 +650,57 @@ def build_form_variants() -> dict[str, tuple[str, str]]:
             .max_date("2026-12-31")
             .render("2026-09-18T14:30"),
         ),
-        "forms/date-time-picker/display-format": (
-            "Date time picker — display format",
+        "forms/date-time-picker/seconds": (
+            "Date time picker — seconds + 12h",
             DateTimePicker.make("published_at")
             .label("Published at")
-            .display_format("Y-m-d H:i")
-            .render("2026-09-18T09:00"),
+            .seconds()
+            .hours12()
+            .render("2026-09-18T09:00:00"),
         ),
-        "forms/date-time-picker/non-native": (
-            "Date time picker — non-native",
+        "forms/date-time-picker/native": (
+            "Date time picker — native",
             DateTimePicker.make("published_at")
             .label("Published at")
-            .native(False)
+            .native(True)
             .render("2026-09-18T09:00"),
         ),
         "forms/time-picker/basic": (
             "Time picker — basic",
             TimePicker.make("remind_at").label("Remind at").render("09:00"),
         ),
-        "forms/time-picker/min-max": (
-            "Time picker — min/max",
+        "forms/time-picker/hours12": (
+            "Time picker — 12-hour",
+            TimePicker.make("opens_at")
+            .label("Opens at")
+            .hours12()
+            .minute_step(15)
+            .render("09:00"),
+        ),
+        "forms/time-picker/seconds": (
+            "Time picker — seconds",
+            TimePicker.make("exact").label("Exact time").seconds().render("09:00:30"),
+        ),
+        "forms/time-picker/native": (
+            "Time picker — native",
             TimePicker.make("slot")
             .label("Time slot")
+            .native(True)
             .min_date("08:00")
             .max_date("18:00")
             .render("10:30"),
         ),
-        "forms/time-picker/display-format": (
-            "Time picker — display format",
-            TimePicker.make("remind_at")
-            .label("Remind at")
-            .display_format("H:i")
-            .render("09:00"),
+        "forms/week-picker/basic": (
+            "Week picker — basic",
+            WeekPicker.make("sprint").label("Sprint week").render("2026-09-14"),
         ),
-        "forms/time-picker/step": (
-            "Time picker — step",
-            TimePicker.make("slot").label("Time slot").step(900).render("10:30"),
+        "forms/month-picker/basic": (
+            "Month picker — basic",
+            MonthPicker.make("billing_month").label("Billing month").render("2026-09-01"),
+        ),
+        "forms/year-picker/basic": (
+            "Year picker — basic",
+            YearPicker.make("vintage").label("Vintage year").render("2026"),
         ),
         # File upload
         "forms/file-upload/basic": (

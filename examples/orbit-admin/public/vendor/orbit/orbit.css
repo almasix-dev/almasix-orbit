@@ -6110,3 +6110,182 @@ html.dark .or-field-FileUpload .filepond--panel-root,
   color: var(--or-ink-soft);
   pointer-events: none;
 }
+
+/* —— Date / time pickers (Flowbite host) —— */
+.or-datepicker {
+  width: 100%;
+}
+.or-datepicker__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+.or-datepicker__icon {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  display: flex;
+  align-items: center;
+  padding-inline-start: 0.65rem;
+  color: var(--or-muted);
+  pointer-events: none;
+}
+.or-datepicker__host {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.or-datepicker__input,
+.or-datepicker__time {
+  width: 100%;
+  padding-inline-start: 2.35rem;
+}
+.or-datepicker__time-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 9.5rem;
+}
+.or-datepicker--datetime .or-datepicker__time-wrap {
+  flex: 1;
+  min-width: 8.5rem;
+}
+.or-datepicker--time .or-datepicker__time-wrap {
+  flex: 1;
+  min-width: 100%;
+}
+.or-datepicker.is-disabled .or-input {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.datepicker-dropdown {
+  z-index: 1200;
+}
+.datepicker .datepicker-cell.today:not(.selected) {
+  color: var(--or-primary-deep);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px var(--or-primary);
+  background-color: var(--or-primary-wash);
+}
+.datepicker .datepicker-cell.today.selected {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, white 70%, transparent);
+}
+html.dark .datepicker .datepicker-cell.today:not(.selected),
+.dark .datepicker .datepicker-cell.today:not(.selected) {
+  color: var(--or-primary-soft);
+  background-color: var(--or-primary-wash-strong);
+  box-shadow: inset 0 0 0 2px var(--or-primary-soft);
+}
+.or-timepicker__control {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+.or-timepicker__input {
+  width: 100%;
+  padding-inline-end: 2.25rem;
+}
+.or-timepicker__toggle {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--or-muted);
+  cursor: pointer;
+}
+.or-timepicker__toggle:hover {
+  color: var(--or-ink);
+}
+.or-timepicker {
+  position: absolute;
+  inset-inline-start: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 1300;
+  min-width: 100%;
+  width: max-content;
+  border: 1px solid var(--or-line);
+  border-radius: 0.65rem;
+  background: var(--or-surface);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--or-ink) 14%, transparent);
+  padding: 0.65rem;
+}
+.or-timepicker__steppers {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+.or-timepicker__seconds {
+  display: contents;
+}
+.or-timepicker__stepper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 2.5rem;
+}
+.or-timepicker__meridiem {
+  margin-inline-start: 0.25rem;
+}
+.or-timepicker__spin {
+  width: 1.75rem;
+  height: 1.5rem;
+  border: 1px solid var(--or-line);
+  border-radius: 0.35rem;
+  background: var(--or-surface-hover);
+  color: var(--or-ink);
+  cursor: pointer;
+  line-height: 1;
+  font: inherit;
+}
+.or-timepicker__spin:hover {
+  border-color: var(--or-primary);
+  color: var(--or-primary-deep);
+}
+.or-timepicker__digit {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 1.05rem;
+  min-width: 2rem;
+  text-align: center;
+}
+.or-timepicker__sep {
+  font-weight: 700;
+  padding-bottom: 1.1rem;
+  color: var(--or-muted);
+}
+.or-timepicker__unit {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--or-muted);
+  min-height: 0.9rem;
+}
+.or-timepicker__chips {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--or-line);
+}
+.or-timepicker__chip {
+  appearance: none;
+  border: 1px solid var(--or-line);
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--or-ink);
+}
+.or-timepicker__chip:hover {
+  background: var(--or-primary-wash);
+  border-color: var(--or-primary);
+}
