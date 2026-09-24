@@ -1,6 +1,8 @@
 name: Deploy demo
 
 # Redeploy the Orbit Records demo on Render after CI passes on main.
+# The demo installs Orbit / Almasix / Conduit from PyPI only — package-tree
+# changes do not affect production until examples/demo/pyproject.toml bumps.
 # Requires repo secret RENDER_DEPLOY_HOOK_URL (Render → service → Settings → Deploy Hook).
 # Turn Render Auto-Deploy Off so this workflow owns production deploys.
 
@@ -51,7 +53,7 @@ jobs:
           fi
           echo "Changed files:"
           echo "$CHANGED"
-          if echo "$CHANGED" | grep -qE '^(examples/demo/|packages/|\.github/workflows/deploy-demo\.yml)'; then
+          if echo "$CHANGED" | grep -qE '^(examples/demo/|\.github/workflows/deploy-demo\.yml)'; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
           else
             echo "relevant=false" >> "$GITHUB_OUTPUT"

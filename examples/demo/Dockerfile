@@ -1,9 +1,10 @@
 # Production image for the Orbit Records demo (Render / any Docker host).
 #
-# Build from the monorepo root (so packages/combined is available):
-#   docker build -f examples/demo/Dockerfile -t orbit-demo .
+# Build from this directory (PyPI packages only — no monorepo path installs):
+#   docker build -f Dockerfile -t orbit-demo .
 #
-# Almasix + Conduit come from PyPI; Orbit is installed from this checkout.
+# Or from the monorepo root:
+#   docker build -f examples/demo/Dockerfile -t orbit-demo examples/demo
 
 FROM python:3.13-slim
 
@@ -17,15 +18,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     SESSION_DRIVER=cookie \
     SESSION_SECURE_COOKIE=true
 
-COPY examples/demo/ /app/
-COPY packages/combined /tmp/orbit-combined
+COPY . /app/
 
 RUN pip install --no-cache-dir \
-      "almasix[conduit]>=0.9.4" \
-      "almasix-conduit>=0.2.1" \
-      /tmp/orbit-combined \
       . \
-    && rm -rf /tmp/orbit-combined \
     && mkdir -p /app/database /app/storage/app /app/public/vendor/orbit \
     && python - <<'PY'
 from importlib import resources
@@ -50,6 +46,6 @@ PY
 
 EXPOSE 8000
 
-COPY examples/demo/scripts/entrypoint.sh /entrypoint.sh
+COPY scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]

@@ -1,18 +1,20 @@
 # Render Blueprint — free web service for the Orbit Records demo.
 # https://render.com/docs/blueprint-spec
 #
-# Build context is the monorepo root (Dockerfile copies examples/demo +
-# packages/combined). SQLite on Free is ephemeral (wiped on spin-down /
-# redeploy). The container entrypoint runs ``smith migrate --force --seed`` on
-# every boot so demo data returns. For durable SQLite later: upgrade to Starter
-# and attach a disk at /app/database ($0.25/GB/mo).
+# Build context is ``examples/demo`` (PyPI ``almasix-orbit`` / ``almasix`` /
+# ``almasix-conduit`` only — no monorepo path installs). SQLite on Free is
+# ephemeral (wiped on spin-down / redeploy). The container entrypoint runs
+# ``smith migrate --force --seed`` on every boot so demo data returns. For
+# durable SQLite later: upgrade to Starter and attach a disk at /app/database
+# ($0.25/GB/mo).
 
 services:
   - type: web
     name: orbit-demo
     runtime: docker
     plan: free
-    dockerfilePath: ./examples/demo/Dockerfile
+    rootDir: examples/demo
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /login
     envVars:
