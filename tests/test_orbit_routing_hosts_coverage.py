@@ -390,12 +390,21 @@ def test_mount_dashboard_pages_logout_and_assets(monkeypatch) -> None:
     assert any(getattr(r, "uri", "") == "/vendor/orbit/orbit.css" for r in assets_router.routes)
     assert any(getattr(r, "uri", "") == "/vendor/orbit/filepond.bundle.min.js" for r in assets_router.routes)
     assert any(getattr(r, "uri", "") == "/vendor/orbit/filepond.bundle.min.css" for r in assets_router.routes)
+    assert any(getattr(r, "uri", "") == "/vendor/orbit/orbit-datepicker.js" for r in assets_router.routes)
+    assert any(
+        getattr(r, "uri", "") == "/vendor/orbit/flowbite-datepicker.min.js"
+        for r in assets_router.routes
+    )
     css_route = next(r for r in assets_router.routes if r.uri.endswith("orbit.css"))
     js_route = next(r for r in assets_router.routes if r.uri.endswith("orbit.js"))
+    dp_route = next(r for r in assets_router.routes if r.uri.endswith("orbit-datepicker.js"))
+    fb_js = next(r for r in assets_router.routes if r.uri.endswith("flowbite-datepicker.min.js"))
     pond_js = next(r for r in assets_router.routes if r.uri.endswith("filepond.bundle.min.js"))
     pond_css = next(r for r in assets_router.routes if r.uri.endswith("filepond.bundle.min.css"))
     assert asyncio.run(css_route.action()) is not None
     assert asyncio.run(js_route.action()) is not None
+    assert asyncio.run(dp_route.action()) is not None
+    assert asyncio.run(fb_js.action()) is not None
     assert asyncio.run(pond_js.action()) is not None
     assert asyncio.run(pond_css.action()) is not None
     mount_orbit_assets(assets_router)  # idempotent

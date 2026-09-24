@@ -491,15 +491,6 @@ def _parse_table_column(rule: str) -> tuple[str, str | None]:
     return table, column
 
 
-def _resolve_date_bound(spec: str, state: dict[str, Any]) -> date | None:
-    parsed = _parse_date(spec)
-    if parsed is not None and (len(spec) >= 8 and spec[0:4].isdigit()):
-        return parsed
-    if spec in state:
-        return _parse_date(state.get(spec))
-    return _parse_date(spec)
-
-
 def _resolve_temporal_bound(spec: str, state: dict[str, Any]) -> datetime | None:
     """Resolve an after/before bound as a comparable datetime (date or time)."""
     text = str(spec or "").strip()
