@@ -24,7 +24,7 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 | 104 | Import / export job runners | `docs/src/content/docs/actions/{import,export}.md` | **closed** |
 | 105 | Query builder polish | `docs/src/content/docs/query-builder/overview.md` | **closed** |
 | 106 | Users / MFA (TOTP + email SMTP) | `docs/src/content/docs/users/multi-factor-authentication.md` | **closed** |
-| 107 | Notifications production adapters (SQLite store + broadcast hub + `/orbit-live`) | `docs/src/content/docs/notifications/{database,broadcast}-notifications.md` | **closed** |
+| 107 | Notifications production adapters (Almasix `notifications` table + broadcast hub + `/orbit-live`) | `docs/src/content/docs/notifications/{database,broadcast}-notifications.md` | **closed** |
 | 108 | Panels platform (SPA mode, billing adapters, multi-panel registry) | `docs/src/content/docs/panels/configuration.md` | **closed** |
 | 109 | Docs completeness pass (thin pages, unique shots, alignment) | `docs/src/content/docs/**` | **closed** |
 | 110 | Support toolkit polish | `docs/src/content/docs/support/*` | **closed** |
@@ -87,7 +87,7 @@ Process: see [`.cursor/rules/feature-polish.mdc`](rules/feature-polish.mdc).
 
 ## Notifications production adapters — closed
 
-**Bar:** `SqliteNotificationStore` (stdlib sqlite3) for the database bell, `MemoryBroadcastHub` / `CallbackBroadcastHub` published from `.broadcast()`, panel GET/POST `/orbit-notifications` and GET `/orbit-live` with Alpine polling, orbit-admin sample, Orbit-first docs + unique gallery shots, 100% coverage.
+**Bar:** Panel bell persists via Almasix `notifications` table (`.database_notifications_using_almasix()`), with `SqliteNotificationStore` retained for tests; `MemoryBroadcastHub` / `CallbackBroadcastHub` published from `.broadcast()`, panel GET/POST `/orbit-notifications` and GET `/orbit-live` with Alpine polling, Orbit-first docs + unique gallery shots, 100% coverage.
 
 ## Users / MFA — closed
 

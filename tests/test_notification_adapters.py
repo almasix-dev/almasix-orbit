@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from types import SimpleNamespace
 from typing import Any
 
@@ -523,3 +524,124 @@ def test_mount_panel_registers_notification_routes() -> None:
     assert b"FromRoute" in live_bytes
 
     get_notifier().use_store(panel.get_notification_store() or InMemoryDatabaseNotificationStore())
+
+
+@pytest.fixture
+async def notifications_db() -> Any:
+    from almasix.notifications import ensure_tables
+    from almasix.orm import DatabaseManager, set_manager
+
+    manager = DatabaseManager(
+        {"default": "sqlite", "connections": {"sqlite": {"driver": "sqlite", "database": ":memory:"}}}
+    )
+    set_manager(manager)
+    await ensure_tables()
+    try:
+        yield manager
+    finally:
+        await manager.disconnect()
+        set_manager(None)
+
+
+def test_almasix_store_round_trip_and_scoping(notifications_db: Any) -> None:
+    del notifications_db
+    from almasix.orbit.notifications import AlmasixDatabaseNotificationStore
+
+    store = AlmasixDatabaseNotificationStore()
+    ada = OrbitUser.make().name("Ada").email("ada@test")
+    # Give a stable id for morph scoping (OrbitUser may not have get_key).
+    object.__setattr__(ada, "id", 42)
+
+    store.save(
+        {
+            "id": "welcome",
+            "title": "Hello",
+            "body": "World",
+            "status": "success",
+            "icon": "heroicon-o-bell",
+            "actions": [{"name": "ok"}],
+            "data": {"k": "v"},
+            "read": False,
+        },
+        user=ada,
+    )
+    bob = OrbitUser.make().name("Bob").email("bob@test")
+    object.__setattr__(bob, "id", 99)
+    store.save({"id": "bob-note", "title": "Bob only"}, user=bob)
+
+    ada_rows = store.get_for_user(ada)
+    assert len(ada_rows) == 1
+    assert ada_rows[0].title == "Hello"
+    assert ada_rows[0].body == "World"
+    assert ada_rows[0].status == "success"
+    assert ada_rows[0].data.get("k") == "v"
+    assert ada_rows[0].read is False
+
+    store.mark_read("welcome", user=ada)
+    assert store.get_for_user(ada)[0].read is True
+    store.mark_unread("welcome", user=ada)
+    assert store.get_for_user(ada)[0].read is False
+    store.mark_all_read(user=ada)
+    assert store.get_for_user(ada)[0].read is True
+
+    # Bob cannot mark Ada's row when scoped.
+    store.mark_unread("welcome", user=bob)
+    store.mark_read("welcome", user=bob)
+    assert store.get_for_user(ada)[0].read is True
+
+    # Upsert same id, guest save, unscoped list / mark-all.
+    store.save(
+        {"id": "welcome", "title": "Hello again", "read": True, "data": ["bad"]},
+        user=ada,
+    )
+    guest = store.save({"id": "guest-note", "title": "Anon", "actions": "nope"})
+    assert guest.user_key == "guest"
+    assert store.get_for_user()  # all users
+    store.mark_all_read()
+    store.mark_read("guest-note")  # user=None → owned
+
+    panel = (
+        Panel.make("admin")
+        .path("admin")
+        .database_notifications_using_almasix()
+    )
+    assert panel.database_notifications_enabled()
+    assert isinstance(panel.get_notification_store(), AlmasixDatabaseNotificationStore)
+
+    # Calling again when already enabled covers the skip-enable branch.
+    panel.database_notifications_using_almasix()
+
+
+def test_almasix_store_helpers_and_running_loop(notifications_db: Any) -> None:
+    del notifications_db
+    from almasix.orbit.notifications import almasix_store as mod
+
+    class KeyUser:
+        def get_key(self) -> int:
+            return 7
+
+    assert mod._notifiable_type(KeyUser()).endswith("KeyUser")
+    assert mod._notifiable_id(KeyUser()) == "7"
+    assert mod._notifiable_id(SimpleNamespace(id=3)) == "3"
+
+    # Payload / parse helpers.
+    assert mod._payload_to_data({"data": ["x"]})["title"] == "Notification"
+    assert mod._payload_to_data({})["status"] == "info"
+    assert mod._payload_to_data({"data": {"actions": "x"}})["actions"] == []
+    assert mod._parse_data({"a": 1}) == {"a": 1}
+    assert mod._parse_data("{bad") == {}
+    assert mod._parse_data("[1]") == {}
+    assert mod._parse_data(12) == {}
+    row = mod._row_to_stored(
+        {"id": "r1", "data": json.dumps({"title": "T", "actions": "x"}), "read_at": None}
+    )
+    assert row.actions == []
+
+    # _run_async when a loop is already running.
+    async def _inside() -> str:
+        return mod._run_async(_coro())
+
+    async def _coro() -> str:
+        return "ok"
+
+    assert run(_inside()) == "ok"

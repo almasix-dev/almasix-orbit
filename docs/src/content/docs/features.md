@@ -65,7 +65,7 @@ See [Infolists overview](/infolists/overview/).
 
 - Fluent flash toasts — title / body / icon / color / status / duration / persistent / actions
 - `OrbitNotification` JS client + `close-notification` by id + toast alignment
-- Database bell (panel seeds, SQLite or pluggable store, `/orbit-notifications` poll, topbar/sidebar)
+- Database bell (panel seeds, Almasix `notifications` table or pluggable store, `/orbit-notifications` poll, topbar/sidebar)
 - Broadcast hub + panel `/orbit-live` poll (`LiveNotifier`, `orbit:broadcast`)
 
 See [Notifications overview](/notifications/overview/).

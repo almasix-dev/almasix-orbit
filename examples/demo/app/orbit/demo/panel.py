@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from almasix.orbit import Panel, PanelRegistry
 from almasix.orbit.panels.navigation import NavigationGroup
-from almasix.orbit.panels.users import PanelNotification
 
 from app.orbit.demo.auth.demo_login import DemoLogin
 from app.orbit.demo.pages.catalog_insights import CatalogInsightsPage
@@ -54,22 +53,11 @@ def register_demo_panel(registry: PanelRegistry) -> Panel:
                 RecentAlbumsTable,
             ]
         )
-        .database_notifications(
-            [
-                PanelNotification.make("Welcome to Orbit Records")
-                .body("Explore Artists, Albums, Tracks, and Insights.")
-                .status("success")
-                .id("seed-welcome")
-                .created_at("2026-09-23T04:30:00Z"),
-                PanelNotification.make("New release window")
-                .body("Draft albums are ready for review in the catalog.")
-                .status("info")
-                .id("seed-release")
-                .created_at("2026-09-23T06:15:00Z"),
-            ]
-        )
+        # Framework ``notifications`` table (smith notifications:table). Seeds
+        # for demo@orbit.test come from NotificationSeeder; catalog edits notify live.
+        .database_notifications(True)
         .database_notifications_polling("30s")
-        .sqlite_notifications("orbit-notifications.sqlite")
+        .database_notifications_using_almasix()
         .spa()
         .discover_panel_dirs()
     )

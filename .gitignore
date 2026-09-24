@@ -37,3 +37,6 @@ assets/dist/
 # Local example databases
 *.sqlite
 *.sqlite3
+
+# Symlink created at boot for FilePond public uploads
+examples/demo/public/storage

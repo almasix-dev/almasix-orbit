@@ -1,0 +1,35 @@
+name: Reset demo catalog
+
+# Soft-reset the Orbit Records catalog on Render (preserves users / sessions).
+# Requires repo secrets:
+#   DEMO_RESET_URL   — e.g. https://orbit-demo.onrender.com/__orbit-demo/reset
+#   DEMO_RESET_TOKEN — same value as the Render env var DEMO_RESET_TOKEN
+
+on:
+  schedule:
+    # Every 6 hours — Free instances may be asleep; wake + reset when reachable.
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    name: POST catalog reset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger demo:reset via HTTP
+        env:
+          DEMO_RESET_URL: ${{ secrets.DEMO_RESET_URL }}
+          DEMO_RESET_TOKEN: ${{ secrets.DEMO_RESET_TOKEN }}
+        run: |
+          if [ -z "${DEMO_RESET_URL}" ] || [ -z "${DEMO_RESET_TOKEN}" ]; then
+            echo "::error::Set DEMO_RESET_URL and DEMO_RESET_TOKEN repository secrets."
+            exit 1
+          fi
+          curl -fsS -X POST "$DEMO_RESET_URL" \
+            -H "Authorization: Bearer ${DEMO_RESET_TOKEN}" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json"
+          echo

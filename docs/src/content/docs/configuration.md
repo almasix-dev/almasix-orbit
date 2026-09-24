@@ -80,7 +80,7 @@ These are panel methods, not separate config files:
 |--------|------|
 | `.spa()` / `.spa_url_exceptions()` | [Panel configuration](/panels/configuration/) — fetch-and-swap of `main.or-content` |
 | `.tenant_billing(True)` / `.billing_provider(...)` | [Multi-tenancy](/users/tenancy/) — `ManageBilling` + a `BillingProvider` |
-| `.sqlite_notifications()` / `.live_broadcasts()` | [Database](/notifications/database-notifications/) and [broadcast](/notifications/broadcast-notifications/) |
+| `.database_notifications_using_almasix()` / `.sqlite_notifications()` / `.live_broadcasts()` | [Database](/notifications/database-notifications/) and [broadcast](/notifications/broadcast-notifications/) |
 
 `PanelRegistry.get_by_path(...)` and `.get_by_domain(...)` look up a registered panel when one app hosts several.
 
