@@ -608,6 +608,9 @@ def test_almasix_store_round_trip_and_scoping(notifications_db: Any) -> None:
     assert panel.database_notifications_enabled()
     assert isinstance(panel.get_notification_store(), AlmasixDatabaseNotificationStore)
 
+    # Calling again when already enabled covers the skip-enable branch.
+    panel.database_notifications_using_almasix()
+
 
 def test_almasix_store_helpers_and_running_loop(notifications_db: Any) -> None:
     del notifications_db
