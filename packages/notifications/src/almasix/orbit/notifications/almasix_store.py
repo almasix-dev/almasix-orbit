@@ -61,9 +61,8 @@ def _morph(notifiable: Any) -> tuple[str, str]:
 
 
 def _payload_to_data(payload: dict[str, Any]) -> dict[str, Any]:
-    data = dict(payload.get("data") or {})
-    if not isinstance(data, dict):
-        data = {}
+    raw = payload.get("data") or {}
+    data = dict(raw) if isinstance(raw, dict) else {}
     for key in _UI_KEYS:
         if key in payload and payload[key] is not None:
             data[key] = payload[key]

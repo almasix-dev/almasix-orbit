@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from types import SimpleNamespace
 from typing import Any
 
@@ -585,7 +586,19 @@ def test_almasix_store_round_trip_and_scoping(notifications_db: Any) -> None:
 
     # Bob cannot mark Ada's row when scoped.
     store.mark_unread("welcome", user=bob)
+    store.mark_read("welcome", user=bob)
     assert store.get_for_user(ada)[0].read is True
+
+    # Upsert same id, guest save, unscoped list / mark-all.
+    store.save(
+        {"id": "welcome", "title": "Hello again", "read": True, "data": ["bad"]},
+        user=ada,
+    )
+    guest = store.save({"id": "guest-note", "title": "Anon", "actions": "nope"})
+    assert guest.user_key == "guest"
+    assert store.get_for_user()  # all users
+    store.mark_all_read()
+    store.mark_read("guest-note")  # user=None → owned
 
     panel = (
         Panel.make("admin")
@@ -594,3 +607,53 @@ def test_almasix_store_round_trip_and_scoping(notifications_db: Any) -> None:
     )
     assert panel.database_notifications_enabled()
     assert isinstance(panel.get_notification_store(), AlmasixDatabaseNotificationStore)
+
+
+def test_almasix_store_helpers_and_running_loop(notifications_db: Any, monkeypatch: Any) -> None:
+    del notifications_db
+    import builtins
+
+    from almasix.orbit.notifications import almasix_store as mod
+
+    # ImportError fallbacks for morph helpers.
+    real_import = builtins.__import__
+
+    def _block_notif(name: str, *args: Any, **kwargs: Any) -> Any:
+        if name == "almasix.notifications.database" or name.startswith(
+            "almasix.notifications.database."
+        ):
+            raise ImportError("blocked")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _block_notif)
+
+    class KeyUser:
+        def get_key(self) -> int:
+            return 7
+
+    assert mod._notifiable_type(KeyUser()).endswith("KeyUser")
+    assert mod._notifiable_id(KeyUser()) == "7"
+    assert mod._notifiable_id(SimpleNamespace(id=3)) == "3"
+    monkeypatch.undo()
+
+    # Payload / parse helpers.
+    assert mod._payload_to_data({"data": ["x"]})["title"] == "Notification"
+    assert mod._payload_to_data({})["status"] == "info"
+    assert mod._payload_to_data({"data": {"actions": "x"}})["actions"] == []
+    assert mod._parse_data({"a": 1}) == {"a": 1}
+    assert mod._parse_data("{bad") == {}
+    assert mod._parse_data("[1]") == {}
+    assert mod._parse_data(12) == {}
+    row = mod._row_to_stored(
+        {"id": "r1", "data": json.dumps({"title": "T", "actions": "x"}), "read_at": None}
+    )
+    assert row.actions == []
+
+    # _run_async when a loop is already running.
+    async def _inside() -> str:
+        return mod._run_async(_coro())
+
+    async def _coro() -> str:
+        return "ok"
+
+    assert run(_inside()) == "ok"
