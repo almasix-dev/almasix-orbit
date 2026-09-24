@@ -12,11 +12,11 @@ Kitchen-sink API galleries stay in [`../orbit-admin`](../orbit-admin).
 
 | Area | What to open |
 |------|----------------|
-| Dashboard | Stats, Chart.js releases, ApexCharts streams, recent albums table |
+| Dashboard | Stats (sparklines + links), Chart.js bar / line / doughnut, ApexCharts area, recent albums table |
 | Artists | Avatar upload, tags, color, platforms, albums relation manager, infolist |
 | Albums | Wizard form, ModalTableSelect artist, cover upload, money, rich notes, KeyValue, query builder, import/export, tracks relation manager |
 | Tracks | Soft deletes, ternary filter, global search |
-| Insights | Custom page + release checklist Wizard |
+| Insights | Analytics dashboard — pie, radar, Apex donut / bar, top tracks table, release checklist Wizard |
 | Chrome | Theme switcher, dark mode, database notifications, SPA |
 
 **Omitted on purpose** (see orbit-admin / docs): MFA, tenancy/billing, MorphTo,
@@ -36,8 +36,14 @@ Open the printed URL (panel at `/`).
 
 **Demo login:** `demo@orbit.test` / `secret`
 
-`bootstrap.sh` installs local Almasix / Orbit / Conduit checkouts when the
-sibling repos exist; otherwise it uses PyPI.
+`bootstrap.sh` installs the demo app editable and pulls **Almasix / Orbit /
+Conduit from PyPI** only (no monorepo path installs or local editables).
+Bump versions in `pyproject.toml` when you need newer published APIs.
+
+> **Release gate:** Current demo code calls
+> `.database_notifications_using_almasix()`, which is on Orbit `main` but
+> **not** in PyPI `almasix-orbit==0.4.2`. Publish a new Orbit release (and bump
+> the pin here) before a production deploy will boot.
 
 ## Notifications
 
@@ -97,7 +103,7 @@ always runs `smith migrate --force --seed`.
 
 1. Push this repo to GitHub.
 2. Render Dashboard → **New** → **Blueprint** → select the repo.
-3. Blueprint file: `examples/demo/render.yaml` (build context = repo root).
+3. Blueprint file: `examples/demo/render.yaml` (root / context = `examples/demo`).
 4. Set `APP_URL` to the service URL once known.
 5. Deploy. Health check: `/login`.
 6. Copy `DEMO_RESET_TOKEN` from the Render dashboard into GitHub secrets
@@ -106,8 +112,8 @@ always runs `smith migrate --force --seed`.
 ### Option B — Web Service (Docker)
 
 1. **New** → **Web Service** → connect the repo.
-2. Root directory: leave empty / repo root (not `examples/demo`).
-3. Dockerfile path: `examples/demo/Dockerfile`.
+2. Root directory: `examples/demo`.
+3. Dockerfile path: `Dockerfile` (relative to that root).
 4. Runtime: **Docker**. Instance: **Free**.
 5. Env vars (minimum):
 
@@ -149,16 +155,23 @@ when **CI** succeeds on `main` (and demo-relevant paths changed), or via
 
 ## Docker locally
 
-From the **monorepo root**:
+From **`examples/demo`** (PyPI packages only):
 
 ```bash
-docker build -f examples/demo/Dockerfile -t orbit-demo .
+cd examples/demo
+docker build -t orbit-demo .
 docker run --rm -p 8000:8000 \
   -e APP_KEY=base64:orbit-demo-local-dev-key-change-me \
   -e APP_URL=http://127.0.0.1:8000 \
   -e SESSION_SECURE_COOKIE=false \
   -e DEMO_RESET_TOKEN=local-dev-reset \
   orbit-demo
+```
+
+Or from the monorepo root:
+
+```bash
+docker build -f examples/demo/Dockerfile -t orbit-demo examples/demo
 ```
 
 Soft reset while the container is up:
@@ -170,6 +183,7 @@ curl -X POST http://127.0.0.1:8000/__orbit-demo/reset \
 
 ## Seed data
 
-Idempotent catalog seeder: **8 artists**, **15 albums**, **~60 tracks** with
-varied play counts, formats, and statuses so widgets and charts look real.
+Idempotent catalog seeder: **24 artists**, **~56 albums**, **~275 tracks**
+(plus a few soft-deleted rows) spanning 2018–2025 with varied formats, markets,
+genres, platforms, and play counts so every widget and chart type has real data.
 Notification seeder adds welcome/tip rows for the demo admin.

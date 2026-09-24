@@ -12,6 +12,8 @@ from app.orbit.demo.resources.artist_resource import ArtistResource
 from app.orbit.demo.resources.track_resource import TrackResource
 from app.orbit.demo.widgets import (
     CatalogStats,
+    FormatsChart,
+    PlaysTrendChart,
     RecentAlbumsTable,
     ReleasesChart,
     StreamsChart,
@@ -49,6 +51,8 @@ def register_demo_panel(registry: PanelRegistry) -> Panel:
                 WelcomeWidget,
                 CatalogStats,
                 ReleasesChart,
+                PlaysTrendChart,
+                FormatsChart,
                 StreamsChart,
                 RecentAlbumsTable,
             ]
