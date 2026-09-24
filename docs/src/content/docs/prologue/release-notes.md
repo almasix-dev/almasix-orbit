@@ -12,6 +12,30 @@ header switcher.
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+## 0.4.3
+
+Notifications production adapter, demo showcase polish, and shell/form fixes after 0.4.2.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.4.3'
+```
+
+### Notifications
+
+- Panel bell can persist via Almasix’s polymorphic `notifications` table (`.database_notifications_using_almasix()`)
+- `SqliteNotificationStore` retained for tests and non-ORM setups
+
+### Demo
+
+- Soft catalog reset (`demo:reset`) keeps cookie sessions; hourly schedule + HTTP/GHA reset for Render Free
+- Larger Orbit Records seed and home/Insights widgets covering Chart.js and ApexCharts chart types
+- Demo installs Almasix / Orbit / Conduit from **PyPI only** (no monorepo path installs)
+
+### Fixes and UX
+
+- TagsInput and CheckboxList array state persists on submit ([#97](https://github.com/almasix-dev/almasix-orbit/pull/97))
+- Fresh-project shell UX polish ([#96](https://github.com/almasix-dev/almasix-orbit/pull/96))
+
 ## 0.4.2
 
 Marketplace and plugin-scaffold polish after 0.4.1.
