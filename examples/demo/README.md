@@ -122,6 +122,23 @@ always runs `smith migrate --force --seed`.
 | `DEMO_SCHEDULE` | `1` (optional; start `schedule:work`) |
 | `DEMO_RESET_TOKEN` | random secret for `POST /__orbit-demo/reset` |
 
+### GitHub Actions deploy
+
+After the service exists, redeploys are triggered by
+[`.github/workflows/deploy-demo.yml`](../../.github/workflows/deploy-demo.yml)
+when **CI** succeeds on `main` (and demo-relevant paths changed), or via
+**Actions → Deploy demo → Run workflow**.
+
+1. Create the service with Option A or B above if you have not already.
+2. Render → **orbit-demo** → **Settings** → **Deploy Hook** → copy the URL.
+3. GitHub → repo **Settings** → **Secrets and variables** → **Actions** →
+   New repository secret:
+   - Name: `RENDER_DEPLOY_HOOK_URL`
+   - Value: the deploy hook URL
+4. Render → **Settings** → **Auto-Deploy** → **Off** (this workflow owns deploys;
+   leaving Auto-Deploy on causes double builds).
+5. Set `APP_URL` to your public `https://….onrender.com` URL.
+
 ### Durable SQLite (optional, paid)
 
 1. Upgrade to **Starter**.
