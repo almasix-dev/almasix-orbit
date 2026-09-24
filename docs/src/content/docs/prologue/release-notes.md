@@ -14,11 +14,18 @@ Changes land here before they become a tagged release.
 
 ## 0.4.3
 
-Notifications production adapter, demo showcase polish, and shell/form fixes after 0.4.2.
+Flowbite date/time pickers, notifications production adapter, demo showcase polish, and shell/form fixes after 0.4.2.
 
 ```bash title="terminal"
 pip install -U 'almasix-orbit==0.4.3'
 ```
+
+### Forms — date and time pickers
+
+- `DatePicker`, `DateTimePicker`, and `TimePicker` default to Flowbite + Alpine (`orbitDatePicker`); use `.native(True)` for browser inputs
+- New `WeekPicker`, `MonthPicker`, and `YearPicker`
+- Time APIs: `.seconds()`, `.hours12()` / `.hours24()`, `.minute_step(n)`
+- Temporal validation: `after_or_equal`, `before_or_equal`, `date_equals`, and datetime/time-aware `after` / `before`
 
 ### Notifications
 
