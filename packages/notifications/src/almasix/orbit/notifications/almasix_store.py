@@ -36,24 +36,16 @@ def _run_async(coro: Coroutine[Any, Any, T]) -> T:
 
 
 def _notifiable_type(notifiable: Any) -> str:
-    try:
-        from almasix.notifications.database import notifiable_type
-
-        return notifiable_type(notifiable)
-    except ImportError:
-        return f"{type(notifiable).__module__}.{type(notifiable).__qualname__}"
+    """Morph type — same formula as ``almasix.notifications.database``."""
+    return f"{type(notifiable).__module__}.{type(notifiable).__qualname__}"
 
 
 def _notifiable_id(notifiable: Any) -> str:
-    try:
-        from almasix.notifications.database import notifiable_id
-
-        return notifiable_id(notifiable)
-    except ImportError:
-        key = getattr(notifiable, "get_key", None)
-        if callable(key):
-            return str(key())
-        return str(getattr(notifiable, "id", notifiable))
+    """Morph id — ``get_key()`` / ``id``, matching Almasix."""
+    key = getattr(notifiable, "get_key", None)
+    if callable(key):
+        return str(key())
+    return str(getattr(notifiable, "id", notifiable))
 
 
 def _morph(notifiable: Any) -> tuple[str, str]:

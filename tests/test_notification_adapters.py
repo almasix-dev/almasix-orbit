@@ -609,23 +609,9 @@ def test_almasix_store_round_trip_and_scoping(notifications_db: Any) -> None:
     assert isinstance(panel.get_notification_store(), AlmasixDatabaseNotificationStore)
 
 
-def test_almasix_store_helpers_and_running_loop(notifications_db: Any, monkeypatch: Any) -> None:
+def test_almasix_store_helpers_and_running_loop(notifications_db: Any) -> None:
     del notifications_db
-    import builtins
-
     from almasix.orbit.notifications import almasix_store as mod
-
-    # ImportError fallbacks for morph helpers.
-    real_import = builtins.__import__
-
-    def _block_notif(name: str, *args: Any, **kwargs: Any) -> Any:
-        if name == "almasix.notifications.database" or name.startswith(
-            "almasix.notifications.database."
-        ):
-            raise ImportError("blocked")
-        return real_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "__import__", _block_notif)
 
     class KeyUser:
         def get_key(self) -> int:
@@ -634,7 +620,6 @@ def test_almasix_store_helpers_and_running_loop(notifications_db: Any, monkeypat
     assert mod._notifiable_type(KeyUser()).endswith("KeyUser")
     assert mod._notifiable_id(KeyUser()) == "7"
     assert mod._notifiable_id(SimpleNamespace(id=3)) == "3"
-    monkeypatch.undo()
 
     # Payload / parse helpers.
     assert mod._payload_to_data({"data": ["x"]})["title"] == "Notification"
