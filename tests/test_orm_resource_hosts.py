@@ -234,6 +234,31 @@ def test_as_record_dict_and_write_payload() -> None:
         "name": "Ada",
     }
 
+    class GetterBoom:
+        def get_attributes(self):
+            return {"id": 3, "title": "Y", "genres": '["a"]'}
+
+        def get_attribute(self, key: str):
+            if key == "genres":
+                raise RuntimeError("cast failed")
+            return self.get_attributes()[key]
+
+    # Falling back to raw storage still coerces JSON array strings.
+    assert _as_record_dict(GetterBoom())["genres"] == ["a"]
+
+    class NoGetter:
+        def get_attributes(self):
+            return {"id": 4, "tags": '["t"]'}
+
+    assert _as_record_dict(NoGetter())["tags"] == ["t"]
+
+    from almasix.orbit.panels.conduit.hosts import _coerce_json_container
+
+    assert _coerce_json_container(None) is None
+    assert _coerce_json_container("plain") == "plain"
+    assert _coerce_json_container("") == ""
+    assert _coerce_json_container("{not-json") == "{not-json"
+
     payload = _orm_write_payload(
         {"id": 1, "title": "A", "status": "draft", "created_at": "x", "extra": 1},
         _OrmModel,
@@ -243,6 +268,22 @@ def test_as_record_dict_and_write_payload() -> None:
     assert _orm_write_payload({"title": "Z", "_skip": 1}) == {"title": "Z"}
     assert _mount_action_args("delete", None, {"recordId": 7, "data": {"x": 1}})[1] == "7"
     assert _mount_action_args("delete", recordId="9")[1] == "9"
+
+
+def test_coerce_json_container_keeps_non_container_scalars(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json as json_mod
+
+    from almasix.orbit.panels.conduit.hosts import _coerce_json_container
+
+    real_loads = json_mod.loads
+
+    def _loads_scalar(text: str, *args: Any, **kwargs: Any):
+        if text == "[scalar]":
+            return 42
+        return real_loads(text, *args, **kwargs)
+
+    monkeypatch.setattr(json_mod, "loads", _loads_scalar)
+    assert _coerce_json_container("[scalar]") == "[scalar]"
 
 
 def test_resource_records_helpers_and_orm_detection() -> None:

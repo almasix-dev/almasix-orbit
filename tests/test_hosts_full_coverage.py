@@ -198,6 +198,29 @@ def test_sync_data_path_updates_arrays_without_render() -> None:
     )
 
 
+def test_sync_data_path_decodes_json_string_payloads() -> None:
+    panel = _panel()
+    host = CreateRecordHost.bind(panel=panel, resource=_Rec)()
+    host.mount()
+    host.data = {}
+    host.sync_data_path("data.genres", '["rock","jazz"]')
+    assert host.data["genres"] == ["rock", "jazz"]
+    host.reset_skip_render()
+    host.sync_data_path("data.meta", '{"a":1}')
+    assert host.data["meta"] == {"a": 1}
+    host.reset_skip_render()
+    # Invalid JSON that only looks like a container stays a string.
+    host.sync_data_path("data.note", "[not-json")
+    assert host.data["note"] == "[not-json"
+    host.reset_skip_render()
+    host.sync_data_path("data.plain", "hello")
+    assert host.data["plain"] == "hello"
+    # set_property("data", ...) also coerces JSON containers.
+    host.set_property("data", {"tags": '["x"]', "title": "T"})
+    assert host.data["tags"] == ["x"]
+    assert host.data["title"] == "T"
+
+
 def test_edit_and_view_render_inject_record_id() -> None:
     panel = _panel()
     edit = EditRecordHost.bind(panel=panel, resource=_Rec)()

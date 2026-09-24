@@ -157,6 +157,17 @@ def test_tags_radio_checkbox_list_affix_actions() -> None:
     raw_state = _un(_re.search(r'data-state="([^"]*)"', json_state).group(1))
     assert _json.loads(raw_state) == ["afrobeat", "electronic"]
 
+    # Invalid JSON array-looking text falls back to separator split / whole string.
+    from almasix.orbit.forms.components import _normalize_string_list
+
+    assert _normalize_string_list("[not-json]") == ["[not-json]"]
+    assert _normalize_string_list("a,b", separator=",") == ["a", "b"]
+    assert _normalize_string_list("solo", separator="") == ["solo"]
+    assert _normalize_string_list("   ", separator="") == []
+    assert _normalize_string_list(0) == ["0"]
+    assert _normalize_string_list(False) == ["False"]
+    assert _normalize_string_list(["", " x "]) == ["x"]
+
     radio = (
         Radio.make("plan")
         .options({"a": "A", "b": "B"})
