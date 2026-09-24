@@ -1,0 +1,81 @@
+name: Deploy demo
+
+# Redeploy the Orbit Records demo on Render after CI passes on main.
+# Requires repo secret RENDER_DEPLOY_HOOK_URL (Render → service → Settings → Deploy Hook).
+# Turn Render Auto-Deploy Off so this workflow owns production deploys.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  deploy:
+    name: Trigger Render deploy
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    steps:
+      - name: Resolve commit SHA
+        id: sha
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.sha.outputs.sha }}
+          fetch-depth: 2
+
+      - name: Check demo-relevant paths
+        id: paths
+        if: github.event_name == 'workflow_run'
+        run: |
+          # Compare this commit to its first parent; skip docs-only / unrelated merges.
+          if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+            CHANGED=$(git diff --name-only HEAD^ HEAD)
+          else
+            CHANGED=$(git ls-files)
+          fi
+          echo "Changed files:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^(examples/demo/|packages/|\.github/workflows/deploy-demo\.yml)'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+            echo "No demo-relevant paths changed; skipping Render deploy."
+          fi
+
+      - name: Trigger Render deploy hook
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          steps.paths.outputs.relevant == 'true'
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          REF: ${{ steps.sha.outputs.sha }}
+        run: |
+          if [ -z "${RENDER_DEPLOY_HOOK_URL}" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_URL secret is not set. Add it under repo Settings → Secrets → Actions (Render Deploy Hook URL)."
+            exit 1
+          fi
+          # Hook URLs already include ?key=…; append &ref=<sha> for that exact commit.
+          case "$RENDER_DEPLOY_HOOK_URL" in
+            *\?*) DEPLOY_URL="${RENDER_DEPLOY_HOOK_URL}&ref=${REF}" ;;
+            *)    DEPLOY_URL="${RENDER_DEPLOY_HOOK_URL}?ref=${REF}" ;;
+          esac
+          echo "Deploying ref ${REF}"
+          curl -fsS -X POST "$DEPLOY_URL"
+          echo
+          echo "Render deploy triggered."
