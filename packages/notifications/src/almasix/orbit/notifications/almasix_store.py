@@ -5,9 +5,10 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
+from collections.abc import Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
-from typing import Any, Coroutine, TypeVar
+from typing import Any, TypeVar
 
 from almasix.orbit.notifications.store import StoredNotification, _normalize_created_at
 
