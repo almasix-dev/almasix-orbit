@@ -512,7 +512,12 @@ function createOrbitDatePicker(cfg = {}) {
           if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
           if (self.mode === 'week') {
             const start = isoWeekStart(date, 1);
-            return `Week ${isoWeekNumber(start)}, ${start.getFullYear()}`;
+            const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+            const dayFmt = new Intl.DateTimeFormat(undefined, {
+              month: 'short',
+              day: 'numeric',
+            });
+            return `Week ${isoWeekNumber(start)} · ${dayFmt.format(start)} – ${dayFmt.format(end)}`;
           }
           if (self.mode === 'month') {
             return new Intl.DateTimeFormat(undefined, {
@@ -569,7 +574,7 @@ function createOrbitDatePicker(cfg = {}) {
           const end = start + 6 * 86400000;
           const stamp = dateOnlyStamp(date);
           if (stamp >= start && stamp <= end) {
-            return { classes: 'range bg-gray-200 dark:bg-gray-600' };
+            return { classes: 'range or-week-in-range' };
           }
           return undefined;
         };

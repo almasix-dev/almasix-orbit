@@ -175,6 +175,12 @@ def test_disk_url_falls_back_when_the_disk_cannot_build_one() -> None:
 
     assert _disk_url(Raising(), "a.png", "/storage") == "/storage/a.png"
     assert _disk_url(object(), "a.png", "/storage") == "/storage/a.png"
+    from almasix.orbit.forms.uploads import public_upload_url
+
+    assert public_upload_url("ee98.png") == "/storage/ee98.png"
+    assert public_upload_url("/storage/ee98.png") == "/storage/ee98.png"
+    assert public_upload_url("https://cdn.test/a.png") == "https://cdn.test/a.png"
+    assert public_upload_url("") == ""
 
 
 def test_maybe_await_passes_plain_values_through() -> None:
@@ -279,8 +285,10 @@ def test_file_upload_previews_existing_files() -> None:
 
 
 def test_file_upload_single_value_and_no_preview() -> None:
-    assert "or-file-card" in FileUpload.make("logo").render("logo.png")
-    assert "data-existing=" in FileUpload.make("logo").render("logo.png")
+    html = FileUpload.make("logo").render("logo.png")
+    assert "or-file-card" in html
+    assert "data-existing=" in html
+    assert "/storage/logo.png" in html
     assert "or-file-preview" not in FileUpload.make("logo").previewable(False).render("logo.png")
     assert "data-existing=" in FileUpload.make("logo").previewable(False).render("logo.png")
 

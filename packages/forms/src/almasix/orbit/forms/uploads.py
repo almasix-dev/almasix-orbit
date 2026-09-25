@@ -207,6 +207,23 @@ def is_image(path: str) -> bool:
     return guess_mime(path).startswith("image/")
 
 
+def public_upload_url(path: str, *, base_url: str = "/storage") -> str:
+    """Turn a stored path into an absolute URL the browser can fetch.
+
+    Bare filenames (``uuid.png``) must not resolve relative to the edit page
+    (``/resource/1/uuid.png``); they belong under the storage base URL.
+    """
+    text = str(path or "").strip()
+    if not text:
+        return ""
+    if re.match(r"^(https?:)?//", text) or text.startswith("data:"):
+        return text
+    if text.startswith("/"):
+        return text
+    root = (base_url or "/storage").rstrip("/") or "/storage"
+    return f"{root}/{text.lstrip('/')}"
+
+
 def _disk_url(disk: Any, path: str, base_url: str) -> str:
     url_fn = getattr(disk, "url", None)
     if callable(url_fn):
@@ -214,7 +231,7 @@ def _disk_url(disk: Any, path: str, base_url: str) -> str:
             return str(url_fn(path))
         except Exception:
             pass
-    return f"{base_url}/{path}"
+    return public_upload_url(path, base_url=base_url)
 
 
 async def _maybe_await(value: Any) -> Any:

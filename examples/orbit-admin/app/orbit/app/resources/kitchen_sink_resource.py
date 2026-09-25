@@ -84,6 +84,7 @@ class KitchenSinkResource(Resource):
                 .description("Filament-parity form + schema layouts in one place."),
                 Wizard.make("onboard")
                 .skippable()
+                .vertical()
                 .steps(
                     (
                         "Profile",

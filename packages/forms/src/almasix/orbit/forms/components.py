@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Self
 
@@ -1755,7 +1756,7 @@ class DatePicker(Field):
             f'class="or-input or-datepicker__time or-timepicker__input" '
             f':inputmode="timeFormat === \'12\' ? \'text\' : \'numeric\'" '
             f':placeholder="timePlaceholder" :disabled="disabled" '
-            f':aria-label="{e(label)} time" :value="timeDraft" '
+            f'aria-label="{e(label)} time" :value="timeDraft" '
             f'@focus="onTimeFocus()" @keydown="onTimeKeydown($event)" '
             f'@paste="onTimePaste($event)" @blur="commitTimeDraft()" '
             f'@click="openTimeAssist()" />'
@@ -1836,7 +1837,7 @@ class DatePicker(Field):
                 f'<input id="or-{name}" x-ref="dateInput" type="text" autocomplete="off" '
                 f'class="or-input or-datepicker__input" '
                 f':placeholder="placeholder || defaultPlaceholder" :disabled="disabled" '
-                f':aria-label="{label}" />'
+                f'aria-label="{label}" />'
                 f"</div>"
             )
 
@@ -2067,19 +2068,19 @@ class FileUpload(Field):
 
     def _existing_files_payload(self, state: Any) -> list[dict[str, str]]:
         """JSON-serializable existing files for FilePond ``files``."""
-        from almasix.orbit.forms.uploads import is_image
+        from almasix.orbit.forms.uploads import is_image, public_upload_url
 
         values = state if isinstance(state, (list, tuple)) else ([state] if state else [])
         out: list[dict[str, str]] = []
         for value in values:
             if isinstance(value, dict):
                 path = str(value.get("path") or value.get("url") or "")
-                url = str(value.get("url") or path)
+                url = public_upload_url(str(value.get("url") or path))
                 label = str(value.get("name") or path.rsplit("/", 1)[-1])
                 mime = str(value.get("mime") or ("image/*" if is_image(path) else ""))
             else:
                 path = str(value or "")
-                url = path
+                url = public_upload_url(path)
                 label = path.rsplit("/", 1)[-1] if path else ""
                 mime = "image/*" if is_image(path) else ""
             if not path:
@@ -2089,18 +2090,18 @@ class FileUpload(Field):
 
     def _render_existing_files(self, state: Any) -> str:
         """Legacy card chrome (kept for progressive enhancement / tests)."""
-        from almasix.orbit.forms.uploads import is_image
+        from almasix.orbit.forms.uploads import is_image, public_upload_url
 
         values = state if isinstance(state, (list, tuple)) else ([state] if state else [])
         cards: list[str] = []
         for value in values:
             if isinstance(value, dict):
                 path = str(value.get("path") or value.get("url") or "")
-                url = str(value.get("url") or path)
+                url = public_upload_url(str(value.get("url") or path))
                 label = str(value.get("name") or path.rsplit("/", 1)[-1])
             else:
                 path = str(value or "")
-                url = path
+                url = public_upload_url(path)
                 label = path.rsplit("/", 1)[-1]
             if not path:
                 continue
@@ -2403,6 +2404,47 @@ class ColorPicker(Field):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
         self._input_type = "color"
+        self._copyable = True
+
+    def copyable(self, condition: bool = True) -> Self:
+        self._copyable = bool(condition)
+        return self
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
+        name = e(self.get_state_path() or "")
+        raw = "" if state is None else str(state).strip()
+        if not raw:
+            raw = "#000000"
+        elif not raw.startswith("#") and re.fullmatch(r"[0-9A-Fa-f]{6}", raw):
+            raw = f"#{raw}"
+        val = e(raw)
+        disabled = self.is_disabled(**ctx) or self._readonly
+        disabled_attr = " disabled" if disabled else ""
+        readonly = " readonly" if self._readonly else ""
+        wire = self._wire_binding(name)
+        # Escape for embedding inside a single-quoted Alpine expression.
+        alpine_color = raw.replace("\\", "\\\\").replace("'", "\\'")
+        copy_btn = ""
+        if self._copyable:
+            copy_btn = (
+                '<button type="button" class="or-btn or-btn-gray or-btn-sm or-color__copy" '
+                '@click="navigator.clipboard.writeText(color)" '
+                'aria-label="Copy color">Copy</button>'
+            )
+        control = (
+            f'<div class="or-color" x-data="{{ color: \'{alpine_color}\' }}">'
+            f'<input class="or-color__swatch" type="color" x-model="color" '
+            f'{disabled_attr} aria-label="Color swatch" tabindex="-1" />'
+            f'<input class="or-input or-color__value" id="or-{name}" name="{name}" '
+            f'type="text" x-model="color" value="{val}" placeholder="#000000" '
+            f'spellcheck="false" autocomplete="off"{disabled_attr}{readonly}'
+            f'{self._common_input_attrs(**ctx)}{wire}{self._after_state_attr()} '
+            f'aria-label="Hex color" />'
+            f"{copy_btn}</div>"
+        )
+        return self.wrap_field(name, control, **ctx)
 
 
 class MoneyInput(TextInput):

@@ -2321,6 +2321,59 @@
       },
     }));
 
+    window.Alpine.data("orbitWizard", () => ({
+      step: 0,
+      maxReached: 0,
+      total: 1,
+      linear: true,
+      init() {
+        const el = this.$el;
+        this.total = Math.max(1, Number(el.getAttribute("data-steps") || 1));
+        this.linear = el.getAttribute("data-linear") !== "false";
+        const start = Math.min(
+          Math.max(0, Number(el.getAttribute("data-start") || 0)),
+          this.total - 1,
+        );
+        this.step = start;
+        this.maxReached = start;
+      },
+      validateStep() {
+        const pane = this.$el.querySelector(
+          `.or-wizard-step[data-step="${this.step}"]`,
+        );
+        if (!pane) return true;
+        const fields = pane.querySelectorAll("input, select, textarea");
+        for (const field of fields) {
+          if (field.disabled || field.type === "hidden") continue;
+          if (typeof field.checkValidity === "function" && !field.checkValidity()) {
+            field.reportValidity();
+            return false;
+          }
+        }
+        return true;
+      },
+      go(index) {
+        const i = Number(index);
+        if (Number.isNaN(i) || i < 0 || i >= this.total) return;
+        if (this.linear && i > this.maxReached) return;
+        this.step = i;
+      },
+      back() {
+        this.go(Math.max(this.step - 1, 0));
+      },
+      next() {
+        if (this.linear && !this.validateStep()) return;
+        const n = Math.min(this.step + 1, this.total - 1);
+        this.maxReached = Math.max(this.maxReached, n);
+        this.step = n;
+      },
+      skip() {
+        const n = Math.min(this.step + 1, this.total - 1);
+        this.maxReached = Math.max(this.maxReached, n);
+        this.step = n;
+      },
+    }));
+
     const bootFileUploads = () => {
       const FilePond = window.FilePond;
       if (!FilePond) return;

@@ -258,17 +258,31 @@ class Section(Layout):
         collapse_bind = ""
         header_click = ""
         body_bind = ""
+        caret = ""
         if self._collapsible:
             collapse_bind = (
                 f' x-data="{{ collapsed: {str(self._collapsed).lower()} }}"'
             )
-            header_click = ' @click="collapsed = !collapsed" role="button" tabindex="0"'
+            header_click = (
+                ' @click="collapsed = !collapsed" @keydown.enter.prevent="collapsed = !collapsed" '
+                '@keydown.space.prevent="collapsed = !collapsed" role="button" tabindex="0" '
+                ':aria-expanded="(!collapsed).toString()"'
+            )
             body_bind = ' x-show="!collapsed"'
+            caret = (
+                '<span class="or-section-caret" aria-hidden="true" '
+                ':class="collapsed && \'is-collapsed\'">'
+                '<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">'
+                '<path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 '
+                "111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z\" "
+                'clip-rule="evenodd" /></svg></span>'
+            )
         return (
             f'<section class="{classes}" data-collapsible="{str(self._collapsible).lower()}" '
             f'data-collapsed="{str(self._collapsed).lower()}"{persist}{collapse_bind}>'
-            f'<header class="or-section-header"{header_click}>{ic}'
-            f'<h3 class="or-section-title">{title}</h3>{desc}</header>'
+            f'<header class="or-section-header"{header_click}>{caret}{ic}'
+            f'<div class="or-section-heading"><h3 class="or-section-title">{title}</h3>{desc}</div>'
+            f"</header>"
             f'<div class="or-section-body"{body_bind}>{self.render_children(state, **ctx)}</div>'
             f"</section>"
         )
@@ -383,6 +397,8 @@ class Wizard(Layout):
         self._steps: list[tuple[str, list[Component], str | None]] = []
         self._skippable = False
         self._start_step: int = 0
+        self._linear = True
+        self._vertical = False
 
     def steps(self, *step_defs: tuple[str, Sequence[Component]] | dict[str, Any]) -> Self:
         parsed: list[tuple[str, list[Component], str | None]] = []
@@ -409,6 +425,26 @@ class Wizard(Layout):
         self._start_step = max(0, int(index))
         return self
 
+    def linear(self, condition: bool = True) -> Self:
+        """Require completing the current step before advancing (default).
+
+        When linear, nav jumps ahead are blocked until earlier steps are reached
+        via Continue (HTML5 constraint validation on fields in the current pane).
+        Pass ``False`` (or use :meth:`non_linear`) to allow free step jumping.
+        """
+        self._linear = bool(condition)
+        return self
+
+    def non_linear(self, condition: bool = True) -> Self:
+        """Allow jumping to any step from the stepper nav."""
+        self._linear = not bool(condition)
+        return self
+
+    def vertical(self, condition: bool = True) -> Self:
+        """Place the stepper beside the step body instead of above it."""
+        self._vertical = bool(condition)
+        return self
+
     def get_child_components(self) -> list[Component]:
         out: list[Component] = []
         for _, comps, _ in self._steps:
@@ -424,6 +460,7 @@ class Wizard(Layout):
         data = state if isinstance(state, dict) else {}
         total = len(self._steps)
         start = min(self._start_step, max(total - 1, 0)) if total else 0
+        last = max(total - 1, 0)
         for i, (label, comps, description) in enumerate(self._steps):
             inner = "".join(
                 c.render(child_render_state(c, data), **ctx)
@@ -438,33 +475,57 @@ class Wizard(Layout):
                 f'{"" if i == start else "x-cloak"}>'
                 f'<h4 class="or-wizard-step-title">{e(label)}</h4>{desc}{inner}</div>'
             )
+            connector = (
+                '<span class="or-wizard-nav-connector" aria-hidden="true"></span>'
+                if i < last
+                else ""
+            )
             nav.append(
                 f'<button type="button" class="or-wizard-nav-item" data-step="{i}" '
-                f'@click="step = {i}" :class="step === {i} && \'is-active\'">'
-                f'<span class="or-wizard-nav-index">{i + 1}</span>'
-                f'<span class="or-wizard-nav-label">{e(label)}</span></button>'
+                f'@click="go({i})" '
+                f":class=\"{{ "
+                f"'is-active': step === {i}, "
+                f"'is-complete': step > {i}, "
+                f"'is-locked': linear && {i} > maxReached "
+                f'}}" '
+                f":aria-current=\"step === {i} ? 'step' : null\" "
+                f':disabled="linear && {i} > maxReached" '
+                f':aria-disabled="(linear && {i} > maxReached).toString()">'
+                f'<span class="or-wizard-nav-index" aria-hidden="true">'
+                f'<span class="or-wizard-nav-index-num" x-show="step <= {i}">{i + 1}</span>'
+                f'<span class="or-wizard-nav-check" x-cloak x-show="step > {i}">✓</span>'
+                f"</span>"
+                f'<span class="or-wizard-nav-text">'
+                f'<span class="or-wizard-nav-label">{e(label)}</span>'
+                f'<span class="or-wizard-nav-meta">Step {i + 1} of {total}</span>'
+                f"</span></button>{connector}"
             )
         skip = ""
         if self._skippable:
             skip = (
-                f'<button type="button" class="or-link-btn" @click="step = Math.min(step + 1, {max(total - 1, 0)})">'
+                '<button type="button" class="or-link-btn" @click="skip()">'
                 "Skip</button>"
             )
         footer = (
             f'<div class="or-wizard-footer">'
             f'<button type="button" class="or-btn or-btn-gray or-btn-sm" '
-            f'@click="step = Math.max(step - 1, 0)" :disabled="step === 0">Back</button>'
+            f'@click="back()" :disabled="step === 0">Back</button>'
             f"{skip}"
             f'<button type="button" class="or-btn or-btn-primary or-btn-sm" '
-            f'@click="step = Math.min(step + 1, {max(total - 1, 0)})" '
-            f':disabled="step === {max(total - 1, 0)}">Continue</button>'
+            f'@click="next()" '
+            f':disabled="step === {last}">Continue</button>'
             f"</div>"
         )
+        orientation = " or-wizard--vertical" if self._vertical else " or-wizard--horizontal"
+        linear_attr = "true" if self._linear else "false"
         return (
-            f'<div class="or-wizard" x-data="{{ step: {start} }}" data-steps="{total}">'
-            f'<div class="or-wizard-nav">{"".join(nav)}</div>'
+            f'<div class="or-wizard{orientation}" x-data="orbitWizard" '
+            f'data-steps="{total}" data-start="{start}" data-linear="{linear_attr}" '
+            f'data-orientation="{"vertical" if self._vertical else "horizontal"}">'
+            f'<div class="or-wizard-nav" role="list">{"".join(nav)}</div>'
+            f'<div class="or-wizard-main">'
             f'<div class="or-wizard-body">{"".join(parts)}</div>'
-            f"{footer}</div>"
+            f"{footer}</div></div>"
         )
 
 

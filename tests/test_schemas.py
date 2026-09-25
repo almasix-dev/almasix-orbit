@@ -51,6 +51,7 @@ def test_grid_section_fieldset() -> None:
     html = section.render({"title": "X"})
     assert 'data-collapsible="true"' in html
     assert "About" in html
+    assert "or-section-caret" in html
 
     fieldset = Fieldset.make("contact").label("Contact").schema([field])
     assert "<fieldset" in fieldset.render({"title": "Y"})
@@ -67,6 +68,9 @@ def test_tabs_and_wizard() -> None:
     wizard = Wizard.make().steps(("Step 1", [a]), ("Step 2", [b]))
     wh = wizard.render({"a": "1"})
     assert "or-wizard-step" in wh
+    assert "orbitWizard" in wh
+    assert 'data-linear="true"' in wh
+    assert "or-wizard--vertical" in Wizard.make().vertical().steps(("S", [a])).render({})
     assert "Step 1" in wh
 
 

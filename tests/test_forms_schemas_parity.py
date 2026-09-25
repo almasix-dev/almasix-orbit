@@ -96,6 +96,8 @@ def test_schema_group_split_section_tabs_wizard() -> None:
     wh = wizard.render(state)
     assert "or-wizard-nav" in wh
     assert "or-wizard-footer" in wh
+    assert "orbitWizard" in wh
+    assert 'data-linear="true"' in wh
     assert "Skip" in wh
     assert "Continue" in wh
 
@@ -131,6 +133,15 @@ def test_date_pickers_and_money_and_color() -> None:
     assert 'data-mode="year"' in YearPicker.make("y").render()
     assert "or-field-MoneyInput" in MoneyInput.make("amt").currency("EUR").locale("de").render(12.5)
     assert 'type="color"' in ColorPicker.make("c").render("#ff0000")
+    assert "or-color__swatch" in ColorPicker.make("c").render("#ff0000")
+    assert "Copy" in ColorPicker.make("c").render("#00ff00")
+    assert "Copy" not in ColorPicker.make("c").copyable(False).render("#00ff00")
+    assert ColorPicker.make("c").hidden().render("#ff0000") == ""
+    assert 'value="#000000"' in ColorPicker.make("c").render(None)
+    assert 'value="#aabbcc"' in ColorPicker.make("c").render("aabbcc")
+    assert "or-wizard--vertical" in Wizard.make().vertical().steps(("A", [TextInput.make("a")])).render({})
+    assert 'data-linear="false"' in Wizard.make().non_linear().steps(("A", [TextInput.make("a")])).render({})
+    assert 'data-linear="true"' in Wizard.make().linear().steps(("A", [TextInput.make("a")])).render({})
 
 
 def test_tags_radio_checkbox_list_affix_actions() -> None:
