@@ -5449,7 +5449,6 @@ html.dark .or-login-logo-dark {
 
 .or-select-actions,
 .or-builder-picker,
-.or-morph-to-select,
 .or-repeater-item-actions,
 .or-repeater-item-header {
   display: flex;
@@ -5473,8 +5472,8 @@ html.dark .or-login-logo-dark {
 }
 
 .or-morph-to-select .or-select {
-  flex: 1;
-  min-width: 8rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .or-file-preview {
@@ -6253,11 +6252,35 @@ html.dark .or-field-FileUpload .filepond--panel-root,
   background: var(--or-surface-2, var(--or-surface));
 }
 
-/* Morph-to select */
+/* Morph-to select — type + record side by side */
 .or-morph-to-select {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 0.38fr) minmax(11rem, 1fr);
+  gap: 0.65rem 0.75rem;
+  width: 100%;
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .or-morph-to-select {
+    grid-template-columns: 1fr;
+  }
+}
+
+.or-morph-to-select__type,
+.or-morph-to-select__record {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.or-morph-sublabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--or-muted);
 }
 
 .or-morph-search {

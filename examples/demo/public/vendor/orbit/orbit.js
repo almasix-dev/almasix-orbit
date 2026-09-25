@@ -1863,15 +1863,70 @@
 
 
     window.Alpine.data("orbitMorphToSelect", () => ({
+      optionsByType: {},
+      searchable: false,
+      field: "",
       init() {
-        const typeSelect = this.$el.querySelector("[data-morph-type]");
-        if (typeSelect) {
-          typeSelect.addEventListener("change", () => {
-            this.$dispatch("orbit:morph-type-changed", {
-              type: typeSelect.value,
-              field: this.$el.getAttribute("data-field"),
-            });
+        const el = this.$el;
+        this.field = el.getAttribute("data-field") || "";
+        this.searchable = el.getAttribute("data-searchable") === "true";
+        try {
+          this.optionsByType = JSON.parse(el.getAttribute("data-options-by-type") || "{}") || {};
+        } catch (_) {
+          this.optionsByType = {};
+        }
+        const search = el.querySelector("[data-morph-search]");
+        if (search) {
+          let timer = null;
+          search.addEventListener("input", () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => this.onSearch(search.value), 280);
           });
+        }
+      },
+      rebuildIdOptions(type, { keepValue = false, filter = "" } = {}) {
+        const idSelect = this.$el.querySelector("[data-morph-id]");
+        if (!idSelect) return;
+        const previous = keepValue ? idSelect.value : "";
+        const opts = { ...(this.optionsByType[type] || {}) };
+        const needle = String(filter || "").toLowerCase();
+        const entries = Object.entries(opts).filter(([, label]) => {
+          if (!needle) return true;
+          return String(label).toLowerCase().includes(needle);
+        });
+        idSelect.innerHTML =
+          '<option value="">Record…</option>' +
+          entries
+            .map(
+              ([value, label]) =>
+                `<option value="${String(value).replace(/"/g, "&quot;")}">${String(label)
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")}</option>`,
+            )
+            .join("");
+        if (previous && [...idSelect.options].some((o) => o.value === previous)) {
+          idSelect.value = previous;
+        }
+      },
+      onTypeChange(type) {
+        this.rebuildIdOptions(type);
+        const search = this.$el.querySelector("[data-morph-search]");
+        if (search) search.value = "";
+        const wire = window.orbitWire?.(this.$el);
+        if (wire && typeof wire.setMorphType === "function" && this.field) {
+          wire.setMorphType(this.field, type);
+        }
+      },
+      onSearch(query) {
+        const typeSelect = this.$el.querySelector("[data-morph-type]");
+        const type = typeSelect?.value || "";
+        // Prefer static client filter when options are embedded; still notify host for loaders.
+        if (Object.keys(this.optionsByType).length) {
+          this.rebuildIdOptions(type, { keepValue: true, filter: query });
+        }
+        const wire = window.orbitWire?.(this.$el);
+        if (wire && typeof wire.searchMorphOptions === "function" && this.field) {
+          wire.searchMorphOptions(this.field, query);
         }
       },
     }));

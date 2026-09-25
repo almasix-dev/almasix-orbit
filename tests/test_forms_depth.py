@@ -718,8 +718,10 @@ def test_morph_to_select_loads_options_for_the_chosen_type() -> None:
     assert '<option value="post" selected>Post</option>' in html
     assert "Orbit launch" in html
     assert "Second post" not in html
-    assert "setMorphType('commentable', $event.target.value)" in html
-    assert "searchMorphOptions('commentable', $event.target.value)" in html
+    assert "onTypeChange" in html
+    assert 'conduit:model="data.commentable.type"' in html
+    assert 'conduit:model="data.commentable.id"' in html
+    assert "or-morph-to-select__type" in html
     assert calls == [("post", "launch")]
 
 
@@ -736,8 +738,23 @@ def test_morph_to_select_without_a_loader_uses_declared_options() -> None:
 def test_morph_to_select_falls_back_to_flat_options() -> None:
     field = MorphToSelect.make("commentable").options({"post": "Post"})
     html = field.render(None)
-    assert '<option value="post">Post</option>' in html
+    assert '<option value="post"' in html and "Post" in html
     assert MorphToSelect.make("commentable").hidden().render(None) == ""
+
+
+def test_morph_to_select_defaults_first_type_and_layout() -> None:
+    field = MorphToSelect.make("owner").searchable().types(
+        [
+            {"type": "user", "label": "User", "options": {"1": "Ada"}},
+            {"type": "team", "label": "Team", "options": {"10": "Platform"}},
+        ]
+    )
+    html = field.render(None)
+    assert 'value="user" selected' in html
+    assert "Ada" in html
+    assert "or-morph-sublabel" in html
+    assert "data-options-by-type=" in html
+    assert "orbitMorphToSelect" in html
 
 
 # --------------------------------------------------------------------------- ModalTableSelect

@@ -3202,9 +3202,7 @@ class MorphToSelect(Select):
         if not self.is_visible(**ctx):
             return ""
         name = e(self.get_state_path() or "")
-        label = e(self.get_label(**ctx))
         disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
-        live = " wire:model.live" if self._live else " wire:model"
 
         type_value = None
         id_value = state
@@ -3214,69 +3212,83 @@ class MorphToSelect(Select):
         elif isinstance(state, str) and ":" in state:
             type_value, id_value = state.split(":", 1)
 
-        type_options = []
+        type_options: list[tuple[str, str]] = []
         id_options_by_type: dict[str, dict[Any, Any]] = {}
         for t in self._types:
             if isinstance(t, Mapping):
                 key = str(t.get("type") or t.get("value") or t.get("name") or "")
                 tlabel = t.get("label") or key
-                type_options.append((key, tlabel))
+                type_options.append((key, str(tlabel)))
                 if t.get("options"):
                     id_options_by_type[key] = dict(t["options"])
             else:
                 type_options.append((str(t), str(t).rsplit("\\", 1)[-1]))
 
         if not type_options and self._options:
-            # Fall back to flat options as morph keys.
             for k, v in self.get_options(**ctx).items():
-                type_options.append((str(k), v))
+                type_options.append((str(k), str(v)))
 
-        type_name = e(f"{name}_{self._type_field}" if not name.endswith(self._type_field) else name)
-        type_opts_html = []
+        # Default the type select to the first option so the record list is not empty.
+        effective_type = str(type_value or "")
+        if not effective_type and type_options:
+            effective_type = type_options[0][0]
+
+        type_opts_html = ['<option value="">Type…</option>']
         for k, v in type_options:
-            sel = " selected" if type_value is not None and str(k) == str(type_value) else ""
+            sel = " selected" if effective_type and str(k) == effective_type else ""
             type_opts_html.append(f'<option value="{e(k)}"{sel}>{e(v)}</option>')
 
-        # ID select: server-loaded options for the type, then static, then inherited.
         search = str((ctx.get("morph_search") or {}).get(self.get_state_path() or "", ""))
-        id_opts = self.get_options_for_type(str(type_value or ""), search)
+        id_opts = self.get_options_for_type(effective_type, search)
         if not id_opts:
-            id_opts = id_options_by_type.get(str(type_value or ""), {})
+            id_opts = id_options_by_type.get(effective_type, {})
         if not id_opts:
             id_opts = self.get_options(**ctx)
         if search:
             needle = search.casefold()
             id_opts = {k: v for k, v in id_opts.items() if needle in str(v).casefold()}
-        id_opts_html = []
+
+        id_opts_html = ['<option value="">Record…</option>']
         for k, v in id_opts.items():
             sel = " selected" if id_value is not None and str(k) == str(id_value) else ""
             id_opts_html.append(f'<option value="{e(k)}"{sel}>{e(v)}</option>')
 
-        searchable_attr = " data-searchable" if self._searchable else ""
+        type_path = f"{name}.{e(self._type_field)}" if name else e(self._type_field)
+        id_path = f"{name}.{e(self._id_field)}" if name else e(self._id_field)
+        type_wire = self._wire_binding(f"{self.get_state_path() or ''}.{self._type_field}".lstrip("."))
+        id_wire = self._wire_binding(f"{self.get_state_path() or ''}.{self._id_field}".lstrip("."))
+
+        # Static options for client-side type switching (kitchen sink / no remorph delay).
+        options_json = e(json.dumps({k: {str(ik): str(iv) for ik, iv in v.items()} for k, v in id_options_by_type.items()}))
+
         search_box = ""
         if self._searchable:
             search_box = (
                 '<input type="search" class="or-input or-morph-search" '
-                f'placeholder="Search…" value="{e(search)}" data-morph-search '
-                f"wire:model.live.debounce.300ms=\"morph_search.{name}\" "
-                f"wire:keydown.debounce.300ms=\"searchMorphOptions('{name}', $event.target.value)\""
-                f"{disabled} />"
+                'placeholder="Search records…" value="' + e(search) + '" data-morph-search '
+                f'aria-label="Search records"{disabled} />'
             )
-        return (
-            f'<div class="or-field or-field-MorphToSelect" data-field="{name}"{searchable_attr} '
+
+        control = (
+            f'<div class="or-morph-to-select" data-field="{name}" '
+            f'data-options-by-type="{options_json}" '
+            f'data-searchable="{str(self._searchable).lower()}" '
             f'x-data="orbitMorphToSelect">'
-            f'<span class="or-label">{label}</span>'
-            f'<div class="or-morph-to-select">'
+            f'<div class="or-morph-to-select__type">'
+            f'<span class="or-morph-sublabel">Type</span>'
             f'<select class="or-select or-select-morph or-select-morph-type" '
-            f'name="{type_name}" data-morph-type{disabled}{live}="{type_name}" '
-            f"wire:change=\"setMorphType('{name}', $event.target.value)\">"
-            f'{"".join(type_opts_html)}</select>'
+            f'id="or-{name}-type" name="{type_path}" data-morph-type{disabled}'
+            f"{type_wire} "
+            f"@change=\"onTypeChange($event.target.value)\">"
+            f'{"".join(type_opts_html)}</select></div>'
+            f'<div class="or-morph-to-select__record">'
+            f'<span class="or-morph-sublabel">Record</span>'
             f"{search_box}"
             f'<select class="or-select or-select-morph or-select-morph-id" '
-            f'name="{e(name)}" data-morph-id{disabled}{live}="{name}">'
-            f'{"".join(id_opts_html)}</select>'
-            f"</div></div>"
+            f'id="or-{name}-id" name="{id_path}" data-morph-id{disabled}{id_wire}>'
+            f'{"".join(id_opts_html)}</select></div></div>'
         )
+        return self.wrap_field(name, control, **ctx)
 
 
 class TableSelect(Select):
