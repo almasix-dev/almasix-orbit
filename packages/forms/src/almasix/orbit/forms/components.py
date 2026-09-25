@@ -1624,13 +1624,22 @@ class Placeholder(Field):
 
 
 class DatePicker(Field):
+    """Calendar-day picker (Flowbite by default; ``.native(True)`` for browser input)."""
+
+    _mode: str = "date"
+    _native_input_type: str = "date"
+
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
-        self._input_type = "date"
+        self._input_type = self._native_input_type
         self._min_date: str | None = None
         self._max_date: str | None = None
         self._display_format: str | None = None
-        self._native = True
+        # Flowbite calendar is the default (Shamar parity); opt into native HTML.
+        self._native = False
+        self._seconds = False
+        self._time_format: str | None = None
+        self._minute_step: int | None = None
 
     def min_date(self, value: str) -> Self:
         self._min_date = value
@@ -1641,6 +1650,7 @@ class DatePicker(Field):
         return self
 
     def display_format(self, fmt: str) -> Self:
+        """Soft display hint for the Flowbite host (locale Intl remains the default)."""
         self._display_format = fmt
         return self
 
@@ -1648,43 +1658,248 @@ class DatePicker(Field):
         self._native = condition
         return self
 
-    def render(self, state: Any = None, **ctx: Any) -> str:
-        if not self.is_visible(**ctx):
-            return ""
+    def seconds(self, condition: bool = True) -> Self:
+        self._seconds = bool(condition)
+        if self._seconds:
+            self._step = 1
+        return self
+
+    def time_format(self, value: str) -> Self:
+        """Display clock as ``12`` or ``24``; stored values stay 24-hour."""
+        token = str(value).strip()
+        if token in {"12", "24"}:
+            self._time_format = token
+        return self
+
+    def hours12(self) -> Self:
+        return self.time_format("12")
+
+    def hours24(self) -> Self:
+        return self.time_format("24")
+
+    def minute_step(self, value: int) -> Self:
+        try:
+            step = int(value)
+        except (TypeError, ValueError):
+            step = 5
+        self._minute_step = max(1, min(30, step))
+        return self
+
+    def _native_type_for_mode(self) -> str:
+        return {
+            "date": "date",
+            "datetime": "datetime-local",
+            "time": "time",
+            "week": "week",
+            "month": "month",
+            "year": "number",
+        }.get(self._mode, "date")
+
+    def _render_native(self, state: Any = None, **ctx: Any) -> str:
         name = e(self.get_state_path() or "")
         placeholder = self.get_placeholder(**ctx)
         ph = f' placeholder="{e(placeholder)}"' if placeholder else ""
         disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
         readonly = " readonly" if self._readonly else ""
         val = "" if state is None else e(str(state))
-        attrs = []
+        attrs: list[str] = []
+        input_type = self._native_type_for_mode()
         if self._min_date:
             attrs.append(f'min="{e(self._min_date)}"')
         if self._max_date:
             attrs.append(f'max="{e(self._max_date)}"')
         if self._display_format:
             attrs.append(f'data-display-format="{e(self._display_format)}"')
-        if not self._native:
-            attrs.append('data-native="false"')
+        if self._seconds and self._mode in {"datetime", "time"} and self._step is None:
+            attrs.append('step="1"')
+        if self._mode == "year":
+            attrs.append('inputmode="numeric"')
+            attrs.append('min="1900"')
+            attrs.append('max="2100"')
         attr_s = (" " + " ".join(attrs)) if attrs else ""
         control = (
-            f'<input class="or-input" id="or-{name}" name="{name}" type="{e(self._input_type)}" '
+            f'<input class="or-input" id="or-{name}" name="{name}" type="{e(input_type)}" '
             f'value="{val}"{ph}{disabled}{readonly}{attr_s}{self._common_input_attrs(**ctx)}'
             f'{self._wire_binding(name)}{self._after_state_attr()} />'
         )
         return self.wrap_field(name, control, **ctx)
 
+    def _calendar_icon(self) -> str:
+        return (
+            '<div class="or-datepicker__icon" aria-hidden="true">'
+            '<svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">'
+            '<path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 '
+            "011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 "
+            "2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 "
+            "5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 "
+            '1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd" />'
+            "</svg></div>"
+        )
+
+    def _clock_icon(self) -> str:
+        return (
+            '<div class="or-datepicker__icon" aria-hidden="true">'
+            '<svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">'
+            '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 '
+            "0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z\" "
+            'clip-rule="evenodd" /></svg></div>'
+        )
+
+    def _render_time_controls(self, *, field_id: bool, label: str) -> str:
+        id_attr = f' id="or-{e(label)}"' if field_id else ""
+        return (
+            f'<div class="relative or-datepicker__time-wrap" x-ref="timeWrap">'
+            f"{self._clock_icon()}"
+            f'<div class="or-timepicker__control">'
+            f'<input{id_attr} type="text" autocomplete="off" spellcheck="false" '
+            f'class="or-input or-datepicker__time or-timepicker__input" '
+            f':inputmode="timeFormat === \'12\' ? \'text\' : \'numeric\'" '
+            f':placeholder="timePlaceholder" :disabled="disabled" '
+            f':aria-label="{e(label)} time" :value="timeDraft" '
+            f'@focus="onTimeFocus()" @keydown="onTimeKeydown($event)" '
+            f'@paste="onTimePaste($event)" @blur="commitTimeDraft()" '
+            f'@click="openTimeAssist()" />'
+            f'<button type="button" class="or-timepicker__toggle" @click="toggleTime()" '
+            f':disabled="disabled" :aria-expanded="timeOpen ? \'true\' : \'false\'" '
+            f'aria-label="Adjust time" tabindex="-1">'
+            f'<svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14" '
+            f'aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 '
+            "011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 "
+            '01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>'
+            f"</button></div>"
+            f'<div class="or-timepicker" x-show="timeOpen" x-cloak '
+            f'x-transition.opacity.duration.120ms role="dialog" aria-label="Adjust time">'
+            f'<div class="or-timepicker__steppers" '
+            f':class="{{ \'has-seconds\': seconds, \'has-meridiem\': timeFormat === \'12\' }}">'
+            f'<div class="or-timepicker__stepper">'
+            f'<button type="button" class="or-timepicker__spin" @click="nudge(\'hour\', 1)" '
+            f'aria-label="Increase hour">+</button>'
+            f'<div class="or-timepicker__digit" x-text="displayHour"></div>'
+            f'<button type="button" class="or-timepicker__spin" @click="nudge(\'hour\', -1)" '
+            f'aria-label="Decrease hour">−</button>'
+            f'<span class="or-timepicker__unit">Hr</span></div>'
+            f'<div class="or-timepicker__sep" aria-hidden="true">:</div>'
+            f'<div class="or-timepicker__stepper">'
+            f'<button type="button" class="or-timepicker__spin" @click="nudge(\'minute\', 1)" '
+            f'aria-label="Increase minute">+</button>'
+            f'<div class="or-timepicker__digit" x-text="padTime(minute)"></div>'
+            f'<button type="button" class="or-timepicker__spin" @click="nudge(\'minute\', -1)" '
+            f'aria-label="Decrease minute">−</button>'
+            f'<span class="or-timepicker__unit">Min</span></div>'
+            f'<template x-if="seconds"><div class="or-timepicker__seconds">'
+            f'<div class="or-timepicker__sep" aria-hidden="true">:</div>'
+            f'<div class="or-timepicker__stepper">'
+            f'<button type="button" class="or-timepicker__spin" @click="nudge(\'second\', 1)" '
+            f'aria-label="Increase second">+</button>'
+            f'<div class="or-timepicker__digit" x-text="padTime(second)"></div>'
+            f'<button type="button" class="or-timepicker__spin" @click="nudge(\'second\', -1)" '
+            f'aria-label="Decrease second">−</button>'
+            f'<span class="or-timepicker__unit">Sec</span></div></div></template>'
+            f'<template x-if="timeFormat === \'12\'">'
+            f'<div class="or-timepicker__stepper or-timepicker__meridiem">'
+            f'<button type="button" class="or-timepicker__spin" @click="nudge(\'meridiem\', 1)" '
+            f'aria-label="Toggle AM/PM">+</button>'
+            f'<div class="or-timepicker__digit" x-text="meridiem"></div>'
+            f'<button type="button" class="or-timepicker__spin" @click="nudge(\'meridiem\', 1)" '
+            f'aria-label="Toggle AM/PM">−</button>'
+            f'<span class="or-timepicker__unit"> </span></div></template>'
+            f"</div>"
+            f'<div class="or-timepicker__chips">'
+            f'<button type="button" class="or-timepicker__chip" @click="setTimeNow()">Now</button>'
+            f'<button type="button" class="or-timepicker__chip" @click="clearTime()">Clear</button>'
+            f"</div></div></div>"
+        )
+
+    def _render_flowbite(self, state: Any = None, **ctx: Any) -> str:
+        name = e(self.get_state_path() or "")
+        path = f"data.{name}" if name and not str(name).startswith("data.") else name
+        val = "" if state is None else e(str(state))
+        disabled = self.is_disabled(**ctx) or self._readonly
+        disabled_cls = " is-disabled" if disabled else ""
+        disabled_attr = " disabled" if disabled else ""
+        placeholder = e(self.get_placeholder(**ctx) or "")
+        seconds = "true" if self._seconds else "false"
+        time_format = e(self._time_format or "")
+        minute_step = (
+            str(self._minute_step) if self._minute_step is not None else ""
+        )
+        min_date = e(self._min_date or "")
+        max_date = e(self._max_date or "")
+        label = e(self.get_label(**ctx))
+        mode = e(self._mode)
+
+        date_block = ""
+        if self._mode != "time":
+            date_block = (
+                f'<div class="or-datepicker__host" x-ref="pickerHost">'
+                f"{self._calendar_icon()}"
+                f'<input id="or-{name}" x-ref="dateInput" type="text" autocomplete="off" '
+                f'class="or-input or-datepicker__input" '
+                f':placeholder="placeholder || defaultPlaceholder" :disabled="disabled" '
+                f':aria-label="{label}" />'
+                f"</div>"
+            )
+
+        time_block = ""
+        if self._mode in {"datetime", "time"}:
+            time_block = self._render_time_controls(
+                field_id=self._mode == "time",
+                label=name,
+            )
+
+        host = (
+            f'<div class="or-datepicker or-datepicker--{mode}{disabled_cls}" '
+            f'data-mode="{mode}" data-seconds="{seconds}" '
+            f'data-time-format="{time_format}" data-minute-step="{e(minute_step)}" '
+            f'data-min="{min_date}" data-max="{max_date}" '
+            f'data-placeholder="{placeholder}" data-path="{e(path)}" '
+            f'x-data="orbitDatePicker" @keydown.escape.window="onEscape()" '
+            f'wire:ignore conduit:ignore>'
+            f'<input type="hidden" x-ref="state" id="or-{name}-state" name="{name}" '
+            f'value="{val}"{disabled_attr}{self._wire_binding(name)}'
+            f'{self._after_state_attr()} />'
+            f'<div class="or-datepicker__row">{date_block}{time_block}</div>'
+            f"</div>"
+        )
+        return self.wrap_field(name, host, **ctx)
+
+    def render(self, state: Any = None, **ctx: Any) -> str:
+        if not self.is_visible(**ctx):
+            return ""
+        if self._native:
+            return self._render_native(state, **ctx)
+        return self._render_flowbite(state, **ctx)
+
 
 class DateTimePicker(DatePicker):
-    def __init__(self, name: str | None = None) -> None:
-        super().__init__(name)
-        self._input_type = "datetime-local"
+    _mode = "datetime"
+    _native_input_type = "datetime-local"
 
 
 class TimePicker(DatePicker):
-    def __init__(self, name: str | None = None) -> None:
-        super().__init__(name)
-        self._input_type = "time"
+    _mode = "time"
+    _native_input_type = "time"
+
+
+class WeekPicker(DatePicker):
+    """ISO week picker — stores the Monday of the selected week (``YYYY-MM-DD``)."""
+
+    _mode = "week"
+    _native_input_type = "week"
+
+
+class MonthPicker(DatePicker):
+    """Month picker — stores the first day of the month (``YYYY-MM-DD``)."""
+
+    _mode = "month"
+    _native_input_type = "month"
+
+
+class YearPicker(DatePicker):
+    """Year picker — stores a four-digit year (``YYYY``)."""
+
+    _mode = "year"
+    _native_input_type = "number"
 
 
 class FileUpload(Field):

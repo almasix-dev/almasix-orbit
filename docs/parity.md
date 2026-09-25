@@ -57,7 +57,7 @@ Docs-hosted catalog UI at `/plugins/` (on the **main** docs tree; `/0.x/` is the
 | KeyValue / MorphToSelect / ModalTableSelect host mounts | Done |
 | TagsInput suggestions + separator + reorderable flag | Done |
 | Radio / CheckboxList descriptions, columns, bulk toggle | Done |
-| Date/Time pickers min/max/display_format/`native(False)` | Done |
+| Date/Time pickers (Flowbite calendar + time stepper; Week/Month/Year; `.native(True)`) | Done |
 | `MoneyInput` currency prefix | Done |
 | Placeholder respects `hidden()` / visibility | Done |
 | RichEditor toolbar, merge tags, contenteditable surface | Done |

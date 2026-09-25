@@ -1,301 +1,740 @@
 {
   "forms/text-input": {
     "title": "Text input",
-    "intro": "TextInput is the workhorse field for single-line strings — titles, slugs, emails, and numeric values. Orbit wraps native inputs with consistent label, hint, helper, prefix/suffix affixes, and validation rules that dehydrate with the form. Variants below show type modifiers, affix chrome, and interaction states you can combine on one field.",
+    "intro": "TextInput is the workhorse field for single-line strings \u2014 titles, slugs, emails, and numeric values. Orbit wraps native inputs with consistent label, hint, helper, prefix/suffix affixes, and validation rules that dehydrate with the form. Variants below show type modifiers, affix chrome, and interaction states you can combine on one field.",
     "variants": [
-      {"id": "forms/text-input/basic", "heading": "Basic text input", "blurb": "Label, placeholder, and helper text — the default starting point.", "code": "TextInput.make('title').label('Title').placeholder('Enter a title…').helper_text('Shown on the public page.')"},
-      {"id": "forms/text-input/email", "heading": "Email", "blurb": "Sets input type to email and adds an email validation rule.", "code": "TextInput.make('email').email().label('Email').placeholder('you@acme.test')"},
-      {"id": "forms/text-input/password", "heading": "Password (revealable)", "blurb": "Password type with an optional reveal toggle for accessibility.", "code": "TextInput.make('password').password().revealable().label('Password')"},
-      {"id": "forms/text-input/url", "heading": "URL", "blurb": "URL input type with built-in url validation.", "code": "TextInput.make('website').url().label('Website').placeholder('https://')"},
-      {"id": "forms/text-input/tel", "heading": "Telephone", "blurb": "Tel input type for phone numbers.", "code": "TextInput.make('phone').tel().label('Phone')"},
-      {"id": "forms/text-input/numeric", "heading": "Numeric", "blurb": "Number input with optional min/max bounds.", "code": "TextInput.make('quantity').numeric().label('Quantity').min_value(0).max_value(99)"},
-      {"id": "forms/text-input/prefix", "heading": "Prefix text", "blurb": "Static text before the control — common for currency symbols.", "code": "TextInput.make('price').label('Price').prefix('$').numeric()"},
-      {"id": "forms/text-input/suffix", "heading": "Suffix text", "blurb": "Static text after the control — units, domains, etc.", "code": "TextInput.make('weight').label('Weight').suffix('kg').numeric()"},
-      {"id": "forms/text-input/prefix-icon", "heading": "Prefix icon", "blurb": "Heroicon rendered inside the affix rail.", "code": "TextInput.make('search').label('Search').prefix_icon('heroicon-o-magnifying-glass')"},
-      {"id": "forms/text-input/suffix-icon", "heading": "Suffix icon", "blurb": "Trailing icon affix for links, locks, or status.", "code": "TextInput.make('slug').label('Slug').suffix_icon('heroicon-o-link')"},
-      {"id": "forms/text-input/required", "heading": "Required", "blurb": "Shows the required asterisk and injects a required rule.", "code": "TextInput.make('name').label('Name').required()"},
-      {"id": "forms/text-input/disabled", "heading": "Disabled", "blurb": "Non-interactive state for read-only contexts.", "code": "TextInput.make('locked').label('Locked field').disabled()"},
-      {"id": "forms/text-input/readonly", "heading": "Readonly", "blurb": "Value visible but not editable — good for generated IDs.", "code": "TextInput.make('id').label('Record ID').readonly()"},
-      {"id": "forms/text-input/copyable", "heading": "Copyable", "blurb": "Adds a one-click copy button beside the input.", "code": "TextInput.make('token').label('API token').copyable().readonly()"},
-      {"id": "forms/text-input/mask", "heading": "Input mask", "blurb": "Client-side mask pattern for structured values like card numbers.", "code": "TextInput.make('card').label('Card number').mask('9999 9999 9999 9999')"},
-      {"id": "forms/text-input/datalist", "heading": "Datalist suggestions", "blurb": "Native datalist autocomplete from a string list.", "code": "TextInput.make('city').label('City').datalist(['Nairobi', 'London', 'Berlin'])"},
-      {"id": "forms/text-input/with-hint", "heading": "With hint", "blurb": "Inline hint text and optional hint icon above the control.", "code": "TextInput.make('slug').label('Slug').hint('Used in the public URL.').hint_icon('heroicon-o-information-circle')"}
+      {
+        "id": "forms/text-input/basic",
+        "heading": "Basic text input",
+        "blurb": "Label, placeholder, and helper text \u2014 the default starting point.",
+        "code": "TextInput.make('title').label('Title').placeholder('Enter a title\u2026').helper_text('Shown on the public page.')"
+      },
+      {
+        "id": "forms/text-input/email",
+        "heading": "Email",
+        "blurb": "Sets input type to email and adds an email validation rule.",
+        "code": "TextInput.make('email').email().label('Email').placeholder('you@acme.test')"
+      },
+      {
+        "id": "forms/text-input/password",
+        "heading": "Password (revealable)",
+        "blurb": "Password type with an optional reveal toggle for accessibility.",
+        "code": "TextInput.make('password').password().revealable().label('Password')"
+      },
+      {
+        "id": "forms/text-input/url",
+        "heading": "URL",
+        "blurb": "URL input type with built-in url validation.",
+        "code": "TextInput.make('website').url().label('Website').placeholder('https://')"
+      },
+      {
+        "id": "forms/text-input/tel",
+        "heading": "Telephone",
+        "blurb": "Tel input type for phone numbers.",
+        "code": "TextInput.make('phone').tel().label('Phone')"
+      },
+      {
+        "id": "forms/text-input/numeric",
+        "heading": "Numeric",
+        "blurb": "Number input with optional min/max bounds.",
+        "code": "TextInput.make('quantity').numeric().label('Quantity').min_value(0).max_value(99)"
+      },
+      {
+        "id": "forms/text-input/prefix",
+        "heading": "Prefix text",
+        "blurb": "Static text before the control \u2014 common for currency symbols.",
+        "code": "TextInput.make('price').label('Price').prefix('$').numeric()"
+      },
+      {
+        "id": "forms/text-input/suffix",
+        "heading": "Suffix text",
+        "blurb": "Static text after the control \u2014 units, domains, etc.",
+        "code": "TextInput.make('weight').label('Weight').suffix('kg').numeric()"
+      },
+      {
+        "id": "forms/text-input/prefix-icon",
+        "heading": "Prefix icon",
+        "blurb": "Heroicon rendered inside the affix rail.",
+        "code": "TextInput.make('search').label('Search').prefix_icon('heroicon-o-magnifying-glass')"
+      },
+      {
+        "id": "forms/text-input/suffix-icon",
+        "heading": "Suffix icon",
+        "blurb": "Trailing icon affix for links, locks, or status.",
+        "code": "TextInput.make('slug').label('Slug').suffix_icon('heroicon-o-link')"
+      },
+      {
+        "id": "forms/text-input/required",
+        "heading": "Required",
+        "blurb": "Shows the required asterisk and injects a required rule.",
+        "code": "TextInput.make('name').label('Name').required()"
+      },
+      {
+        "id": "forms/text-input/disabled",
+        "heading": "Disabled",
+        "blurb": "Non-interactive state for read-only contexts.",
+        "code": "TextInput.make('locked').label('Locked field').disabled()"
+      },
+      {
+        "id": "forms/text-input/readonly",
+        "heading": "Readonly",
+        "blurb": "Value visible but not editable \u2014 good for generated IDs.",
+        "code": "TextInput.make('id').label('Record ID').readonly()"
+      },
+      {
+        "id": "forms/text-input/copyable",
+        "heading": "Copyable",
+        "blurb": "Adds a one-click copy button beside the input.",
+        "code": "TextInput.make('token').label('API token').copyable().readonly()"
+      },
+      {
+        "id": "forms/text-input/mask",
+        "heading": "Input mask",
+        "blurb": "Client-side mask pattern for structured values like card numbers.",
+        "code": "TextInput.make('card').label('Card number').mask('9999 9999 9999 9999')"
+      },
+      {
+        "id": "forms/text-input/datalist",
+        "heading": "Datalist suggestions",
+        "blurb": "Native datalist autocomplete from a string list.",
+        "code": "TextInput.make('city').label('City').datalist(['Nairobi', 'London', 'Berlin'])"
+      },
+      {
+        "id": "forms/text-input/with-hint",
+        "heading": "With hint",
+        "blurb": "Inline hint text and optional hint icon above the control.",
+        "code": "TextInput.make('slug').label('Slug').hint('Used in the public URL.').hint_icon('heroicon-o-information-circle')"
+      }
     ]
   },
   "forms/select": {
     "title": "Select",
     "intro": "Select fields render native or searchable dropdowns with static options, grouped options, or relationship-backed search. Searchable selects add a filter input; MultiSelect extends Select with multiple selection. Options can carry descriptions when used with Radio or CheckboxList patterns.",
     "variants": [
-      {"id": "forms/select/basic", "heading": "Basic select", "blurb": "Native dropdown with a static options map.", "code": "Select.make('status').label('Status').options({'draft': 'Draft', 'published': 'Published'})"},
-      {"id": "forms/select/searchable", "heading": "Searchable select", "blurb": "Filterable list — ideal for long option sets.", "code": "Select.make('status').label('Status').options({...}).searchable()"},
-      {"id": "forms/select/multiple", "heading": "Multi select", "blurb": "Multiple selection via MultiSelect.", "code": "MultiSelect.make('tags').label('Tags').options({'orbit': 'Orbit', 'forms': 'Forms'})"}
+      {
+        "id": "forms/select/basic",
+        "heading": "Basic select",
+        "blurb": "Native dropdown with a static options map.",
+        "code": "Select.make('status').label('Status').options({'draft': 'Draft', 'published': 'Published'})"
+      },
+      {
+        "id": "forms/select/searchable",
+        "heading": "Searchable select",
+        "blurb": "Filterable list \u2014 ideal for long option sets.",
+        "code": "Select.make('status').label('Status').options({...}).searchable()"
+      },
+      {
+        "id": "forms/select/multiple",
+        "heading": "Multi select",
+        "blurb": "Multiple selection via MultiSelect.",
+        "code": "MultiSelect.make('tags').label('Tags').options({'orbit': 'Orbit', 'forms': 'Forms'})"
+      }
     ]
   },
   "forms/textarea": {
     "title": "Textarea",
-    "intro": "Textarea captures multi-line plain text — bios, notes, and markdown source. Control height with rows or cols; autosize grows with content. MarkdownEditor and RichEditor extend Textarea for formatted content.",
+    "intro": "Textarea captures multi-line plain text \u2014 bios, notes, and markdown source. Control height with rows or cols; autosize grows with content. MarkdownEditor and RichEditor extend Textarea for formatted content.",
     "variants": [
-      {"id": "forms/textarea/basic", "heading": "Basic textarea", "blurb": "Default multi-line field with placeholder and helper.", "code": "Textarea.make('bio').label('Bio').placeholder('Tell us about yourself…').helper_text('Brief summary.')"},
-      {"id": "forms/textarea/rows", "heading": "Custom rows", "blurb": "Explicit row count for taller editing surfaces.", "code": "Textarea.make('notes').label('Notes').rows(6)"}
+      {
+        "id": "forms/textarea/basic",
+        "heading": "Basic textarea",
+        "blurb": "Default multi-line field with placeholder and helper.",
+        "code": "Textarea.make('bio').label('Bio').placeholder('Tell us about yourself\u2026').helper_text('Brief summary.')"
+      },
+      {
+        "id": "forms/textarea/rows",
+        "heading": "Custom rows",
+        "blurb": "Explicit row count for taller editing surfaces.",
+        "code": "Textarea.make('notes').label('Notes').rows(6)"
+      }
     ]
   },
   "forms/checkbox": {
     "title": "Checkbox",
     "intro": "Checkbox renders a single boolean toggle with an inline label. Use CheckboxList when users pick many options from a set; use Toggle for on/off settings with switch styling.",
     "variants": [
-      {"id": "forms/checkbox/basic", "heading": "Basic checkbox", "blurb": "Single boolean consent or feature flag.", "code": "Checkbox.make('terms').label('Accept terms and conditions')"}
+      {
+        "id": "forms/checkbox/basic",
+        "heading": "Basic checkbox",
+        "blurb": "Single boolean consent or feature flag.",
+        "code": "Checkbox.make('terms').label('Accept terms and conditions')"
+      }
     ]
   },
   "forms/toggle": {
     "title": "Toggle",
-    "intro": "Toggle is a styled switch built on Checkbox semantics — same wire:model binding, different visual treatment. Pair toggles in Flex rows for compact settings panels.",
+    "intro": "Toggle is a styled switch built on Checkbox semantics \u2014 same wire:model binding, different visual treatment. Pair toggles in Flex rows for compact settings panels.",
     "variants": [
-      {"id": "forms/toggle/basic", "heading": "Basic toggle", "blurb": "On/off switch with label.", "code": "Toggle.make('active').label('Active account')"}
+      {
+        "id": "forms/toggle/basic",
+        "heading": "Basic toggle",
+        "blurb": "On/off switch with label.",
+        "code": "Toggle.make('active').label('Active account')"
+      }
     ]
   },
   "forms/date-picker": {
     "title": "Date picker",
-    "intro": "DatePicker wraps a native date input with min/max constraints and optional non-native picker chrome. Values dehydrate as ISO date strings.",
+    "intro": "DatePicker uses a Flowbite calendar by default (YYYY-MM-DD). Call .native(True) for the browser date input.",
     "variants": [
-      {"id": "forms/date-picker/basic", "heading": "Basic date picker", "blurb": "Standard date field.", "code": "DatePicker.make('starts').label('Starts on')"},
-      {"id": "forms/date-picker/min-max", "heading": "Min and max dates", "blurb": "Restrict selectable range.", "code": "DatePicker.make('window').label('Window').min_date('2026-01-01').max_date('2026-12-31')"}
+      {
+        "id": "forms/date-picker/basic",
+        "heading": "Basic date picker",
+        "blurb": "Flowbite calendar field.",
+        "code": "DatePicker.make('starts').label('Starts on')"
+      },
+      {
+        "id": "forms/date-picker/min-max",
+        "heading": "Min and max dates",
+        "blurb": "Restrict selectable range.",
+        "code": "DatePicker.make('window').label('Window').min_date('2026-01-01').max_date('2026-12-31')"
+      },
+      {
+        "id": "forms/date-picker/native",
+        "heading": "Native date input",
+        "blurb": "Browser type=date control.",
+        "code": "DatePicker.make('starts').label('Starts on').native(True)"
+      }
     ]
   },
   "forms/date-time-picker": {
     "title": "Date time picker",
-    "intro": "DateTimePicker combines calendar date and time in one datetime-local control. Share min/max with DatePicker for scheduling windows.",
+    "intro": "DateTimePicker combines a Flowbite calendar with Orbit\u2019s time stepper.",
     "variants": [
-      {"id": "forms/date-time-picker/basic", "heading": "Basic date time", "blurb": "Publish or schedule timestamps.", "code": "DateTimePicker.make('published_at').label('Published at')"},
-      {"id": "forms/date-time-picker/min-max", "heading": "Bounded range", "blurb": "Limit selectable datetime window.", "code": "DateTimePicker.make('scheduled').label('Scheduled').min_date('2026-01-01').max_date('2026-12-31')"}
+      {
+        "id": "forms/date-time-picker/basic",
+        "heading": "Basic date time",
+        "blurb": "Calendar plus time.",
+        "code": "DateTimePicker.make('published_at').label('Published at')"
+      },
+      {
+        "id": "forms/date-time-picker/seconds",
+        "heading": "Seconds and 12-hour",
+        "blurb": "Second precision with AM/PM display.",
+        "code": "DateTimePicker.make('published_at').seconds().hours12()"
+      },
+      {
+        "id": "forms/date-time-picker/native",
+        "heading": "Native datetime",
+        "blurb": "Browser datetime-local.",
+        "code": "DateTimePicker.make('published_at').native(True)"
+      }
     ]
   },
   "forms/time-picker": {
     "title": "Time picker",
-    "intro": "TimePicker is a native time input for reminders, slots, and office hours. Min/max attributes bound acceptable times.",
+    "intro": "TimePicker uses Orbit\u2019s time stepper by default (HH:mm / HH:mm:ss).",
     "variants": [
-      {"id": "forms/time-picker/basic", "heading": "Basic time picker", "blurb": "HH:MM time selection.", "code": "TimePicker.make('remind_at').label('Remind at')"},
-      {"id": "forms/time-picker/min-max", "heading": "Time window", "blurb": "Business-hours style constraints.", "code": "TimePicker.make('slot').label('Time slot').min_date('08:00').max_date('18:00')"}
+      {
+        "id": "forms/time-picker/basic",
+        "heading": "Basic time picker",
+        "blurb": "Stepper time field.",
+        "code": "TimePicker.make('remind_at').label('Remind at')"
+      },
+      {
+        "id": "forms/time-picker/hours12",
+        "heading": "Twelve-hour display",
+        "blurb": "AM/PM display with minute step.",
+        "code": "TimePicker.make('opens_at').hours12().minute_step(15)"
+      },
+      {
+        "id": "forms/time-picker/native",
+        "heading": "Native time",
+        "blurb": "Browser type=time.",
+        "code": "TimePicker.make('slot').native(True)"
+      }
     ]
   },
   "forms/file-upload": {
     "title": "File upload",
     "intro": "FileUpload is a drag-and-drop uploader with image preview, circular avatar layout, optional crop/resize, and accepted MIME filters. Image and avatar presets configure accept lists and preview automatically.",
     "variants": [
-      {"id": "forms/file-upload/basic", "heading": "Basic file upload", "blurb": "Generic attachment picker.", "code": "FileUpload.make('attachment').label('Attachment')"},
-      {"id": "forms/file-upload/image", "heading": "Image upload", "blurb": "Image MIME types with preview.", "code": "FileUpload.make('cover').image().label('Cover image')"},
-      {"id": "forms/file-upload/avatar", "heading": "Avatar upload", "blurb": "Circular avatar preset with image/* accept.", "code": "FileUpload.make('avatar').avatar().label('Avatar')"}
+      {
+        "id": "forms/file-upload/basic",
+        "heading": "Basic file upload",
+        "blurb": "Generic attachment picker.",
+        "code": "FileUpload.make('attachment').label('Attachment')"
+      },
+      {
+        "id": "forms/file-upload/image",
+        "heading": "Image upload",
+        "blurb": "Image MIME types with preview.",
+        "code": "FileUpload.make('cover').image().label('Cover image')"
+      },
+      {
+        "id": "forms/file-upload/avatar",
+        "heading": "Avatar upload",
+        "blurb": "Circular avatar preset with image/* accept.",
+        "code": "FileUpload.make('avatar').avatar().label('Avatar')"
+      }
     ]
   },
   "forms/radio": {
     "title": "Radio",
     "intro": "Radio presents mutually exclusive options with optional per-option descriptions and multi-column layouts. State is a single selected key.",
     "variants": [
-      {"id": "forms/radio/basic", "heading": "Basic radio", "blurb": "Plan or tier selection.", "code": "Radio.make('plan').label('Plan').options({'starter': 'Starter', 'pro': 'Pro'})"},
-      {"id": "forms/radio/with-descriptions", "heading": "With descriptions", "blurb": "Helper copy under each option label.", "code": "Radio.make('plan').label('Plan').options({...}).descriptions({'starter': 'For side projects'})"},
-      {"id": "forms/radio/columns", "heading": "Multi-column", "blurb": "Grid layout for dense option sets.", "code": "Radio.make('plan').label('Plan').options({...}).options_columns(2)"}
+      {
+        "id": "forms/radio/basic",
+        "heading": "Basic radio",
+        "blurb": "Plan or tier selection.",
+        "code": "Radio.make('plan').label('Plan').options({'starter': 'Starter', 'pro': 'Pro'})"
+      },
+      {
+        "id": "forms/radio/with-descriptions",
+        "heading": "With descriptions",
+        "blurb": "Helper copy under each option label.",
+        "code": "Radio.make('plan').label('Plan').options({...}).descriptions({'starter': 'For side projects'})"
+      },
+      {
+        "id": "forms/radio/columns",
+        "heading": "Multi-column",
+        "blurb": "Grid layout for dense option sets.",
+        "code": "Radio.make('plan').label('Plan').options({...}).options_columns(2)"
+      }
     ]
   },
   "forms/checkbox-list": {
     "title": "Checkbox list",
     "intro": "CheckboxList allows many selections from a static option map. Bulk toggle adds select-all / deselect-all links; descriptions mirror Radio.",
     "variants": [
-      {"id": "forms/checkbox-list/basic", "heading": "Basic checkbox list", "blurb": "Feature flags or permissions.", "code": "CheckboxList.make('features').label('Features').options({'api': 'API access', 'sso': 'SSO'})"},
-      {"id": "forms/checkbox-list/bulk-toggle", "heading": "Bulk toggle", "blurb": "Select all / deselect all controls.", "code": "CheckboxList.make('features').label('Features').options({...}).bulk_toggleable().options_columns(2)"}
+      {
+        "id": "forms/checkbox-list/basic",
+        "heading": "Basic checkbox list",
+        "blurb": "Feature flags or permissions.",
+        "code": "CheckboxList.make('features').label('Features').options({'api': 'API access', 'sso': 'SSO'})"
+      },
+      {
+        "id": "forms/checkbox-list/bulk-toggle",
+        "heading": "Bulk toggle",
+        "blurb": "Select all / deselect all controls.",
+        "code": "CheckboxList.make('features').label('Features').options({...}).bulk_toggleable().options_columns(2)"
+      }
     ]
   },
   "forms/tags-input": {
     "title": "Tags input",
     "intro": "TagsInput manages a list of string tags with chip UI, optional datalist suggestions, and reorderable chips for manual ordering.",
     "variants": [
-      {"id": "forms/tags-input/basic", "heading": "Basic tags", "blurb": "Free-form tag entry.", "code": "TagsInput.make('tags').label('Tags')"},
-      {"id": "forms/tags-input/suggestions", "heading": "With suggestions", "blurb": "Datalist-backed autocomplete plus reorderable chips.", "code": "TagsInput.make('tags').label('Tags').suggestions(['orbit', 'tables']).reorderable()"}
+      {
+        "id": "forms/tags-input/basic",
+        "heading": "Basic tags",
+        "blurb": "Free-form tag entry.",
+        "code": "TagsInput.make('tags').label('Tags')"
+      },
+      {
+        "id": "forms/tags-input/suggestions",
+        "heading": "With suggestions",
+        "blurb": "Datalist-backed autocomplete plus reorderable chips.",
+        "code": "TagsInput.make('tags').label('Tags').suggestions(['orbit', 'tables']).reorderable()"
+      }
     ]
   },
   "forms/color-picker": {
     "title": "Color picker",
     "intro": "ColorPicker wraps the native color input for brand swatches and theme tokens. Values dehydrate as hex strings.",
     "variants": [
-      {"id": "forms/color-picker/basic", "heading": "Basic color picker", "blurb": "Single color selection.", "code": "ColorPicker.make('brand').label('Brand color')"}
+      {
+        "id": "forms/color-picker/basic",
+        "heading": "Basic color picker",
+        "blurb": "Single color selection.",
+        "code": "ColorPicker.make('brand').label('Brand color')"
+      }
     ]
   },
   "forms/money-input": {
     "title": "Money input",
     "intro": "MoneyInput extends TextInput with currency prefix symbols and data attributes for locale-aware formatting on the client. Choose currency codes for USD, EUR, GBP, or KES.",
     "variants": [
-      {"id": "forms/money-input/usd", "heading": "USD", "blurb": "Dollar prefix and USD metadata.", "code": "MoneyInput.make('price').label('Price').currency('USD')"},
-      {"id": "forms/money-input/eur", "heading": "EUR", "blurb": "Euro prefix and EUR metadata.", "code": "MoneyInput.make('price').label('Price').currency('EUR')"}
+      {
+        "id": "forms/money-input/usd",
+        "heading": "USD",
+        "blurb": "Dollar prefix and USD metadata.",
+        "code": "MoneyInput.make('price').label('Price').currency('USD')"
+      },
+      {
+        "id": "forms/money-input/eur",
+        "heading": "EUR",
+        "blurb": "Euro prefix and EUR metadata.",
+        "code": "MoneyInput.make('price').label('Price').currency('EUR')"
+      }
     ]
   },
   "forms/rich-editor": {
     "title": "Rich editor",
     "intro": "RichEditor provides a TipTap-backed WYSIWYG surface with a configurable toolbar. Content dehydrates as HTML in a hidden input bound with wire:model.",
     "variants": [
-      {"id": "forms/rich-editor/basic", "heading": "Basic rich editor", "blurb": "Bold, italic, link, and heading tools.", "code": "RichEditor.make('body').label('Body').toolbar_buttons(['bold', 'italic', 'link', 'heading'])"}
+      {
+        "id": "forms/rich-editor/basic",
+        "heading": "Basic rich editor",
+        "blurb": "Bold, italic, link, and heading tools.",
+        "code": "RichEditor.make('body').label('Body').toolbar_buttons(['bold', 'italic', 'link', 'heading'])"
+      }
     ]
   },
   "forms/markdown-editor": {
     "title": "Markdown editor",
     "intro": "MarkdownEditor styles a Textarea for markdown source editing. Pair with a preview prime on infolists for rendered output.",
     "variants": [
-      {"id": "forms/markdown-editor/basic", "heading": "Basic markdown editor", "blurb": "Multi-line markdown source.", "code": "MarkdownEditor.make('readme').label('README').rows(5)"}
+      {
+        "id": "forms/markdown-editor/basic",
+        "heading": "Basic markdown editor",
+        "blurb": "Multi-line markdown source.",
+        "code": "MarkdownEditor.make('readme').label('README').rows(5)"
+      }
     ]
   },
   "forms/key-value": {
     "title": "Key-value",
     "intro": "KeyValue edits arbitrary string maps as editable rows with add-row actions. Empty state shows a blank row; populated state renders existing pairs.",
     "variants": [
-      {"id": "forms/key-value/basic", "heading": "Empty key-value", "blurb": "Metadata editor with no initial rows.", "code": "KeyValue.make('meta').label('Metadata')"},
-      {"id": "forms/key-value/populated", "heading": "Populated key-value", "blurb": "Existing key/value pairs.", "code": "KeyValue.make('meta').label('Metadata')  # fill({'meta': {'version': '1.0'}})"}
+      {
+        "id": "forms/key-value/basic",
+        "heading": "Empty key-value",
+        "blurb": "Metadata editor with no initial rows.",
+        "code": "KeyValue.make('meta').label('Metadata')"
+      },
+      {
+        "id": "forms/key-value/populated",
+        "heading": "Populated key-value",
+        "blurb": "Existing key/value pairs.",
+        "code": "KeyValue.make('meta').label('Metadata')  # fill({'meta': {'version': '1.0'}})"
+      }
     ]
   },
   "forms/repeater": {
     "title": "Repeater",
     "intro": "Repeater repeats a nested schema for line items, addresses, or JSON arrays. Clone, reorder, collapse, and table layouts mirror Filament repeaters.",
     "variants": [
-      {"id": "forms/repeater/basic", "heading": "Basic repeater", "blurb": "Simple stacked items with add/remove.", "code": "Repeater.make('items').label('Line items').schema([TextInput.make('name').label('Name')]).default_items(1)"},
-      {"id": "forms/repeater/cloneable-reorderable", "heading": "Cloneable and reorderable", "blurb": "Duplicate rows and move up/down.", "code": "Repeater.make('items').cloneable().reorderable().collapsible().schema([...])"},
-      {"id": "forms/repeater/table", "heading": "Table layout", "blurb": "Column headers for spreadsheet-like entry.", "code": "Repeater.make('items').table(['Name', 'Qty']).schema([TextInput.make('name'), TextInput.make('qty')])"}
+      {
+        "id": "forms/repeater/basic",
+        "heading": "Basic repeater",
+        "blurb": "Simple stacked items with add/remove.",
+        "code": "Repeater.make('items').label('Line items').schema([TextInput.make('name').label('Name')]).default_items(1)"
+      },
+      {
+        "id": "forms/repeater/cloneable-reorderable",
+        "heading": "Cloneable and reorderable",
+        "blurb": "Duplicate rows and move up/down.",
+        "code": "Repeater.make('items').cloneable().reorderable().collapsible().schema([...])"
+      },
+      {
+        "id": "forms/repeater/table",
+        "heading": "Table layout",
+        "blurb": "Column headers for spreadsheet-like entry.",
+        "code": "Repeater.make('items').table(['Name', 'Qty']).schema([TextInput.make('name'), TextInput.make('qty')])"
+      }
     ]
   },
   "forms/builder": {
     "title": "Builder",
-    "intro": "Builder extends Repeater with typed blocks — each block has its own schema and picker button. Use for page builders, email sections, or CMS layouts.",
+    "intro": "Builder extends Repeater with typed blocks \u2014 each block has its own schema and picker button. Use for page builders, email sections, or CMS layouts.",
     "variants": [
-      {"id": "forms/builder/basic", "heading": "Basic builder", "blurb": "Hero and text blocks with picker.", "code": "Builder.make('content').label('Page blocks').blocks([Block.make('hero').label('Hero').schema([TextInput.make('heading')])])"}
+      {
+        "id": "forms/builder/basic",
+        "heading": "Basic builder",
+        "blurb": "Hero and text blocks with picker.",
+        "code": "Builder.make('content').label('Page blocks').blocks([Block.make('hero').label('Hero').schema([TextInput.make('heading')])])"
+      }
     ]
   },
   "forms/toggle-buttons": {
     "title": "Toggle buttons",
-    "intro": "ToggleButtons render segmented radio controls styled as button groups — great for visibility, alignment, or enum-like choices with few options.",
+    "intro": "ToggleButtons render segmented radio controls styled as button groups \u2014 great for visibility, alignment, or enum-like choices with few options.",
     "variants": [
-      {"id": "forms/toggle-buttons/basic", "heading": "Basic toggle buttons", "blurb": "Public / private / draft visibility.", "code": "ToggleButtons.make('visibility').label('Visibility').options({'public': 'Public', 'private': 'Private'})"}
+      {
+        "id": "forms/toggle-buttons/basic",
+        "heading": "Basic toggle buttons",
+        "blurb": "Public / private / draft visibility.",
+        "code": "ToggleButtons.make('visibility').label('Visibility').options({'public': 'Public', 'private': 'Private'})"
+      }
     ]
   },
   "forms/morph-to-select": {
     "title": "Morph-to select",
-    "intro": "MorphToSelect pairs a type picker with a searchable id select — assign polymorphic relations (User vs Team) from one field.",
+    "intro": "MorphToSelect pairs a type picker with a searchable id select \u2014 assign polymorphic relations (User vs Team) from one field.",
     "variants": [
-      {"id": "forms/morph-to-select/basic", "heading": "Basic morph-to select", "blurb": "User or team assignee.", "code": "MorphToSelect.make('assignee').label('Assignee').searchable().types([{'type': 'user', 'label': 'User', 'options': {'1': 'Ada'}}])"}
+      {
+        "id": "forms/morph-to-select/basic",
+        "heading": "Basic morph-to select",
+        "blurb": "User or team assignee.",
+        "code": "MorphToSelect.make('assignee').label('Assignee').searchable().types([{'type': 'user', 'label': 'User', 'options': {'1': 'Ada'}}])"
+      }
     ]
   },
   "forms/placeholder": {
     "title": "Placeholder",
-    "intro": "Placeholder renders static prose inside the schema — useful for section intros, upgrade prompts, or spacing without a bound field.",
+    "intro": "Placeholder renders static prose inside the schema \u2014 useful for section intros, upgrade prompts, or spacing without a bound field.",
     "variants": [
-      {"id": "forms/placeholder/basic", "heading": "Basic placeholder", "blurb": "Non-input informational slot.", "code": "Placeholder.make('note').content('This slot is reserved for future fields.')"}
+      {
+        "id": "forms/placeholder/basic",
+        "heading": "Basic placeholder",
+        "blurb": "Non-input informational slot.",
+        "code": "Placeholder.make('note').content('This slot is reserved for future fields.')"
+      }
     ]
   },
   "forms/hidden": {
     "title": "Hidden",
-    "intro": "Hidden fields dehydrate values without visible chrome — CSRF tokens, foreign keys, or serialized state. They render as plain hidden inputs and are omitted from screenshots.",
+    "intro": "Hidden fields dehydrate values without visible chrome \u2014 CSRF tokens, foreign keys, or serialized state. They render as plain hidden inputs and are omitted from screenshots.",
     "variants": [
-      {"id": "forms/hidden/basic", "heading": "Hidden field note", "blurb": "Not visually captured — renders as <input type=\"hidden\">.", "code": "Hidden.make('token')  # value set via fill() or default"}
+      {
+        "id": "forms/hidden/basic",
+        "heading": "Hidden field note",
+        "blurb": "Not visually captured \u2014 renders as <input type=\"hidden\">.",
+        "code": "Hidden.make('token')  # value set via fill() or default"
+      }
     ]
   },
   "forms/one-time-code-input": {
     "title": "One-time code input",
     "intro": "OneTimeCodeInput optimizes for OTP and 2FA codes with autocomplete hints for password managers and SMS autofill.",
     "variants": [
-      {"id": "forms/one-time-code-input/basic", "heading": "Basic OTP input", "blurb": "Six-digit verification code.", "code": "OneTimeCodeInput.make('code').label('Verification code')"}
+      {
+        "id": "forms/one-time-code-input/basic",
+        "heading": "Basic OTP input",
+        "blurb": "Six-digit verification code.",
+        "code": "OneTimeCodeInput.make('code').label('Verification code')"
+      }
     ]
   },
   "forms/view-field": {
     "title": "View field",
-    "intro": "ViewField displays read-only HTML or computed content inside a form — summaries, previews, or audit snippets without dehydrating user input.",
+    "intro": "ViewField displays read-only HTML or computed content inside a form \u2014 summaries, previews, or audit snippets without dehydrating user input.",
     "variants": [
-      {"id": "forms/view-field/basic", "heading": "Basic view field", "blurb": "Static HTML summary block.", "code": "ViewField.make('summary').label('Summary').content('<p>Published on <strong>18 Sep 2026</strong>.</p>')"}
+      {
+        "id": "forms/view-field/basic",
+        "heading": "Basic view field",
+        "blurb": "Static HTML summary block.",
+        "code": "ViewField.make('summary').label('Summary').content('<p>Published on <strong>18 Sep 2026</strong>.</p>')"
+      }
     ]
   },
   "forms/slider": {
     "title": "Slider",
     "intro": "Slider wraps a range input with optional pip marks for volume, priority, or percentage selection.",
     "variants": [
-      {"id": "forms/slider/basic", "heading": "Basic slider", "blurb": "0–100 range control.", "code": "Slider.make('volume').label('Volume').min_value(0).max_value(100)"}
+      {
+        "id": "forms/slider/basic",
+        "heading": "Basic slider",
+        "blurb": "0\u2013100 range control.",
+        "code": "Slider.make('volume').label('Volume').min_value(0).max_value(100)"
+      }
     ]
   },
   "schemas/section": {
     "title": "Section",
     "intro": "Section groups related fields under a heading with optional description, icon, aside layout, and collapsible body. Compact mode tightens vertical rhythm for dense admin forms.",
     "variants": [
-      {"id": "schemas/section/basic", "heading": "Basic section", "blurb": "Heading plus nested schema.", "code": "Section.make('profile').heading('Profile').schema([TextInput.make('name').label('Name')])"},
-      {"id": "schemas/section/collapsible", "heading": "Collapsible section", "blurb": "Advanced blocks collapsed by default.", "code": "Section.make('advanced').heading('Advanced').collapsible().collapsed().schema([Toggle.make('debug')])"},
-      {"id": "schemas/section/compact", "heading": "Compact section", "blurb": "Tighter spacing with optional icon.", "code": "Section.make('profile').heading('Profile').compact().icon('heroicon-o-user').schema([...])"}
+      {
+        "id": "schemas/section/basic",
+        "heading": "Basic section",
+        "blurb": "Heading plus nested schema.",
+        "code": "Section.make('profile').heading('Profile').schema([TextInput.make('name').label('Name')])"
+      },
+      {
+        "id": "schemas/section/collapsible",
+        "heading": "Collapsible section",
+        "blurb": "Advanced blocks collapsed by default.",
+        "code": "Section.make('advanced').heading('Advanced').collapsible().collapsed().schema([Toggle.make('debug')])"
+      },
+      {
+        "id": "schemas/section/compact",
+        "heading": "Compact section",
+        "blurb": "Tighter spacing with optional icon.",
+        "code": "Section.make('profile').heading('Profile').compact().icon('heroicon-o-user').schema([...])"
+      }
     ]
   },
   "schemas/tabs": {
     "title": "Tabs",
-    "intro": "Tabs split a form into horizontal panels — each tab owns its own schema. Icons and badges help surface counts or status without leaving the page.",
+    "intro": "Tabs split a form into horizontal panels \u2014 each tab owns its own schema. Icons and badges help surface counts or status without leaving the page.",
     "variants": [
-      {"id": "schemas/tabs/basic", "heading": "Basic tabs", "blurb": "General and SEO panels.", "code": "Tabs.make('main').tabs({'label': 'General', 'schema': [...]}, {'label': 'SEO', 'schema': [...]}).active_tab(0)"},
-      {"id": "schemas/tabs/with-badges", "heading": "Tabs with badges", "blurb": "Icons and numeric badges on tab labels.", "code": "Tabs.make('main').tabs({'label': 'SEO', 'icon': 'heroicon-o-magnifying-glass', 'badge': '3', 'schema': [...]})"}
+      {
+        "id": "schemas/tabs/basic",
+        "heading": "Basic tabs",
+        "blurb": "General and SEO panels.",
+        "code": "Tabs.make('main').tabs({'label': 'General', 'schema': [...]}, {'label': 'SEO', 'schema': [...]}).active_tab(0)"
+      },
+      {
+        "id": "schemas/tabs/with-badges",
+        "heading": "Tabs with badges",
+        "blurb": "Icons and numeric badges on tab labels.",
+        "code": "Tabs.make('main').tabs({'label': 'SEO', 'icon': 'heroicon-o-magnifying-glass', 'badge': '3', 'schema': [...]})"
+      }
     ]
   },
   "schemas/wizard": {
     "title": "Wizard",
-    "intro": "Wizard guides users through sequential steps with back/next navigation and optional skip. Each step is a labeled schema chunk — ideal for onboarding or multi-page creates without route changes.",
+    "intro": "Wizard guides users through sequential steps with back/next navigation and optional skip. Each step is a labeled schema chunk \u2014 ideal for onboarding or multi-page creates without route changes.",
     "variants": [
-      {"id": "schemas/wizard/basic", "heading": "Basic wizard", "blurb": "Account then profile steps.", "code": "Wizard.make('onboard').steps({'label': 'Account', 'schema': [...]}, {'label': 'Profile', 'schema': [...]}).start_step(0)"}
+      {
+        "id": "schemas/wizard/basic",
+        "heading": "Basic wizard",
+        "blurb": "Account then profile steps.",
+        "code": "Wizard.make('onboard').steps({'label': 'Account', 'schema': [...]}, {'label': 'Profile', 'schema': [...]}).start_step(0)"
+      }
     ]
   },
   "schemas/grid": {
     "title": "Grid",
-    "intro": "Grid lays out child components in a fixed column count — pair with TextInput pairs, metric tiles, or mixed fields.",
+    "intro": "Grid lays out child components in a fixed column count \u2014 pair with TextInput pairs, metric tiles, or mixed fields.",
     "variants": [
-      {"id": "schemas/grid/basic", "heading": "Basic grid", "blurb": "Two-column field grid.", "code": "Grid.make().columns(2).schema([TextInput.make('col_a'), TextInput.make('col_b')])"}
+      {
+        "id": "schemas/grid/basic",
+        "heading": "Basic grid",
+        "blurb": "Two-column field grid.",
+        "code": "Grid.make().columns(2).schema([TextInput.make('col_a'), TextInput.make('col_b')])"
+      }
     ]
   },
   "schemas/flex": {
     "title": "Flex",
     "intro": "Flex arranges children in a responsive row that stacks below a breakpoint. Use from_breakpoint('md') for side-by-side fields on desktop.",
     "variants": [
-      {"id": "schemas/flex/basic", "heading": "Basic flex", "blurb": "Responsive two-up layout.", "code": "Flex.make().from_breakpoint('md').schema([TextInput.make('left'), TextInput.make('right')])"}
+      {
+        "id": "schemas/flex/basic",
+        "heading": "Basic flex",
+        "blurb": "Responsive two-up layout.",
+        "code": "Flex.make().from_breakpoint('md').schema([TextInput.make('left'), TextInput.make('right')])"
+      }
     ]
   },
   "schemas/group": {
     "title": "Group",
-    "intro": "Group fuses fields without fieldset chrome — Filament-style inline grouping with optional column grid.",
+    "intro": "Group fuses fields without fieldset chrome \u2014 Filament-style inline grouping with optional column grid.",
     "variants": [
-      {"id": "schemas/group/basic", "heading": "Basic group", "blurb": "SKU and quantity on one row.", "code": "Group.make().columns(2).schema([TextInput.make('sku'), TextInput.make('qty')])"}
+      {
+        "id": "schemas/group/basic",
+        "heading": "Basic group",
+        "blurb": "SKU and quantity on one row.",
+        "code": "Group.make().columns(2).schema([TextInput.make('sku'), TextInput.make('qty')])"
+      }
     ]
   },
   "schemas/split": {
     "title": "Split",
-    "intro": "Split places schema columns side by side above a breakpoint — notes beside uploads, preview beside editor.",
+    "intro": "Split places schema columns side by side above a breakpoint \u2014 notes beside uploads, preview beside editor.",
     "variants": [
-      {"id": "schemas/split/basic", "heading": "Basic split", "blurb": "Notes and attachment columns.", "code": "Split.make().from_breakpoint('md').schema([Textarea.make('notes'), FileUpload.make('attachment')])"}
+      {
+        "id": "schemas/split/basic",
+        "heading": "Basic split",
+        "blurb": "Notes and attachment columns.",
+        "code": "Split.make().from_breakpoint('md').schema([Textarea.make('notes'), FileUpload.make('attachment')])"
+      }
     ]
   },
   "schemas/fieldset": {
     "title": "Fieldset",
-    "intro": "Fieldset wraps nested fields in semantic fieldset/legend chrome — accessibility-friendly grouping for addresses and payment blocks.",
+    "intro": "Fieldset wraps nested fields in semantic fieldset/legend chrome \u2014 accessibility-friendly grouping for addresses and payment blocks.",
     "variants": [
-      {"id": "schemas/fieldset/basic", "heading": "Basic fieldset", "blurb": "Billing address legend.", "code": "Fieldset.make('billing').label('Billing address').schema([TextInput.make('line1'), TextInput.make('city')])"}
+      {
+        "id": "schemas/fieldset/basic",
+        "heading": "Basic fieldset",
+        "blurb": "Billing address legend.",
+        "code": "Fieldset.make('billing').label('Billing address').schema([TextInput.make('line1'), TextInput.make('city')])"
+      }
     ]
   },
   "schemas/callout": {
     "title": "Callout",
-    "intro": "Callout surfaces info, success, warning, or danger messages inside a form — tips before save, destructive confirmations, or success banners.",
+    "intro": "Callout surfaces info, success, warning, or danger messages inside a form \u2014 tips before save, destructive confirmations, or success banners.",
     "variants": [
-      {"id": "schemas/callout/info", "heading": "Info callout", "blurb": "Neutral guidance.", "code": "Callout.make().info().label('Tip').description('Fill these fields before saving.')"},
-      {"id": "schemas/callout/danger", "heading": "Danger callout", "blurb": "Destructive action warning.", "code": "Callout.make().danger().label('Danger').description('This action cannot be undone.')"},
-      {"id": "schemas/callout/success", "heading": "Success callout", "blurb": "Confirmation feedback.", "code": "Callout.make().success().label('Saved').description('Your changes were published.')"}
+      {
+        "id": "schemas/callout/info",
+        "heading": "Info callout",
+        "blurb": "Neutral guidance.",
+        "code": "Callout.make().info().label('Tip').description('Fill these fields before saving.')"
+      },
+      {
+        "id": "schemas/callout/danger",
+        "heading": "Danger callout",
+        "blurb": "Destructive action warning.",
+        "code": "Callout.make().danger().label('Danger').description('This action cannot be undone.')"
+      },
+      {
+        "id": "schemas/callout/success",
+        "heading": "Success callout",
+        "blurb": "Confirmation feedback.",
+        "code": "Callout.make().success().label('Saved').description('Your changes were published.')"
+      }
     ]
   },
   "schemas/empty-state": {
     "title": "Empty state",
-    "intro": "EmptyState renders centered heading and description when lists or repeaters have no items — reuse in tables and standalone schema slots.",
+    "intro": "EmptyState renders centered heading and description when lists or repeaters have no items \u2014 reuse in tables and standalone schema slots.",
     "variants": [
-      {"id": "schemas/empty-state/basic", "heading": "Basic empty state", "blurb": "No drafts placeholder.", "code": "EmptyState.make().heading('No drafts').description('Create one when you are ready.')"}
+      {
+        "id": "schemas/empty-state/basic",
+        "heading": "Basic empty state",
+        "blurb": "No drafts placeholder.",
+        "code": "EmptyState.make().heading('No drafts').description('Create one when you are ready.')"
+      }
     ]
   },
   "schemas/primes": {
     "title": "Primes",
-    "intro": "Primes are read-only display components — text badges, icons, images, and lists — for infolists and inline form summaries without editable state.",
+    "intro": "Primes are read-only display components \u2014 text badges, icons, images, and lists \u2014 for infolists and inline form summaries without editable state.",
     "variants": [
-      {"id": "schemas/primes/text", "heading": "Text prime", "blurb": "Badge-styled status text.", "code": "Text.make().content('Published').badge().color('success')"},
-      {"id": "schemas/primes/icon", "heading": "Icon prime", "blurb": "Heroicon with color and size.", "code": "Icon.make().icon('heroicon-o-check').color('success').size('lg')"},
-      {"id": "schemas/primes/image", "heading": "Image prime", "blurb": "Avatar or thumbnail display.", "code": "Image.make().src('https://api.dicebear.com/9.x/shapes/svg?seed=orbit').image_size(48)"},
-      {"id": "schemas/primes/list", "heading": "List prime", "blurb": "Bulleted unordered list.", "code": "UnorderedList.make().items(['Tables', 'Forms', 'Panels']).bullet_size('sm')"}
+      {
+        "id": "schemas/primes/text",
+        "heading": "Text prime",
+        "blurb": "Badge-styled status text.",
+        "code": "Text.make().content('Published').badge().color('success')"
+      },
+      {
+        "id": "schemas/primes/icon",
+        "heading": "Icon prime",
+        "blurb": "Heroicon with color and size.",
+        "code": "Icon.make().icon('heroicon-o-check').color('success').size('lg')"
+      },
+      {
+        "id": "schemas/primes/image",
+        "heading": "Image prime",
+        "blurb": "Avatar or thumbnail display.",
+        "code": "Image.make().src('https://api.dicebear.com/9.x/shapes/svg?seed=orbit').image_size(48)"
+      },
+      {
+        "id": "schemas/primes/list",
+        "heading": "List prime",
+        "blurb": "Bulleted unordered list.",
+        "code": "UnorderedList.make().items(['Tables', 'Forms', 'Panels']).bullet_size('sm')"
+      }
+    ]
+  },
+  "forms/week-picker": {
+    "title": "Week picker",
+    "intro": "WeekPicker stores the Monday of the selected ISO week.",
+    "variants": [
+      {
+        "id": "forms/week-picker/basic",
+        "heading": "Basic week picker",
+        "blurb": "ISO week selection.",
+        "code": "WeekPicker.make('sprint').label('Sprint week')"
+      }
+    ]
+  },
+  "forms/month-picker": {
+    "title": "Month picker",
+    "intro": "MonthPicker stores the first day of the selected month.",
+    "variants": [
+      {
+        "id": "forms/month-picker/basic",
+        "heading": "Basic month picker",
+        "blurb": "Month view selection.",
+        "code": "MonthPicker.make('billing_month').label('Billing month')"
+      }
+    ]
+  },
+  "forms/year-picker": {
+    "title": "Year picker",
+    "intro": "YearPicker stores a four-digit year string.",
+    "variants": [
+      {
+        "id": "forms/year-picker/basic",
+        "heading": "Basic year picker",
+        "blurb": "Year view selection.",
+        "code": "YearPicker.make('vintage').label('Vintage year')"
+      }
     ]
   }
 }

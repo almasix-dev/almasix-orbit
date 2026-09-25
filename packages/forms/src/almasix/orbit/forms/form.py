@@ -332,16 +332,54 @@ def _check_rule(
     if rule.startswith("lte:"):
         return _compare_numeric(rule, value, attr, field, state, op="lte", msg=msg)
     if rule.startswith("after:"):
-        bound = _resolve_date_bound(rule.split(":", 1)[1], state)
-        current = _parse_date(value)
+        bound = _resolve_temporal_bound(rule.split(":", 1)[1], state)
+        current = _parse_temporal(value)
         if current is not None and bound is not None and not (current > bound):
-            return msg("after", f"The {attr} must be a date after {bound.isoformat()}.", date=bound.isoformat())
+            return msg(
+                "after",
+                f"The {attr} must be after {bound.isoformat()}.",
+                date=bound.isoformat(),
+            )
         return None
     if rule.startswith("before:"):
-        bound = _resolve_date_bound(rule.split(":", 1)[1], state)
-        current = _parse_date(value)
+        bound = _resolve_temporal_bound(rule.split(":", 1)[1], state)
+        current = _parse_temporal(value)
         if current is not None and bound is not None and not (current < bound):
-            return msg("before", f"The {attr} must be a date before {bound.isoformat()}.", date=bound.isoformat())
+            return msg(
+                "before",
+                f"The {attr} must be before {bound.isoformat()}.",
+                date=bound.isoformat(),
+            )
+        return None
+    if rule.startswith("after_or_equal:"):
+        bound = _resolve_temporal_bound(rule.split(":", 1)[1], state)
+        current = _parse_temporal(value)
+        if current is not None and bound is not None and not (current >= bound):
+            return msg(
+                "after_or_equal",
+                f"The {attr} must be on or after {bound.isoformat()}.",
+                date=bound.isoformat(),
+            )
+        return None
+    if rule.startswith("before_or_equal:"):
+        bound = _resolve_temporal_bound(rule.split(":", 1)[1], state)
+        current = _parse_temporal(value)
+        if current is not None and bound is not None and not (current <= bound):
+            return msg(
+                "before_or_equal",
+                f"The {attr} must be on or before {bound.isoformat()}.",
+                date=bound.isoformat(),
+            )
+        return None
+    if rule.startswith("date_equals:"):
+        bound = _resolve_temporal_bound(rule.split(":", 1)[1], state)
+        current = _parse_temporal(value)
+        if current is not None and bound is not None and current != bound:
+            return msg(
+                "date_equals",
+                f"The {attr} must be {bound.isoformat()}.",
+                date=bound.isoformat(),
+            )
         return None
     if rule.startswith("unique:"):
         table, column, ignore = _parse_unique_rule(rule)
@@ -453,26 +491,64 @@ def _parse_table_column(rule: str) -> tuple[str, str | None]:
     return table, column
 
 
-def _resolve_date_bound(spec: str, state: dict[str, Any]) -> date | None:
-    parsed = _parse_date(spec)
-    if parsed is not None and (len(spec) >= 8 and spec[0:4].isdigit()):
+def _resolve_temporal_bound(spec: str, state: dict[str, Any]) -> datetime | None:
+    """Resolve an after/before bound as a comparable datetime (date or time)."""
+    text = str(spec or "").strip()
+    if not text:
+        return None
+    # Field reference wins when the token is a state key (not an ISO-looking literal).
+    looks_like_literal = bool(
+        re.match(
+            r"^(\d{4}-\d{2}-\d{2}|\d{1,2}:\d{2}(:\d{2})?|\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2})",
+            text,
+        )
+    )
+    if not looks_like_literal and text in state:
+        return _parse_temporal(state.get(text))
+    parsed = _parse_temporal(text)
+    if parsed is not None:
         return parsed
-    if spec in state:
-        return _parse_date(state.get(spec))
-    return _parse_date(spec)
+    if text in state:
+        return _parse_temporal(state.get(text))
+    return None
 
 
 def _parse_date(value: Any) -> date | None:
+    temporal = _parse_temporal(value)
+    if temporal is None:
+        return None
+    return temporal.date()
+
+
+def _parse_temporal(value: Any) -> datetime | None:
+    """Parse date, datetime-local, or time strings into a datetime for comparison."""
     if value in (None, ""):
         return None
     if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
         return value
+    if isinstance(value, date):
+        return datetime(value.year, value.month, value.day)
     text = str(value).strip()
-    for candidate in (text[:10], text):
+    # Time-only HH:mm[:ss]
+    time_only = re.fullmatch(r"(\d{1,2}):(\d{2})(?::(\d{2}))?", text)
+    if time_only:
+        hour = int(time_only.group(1))
+        minute = int(time_only.group(2))
+        second = int(time_only.group(3) or 0)
+        if hour > 23 or minute > 59 or second > 59:
+            return None
+        return datetime(1970, 1, 1, hour, minute, second)
+    # Year only
+    if re.fullmatch(r"\d{4}", text):
+        return datetime(int(text), 1, 1)
+    # Normalize datetime-local space/T
+    normalized = text.replace(" ", "T")
+    for candidate in (normalized, normalized[:19], normalized[:16], text[:10]):
         try:
-            return date.fromisoformat(candidate)
+            if "T" in candidate:
+                # fromisoformat accepts YYYY-MM-DDTHH:MM[:SS]
+                return datetime.fromisoformat(candidate)
+            return datetime.fromisoformat(f"{candidate}T00:00:00")
         except ValueError:
             continue
     return None

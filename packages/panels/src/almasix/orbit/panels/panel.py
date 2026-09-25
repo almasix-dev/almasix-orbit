@@ -1786,10 +1786,13 @@ class Panel:
             # system UI fonts; apps can inject a webfont via panels::head hooks.
             '  <link rel="stylesheet" href="/vendor/orbit/orbit.css" />\n'
             '  <link rel="stylesheet" href="/vendor/orbit/filepond.bundle.min.css" />\n'
+            '  <link rel="stylesheet" href="/vendor/orbit/flowbite-datepicker.min.css" />\n'
             # Chart + FilePond before orbit.js so boot hooks find globals.
             '  <script src="/vendor/orbit/chart.umd.min.js"></script>\n'
             '  <script src="/vendor/orbit/apexcharts.min.js"></script>\n'
             '  <script src="/vendor/orbit/filepond.bundle.min.js"></script>\n'
+            # Datepicker Alpine host before orbit.js; Flowbite lib loads lazily on first open.
+            '  <script src="/vendor/orbit/orbit-datepicker.js"></script>\n'
             # Register Alpine data before any Alpine CDN tag (Conduit may inject one in extra_head).
             '  <script src="/vendor/orbit/orbit.js"></script>\n'
             f"  <style>:root {{ --or-font: '{font}', ui-sans-serif, system-ui, sans-serif; "

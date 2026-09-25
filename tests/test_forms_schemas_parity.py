@@ -10,6 +10,7 @@ from almasix.orbit.forms.components import (
     DatePicker,
     DateTimePicker,
     MoneyInput,
+    MonthPicker,
     MultiSelect,
     OneTimeCodeInput,
     Placeholder,
@@ -19,6 +20,8 @@ from almasix.orbit.forms.components import (
     TextInput,
     TimePicker,
     ViewField,
+    WeekPicker,
+    YearPicker,
 )
 from almasix.orbit.forms.form import Form
 from almasix.orbit.panels.conduit.hosts import CreateRecordHost, EditRecordHost, FormHost
@@ -112,13 +115,20 @@ def test_placeholder_respects_hidden() -> None:
 
 
 def test_date_pickers_and_money_and_color() -> None:
-    d = DatePicker.make("d").min_date("2020-01-01").max_date("2030-01-01").display_format("Y-m-d").native(False)
+    d = DatePicker.make("d").min_date("2020-01-01").max_date("2030-01-01").display_format("Y-m-d")
     html = d.render("2024-01-01")
-    assert 'type="date"' in html
-    assert 'min="2020-01-01"' in html
-    assert 'data-native="false"' in html
-    assert 'type="datetime-local"' in DateTimePicker.make("dt").render()
-    assert 'type="time"' in TimePicker.make("t").render()
+    assert "or-datepicker" in html
+    assert 'data-mode="date"' in html
+    assert 'data-min="2020-01-01"' in html
+    assert "orbitDatePicker" in html
+    native = DatePicker.make("n").native(True).min_date("2020-01-01").render("2024-01-01")
+    assert 'type="date"' in native
+    assert 'min="2020-01-01"' in native
+    assert 'type="datetime-local"' in DateTimePicker.make("dt").native(True).render()
+    assert 'type="time"' in TimePicker.make("t").native(True).render()
+    assert 'data-mode="week"' in WeekPicker.make("w").render()
+    assert 'data-mode="month"' in MonthPicker.make("m").render()
+    assert 'data-mode="year"' in YearPicker.make("y").render()
     assert "or-field-MoneyInput" in MoneyInput.make("amt").currency("EUR").locale("de").render(12.5)
     assert 'type="color"' in ColorPicker.make("c").render("#ff0000")
 

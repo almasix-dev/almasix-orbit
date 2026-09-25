@@ -1,17 +1,17 @@
 ---
 title: Date picker
-description: DatePicker is a native date input with min/max bounds, display-format hints, and shared Field validation.
+description: DatePicker uses a Flowbite calendar by default, with min/max bounds and an optional native browser input.
 ---
 
 ## Introduction
 
-`DatePicker` sets `type="date"` and shares min/max, display format, and native flags with `DateTimePicker` / `TimePicker`. Prefer it for birthdays, start dates, and calendar-day deadlines where time-of-day is irrelevant.
+`DatePicker` stores a calendar day as `YYYY-MM-DD`. By default Orbit mounts a **Flowbite** calendar (Alpine `orbitDatePicker`) that matches the panel theme. Call `.native(True)` when you want the browser’s `<input type="date">` instead.
 
-Each variation below includes a detailed explanation, the fluent API to paste into your schema, and light/dark screenshots of the rendered control.
+Prefer it for birthdays, start dates, and deadlines where time-of-day does not matter. Closely related fields: [Date-time](/forms/date-time-picker/), [Time](/forms/time-picker/), [Week](/forms/week-picker/), [Month](/forms/month-picker/), and [Year](/forms/year-picker/).
 
 ## Basic date picker
 
-A labeled date field dehydrates as `YYYY-MM-DD`. Add `.placeholder()` sparingly — many browsers ignore placeholders on date inputs.
+A labeled date field dehydrates as `YYYY-MM-DD`. The visible control is a text input that opens the calendar on focus.
 
 ```python title="app/orbit/resources/example_resource.py"
 DatePicker.make('starts_on')
@@ -25,7 +25,7 @@ DatePicker.make('starts_on')
 
 ## Bounded range
 
-`.min_date()` / `.max_date()` map to HTML `min` / `max`. Use calendar dates (`2020-01-01`). Combine with `.after('starts_on')` on a sibling end-date field for cross-field ordering.
+`.min_date()` / `.max_date()` constrain the calendar (`2020-01-01` style). Combine with `.after('starts_on')` on a sibling end-date field for cross-field ordering.
 
 ```python title="app/orbit/resources/example_resource.py"
 DatePicker.make('ends_on')
@@ -38,32 +38,18 @@ DatePicker.make('ends_on')
 
 ![Orbit Bounded range (dark)](/examples/dark/forms/date-picker/min-max.png)
 
-## Display format hint
+## Native browser input
 
-`.display_format()` sets `data-display-format` for client presentation hints without changing the stored ISO date string.
-
-```python title="app/orbit/resources/example_resource.py"
-DatePicker.make('due_on')
-    .label('Due on')
-    .display_format('d/m/Y')
-```
-
-![Orbit Display format hint (light)](/examples/light/forms/date-picker/display-format.png)
-
-![Orbit Display format hint (dark)](/examples/dark/forms/date-picker/display-format.png)
-
-## Non-native flag
-
-`.native(False)` marks the control for custom picker assets while still rendering `<input type="date">` in the forms package today.
+`.native(True)` swaps the Flowbite host for a plain `<input type="date">`. Use this when you need the OS control or are embedding Orbit in a constrained host.
 
 ```python title="app/orbit/resources/example_resource.py"
 DatePicker.make('anniversary')
     .label('Anniversary')
-    .native(False)
+    .native(True)
 ```
 
-![Orbit Non-native flag (light)](/examples/light/forms/date-picker/non-native.png)
+![Orbit Native date input (light)](/examples/light/forms/date-picker/native.png)
 
-![Orbit Non-native flag (dark)](/examples/dark/forms/date-picker/non-native.png)
+![Orbit Native date input (dark)](/examples/dark/forms/date-picker/native.png)
 
 Closures work on `.label()`, `.helper_text()`, `.placeholder()`, `.visible()`, `.disabled()`, and `.required()` where applicable — see [Form closures](/forms/closures/).

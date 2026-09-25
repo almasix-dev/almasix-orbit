@@ -39,7 +39,8 @@ Every editable control is a field under `almasix.orbit.forms`, nested in a `Form
 | [Select](/forms/select/) / [Multi select](/forms/multi-select/) | Fixed or relationship option lists |
 | [Checkbox](/forms/checkbox/) / [Toggle](/forms/toggle/) | Booleans |
 | [Checkbox list](/forms/checkbox-list/) / [Radio](/forms/radio/) | Enumerated choices |
-| [Date](/forms/date-picker/) / [Date-time](/forms/date-time-picker/) / [Time](/forms/time-picker/) | Temporal values |
+| [Date](/forms/date-picker/) / [Date-time](/forms/date-time-picker/) / [Time](/forms/time-picker/) | Temporal values (Flowbite by default) |
+| [Week](/forms/week-picker/) / [Month](/forms/month-picker/) / [Year](/forms/year-picker/) | Week / month / year selection |
 | [File upload](/forms/file-upload/) | Files and images |
 | [Rich editor](/forms/rich-editor/) / [Markdown editor](/forms/markdown-editor/) | Long-form body copy |
 | [Repeater](/forms/repeater/) / [Builder](/forms/builder/) | Nested lists / block editors |
