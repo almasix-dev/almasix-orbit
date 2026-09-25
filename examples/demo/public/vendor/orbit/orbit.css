@@ -3628,7 +3628,7 @@ html.dark .or-login-logo-dark {
   flex-direction: column;
   border: 1px solid var(--or-line);
   border-radius: var(--or-radius);
-  overflow: hidden;
+  overflow: visible;
   background: var(--or-card);
 }
 
@@ -5392,9 +5392,17 @@ html.dark .or-login-logo-dark {
   transform: rotate(225deg) translateY(-0.05rem);
 }
 
+.or-combobox {
+  position: relative;
+}
+
+.or-combobox:has(.is-open) {
+  z-index: 40;
+}
+
 .or-combobox-dropdown {
   position: absolute;
-  z-index: 40;
+  z-index: 50;
   top: calc(100% + 0.25rem);
   left: 0;
   right: 0;

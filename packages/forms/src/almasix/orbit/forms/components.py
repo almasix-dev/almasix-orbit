@@ -2689,7 +2689,7 @@ class KeyValue(Field):
                 f"{key_attrs}{disabled} />"
                 f'<input class="or-input or-key-value-value" name="{name}_val_{i}" value="{e(value)}" '
                 f'placeholder="{e(self._value_placeholder)}" aria-label="{e(self._value_label)}" '
-                f'wire:model="{name}.{e(key)}"{disabled} />'
+                f'{self._wire_binding(f"{self.get_state_path()}.{key}")}{disabled} />'
                 f"{delete_button}</div>"
             )
         if not rows:
@@ -2861,13 +2861,21 @@ class Repeater(Field):
         if not items:
             items = [{}]
         blocks = []
+        parent_path = self.get_state_path() or ""
         for index, item in enumerate(items):
             fields = []
             for child in self._item_schema_for(item):
+                child_key = child.get_name() or ""
+                prior_path = child._state_path
+                if parent_path and child_key:
+                    child.state_path(f"{parent_path}.{index}.{child_key}")
                 child_state = None
                 if isinstance(item, dict):
-                    child_state = item.get(child.get_state_path() or child.get_name())
-                fields.append(child.render(child_state, **ctx, index=index, record=item))
+                    child_state = item.get(child_key) if child_key else None
+                try:
+                    fields.append(child.render(child_state, **ctx, index=index, record=item))
+                finally:
+                    child._state_path = prior_path
             item_label = e(self.get_item_label(index, item, **ctx))
             controls = []
             if self._reorderable_items:

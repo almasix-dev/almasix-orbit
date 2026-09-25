@@ -664,7 +664,8 @@ def test_key_value_renders_a_row_per_entry() -> None:
     assert "<span>Attribute</span><span>Detail</span>" in html
     assert html.count('class="or-key-value-row"') == 2
     assert "setKeyValueKey('meta', 'colour', $event.target.value)" in html
-    assert 'wire:model="meta.colour"' in html
+    assert 'conduit:model="data.meta.colour"' in html
+    assert 'wire:model="data.meta.colour"' in html
     assert "removeKeyValueRow('meta', 'size')" in html
     assert "addKeyValueRow('meta')" in html
     assert "Add attribute" in html

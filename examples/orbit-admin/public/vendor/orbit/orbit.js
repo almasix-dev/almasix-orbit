@@ -1680,9 +1680,13 @@
       },
 
       rootEl() {
-        if (this.$root?.isConnected) return this.$root;
-        if (this._rootEl?.isConnected) return this._rootEl;
-        return this.$el;
+        // `$root` walks to an ancestor x-data (wizard/page). Sync and hit-testing
+        // must stay on this combobox.
+        const pinned = this._rootEl;
+        if (pinned?.isConnected && pinned.classList?.contains("or-combobox")) return pinned;
+        const el = this.$el;
+        if (el?.classList?.contains("or-combobox")) return el;
+        return el?.closest?.(".or-combobox") || pinned || el;
       },
 
       get selectedItems() {

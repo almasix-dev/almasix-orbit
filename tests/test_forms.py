@@ -410,8 +410,9 @@ def test_option_helpers_and_edge_renders() -> None:
     assert "post:1" in morph.render("post:1") or "selected" in morph.render("post:1")
     assert morph.render({"kind": "post", "ref": "1"})
 
-    rep = Repeater.make("r").schema([TextInput.make("n")]).render(["not-a-dict"])
+    rep = Repeater.make("links").schema([TextInput.make("url")]).render([{"url": "https://orbit.test"}])
     assert "or-repeater-item" in rep
+    assert 'conduit:model="data.links.0.url"' in rep
     assert Repeater.make("empty").schema([]).render([])  # empty list → one item
 
     b = Builder.make("b").schema([TextInput.make("t")]).blocks(
