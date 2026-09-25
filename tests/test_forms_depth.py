@@ -15,7 +15,9 @@ from almasix.orbit.forms import (
     MemoryUploadStorage,
     ModalTableSelect,
     MorphToSelect,
+    Repeater,
     RichEditor,
+    Select,
     TextInput,
     get_upload_storage,
     set_upload_storage,
@@ -175,6 +177,44 @@ def test_disk_url_falls_back_when_the_disk_cannot_build_one() -> None:
 
     assert _disk_url(Raising(), "a.png", "/storage") == "/storage/a.png"
     assert _disk_url(object(), "a.png", "/storage") == "/storage/a.png"
+    from almasix.orbit.forms.uploads import public_upload_url
+
+    assert public_upload_url("ee98.png") == "/storage/ee98.png"
+    assert public_upload_url("/storage/ee98.png") == "/storage/ee98.png"
+    assert public_upload_url("https://cdn.test/a.png") == "https://cdn.test/a.png"
+    assert public_upload_url("") == ""
+
+
+def test_memory_upload_urls_use_orbit_uploads_prefix(
+    memory_storage: MemoryUploadStorage,
+) -> None:
+    from almasix.orbit.forms.uploads import public_upload_url
+
+    stored = run(store_upload(b"img", "a.png", UploadRules(directory="avatars")))
+    assert stored.url.startswith("/orbit-uploads/")
+    assert public_upload_url(stored.path) == stored.url
+    assert memory_storage.get_bytes(stored.path) == b"img"
+    assert memory_storage.get_bytes(f"orbit-uploads/{stored.path}") == b"img"
+
+
+def test_public_upload_url_tolerates_get_storage_errors(monkeypatch) -> None:
+    from almasix.orbit.forms import uploads as uploads_mod
+
+    monkeypatch.setattr(
+        uploads_mod,
+        "get_upload_storage",
+        lambda: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    assert uploads_mod.public_upload_url("x.png") == "/storage/x.png"
+
+
+def test_handle_serve_upload_requires_memory_storage() -> None:
+    from almasix.orbit.panels.uploads import handle_serve_upload
+
+    set_upload_storage(FilesystemUploadStorage())
+    out = run(handle_serve_upload("a.png"))
+    assert getattr(out, "status_code", None) == 404
+    set_upload_storage(MemoryUploadStorage())
 
 
 def test_maybe_await_passes_plain_values_through() -> None:
@@ -279,8 +319,10 @@ def test_file_upload_previews_existing_files() -> None:
 
 
 def test_file_upload_single_value_and_no_preview() -> None:
-    assert "or-file-card" in FileUpload.make("logo").render("logo.png")
-    assert "data-existing=" in FileUpload.make("logo").render("logo.png")
+    html = FileUpload.make("logo").render("logo.png")
+    assert "or-file-card" in html
+    assert "data-existing=" in html
+    assert "/storage/logo.png" in html
     assert "or-file-preview" not in FileUpload.make("logo").previewable(False).render("logo.png")
     assert "data-existing=" in FileUpload.make("logo").previewable(False).render("logo.png")
 
@@ -624,7 +666,15 @@ def test_key_value_renders_a_row_per_entry() -> None:
     assert "<span>Attribute</span><span>Detail</span>" in html
     assert html.count('class="or-key-value-row"') == 2
     assert "setKeyValueKey('meta', 'colour', $event.target.value)" in html
-    assert 'wire:model="meta.colour"' in html
+    from pathlib import Path
+
+    js = Path("packages/panels/src/almasix/orbit/resources/js/orbit.js").read_text(
+        encoding="utf-8"
+    )
+    assert "commitKeyValueKey" in js
+    assert "setKeyValueKey" in js
+    assert 'conduit:model="data.meta.colour"' in html
+    assert 'wire:model="data.meta.colour"' in html
     assert "removeKeyValueRow('meta', 'size')" in html
     assert "addKeyValueRow('meta')" in html
     assert "Add attribute" in html
@@ -678,8 +728,12 @@ def test_morph_to_select_loads_options_for_the_chosen_type() -> None:
     assert '<option value="post" selected>Post</option>' in html
     assert "Orbit launch" in html
     assert "Second post" not in html
-    assert "setMorphType('commentable', $event.target.value)" in html
-    assert "searchMorphOptions('commentable', $event.target.value)" in html
+    assert "$data.onTypeChange" in html
+    assert "or-morph-record-combobox" in html
+    assert 'data-sync-path="data.commentable.id"' in html
+    assert 'conduit:model="data.commentable.type"' not in html
+    assert 'conduit:model="data.commentable.id"' not in html
+    assert "or-morph-to-select__type" in html
     assert calls == [("post", "launch")]
 
 
@@ -696,8 +750,33 @@ def test_morph_to_select_without_a_loader_uses_declared_options() -> None:
 def test_morph_to_select_falls_back_to_flat_options() -> None:
     field = MorphToSelect.make("commentable").options({"post": "Post"})
     html = field.render(None)
-    assert '<option value="post">Post</option>' in html
+    assert '<option value="post"' in html and "Post" in html
     assert MorphToSelect.make("commentable").hidden().render(None) == ""
+
+
+def test_morph_to_select_starts_with_type_then_record_combobox() -> None:
+    field = MorphToSelect.make("owner").searchable().types(
+        [
+            {"type": "user", "label": "User", "options": {"1": "Ada"}},
+            {"type": "team", "label": "Team", "options": {"10": "Platform"}},
+        ]
+    )
+    empty = field.render(None)
+    assert "Select type…" in empty
+    assert 'value="user" selected' not in empty
+    assert "or-morph-to-select__type" in empty
+    assert "or-morph-record-combobox" in empty
+    assert "orbitCombobox" in empty
+    assert "orbitMorphToSelect" in empty
+    assert 'x-show="Boolean(type)"' in empty
+    assert "data-options-by-type=" in empty
+    assert "or-morph-sublabel" in empty
+
+    filled = field.render({"type": "user", "id": "1"})
+    assert '<option value="user" selected>User</option>' in filled
+    assert "Ada" in filled
+    assert "or-select-morph-id" in filled
+    assert 'data-options-limit="' in filled
 
 
 # --------------------------------------------------------------------------- ModalTableSelect
@@ -872,3 +951,106 @@ def test_edit_host_passes_picker_state_into_the_form() -> None:
     html = host.render()
     assert "or-form" in html
     assert "First note" in html
+
+
+def test_search_options_and_field_errors() -> None:
+    limited = (
+        Select.make("role")
+        .options({"1": "Ada", "2": "Sam", "ada-id": "Other"})
+        .options_limit(1)
+    )
+    assert limited.search_options("") == {"1": "Ada"}
+    assert limited.search_options("ada-id") == {"ada-id": "Other"}
+
+    def as_map(search: str = "", **kwargs: Any) -> dict[str, str]:
+        return {"1": "Ada"} if "a" in search else {"1": "Ada", "2": "Sam"}
+
+    mapped = Select.make("author").get_search_results_using(as_map).options_limit(1)
+    assert mapped.search_options("ada") == {"1": "Ada"}
+
+    def as_rows(search: str = "", **kwargs: Any) -> list[Any]:
+        return [("1", "Ada"), {"value": "2", "label": "Sam"}, "skip", ("only",)]
+
+    rows = Select.make("author").get_search_results_using(as_rows)
+    assert rows.search_options("") == {"1": "Ada", "2": "Sam"}
+
+    def as_junk(search: str = "", **kwargs: Any) -> str:
+        return "nope"
+
+    assert Select.make("author").get_search_results_using(as_junk).search_options("") == {}
+
+    missing = Select.make("manager").relationship("manager", "name")
+    assert missing.search_options("ada") == {}
+
+    import almasix.orbit.forms.select_relationship as rel_mod
+
+    def _related(**kwargs: Any) -> object:
+        return object()
+
+    def _loaded(**kwargs: Any) -> dict[str, str]:
+        return {"9": "Ada"}
+
+    original_resolve, original_load = rel_mod.resolve_related_model, rel_mod.load_relationship_options
+    rel_mod.resolve_related_model = _related  # type: ignore[assignment]
+    rel_mod.load_relationship_options = _loaded  # type: ignore[assignment]
+    try:
+        found = Select.make("manager").relationship("manager", "name", model=object)
+        assert found.search_options("ada") == {"9": "Ada"}
+    finally:
+        rel_mod.resolve_related_model = original_resolve
+        rel_mod.load_relationship_options = original_load
+
+    html = TextInput.make("name").render("", form_errors={"name": ["Required"]})
+    assert 'class="or-field-error"' in html
+    assert "is-invalid" in html
+    plain = TextInput.make("name").render("", form_errors={"data.name": "Bad"})
+    assert "Bad" in plain
+    assert TextInput.make("name").render("", form_errors="nope")
+    assert "or-field-error" not in TextInput.make("name").render("")
+
+
+def test_morph_search_options_and_untyped_fallback() -> None:
+    field = MorphToSelect.make("owner").types(
+        [
+            "App\\User",
+            {"label": "Bare"},
+            {"type": "team", "options": {"1": "Platform"}},
+        ]
+    )
+    assert field.search_options(morph_type="") == {}
+    assert field._embedded_options_for_type("missing") == {}
+    assert field.search_options("plat", morph_type="team") == {"1": "Platform"}
+
+    untyped = MorphToSelect.make("owner").options({"1": "Ada", "2": "Sam"})
+    html = untyped.render({"type": "user", "id": "1"})
+    assert "Ada" in html
+    assert "Sam" in html
+
+
+def test_repeater_validation_uses_item_paths() -> None:
+    from almasix.orbit.forms.form import _get_path
+
+    class BlankLabel(TextInput):
+        def get_label(self, **ctx: Any) -> str:
+            return ""
+
+    class NoSchema(TextInput):
+        def get_schema(self) -> None:
+            return None
+
+    form = Form.make("f").schema(
+        [
+            Repeater.make("links").schema(
+                [TextInput.make("url").label("URL").required(), BlankLabel.make("note").required()]
+            ),
+            NoSchema.make("blob"),
+            Repeater.make("empty").schema([TextInput.make()]),
+        ]
+    )
+    errors = form.validate({"links": [{}, {"url": "https://ok.test"}], "blob": [1]})
+    assert "links.0.url" in errors
+    assert any("note" in message.lower() or "required" in message.lower() for message in errors["links.0.note"])
+    assert _get_path({"a": [1]}, "a.5") is None
+    assert _get_path({"a": "x"}, "a.0") is None
+    html = Repeater.make("links").schema([TextInput.make()]).render([{}])
+    assert "or-field" in html

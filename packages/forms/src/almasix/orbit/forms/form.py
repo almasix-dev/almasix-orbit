@@ -71,14 +71,39 @@ class Form(Schema):
             "unique": ctx.get("unique", Form._unique_checker),
             "exists": ctx.get("exists", Form._exists_checker),
         }
-        for c in iter_fields(self.get_components()):
+        self._validate_fields(self.get_components(), state, "", field_ctx_base, errors)
+        return errors
+
+    def _validate_fields(
+        self,
+        components: Sequence[Component],
+        state: dict[str, Any],
+        prefix: str,
+        field_ctx_base: dict[str, Any],
+        errors: dict[str, list[str]],
+    ) -> None:
+        for c in iter_fields(list(components), nested=False):
             if not c.is_visible(**field_ctx_base):
                 continue
-            path = c.get_state_path() or ""
-            if not path:
+            own = c.get_name() if prefix else c.get_state_path()
+            if not own:
                 continue
+            path = f"{prefix}{own}"
             value = _get_path(state, path)
-            attr = c.get_validation_attribute(**field_ctx_base) or path
+            schema = getattr(c, "get_schema", None)
+            if callable(schema) and isinstance(value, list):
+                # Repeater items: children validate at ``links.0.url``.
+                children = list(schema() or [])
+                for index, _item in enumerate(value):
+                    self._validate_fields(
+                        children, state, f"{path}.{index}.", field_ctx_base, errors
+                    )
+            if prefix:
+                # "The URL field is required." reads better than the item path.
+                fallback_attr = str(c.get_label(**field_ctx_base) or own)
+            else:
+                fallback_attr = path
+            attr = c.get_validation_attribute(**field_ctx_base) or fallback_attr
             field_ctx = {
                 **field_ctx_base,
                 "value": value,
@@ -115,7 +140,6 @@ class Form(Schema):
                 )
                 if msg:
                     errors.setdefault(path, []).append(msg)
-        return errors
 
 
 def _get_path(state: dict[str, Any], path: str) -> Any:
@@ -125,6 +149,9 @@ def _get_path(state: dict[str, Any], path: str) -> Any:
     for part in path.split("."):
         if isinstance(current, dict):
             current = current.get(part)
+        elif isinstance(current, list) and part.isdigit():
+            idx = int(part)
+            current = current[idx] if idx < len(current) else None
         else:
             return None
     return current

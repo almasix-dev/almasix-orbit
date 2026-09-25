@@ -21,6 +21,7 @@ def test_flowbite_date_picker_host_attrs() -> None:
         DatePicker.make("d")
         .min_date("2020-01-01")
         .max_date("2030-12-31")
+        .label("Joined")
         .render("2024-06-01")
     )
     assert "or-datepicker" in html
@@ -28,6 +29,16 @@ def test_flowbite_date_picker_host_attrs() -> None:
     assert "orbitDatePicker" in html
     assert 'type="hidden"' in html
     assert 'value="2024-06-01"' in html
+    # Static aria-label — must not be an Alpine expression binding.
+    assert 'aria-label="Joined"' in html
+    assert ":aria-label=" not in html
+
+
+def test_datetime_aria_label_not_alpine_expression() -> None:
+    html = DateTimePicker.make("reviewed_at").label("Reviewed at").render()
+    assert 'aria-label="Reviewed at"' in html
+    assert 'aria-label="reviewed_at time"' in html
+    assert ":aria-label=" not in html
 
 
 def test_datetime_time_apis_and_native() -> None:

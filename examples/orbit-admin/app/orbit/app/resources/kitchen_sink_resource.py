@@ -43,36 +43,33 @@ from almasix.orbit.schemas import (
 )
 from almasix.orbit.tables import TextColumn, Table
 
+from app.models.kitchen_sink import KitchenSink
+from app.models.team import Team
+from app.models.user import User
+
+
+def _owner_options(type: str = "", search: str = "") -> dict[str, str]:
+    """Record options for MorphToSelect — live rows from users or teams."""
+    from almasix.orbit.forms.select_relationship import load_relationship_options
+
+    model = {"user": User, "team": Team}.get(str(type or ""))
+    if model is None:
+        return {}
+    return load_relationship_options(
+        model=model,
+        title_attribute="name",
+        search=search or None,
+        search_columns=["name"],
+        limit=50,
+    )
+
 
 class KitchenSinkResource(Resource):
-    model = type("KitchenSink", (), {})
+    model = KitchenSink
     navigation_label = "Kitchen sink"
     navigation_group = "Demos"
     slug = "kitchen-sink"
-    records_mutable = True
-    records = [
-        {
-            "id": 1,
-            "name": "Ada Lovelace",
-            "email": "ada@orbit.test",
-            "role": "admin",
-            "bio": "First programmer.",
-            "plan": "pro",
-            "features": ["api"],
-            "tags": ["math", "poetry"],
-            "amount": 42.5,
-            "color": "#3366ff",
-            "active": True,
-            "joined": "2024-01-15",
-            "links": [{"url": "https://orbit.almasix.com"}],
-            "meta": {"team": "core"},
-            "blocks": [{"type": "hero", "heading": "Welcome"}],
-        }
-    ]
-
-    @classmethod
-    def get_records(cls):
-        return list(cls.records)
+    record_title_attribute = "name"
 
     @classmethod
     def form(cls, form: Form) -> Form:
@@ -81,9 +78,13 @@ class KitchenSinkResource(Resource):
                 Callout.make()
                 .info()
                 .label("Kitchen sink")
-                .description("Filament-parity form + schema layouts in one place."),
+                .description(
+                    "Every field family on one form, saved to the kitchen_sinks table. "
+                    "Manager and Owner load from users and teams."
+                ),
                 Wizard.make("onboard")
                 .skippable()
+                .vertical()
                 .steps(
                     (
                         "Profile",
@@ -173,25 +174,31 @@ class KitchenSinkResource(Resource):
                                     .native(True),
                                     FileUpload.make("avatar")
                                     .avatar()
+                                    .disk("public")
+                                    .directory("kitchen-avatars")
                                     .image_editor()
                                     .image_editor_aspect_ratios(["1:1"])
                                     .label("Avatar"),
                                     MorphToSelect.make("owner")
-                                    .label("Owner")
+                                    .label("Owner (MorphTo)")
                                     .searchable()
                                     .types(
                                         [
-                                            {
-                                                "type": "user",
-                                                "label": "User",
-                                                "options": {"1": "Ada Lovelace", "2": "Alan Turing"},
-                                            },
-                                            {
-                                                "type": "team",
-                                                "label": "Team",
-                                                "options": {"10": "Platform"},
-                                            },
+                                            {"type": "user", "label": "User"},
+                                            {"type": "team", "label": "Team"},
                                         ]
+                                    )
+                                    .options_using(_owner_options),
+                                    Select.make("manager_id")
+                                    .label("Manager (Many2One)")
+                                    .searchable()
+                                    .preload()
+                                    .placeholder("Select manager…")
+                                    .relationship(
+                                        "manager",
+                                        "name",
+                                        model=User,
+                                        search_columns=["name", "email"],
                                     ),
                                 ]
                             ),
@@ -200,11 +207,13 @@ class KitchenSinkResource(Resource):
                             .schema(
                                 [
                                     Fieldset.make()
-                                    .label("Links")
+                                    .label("Online presence")
                                     .schema(
                                         [
                                             Repeater.make("links")
-                                            .schema([TextInput.make("url").label("URL")])
+                                            .schema(
+                                                [TextInput.make("url").label("URL").url()]
+                                            )
                                             .cloneable()
                                             .reorderable()
                                             .label("Links"),

@@ -40,10 +40,12 @@ smith orbit:user
 smith orbit:user --name="Ada" --email="ada@orbit.test" --password="secret"
 ```
 
-`migrate --seed` creates the `users` + `posts` tables and fills **Content → Posts**
-with sample rows. Posts are real ORM records — create / edit / delete persist to
-SQLite. Other demo resources (Authors, column galleries, etc.) stay seed-list
-immutable.
+`migrate --seed` creates the `users`, `posts`, `teams`, and `kitchen_sinks` tables
+and fills **Content → Posts** plus **Demos → Kitchen sink**. Those resources
+persist create / edit / delete to SQLite. Kitchen sink Manager and Owner load
+from the users and teams tables. Other demo resources (Authors, column
+galleries, etc.) stay seed-list immutable. If `users` is already populated the
+user seeder leaves it alone — run `smith orbit:user` when you need a login.
 
 **Resource `--generate` (local Orbit branch):** after migrate, try:
 

@@ -16,9 +16,12 @@ set_upload_storage(FilesystemUploadStorage())  # default is in-memory
 
 FileUpload.make("cover")
     .image()
+    .disk("public")
     .directory("post-covers")
     .max_size(2048)
 ```
+
+Use `.disk("public")` (with `config/filesystems.py` + `public/storage` → `storage/app/public`) so previews stay available after save. The default `MemoryUploadStorage` serves bytes at `/orbit-uploads/...` for tests and quick demos.
 
 `panel.uploads(False)` turns the endpoint off for a panel that should not accept files.
 
@@ -82,7 +85,7 @@ FileUpload.make('contract')
 
 ## Disk, directory, and visibility
 
-`.disk()`, `.directory()`, and `.visibility()` tell the upload endpoint where to put the file. The default `MemoryUploadStorage` keeps files in a dict (tests and demos). `FilesystemUploadStorage` writes through `almasix.filesystem` disks — pass `.disk("s3")` once you have configured that disk.
+`.disk()`, `.directory()`, and `.visibility()` tell the upload endpoint where to put the file. Prefer `.disk("public")` for avatars and images that must be browser-readable under `/storage`. The default `MemoryUploadStorage` keeps files in a dict and serves them from `/orbit-uploads/...`. `FilesystemUploadStorage` writes through `almasix.filesystem` disks — pass `.disk("s3")` once you have configured that disk.
 
 ```python title="app/orbit/resources/example_resource.py"
 FileUpload.make('logo')

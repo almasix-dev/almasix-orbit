@@ -1,11 +1,13 @@
 ---
 title: Wizards
-description: Guide users through sequential schema steps with back / continue navigation and optional skip.
+description: Guide users through sequential schema steps with a progress stepper, linear or free navigation, and optional vertical layout.
 ---
 
 ## Introduction
 
-`Wizard` guides users through sequential steps with back / continue navigation and an optional skip control. Each step is a labeled schema chunk — ideal for onboarding or multi-page creates without changing routes.
+`Wizard` guides users through sequential steps with a progress stepper (not tabs), Back / Continue, and an optional Skip control. Each step is a labeled schema chunk — ideal for onboarding or multi-page creates without changing routes.
+
+See [Wizard](/schemas/wizard/) for the full API (linear / non-linear, vertical stepper, descriptions).
 
 ```python title="app/orbit/schemas/wizard_basic.py"
 from almasix.orbit.schemas import Wizard
@@ -37,27 +39,32 @@ Wizard.make("onboard").steps(
 )
 ```
 
-## Skippable and start step
+## Options
 
 ```python title="app/orbit/schemas/wizard_options.py"
 Wizard.make("onboard")
     .steps(...)
-    .skippable()       # show a Skip control in the footer
+    .linear()          # default — validate before Continue; lock ahead nav
+    .non_linear()      # free jump to any step
+    .vertical()        # side-rail stepper
+    .skippable()       # Skip in the footer
     .start_step(1)     # zero-based initial step
 ```
 
 ![Wizard (light)](/examples/light/schemas/wizard.png)
 ![Wizard (dark)](/examples/dark/schemas/wizard.png)
 
-The footer always includes **Back** and **Continue**; Alpine keeps `step` in sync with the nav strip.
+The footer always includes **Back** and **Continue**; Alpine `orbitWizard` keeps `step` / `maxReached` in sync with the stepper.
 
 ## API reference
 
 | Method | Role |
 |--------|------|
 | `.steps` | One or more step defs |
+| `.linear` / `.non_linear` | Lock ahead steps vs free nav |
+| `.vertical` | Side-rail stepper |
 | `.skippable` | Show Skip in the footer |
 | `.start_step` | Zero-based initial step |
 | `.schema` | Extra children outside step defs (rare) |
 
-For non-linear panels, prefer [Tabs](/schemas/tabs/).
+Prefer [Tabs](/schemas/tabs/) when panes are peers, not a sequenced flow.

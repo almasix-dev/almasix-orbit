@@ -82,6 +82,21 @@ async def handle_upload_delete(
     return {"ok": True, "path": path}
 
 
+async def handle_serve_upload(path: str) -> Any:
+    """Serve bytes from :class:`MemoryUploadStorage` (demo / default storage)."""
+    from almasix.http import Response
+    from almasix.orbit.forms.uploads import MemoryUploadStorage, get_upload_storage, guess_mime
+
+    storage = get_upload_storage()
+    if not isinstance(storage, MemoryUploadStorage):
+        return Response("Not found", status_code=404)
+    key = str(path or "").lstrip("/")
+    data = storage.get_bytes(key)
+    if data is None:
+        return Response("Not found", status_code=404)
+    return Response(data, media_type=f"{guess_mime(key)}; charset=binary")
+
+
 def panel_upload_url(panel: Any) -> str:
     """URL of this panel's upload endpoint."""
     return _upload_url(str(panel.get_path()))

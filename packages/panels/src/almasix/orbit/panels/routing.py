@@ -28,6 +28,7 @@ from almasix.orbit.panels.notification_routes import (
 )
 from almasix.orbit.panels.panel import Panel, PanelRegistry
 from almasix.orbit.panels.uploads import (
+    handle_serve_upload,
     handle_upload,
     handle_upload_delete,
     panel_upload_url,
@@ -1134,6 +1135,16 @@ def mount_orbit_assets(router: Any) -> None:
                 missing="/* missing flowbite-datepicker.min.css */",
             ),
             name="orbit.assets.flowbite.datepicker.css",
+        )
+    if "/orbit-uploads/{path:path}" not in uris:
+        async def orbit_memory_upload(path: str = "") -> Any:
+            return await handle_serve_upload(path)
+
+        router.add(
+            ["GET"],
+            "/orbit-uploads/{path:path}",
+            orbit_memory_upload,
+            name="orbit.assets.memory.upload",
         )
 
 

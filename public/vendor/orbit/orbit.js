@@ -420,6 +420,7 @@
 
     window.Alpine.data("orbitDropdown", () => ({
       menuOpen: false,
+      _rootEl: null,
       init() {
         // Alpine rebinds `$el` to the event target inside @click handlers; keep the
         // x-data root so portal/querySelector always run against the dropdown wrap.
@@ -637,6 +638,7 @@
       selected: [],
       total: 0,
       allResultsSelected: false,
+      _rootEl: null,
       init() {
         // Alpine rebinds `$el` inside nested @click handlers; keep the wrap.
         this._rootEl = this.$el;
@@ -1357,6 +1359,59 @@
     window.OrbitNotification = OrbitNotification;
     window.OrbitNotificationAction = OrbitNotificationAction;
 
+    // Form save feedback: a "Saved" toast on success, an error toast on
+    // validation / write / transport failure. Saves usually redirect, so the
+    // success toast is parked in sessionStorage and replayed on the next page.
+    const PENDING_TOAST_KEY = "orbit:pending-toast";
+    const showFormToast = ({ status, title, body }) => {
+      const note = new OrbitNotification().title(title || (status === "danger" ? "Error" : "Saved"));
+      if (status === "danger") note.danger();
+      else note.success();
+      if (body) note.body(body);
+      note.send();
+    };
+    let recentToast = null;
+    window.addEventListener("pagehide", () => {
+      if (!recentToast || Date.now() - recentToast.at > 10000) return;
+      try {
+        sessionStorage.setItem(PENDING_TOAST_KEY, JSON.stringify(recentToast));
+      } catch (_) {
+        /* storage disabled */
+      }
+    });
+    const onSaved = (title) => () => {
+      const toast = { status: "success", title };
+      showFormToast(toast);
+      recentToast = { ...toast, at: Date.now() };
+    };
+    window.addEventListener("orbit-record-saved", onSaved("Saved"));
+    window.addEventListener("orbit-record-created", onSaved("Created"));
+    window.addEventListener("orbit-form-saved", onSaved("Saved"));
+    window.addEventListener("orbit-form-failed", (event) => {
+      const detail = event.detail || {};
+      showFormToast({ status: "danger", title: detail.title || "Not saved", body: detail.body });
+    });
+    window.addEventListener("conduit:error", (event) => {
+      const message = String(event.detail?.message || "");
+      const body = /checksum/i.test(message)
+        ? "This page is out of date. Reload it and try again."
+        : message || "The server could not process the request.";
+      showFormToast({ status: "danger", title: "Error", body });
+    });
+    try {
+      const raw = sessionStorage.getItem(PENDING_TOAST_KEY);
+      if (raw) {
+        sessionStorage.removeItem(PENDING_TOAST_KEY);
+        const toast = JSON.parse(raw);
+        if (toast && Date.now() - Number(toast.at || 0) < 15000) {
+          // Let the toast host mount before replaying.
+          setTimeout(() => showFormToast(toast), 50);
+        }
+      }
+    } catch (_) {
+      /* ignore */
+    }
+
     const toastFromActionEl = (el) => {
       if (!(el instanceof HTMLElement)) return;
       if (!el.hasAttribute("data-success-notification")) return;
@@ -1617,6 +1672,24 @@
       true,
     );
 
+    // Searchable Select / Many2One / MorphToSelect record picker.
+    //
+    // Ownership rules (keep these; every regression so far broke one of them):
+    //  * Alpine owns the control + dropdown. They carry wire:ignore so Conduit
+    //    morph never patches them — a patched x-for goes inert and options stop
+    //    responding to clicks.
+    //  * The hidden native <select> is the only server-rendered part. A
+    //    MutationObserver re-reads it when a server render changes it.
+    //  * Picks go to the host with sync_data_path (renderless), never conduit:model.
+    //  * AJAX / morph options arrive via the `orbit-select-options` window event
+    //    dispatched by the host's loadSelectOptions — never via a remorph.
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
     const orbitCombobox = () => ({
       open: false,
       q: "",
@@ -1637,9 +1710,19 @@
       loadingMsg: "Loading…",
       maxItems: null,
       fieldName: "",
+      syncPath: "",
+      // Every field assigned in init() must be declared here: Alpine writes
+      // undeclared keys onto the outermost x-data (e.g. the wizard), so all
+      // comboboxes on the page would share one root.
+      _rootEl: null,
+      _selectObserver: null,
+      _request: 0,
+      _writingSelect: false,
 
       init() {
+        // `$el` is rebound to the event target inside nested handlers — pin the root.
         const root = this.$el;
+        this._rootEl = root;
         this.multiple = root.getAttribute("data-multiple") === "true";
         this.searchable = root.hasAttribute("data-searchable");
         this.ajax = root.getAttribute("data-ajax-search") === "true";
@@ -1653,21 +1736,40 @@
         const max = root.getAttribute("data-max-items");
         this.maxItems = max != null && max !== "" ? Number(max) : null;
         this.fieldName =
-          root.closest("[data-field]")?.getAttribute("data-field") ||
           root.getAttribute("data-field") ||
+          root.closest("[data-field]")?.getAttribute("data-field") ||
           "";
-        const search = this.$refs.search;
-        if (search instanceof HTMLInputElement && search.value) {
-          this.q = search.value;
-        }
+        this.syncPath = root.getAttribute("data-sync-path") || "";
         this.readFromSelect();
+        const select = this.$refs.select;
+        if (select instanceof HTMLSelectElement && typeof MutationObserver !== "undefined") {
+          this._selectObserver = new MutationObserver(() => {
+            if (this._writingSelect) return;
+            this.readFromSelect({ fromServer: true });
+          });
+          this._selectObserver.observe(select, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["selected", "disabled", "value"],
+          });
+        }
         this.$watch("open", (value) => {
-          if (value) {
-            this.$nextTick(() => {
-              if (this.searchable && this.$refs.search) this.$refs.search.focus();
-            });
-          }
+          if (!value) return;
+          this.$nextTick(() => {
+            if (this.searchable && this.$refs.search) this.$refs.search.focus();
+          });
         });
+      },
+
+      destroy() {
+        this._selectObserver?.disconnect?.();
+      },
+
+      rootEl() {
+        const pinned = this._rootEl;
+        if (pinned?.isConnected) return pinned;
+        return this.$el?.closest?.(".or-combobox") || pinned || this.$el;
       },
 
       get selectedItems() {
@@ -1676,7 +1778,7 @@
           return {
             value,
             label: opt ? opt.label : value,
-            labelHtml: opt ? opt.labelHtml : value,
+            labelHtml: opt ? opt.labelHtml : escapeHtml(value),
           };
         });
       },
@@ -1725,7 +1827,7 @@
         return `or-${this.fieldName}-opt-${this.activeIndex}`;
       },
 
-      readFromSelect() {
+      readFromSelect({ fromServer = false } = {}) {
         const select = this.$refs.select;
         if (!(select instanceof HTMLSelectElement)) return;
         this.disabled = select.disabled;
@@ -1736,13 +1838,69 @@
           disabled: Boolean(opt.disabled),
           group: opt.dataset.group || "",
         }));
-        if (this.multiple) {
-          this.state = Array.from(select.selectedOptions)
-            .map((o) => String(o.value))
-            .filter((v) => v !== "");
-        } else {
-          this.state = select.value || "";
+        // A server render marks the stored value with the `selected` attribute;
+        // after a user pick the live `.value` is authoritative instead.
+        const picked = fromServer
+          ? Array.from(select.options).filter((o) => o.defaultSelected)
+          : Array.from(select.selectedOptions);
+        if (fromServer) {
+          this._writingSelect = true;
+          Array.from(select.options).forEach((o) => {
+            o.selected = o.defaultSelected;
+          });
+          this._writingSelect = false;
         }
+        const values = picked.map((o) => String(o.value)).filter((v) => v !== "");
+        this.state = this.multiple ? values : values[0] || "";
+      },
+
+      writeOptions(pairs) {
+        // Replace native options with a server page while keeping current picks.
+        const select = this.$refs.select;
+        if (!(select instanceof HTMLSelectElement)) return;
+        const keep = new Map();
+        this.selectedItems.forEach((item) => keep.set(item.value, item.label));
+        const seen = new Set();
+        const rows = [];
+        if (!this.multiple) rows.push('<option value="">—</option>');
+        const push = (value, label) => {
+          const v = String(value);
+          if (v === "" || seen.has(v)) return;
+          seen.add(v);
+          const sel = keep.has(v) ? " selected" : "";
+          rows.push(
+            `<option value="${escapeHtml(v)}" data-label="${escapeHtml(label)}"${sel}>${escapeHtml(label)}</option>`,
+          );
+        };
+        keep.forEach((label, value) => push(value, label));
+        pairs.forEach(([value, label]) => push(value, label));
+        this._writingSelect = true;
+        select.innerHTML = rows.join("");
+        Array.from(select.options).forEach((o) => {
+          o.selected = keep.has(o.value);
+        });
+        this._writingSelect = false;
+        const picked = this.selectedValues;
+        this.options = Array.from(select.options).map((opt) => ({
+          value: String(opt.value),
+          label: String(opt.dataset.label || opt.textContent || "").trim(),
+          labelHtml: opt.innerHTML,
+          disabled: Boolean(opt.disabled),
+          group: "",
+        }));
+        this.state = this.multiple ? picked : picked[0] || "";
+        // Keep server-listed options first, selected extras after them.
+        const order = new Map(pairs.map(([v], i) => [String(v), i]));
+        this.options.sort((a, b) => (order.get(a.value) ?? 1e9) - (order.get(b.value) ?? 1e9));
+      },
+
+      receiveOptions(detail) {
+        if (!detail || detail.path !== this.syncPath) return;
+        if (detail.request != null && Number(detail.request) !== this._request) return;
+        this.searching = false;
+        this.writeOptions(Array.isArray(detail.options) ? detail.options : []);
+        this.activeIndex = this.visibleOptions.findIndex((o) => this.isSelected(o.value));
+        if (this.activeIndex < 0 && this.visibleOptions.length) this.activeIndex = 0;
       },
 
       isSelected(value) {
@@ -1756,10 +1914,13 @@
       },
 
       openPanel() {
-        if (this.disabled) return;
+        if (this.disabled || this.open) return;
+        if (!this.ajax) this.readFromSelect();
         this.open = true;
         this.activeIndex = this.visibleOptions.findIndex((o) => this.isSelected(o.value));
         if (this.activeIndex < 0 && this.visibleOptions.length) this.activeIndex = 0;
+        // AJAX fields load a capped first page every time the list opens.
+        if (this.ajax) this.requestOptions(this.q || "");
       },
 
       close() {
@@ -1769,7 +1930,7 @@
       },
 
       move(delta) {
-        this.openPanel();
+        if (!this.open) this.openPanel();
         const len = this.visibleOptions.length;
         if (!len) return;
         this.activeIndex = (this.activeIndex + delta + len) % len;
@@ -1816,6 +1977,13 @@
         this.close();
       },
 
+      reset({ options = [] } = {}) {
+        // Used by MorphToSelect when the type changes.
+        this.state = this.multiple ? [] : "";
+        this.q = "";
+        this.writeOptions(options);
+      },
+
       onBackspace(event) {
         if (!this.multiple) return;
         if ((this.q || "") !== "") return;
@@ -1825,26 +1993,34 @@
         this.deselect(values[values.length - 1]);
       },
 
-      onSearch() {
-        if (this.ajax) {
-          this.searching = true;
-          const wireRoot = this.$el.closest(
-            "[wire\\:id], [conduit\\:id], [data-conduit]",
-          );
-          const wire = wireRoot && (wireRoot.__wire || wireRoot.__conduit);
-          if (wire && typeof wire.searchSelectOptions === "function") {
-            wire.searchSelectOptions(this.fieldName, this.q || "");
-            return;
-          }
+      requestOptions(query) {
+        const root = this.rootEl();
+        const wire = window.orbitWire?.(root);
+        if (!wire || !this.syncPath) return;
+        this.searching = true;
+        this._request += 1;
+        const morphType = root.getAttribute("data-morph-type") || "";
+        if (root.hasAttribute("data-morph-field") && !morphType) {
           this.searching = false;
+          this.writeOptions([]);
+          return;
         }
-        this.openPanel();
+        wire.loadSelectOptions(this.syncPath, query || "", morphType, this._request);
+      },
+
+      onSearch() {
+        if (!this.open) this.openPanel();
+        if (this.ajax) {
+          this.requestOptions(this.q || "");
+          return;
+        }
         this.activeIndex = this.visibleOptions.length ? 0 : -1;
       },
 
       syncSelect() {
         const select = this.$refs.select;
         if (!(select instanceof HTMLSelectElement)) return;
+        this._writingSelect = true;
         if (this.multiple) {
           const selected = new Set(this.selectedValues);
           Array.from(select.options).forEach((opt) => {
@@ -1852,6 +2028,22 @@
           });
         } else {
           select.value = this.state == null ? "" : String(this.state);
+        }
+        this._writingSelect = false;
+        const root = this.rootEl();
+        if (this.syncPath) {
+          const value = this.multiple
+            ? this.selectedValues
+            : this.state == null || this.state === ""
+              ? null
+              : this.state;
+          const wire = window.orbitWire?.(root);
+          if (wire && typeof wire.sync_data_path === "function") {
+            wire.sync_data_path(this.syncPath, value);
+          }
+          // Local listeners (after_state_updated_js); no conduit:model, so no remorph.
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          return;
         }
         select.dispatchEvent(new Event("input", { bubbles: true }));
         select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -1861,17 +2053,42 @@
     window.Alpine.data("orbitCombobox", orbitCombobox);
     window.Alpine.data("orbitSearchableSelect", orbitCombobox);
 
-
+    // MorphToSelect: a native type <select> plus the record combobox above.
+    // The combobox fetches records for `data-morph-type` through the host.
     window.Alpine.data("orbitMorphToSelect", () => ({
+      field: "",
+      type: "",
+      root: null,
       init() {
-        const typeSelect = this.$el.querySelector("[data-morph-type]");
-        if (typeSelect) {
-          typeSelect.addEventListener("change", () => {
-            this.$dispatch("orbit:morph-type-changed", {
-              type: typeSelect.value,
-              field: this.$el.getAttribute("data-field"),
-            });
-          });
+        this.root = this.$el;
+        this.field = this.root.getAttribute("data-field") || "";
+        this.type = this.root.querySelector("[data-morph-type]")?.value || "";
+      },
+      recordComboboxRoot() {
+        return this.root?.querySelector?.("[data-morph-id-combobox]") || null;
+      },
+      recordCombobox() {
+        const el = this.recordComboboxRoot();
+        if (!el || typeof window.Alpine?.$data !== "function") return null;
+        try {
+          return window.Alpine.$data(el);
+        } catch (_) {
+          return null;
+        }
+      },
+      onTypeChange(type) {
+        this.type = type || "";
+        const comboRoot = this.recordComboboxRoot();
+        comboRoot?.setAttribute("data-morph-type", this.type);
+        const combo = this.recordCombobox();
+        if (combo) {
+          combo.close();
+          combo.reset({ options: [] });
+        }
+        const wire = window.orbitWire?.(this.root);
+        const path = this.field.startsWith("data.") ? this.field : `data.${this.field}`;
+        if (wire && this.field && typeof wire.sync_data_path === "function") {
+          wire.sync_data_path(path, { type: this.type, id: null });
         }
       },
     }));
@@ -2179,6 +2396,36 @@
       }
     };
 
+    // wire:change is not a bound directive, so key renames never reached the host
+    // and rows stayed key1 / key2. Commit on change and again just before save.
+    const commitKeyValueKey = (input) => {
+      if (!(input instanceof HTMLInputElement)) return;
+      if (input.readOnly || input.disabled) return;
+      const row = input.closest(".or-key-value-row");
+      const field = input.closest("[data-field]")?.getAttribute("data-field") || "";
+      const previous = row?.getAttribute("data-key") || "";
+      const next = input.value.trim();
+      if (!field || !previous || next === previous) return;
+      const wire = window.orbitWire?.(input);
+      if (wire && typeof wire.setKeyValueKey === "function") {
+        wire.setKeyValueKey(field, previous, next);
+        row.setAttribute("data-key", next);
+      }
+    };
+    if (typeof document !== "undefined" && !window.__orbitKeyValueKeys) {
+      window.__orbitKeyValueKeys = true;
+      document.addEventListener(
+        "change",
+        (event) => {
+          const el = event.target;
+          if (el instanceof HTMLInputElement && el.classList.contains("or-key-value-key")) {
+            commitKeyValueKey(el);
+          }
+        },
+        true,
+      );
+    }
+
     // Before Conduit submit, flush Alpine list fields so Save sees latest chips/checks
     // even if a coalesce timer hasn't fired yet.
     if (typeof document !== "undefined" && !window.__orbitAlpineFormFlush) {
@@ -2191,12 +2438,20 @@
           const hasSubmit =
             form.hasAttribute("conduit:submit") || form.hasAttribute("wire:submit");
           if (!hasSubmit) return;
+          // Key inputs use wire:change, which the client does not bind. Push the
+          // rename before submit collects the value inputs under the old key.
+          form.querySelectorAll(".or-key-value-key").forEach((input) => {
+            commitKeyValueKey(input);
+          });
           form
-            .querySelectorAll(".or-field-TagsInput, .or-field-CheckboxList")
+            .querySelectorAll(
+              ".or-field-TagsInput, .or-field-CheckboxList, .or-combobox[data-sync-path]",
+            )
             .forEach((root) => {
               try {
                 const data = window.Alpine?.$data?.(root);
                 if (data && typeof data.sync === "function") data.sync();
+                else if (data && typeof data.syncSelect === "function") data.syncSelect();
               } catch (_) {
                 /* ignore */
               }
@@ -2321,6 +2576,59 @@
       },
     }));
 
+    window.Alpine.data("orbitWizard", () => ({
+      step: 0,
+      maxReached: 0,
+      total: 1,
+      linear: true,
+      init() {
+        const el = this.$el;
+        this.total = Math.max(1, Number(el.getAttribute("data-steps") || 1));
+        this.linear = el.getAttribute("data-linear") !== "false";
+        const start = Math.min(
+          Math.max(0, Number(el.getAttribute("data-start") || 0)),
+          this.total - 1,
+        );
+        this.step = start;
+        this.maxReached = start;
+      },
+      validateStep() {
+        const pane = this.$el.querySelector(
+          `.or-wizard-step[data-step="${this.step}"]`,
+        );
+        if (!pane) return true;
+        const fields = pane.querySelectorAll("input, select, textarea");
+        for (const field of fields) {
+          if (field.disabled || field.type === "hidden") continue;
+          if (typeof field.checkValidity === "function" && !field.checkValidity()) {
+            field.reportValidity();
+            return false;
+          }
+        }
+        return true;
+      },
+      go(index) {
+        const i = Number(index);
+        if (Number.isNaN(i) || i < 0 || i >= this.total) return;
+        if (this.linear && i > this.maxReached) return;
+        this.step = i;
+      },
+      back() {
+        this.go(Math.max(this.step - 1, 0));
+      },
+      next() {
+        if (this.linear && !this.validateStep()) return;
+        const n = Math.min(this.step + 1, this.total - 1);
+        this.maxReached = Math.max(this.maxReached, n);
+        this.step = n;
+      },
+      skip() {
+        const n = Math.min(this.step + 1, this.total - 1);
+        this.maxReached = Math.max(this.maxReached, n);
+        this.step = n;
+      },
+    }));
+
     const bootFileUploads = () => {
       const FilePond = window.FilePond;
       if (!FilePond) return;
@@ -2421,20 +2729,26 @@
           }
         };
 
-        const existing = parseExisting(root).map((file) => ({
-          source: file.path,
-          options: {
-            type: "local",
-            file: {
-              name: file.name || String(file.path).split("/").pop(),
-              type: file.mime || undefined,
-              size: undefined,
+        root._orbitUploadUrls = root._orbitUploadUrls || {};
+        const existing = parseExisting(root).map((file) => {
+          const path = file.path;
+          const url = file.url || root._orbitUploadUrls[path] || path;
+          if (path && url) root._orbitUploadUrls[path] = url;
+          return {
+            source: path,
+            options: {
+              type: "local",
+              file: {
+                name: file.name || String(path).split("/").pop(),
+                type: file.mime || undefined,
+                size: undefined,
+              },
+              metadata: {
+                poster: url,
+              },
             },
-            metadata: {
-              poster: file.url || file.path,
-            },
-          },
-        }));
+          };
+        });
 
         let stylePanelLayout = null;
         if (avatar) stylePanelLayout = "circle";
@@ -2464,6 +2778,19 @@
                 : null,
           allowImagePreview: imagePreview || avatar,
           allowFilePoster: true,
+          // Skip client transforms for already-stored locals — ImageTransform can
+          // throw (e.g. M_ID) when remorphing after save with incomplete metadata.
+          imageTransformImageFilter: (file) => {
+            try {
+              const origin = file?.origin ?? file?.file?.origin;
+              const localOrigin =
+                (window.FilePond && window.FilePond.FileOrigin?.LOCAL) ?? 3;
+              if (origin === localOrigin) return false;
+            } catch (_) {
+              /* ignore */
+            }
+            return true;
+          },
           files: existing,
           labelIdle: avatar
             ? '<span class="filepond--label-action">Upload avatar</span>'
@@ -2486,6 +2813,9 @@
                 try {
                   const result = JSON.parse(request.responseText || "{}");
                   if (result.ok && result.file?.path) {
+                    if (result.file.url) {
+                      root._orbitUploadUrls[result.file.path] = result.file.url;
+                    }
                     load(result.file.path);
                   } else {
                     error(result.error || "Upload failed.");
@@ -2535,9 +2865,20 @@
             },
             load: (source, load, error, progress, abort) => {
               const match = parseExisting(root).find((file) => file.path === source);
-              const url = match?.url || source;
-              const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-              fetch(url, {
+              const url =
+                match?.url || root._orbitUploadUrls?.[source] || source;
+              // Absolute path required — relative URLs resolve against the edit page.
+              const resolved =
+                typeof url === "string" &&
+                url &&
+                !url.startsWith("/") &&
+                !/^https?:/i.test(url) &&
+                !url.startsWith("data:")
+                  ? `/storage/${url.replace(/^\/+/, "")}`
+                  : url;
+              const controller =
+                typeof AbortController !== "undefined" ? new AbortController() : null;
+              fetch(resolved, {
                 credentials: "same-origin",
                 signal: controller?.signal,
               })
@@ -2549,7 +2890,13 @@
                   progress(true, blob.size, blob.size);
                   load(blob);
                 })
-                .catch(() => error("Could not load file."));
+                .catch(() => {
+                  try {
+                    error("Could not load file.");
+                  } catch (_) {
+                    /* FilePond may reject after destroy during morph */
+                  }
+                });
               return {
                 abort: () => {
                   controller?.abort();

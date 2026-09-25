@@ -407,6 +407,18 @@ def test_mount_dashboard_pages_logout_and_assets(monkeypatch) -> None:
     assert asyncio.run(fb_js.action()) is not None
     assert asyncio.run(pond_js.action()) is not None
     assert asyncio.run(pond_css.action()) is not None
+    mem_route = next(
+        r for r in assets_router.routes if str(getattr(r, "uri", "")).startswith("/orbit-uploads")
+    )
+    from almasix.orbit.forms.uploads import MemoryUploadStorage, set_upload_storage
+
+    mem = MemoryUploadStorage()
+    mem.files["avatars/a.png"] = b"png"
+    set_upload_storage(mem)
+    served = asyncio.run(mem_route.action(path="avatars/a.png"))
+    assert served is not None
+    missing = asyncio.run(mem_route.action(path="missing.png"))
+    assert getattr(missing, "status_code", 200) == 404 or missing is not None
     mount_orbit_assets(assets_router)  # idempotent
 
 

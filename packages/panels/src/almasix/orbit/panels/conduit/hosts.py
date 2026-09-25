@@ -65,7 +65,14 @@ def _next_record_id(records: Iterable[Any]) -> int:
 
 def _jsonable_value(value: Any) -> Any:
     """Coerce ORM values so Conduit snapshots stay JSON-serializable."""
-    if value is None or isinstance(value, (str, int, float, bool)):
+    if value is None or isinstance(value, (str, int, bool)):
+        return value
+    # JSON.stringify(1.0) is "1"; Python json.dumps(1.0) is "1.0".
+    # Conduit checksums the Python form, then the browser sends the JS form
+    # back, so a whole-number float fails verify on the next save.
+    if isinstance(value, float):
+        if value.is_integer():
+            return int(value)
         return value
     if isinstance(value, dict):
         return {str(k): _jsonable_value(v) for k, v in value.items()}
@@ -1108,6 +1115,21 @@ class FormDataMutations:
     def _public_property_names(cls) -> set[str]:
         return _DotDataPublic(super()._public_property_names())
 
+    def dehydrate(self) -> None:
+        """Canonicalize form state before the Conduit checksum is sealed."""
+        for name in (
+            "data",
+            "relations",
+            "record",
+            "records",
+            "select_search",
+            "morph_search",
+            "table_select",
+        ):
+            value = getattr(self, name, None)
+            if isinstance(value, (dict, list)):
+                setattr(self, name, _jsonable_value(value))
+
     def set_property(self, name: str, value: Any) -> None:
         if name == "data":
             raw = dict(value) if isinstance(value, dict) else {}
@@ -1321,6 +1343,9 @@ class FormDataMutations:
         searches = dict(getattr(self, "morph_search", None) or {})
         searches.pop(field, None)
         self.morph_search = searches
+        # Remorph only when live search may need server options; embedded maps
+        # rebuild client-side. Always remorph here so options_using loaders refresh.
+        # Callers with fully embedded options should prefer sync_data_path instead.
 
     def searchMorphOptions(self, name: str, search: str = "") -> None:
         """Server-side search for the record leg of a MorphToSelect."""
@@ -1328,6 +1353,111 @@ class FormDataMutations:
         searches = dict(getattr(self, "morph_search", None) or {})
         searches[field] = str(search or "")
         self.morph_search = searches
+
+    def _validate_or_fail(self, operation: str) -> bool:
+        """Run form rules; on failure fill the error bag and dispatch an error toast."""
+        self.reset_error_bag()
+        form = self._options_form()
+        validate = getattr(form, "validate", None)
+        if not callable(validate):
+            return True
+        data = dict(self.data or {})
+        try:
+            errors = validate(data, operation=operation, record=data) or {}
+        except Exception as exc:
+            self._fail_save(str(exc))
+            return False
+        if not errors:
+            return True
+        for key, messages in errors.items():
+            for message in messages if isinstance(messages, list) else [messages]:
+                self.add_error(str(key), str(message))
+        count = sum(len(v) if isinstance(v, list) else 1 for v in errors.values())
+        noun = "error" if count == 1 else "errors"
+        first = next(iter(errors.values()))
+        first_msg = first[0] if isinstance(first, list) and first else str(first)
+        self._fail_save(f"Fix {count} validation {noun}: {first_msg}")
+        return False
+
+    def _fail_save(self, message: str) -> None:
+        self.dispatch("orbit-form-failed", title="Not saved", body=str(message or "Save failed."))
+
+    def _options_form(self) -> Any:
+        get_resource = getattr(self, "get_resource", None)
+        if callable(get_resource):
+            try:
+                return get_resource().get_form()
+            except Exception:
+                pass
+        factory = getattr(type(self), "_form_factory", None)
+        if callable(factory):
+            try:
+                return factory()
+            except Exception:
+                pass
+        return None
+
+    def _find_select_field(self, path: str) -> Any:
+        """Resolve ``data.items.0.author`` → the ``author`` Select in the form schema."""
+        from almasix.orbit.forms.walk import iter_fields
+
+        form = self._options_form()
+        if form is None:
+            return None
+        getter = getattr(form, "get_components", None)
+        components = getter() if callable(getter) else getattr(form, "_components", [])
+        parts = [p for p in str(path or "").removeprefix("data.").split(".") if p]
+        plain = ".".join(p for p in parts if not p.isdigit())
+        leaf = parts[-1] if parts else ""
+        fallback = None
+        for field in iter_fields(list(components or [])):
+            if not callable(getattr(field, "search_options", None)):
+                continue
+            state_path = str(field.get_state_path() or "")
+            if state_path in {plain, ".".join(parts)}:
+                return field
+            if fallback is None and str(field.get_name() or "") == leaf:
+                fallback = field
+        return fallback
+
+    def loadSelectOptions(
+        self,
+        path: str,
+        search: str = "",
+        morph_type: str = "",
+        request: Any = None,
+    ) -> None:
+        """Answer a combobox with one page of options, without re-rendering the form."""
+        self.skip_render()
+        target = str(path or "")
+        field_path = target
+        if morph_type and target.endswith(".id"):
+            field_path = target[: -len(".id")]
+        field = self._find_select_field(field_path)
+        options: dict[str, str] = {}
+        if field is not None:
+            resource = None
+            get_resource = getattr(self, "get_resource", None)
+            if callable(get_resource):
+                try:
+                    resource = get_resource()
+                except Exception:
+                    resource = None
+            ctx: dict[str, Any] = {"record": dict(self.data or {}), "resource": resource}
+            state = self._form_path_get(target.removeprefix("data."))
+            try:
+                if morph_type:
+                    options = field.search_options(search, state, morph_type=morph_type, **ctx)
+                else:
+                    options = field.search_options(search, state, **ctx)
+            except Exception:
+                options = {}
+        self.dispatch(
+            "orbit-select-options",
+            path=target,
+            request=request,
+            options=[[str(k), str(v)] for k, v in (options or {}).items()],
+        )
 
     def mountTableSelect(self, name: str, **kwargs: Any) -> None:
         """Open the record picker for a ModalTableSelect field."""
@@ -1386,6 +1516,9 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
                 "orbit-records-readonly",
                 message="This demo resource uses a fixed seed list and cannot be changed.",
             )
+            self._fail_save("This demo resource uses a fixed seed list and cannot be changed.")
+            return None
+        if not self._validate_or_fail("create"):
             return None
         model = _resource_model(resource)
         if model is not None:
@@ -1415,7 +1548,11 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
         if tenancy is not None and tenancy.is_enabled():
             if getattr(resource, "is_tenant_scoped", lambda: True)():
                 payload = tenancy.associate_record(payload)
-        row = await _orm_create(model, payload)
+        try:
+            row = await _orm_create(model, payload)
+        except Exception as exc:
+            self._fail_save(str(exc))
+            return
         self.created_id = str(row.get("id") or "")
         self.data = dict(row)
         self.dispatch("orbit-record-created", data=dict(row))
@@ -1449,6 +1586,7 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
             select_search=dict(self.select_search or {}),
             morph_search=dict(self.morph_search or {}),
             table_select=dict(self.table_select or {}),
+            form_errors=self.get_error_bag(),
             model=model,
             resource=resource,
         )
@@ -1561,6 +1699,9 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
                 "orbit-records-readonly",
                 message="This demo resource uses a fixed seed list and cannot be changed.",
             )
+            self._fail_save("This demo resource uses a fixed seed list and cannot be changed.")
+            return None
+        if not self._validate_or_fail("edit"):
             return None
         model = _resource_model(resource)
         if model is not None:
@@ -1609,7 +1750,11 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
 
     async def _save_orm(self, model: type[Any], resource: type[Any]) -> None:
         rid = str(self.record_id or self.data.get("id") or "")
-        row = await _orm_update(model, rid, dict(self.data or {}))
+        try:
+            row = await _orm_update(model, rid, dict(self.data or {}))
+        except Exception as exc:
+            self._fail_save(str(exc))
+            return
         self.record_id = str(row.get("id") or rid)
         self.data = dict(row)
         self.dispatch("orbit-record-saved", record_id=self.record_id, data=dict(self.data))
@@ -1674,6 +1819,7 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
             select_search=dict(self.select_search or {}),
             morph_search=dict(self.morph_search or {}),
             table_select=dict(self.table_select or {}),
+            form_errors=self.get_error_bag(),
             model=model,
             resource=resource,
             relation_records=dict(self.relations or {}),
@@ -1789,6 +1935,8 @@ class FormHost(FormDataMutations, ConduitHost):
 
     def save(self) -> None:
         self.reset_skip_render()
+        if not self._validate_or_fail("edit"):
+            return
         self.dispatch("orbit-form-saved", data=dict(self.data))
 
     def mountAction(
@@ -1814,7 +1962,7 @@ class FormHost(FormDataMutations, ConduitHost):
             f'x-data '
             f'@keydown.ctrl.s.window.prevent="$el.requestSubmit()" '
             f'@keydown.meta.s.window.prevent="$el.requestSubmit()">'
-            f'{form.render(self.data, select_search=dict(self.select_search or {}), morph_search=dict(self.morph_search or {}), table_select=dict(self.table_select or {}))}'
+            f'{form.render(self.data, select_search=dict(self.select_search or {}), morph_search=dict(self.morph_search or {}), table_select=dict(self.table_select or {}), form_errors=self.get_error_bag())}'
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Save</button>'
             f"</div></form></div>"

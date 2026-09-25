@@ -5,9 +5,9 @@ description: MorphToSelect lets the operator pick a type and then a record of th
 
 ## Introduction
 
-A **morph-to** field is two questions: *what kind of record?* and *which one?* `MorphToSelect` renders a type `<select>` next to a record `<select>`. Changing the type clears the chosen id and asks the server for that type’s options; typing in the search box filters those options.
+A **morph-to** field is two questions: *what kind of record?* and *which one?* `MorphToSelect` renders a **Type** select beside a **Record** select (with an optional search box above the records). Changing the type clears the chosen id and refreshes that type’s options; typing in the search box filters them.
 
-State is a dict `{type, id}` (or a `"type:id"` string). `.type_attribute()` / `.id_attribute()` rename the keys when your columns are not `type` / `id`.
+State is a dict `{type, id}` bound as `data.{field}.type` / `data.{field}.id` (or a `"type:id"` string when hydrating). `.type_attribute()` / `.id_attribute()` rename the keys when your columns are not `type` / `id`.
 
 For large lists, skip static `options` and give Orbit a loader:
 
