@@ -1667,7 +1667,13 @@
         this.$watch("open", (value) => {
           if (value) {
             this.$nextTick(() => {
-              if (this.searchable && this.$refs.search) this.$refs.search.focus();
+              if (
+                this.searchable &&
+                this.$refs.search &&
+                (this.multiple || !this.hasValue || this.open)
+              ) {
+                this.$refs.search.focus();
+              }
             });
           }
         });
@@ -1767,13 +1773,18 @@
       openPanel() {
         if (this.disabled) return;
         const select = this.$refs.select;
-        // Soft-sync: refresh state/disabled from the native select without rebuilding
-        // the options array on every open (full readFromSelect remounts x-for nodes
-        // and can drop the click under the cursor on subsequent chooses).
+        const list = this.$refs.list;
+        // Soft-sync when the option DOM is healthy. After a Conduit remorph, Alpine
+        // may still hold options in memory while x-for stays inert (0 option nodes) —
+        // re-read so the list rebuilds.
+        const domMissingOptions =
+          !(list instanceof Element) ||
+          list.querySelectorAll(".or-combobox-option").length === 0;
         if (select instanceof HTMLSelectElement) {
           this.disabled = select.disabled;
-          const needsOptions =
-            this.ajax || this.options.filter((o) => o.value !== "").length === 0;
+          const alpineEmpty =
+            this.options.filter((o) => o.value !== "").length === 0;
+          const needsOptions = this.ajax || alpineEmpty || domMissingOptions;
           if (needsOptions) {
             this.readFromSelect();
           } else if (this.multiple) {
