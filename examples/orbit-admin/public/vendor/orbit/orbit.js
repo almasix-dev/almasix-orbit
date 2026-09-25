@@ -1867,8 +1867,11 @@
       searchable: false,
       field: "",
       type: "",
+      root: null,
       init() {
-        const el = this.$el;
+        // Pin the x-data root — inside @change handlers Alpine sets this.$el to the select.
+        this.root = this.$el;
+        const el = this.root;
         this.field = el.getAttribute("data-field") || "";
         this.searchable = el.getAttribute("data-searchable") === "true";
         try {
@@ -1878,6 +1881,18 @@
         }
         const typeSelect = el.querySelector("[data-morph-type]");
         this.type = typeSelect?.value || "";
+        // If Conduit remorphs options into the native select, keep Alpine combobox in sync.
+        const idSelect = el.querySelector("[data-morph-id]");
+        if (idSelect && typeof MutationObserver !== "undefined") {
+          const sync = () => {
+            const combo = this.recordCombobox();
+            if (combo && typeof combo.readFromSelect === "function") {
+              combo.readFromSelect();
+            }
+          };
+          this._idOptionsObserver = new MutationObserver(sync);
+          this._idOptionsObserver.observe(idSelect, { childList: true });
+        }
         // Combobox search → server morph search (options_using). Local filter stays in orbitCombobox.
         const searchInput = el.querySelector("[data-morph-id-combobox] .or-combobox-search");
         if (searchInput instanceof HTMLInputElement && this.searchable) {
@@ -1889,7 +1904,7 @@
         }
       },
       recordCombobox() {
-        const root = this.$el.querySelector("[data-morph-id-combobox]");
+        const root = (this.root || this.$el)?.querySelector?.("[data-morph-id-combobox]");
         if (!root || typeof window.Alpine?.$data !== "function") return null;
         try {
           return window.Alpine.$data(root);
@@ -1898,7 +1913,8 @@
         }
       },
       rebuildIdOptions(type, { keepValue = false } = {}) {
-        const idSelect = this.$el.querySelector("[data-morph-id]");
+        const root = this.root || this.$el;
+        const idSelect = root?.querySelector?.("[data-morph-id]");
         if (!idSelect) return;
         const previous = keepValue ? idSelect.value : "";
         const opts = { ...(this.optionsByType[type] || {}) };
@@ -1933,13 +1949,13 @@
       onTypeChange(type) {
         this.type = type || "";
         this.rebuildIdOptions(type);
-        const wire = window.orbitWire?.(this.$el);
+        const wire = window.orbitWire?.(this.root || this.$el);
         if (wire && typeof wire.setMorphType === "function" && this.field) {
           wire.setMorphType(this.field, type);
         }
       },
       onSearch(query) {
-        const wire = window.orbitWire?.(this.$el);
+        const wire = window.orbitWire?.(this.root || this.$el);
         if (wire && typeof wire.searchMorphOptions === "function" && this.field) {
           wire.searchMorphOptions(this.field, query);
         }

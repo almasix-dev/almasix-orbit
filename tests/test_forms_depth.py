@@ -718,7 +718,8 @@ def test_morph_to_select_loads_options_for_the_chosen_type() -> None:
     assert '<option value="post" selected>Post</option>' in html
     assert "Orbit launch" in html
     assert "Second post" not in html
-    assert "onTypeChange" in html
+    assert "$data.onTypeChange" in html
+    assert "or-morph-record-combobox" in html
     assert 'conduit:model="data.commentable.type"' in html
     assert 'conduit:model="data.commentable.id"' in html
     assert "or-morph-to-select__type" in html

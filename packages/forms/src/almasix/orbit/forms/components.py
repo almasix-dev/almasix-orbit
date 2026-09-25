@@ -3330,7 +3330,7 @@ class MorphToSelect(Select):
             f'<select class="or-select or-select-morph or-select-morph-type" '
             f'id="or-{name}-type" name="{type_path}" data-morph-type{disabled}'
             f"{type_wire} "
-            f"@change=\"onTypeChange($event.target.value)\">"
+            f"@change=\"$data.onTypeChange($event.target.value)\">"
             f'{"".join(type_opts_html)}</select></div>'
             f'<div class="or-morph-to-select__record" data-morph-record '
             f'x-show="Boolean(type)" x-cloak '
