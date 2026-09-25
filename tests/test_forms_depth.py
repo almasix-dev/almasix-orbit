@@ -765,6 +765,7 @@ def test_morph_to_select_starts_with_type_then_record_combobox() -> None:
     assert '<option value="user" selected>User</option>' in filled
     assert "Ada" in filled
     assert "or-select-morph-id" in filled
+    assert 'data-options-limit="' in filled
 
 
 # --------------------------------------------------------------------------- ModalTableSelect

@@ -3239,6 +3239,7 @@ class MorphToSelect(Select):
 
         search = str((ctx.get("morph_search") or {}).get(self.get_state_path() or "", ""))
         id_opts: dict[Any, Any] = {}
+        options_limit = self.effective_options_limit()
         if effective_type:
             id_opts = self.get_options_for_type(effective_type, search)
             if not id_opts:
@@ -3250,6 +3251,8 @@ class MorphToSelect(Select):
                 id_opts = {
                     k: v for k, v in id_opts.items() if needle in str(v).casefold()
                 }
+            if options_limit and len(id_opts) > options_limit:
+                id_opts = dict(list(id_opts.items())[:options_limit])
 
         id_opts_html = []
         for k, v in id_opts.items():
@@ -3321,6 +3324,7 @@ class MorphToSelect(Select):
         control = (
             f'<div class="or-morph-to-select" data-field="{name}" '
             f'data-options-by-type="{options_json}" '
+            f'data-options-limit="{options_limit}" '
             f'data-type-field="{e(self._type_field)}" '
             f'data-id-field="{e(self._id_field)}"'
             f"{searchable_attr} "

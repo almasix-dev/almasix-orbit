@@ -1757,9 +1757,17 @@
 
       openPanel() {
         if (this.disabled) return;
+        // Remorph / parent rebuilds often update the native <select> without
+        // refreshing Alpine state — always re-sync before showing the list.
+        this.readFromSelect();
+        const alreadyOpen = this.open;
         this.open = true;
         this.activeIndex = this.visibleOptions.findIndex((o) => this.isSelected(o.value));
         if (this.activeIndex < 0 && this.visibleOptions.length) this.activeIndex = 0;
+        // Searchable AJAX selects preload a capped page on first open (empty query).
+        if (this.ajax && !alreadyOpen) {
+          this.requestOptions(this.q || "");
+        }
       },
 
       close() {
@@ -1825,18 +1833,24 @@
         this.deselect(values[values.length - 1]);
       },
 
+      requestOptions(query) {
+        this.searching = true;
+        const wireRoot = this.$el.closest(
+          "[wire\\:id], [conduit\\:id], [data-conduit]",
+        );
+        const wire = wireRoot && (wireRoot.__wire || wireRoot.__conduit);
+        if (wire && typeof wire.searchSelectOptions === "function") {
+          wire.searchSelectOptions(this.fieldName, query || "");
+          return;
+        }
+        this.searching = false;
+      },
+
       onSearch() {
         if (this.ajax) {
-          this.searching = true;
-          const wireRoot = this.$el.closest(
-            "[wire\\:id], [conduit\\:id], [data-conduit]",
-          );
-          const wire = wireRoot && (wireRoot.__wire || wireRoot.__conduit);
-          if (wire && typeof wire.searchSelectOptions === "function") {
-            wire.searchSelectOptions(this.fieldName, this.q || "");
-            return;
-          }
-          this.searching = false;
+          this.requestOptions(this.q || "");
+          if (!this.open) this.open = true;
+          return;
         }
         this.openPanel();
         this.activeIndex = this.visibleOptions.length ? 0 : -1;
@@ -1868,12 +1882,16 @@
       field: "",
       type: "",
       root: null,
+      optionsLimit: 50,
       init() {
         // Pin the x-data root — inside @change handlers Alpine sets this.$el to the select.
         this.root = this.$el;
         const el = this.root;
         this.field = el.getAttribute("data-field") || "";
         this.searchable = el.getAttribute("data-searchable") === "true";
+        const limitAttr = el.getAttribute("data-options-limit");
+        this.optionsLimit =
+          limitAttr != null && limitAttr !== "" ? Number(limitAttr) : 50;
         try {
           this.optionsByType = JSON.parse(el.getAttribute("data-options-by-type") || "{}") || {};
         } catch (_) {
@@ -1881,19 +1899,41 @@
         }
         const typeSelect = el.querySelector("[data-morph-type]");
         this.type = typeSelect?.value || "";
-        // If Conduit remorphs options into the native select, keep Alpine combobox in sync.
-        const idSelect = el.querySelector("[data-morph-id]");
-        if (idSelect && typeof MutationObserver !== "undefined") {
-          const sync = () => {
+        // Remorph may replace the id <select>; re-attach when needed and ignore
+        // combobox dropdown noise so we don't loop on Alpine re-renders.
+        const attachIdObserver = () => {
+          const idSelect = el.querySelector("[data-morph-id]");
+          if (!idSelect || idSelect === this._observedSelect) return;
+          this._idOptionsObserver?.disconnect?.();
+          this._observedSelect = idSelect;
+          this._idOptionsObserver = new MutationObserver(() => {
             const combo = this.recordCombobox();
             if (combo && typeof combo.readFromSelect === "function") {
               combo.readFromSelect();
             }
-          };
-          this._idOptionsObserver = new MutationObserver(sync);
+            // Select node replaced by Conduit morph — follow it.
+            if (!idSelect.isConnected) {
+              this._observedSelect = null;
+              attachIdObserver();
+            }
+          });
           this._idOptionsObserver.observe(idSelect, { childList: true });
+        };
+        if (typeof MutationObserver !== "undefined") {
+          attachIdObserver();
+          this._rootObserver = new MutationObserver(() => attachIdObserver());
+          this._rootObserver.observe(el, { childList: true, subtree: true });
         }
-        // Combobox search → server morph search (options_using). Local filter stays in orbitCombobox.
+        if (this.type) {
+          this.ensureRecordOptions({ keepValue: true, preload: false });
+        }
+        const comboRoot = el.querySelector("[data-morph-id-combobox]");
+        if (comboRoot) {
+          // When the record combobox opens/focuses, preload options without requiring typing.
+          comboRoot.addEventListener("focusin", () => {
+            this.ensureRecordOptions({ keepValue: true, preload: true });
+          });
+        }
         const searchInput = el.querySelector("[data-morph-id-combobox] .or-combobox-search");
         if (searchInput instanceof HTMLInputElement && this.searchable) {
           let timer = null;
@@ -1912,13 +1952,32 @@
           return null;
         }
       },
+      hasEmbeddedOptions(type) {
+        const opts = this.optionsByType[type];
+        return Boolean(opts && Object.keys(opts).length);
+      },
+      ensureRecordOptions({ keepValue = true, preload = false } = {}) {
+        const type = this.type || "";
+        if (!type) return;
+        if (this.hasEmbeddedOptions(type)) {
+          this.rebuildIdOptions(type, { keepValue });
+          return;
+        }
+        // No embedded options — ask the server for a capped first page (empty search).
+        if (preload && this.searchable) {
+          this.onSearch("");
+        }
+      },
       rebuildIdOptions(type, { keepValue = false } = {}) {
         const root = this.root || this.$el;
         const idSelect = root?.querySelector?.("[data-morph-id]");
         if (!idSelect) return;
         const previous = keepValue ? idSelect.value : "";
         const opts = { ...(this.optionsByType[type] || {}) };
-        const entries = Object.entries(opts);
+        let entries = Object.entries(opts);
+        if (Number.isFinite(this.optionsLimit) && this.optionsLimit > 0) {
+          entries = entries.slice(0, this.optionsLimit);
+        }
         idSelect.innerHTML =
           '<option value="">—</option>' +
           entries
@@ -1948,7 +2007,7 @@
       },
       onTypeChange(type) {
         this.type = type || "";
-        this.rebuildIdOptions(type);
+        this.ensureRecordOptions({ keepValue: false, preload: true });
         const wire = window.orbitWire?.(this.root || this.$el);
         if (wire && typeof wire.setMorphType === "function" && this.field) {
           wire.setMorphType(this.field, type);
