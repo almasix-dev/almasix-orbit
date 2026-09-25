@@ -26,6 +26,8 @@ def test_searchable_select_renders_combobox() -> None:
     assert "or-combobox-trigger" in html
     assert "or-combobox-dropdown" in html
     assert "or-combobox-search" in html
+    assert 'data-sync-path="data.author"' in html
+    assert 'conduit:model="data.author"' not in html
     assert "Find author…" in html
     assert "Nobody matched." in html
     assert 'data-label="Ada"' in html

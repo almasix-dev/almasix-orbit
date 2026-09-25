@@ -1432,7 +1432,9 @@ class Select(Field):
     ) -> str:
         multi = " multiple" if self._multiple else ""
         disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
-        wire = self._wire_binding(name)
+        # Sync via data-sync-path → sync_data_path (no conduit:model remorph).
+        # Remorph after choose leaves Alpine x-for inert and blocks later picks.
+        sync_path = name if str(name).startswith("data.") else f"data.{name}"
         debounce = self._search_debounce or 200
         prompt = e(self._search_prompt or "Search…")
         placeholder = "—" if self._selectable_placeholder else ""
@@ -1447,6 +1449,7 @@ class Select(Field):
         searchable_attr = " data-searchable" if searchable else ""
         return (
             f'<div class="or-combobox" x-data="orbitCombobox"'
+            f' data-sync-path="{e(sync_path)}"'
             f'{searchable_attr}{meta}'
             f' data-placeholder="{e(placeholder)}"'
             f' data-search-prompt="{prompt}"'
@@ -1458,7 +1461,7 @@ class Select(Field):
             f' @keydown.escape.window="close()"'
             f' @click.outside="close()">'
             f'<select class="or-select or-combobox-native" id="or-{name}" name="{name}"'
-            f'{multi}{disabled} x-ref="select"{wire}{self._after_state_attr()} '
+            f'{multi}{disabled} x-ref="select"{self._after_state_attr()} '
             f'tabindex="-1" aria-hidden="true">{placeholder_opt}{opts_html}</select>'
             f'<div class="or-combobox-control" :class="{{ \'is-open\': open, \'is-disabled\': disabled }}">'
             f'<div class="or-combobox-trigger" x-ref="trigger" role="combobox" '
@@ -3303,13 +3306,7 @@ class MorphToSelect(Select):
             self._get_search_results_using = prior_get_search
 
         # Tag combobox + native select so Alpine can refresh options on type change.
-        # No conduit:model on the id select — remorph races crash Idiomorph (M_ID) and
-        # wipe Alpine selection. Sync via data-sync-path → sync_data_path instead.
-        id_sync_path = (
-            id_state_path
-            if str(id_state_path).startswith("data.")
-            else f"data.{id_state_path}"
-        )
+        # Combobox already syncs via data-sync-path (no conduit:model remorph).
         record_combobox = re.sub(
             r'\s*(?:conduit|wire):model(?:\.[a-z]+)?="[^"]*"',
             "",
@@ -3319,8 +3316,7 @@ class MorphToSelect(Select):
             'class="or-combobox"',
             (
                 'class="or-combobox or-morph-record-combobox" '
-                f'data-morph-id-combobox data-field="{e(id_state_path)}" '
-                f'data-sync-path="{e(id_sync_path)}"'
+                f'data-morph-id-combobox data-field="{e(id_state_path)}"'
             ),
             1,
         )

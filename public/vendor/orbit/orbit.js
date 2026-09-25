@@ -1923,6 +1923,8 @@
           } else if (wire && typeof wire.$set === "function") {
             wire.$set(syncPath, value);
           }
+          // Local after_state_updated_js / x-on:change — no conduit:model, so no remorph.
+          select.dispatchEvent(new Event("change", { bubbles: true }));
           return;
         }
         select.dispatchEvent(new Event("input", { bubbles: true }));
@@ -2422,11 +2424,14 @@
             form.hasAttribute("conduit:submit") || form.hasAttribute("wire:submit");
           if (!hasSubmit) return;
           form
-            .querySelectorAll(".or-field-TagsInput, .or-field-CheckboxList")
+            .querySelectorAll(
+              ".or-field-TagsInput, .or-field-CheckboxList, .or-combobox[data-sync-path]",
+            )
             .forEach((root) => {
               try {
                 const data = window.Alpine?.$data?.(root);
                 if (data && typeof data.sync === "function") data.sync();
+                else if (data && typeof data.syncSelect === "function") data.syncSelect();
               } catch (_) {
                 /* ignore */
               }
