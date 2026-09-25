@@ -12,6 +12,37 @@ header switcher.
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+## 0.4.3
+
+Flowbite date/time pickers, notifications production adapter, demo showcase polish, and shell/form fixes after 0.4.2.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.4.3'
+```
+
+### Forms — date and time pickers
+
+- `DatePicker`, `DateTimePicker`, and `TimePicker` default to Flowbite + Alpine (`orbitDatePicker`); use `.native(True)` for browser inputs
+- New `WeekPicker`, `MonthPicker`, and `YearPicker`
+- Time APIs: `.seconds()`, `.hours12()` / `.hours24()`, `.minute_step(n)`
+- Temporal validation: `after_or_equal`, `before_or_equal`, `date_equals`, and datetime/time-aware `after` / `before`
+
+### Notifications
+
+- Panel bell can persist via Almasix’s polymorphic `notifications` table (`.database_notifications_using_almasix()`)
+- `SqliteNotificationStore` retained for tests and non-ORM setups
+
+### Demo
+
+- Soft catalog reset (`demo:reset`) keeps cookie sessions; hourly schedule + HTTP/GHA reset for Render Free
+- Larger Orbit Records seed and home/Insights widgets covering Chart.js and ApexCharts chart types
+- Demo installs Almasix / Orbit / Conduit from **PyPI only** (no monorepo path installs)
+
+### Fixes and UX
+
+- TagsInput and CheckboxList array state persists on submit ([#97](https://github.com/almasix-dev/almasix-orbit/pull/97))
+- Fresh-project shell UX polish ([#96](https://github.com/almasix-dev/almasix-orbit/pull/96))
+
 ## 0.4.2
 
 Marketplace and plugin-scaffold polish after 0.4.1.

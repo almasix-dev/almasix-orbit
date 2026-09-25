@@ -38,12 +38,8 @@ Open the printed URL (panel at `/`).
 
 `bootstrap.sh` installs the demo app editable and pulls **Almasix / Orbit /
 Conduit from PyPI** only (no monorepo path installs or local editables).
+Requires `almasix-orbit>=0.4.3` for `.database_notifications_using_almasix()`.
 Bump versions in `pyproject.toml` when you need newer published APIs.
-
-> **Release gate:** Current demo code calls
-> `.database_notifications_using_almasix()`, which is on Orbit `main` but
-> **not** in PyPI `almasix-orbit==0.4.2`. Publish a new Orbit release (and bump
-> the pin here) before a production deploy will boot.
 
 ## Notifications
 
