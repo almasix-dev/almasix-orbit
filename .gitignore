@@ -40,3 +40,4 @@ assets/dist/
 
 # Symlink created at boot for FilePond public uploads
 examples/demo/public/storage
+examples/orbit-admin/public/storage
