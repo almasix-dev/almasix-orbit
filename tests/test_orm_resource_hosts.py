@@ -179,10 +179,28 @@ def test_jsonable_value_covers_nested_and_edge_types() -> None:
     }
     assert _jsonable_value((date(2026, 9, 18), Decimal("3"))) == ["2026-09-18", 3]
     assert _jsonable_value(Decimal("1.5")) == 1.5
+    assert _jsonable_value(300.0) == 300
+    assert _jsonable_value({"amount": 42.5}) == {"amount": 42.5}
     assert _jsonable_value(_Color.RED) == "red"
     assert _jsonable_value(b"hi") == "hi"
     assert isinstance(_jsonable_value(_BrokenIso()), str)
     assert _jsonable_value(object())  # falls through to str()
+
+
+def test_whole_number_float_matches_browser_checksum() -> None:
+    """Browser JSON.stringify turns 300.0 into 300; the checksum must agree."""
+    import json
+
+    from almasix.conduit.mechanism import snapshot, verify_checksum
+
+    host = EditRecordHost.bind(panel=Panel.make("seed").path("/"), resource=_SeedResource)()
+    host.conduit_id = "cid"
+    host.conduit_name = "edit"
+    host.data = {"amount": 300.0, "name": "Ada"}
+    snap = snapshot(host)
+    assert snap["serverMemo"]["data"]["data"]["amount"] == 300
+    memo = json.loads(json.dumps(snap["serverMemo"]))
+    assert verify_checksum(host, memo)
 
 
 def test_as_record_dict_and_write_payload() -> None:

@@ -15,7 +15,9 @@ from almasix.orbit.forms import (
     MemoryUploadStorage,
     ModalTableSelect,
     MorphToSelect,
+    Repeater,
     RichEditor,
+    Select,
     TextInput,
     get_upload_storage,
     set_upload_storage,
@@ -942,3 +944,106 @@ def test_edit_host_passes_picker_state_into_the_form() -> None:
     html = host.render()
     assert "or-form" in html
     assert "First note" in html
+
+
+def test_search_options_and_field_errors() -> None:
+    limited = (
+        Select.make("role")
+        .options({"1": "Ada", "2": "Sam", "ada-id": "Other"})
+        .options_limit(1)
+    )
+    assert limited.search_options("") == {"1": "Ada"}
+    assert limited.search_options("ada-id") == {"ada-id": "Other"}
+
+    def as_map(search: str = "", **kwargs: Any) -> dict[str, str]:
+        return {"1": "Ada"} if "a" in search else {"1": "Ada", "2": "Sam"}
+
+    mapped = Select.make("author").get_search_results_using(as_map).options_limit(1)
+    assert mapped.search_options("ada") == {"1": "Ada"}
+
+    def as_rows(search: str = "", **kwargs: Any) -> list[Any]:
+        return [("1", "Ada"), {"value": "2", "label": "Sam"}, "skip", ("only",)]
+
+    rows = Select.make("author").get_search_results_using(as_rows)
+    assert rows.search_options("") == {"1": "Ada", "2": "Sam"}
+
+    def as_junk(search: str = "", **kwargs: Any) -> str:
+        return "nope"
+
+    assert Select.make("author").get_search_results_using(as_junk).search_options("") == {}
+
+    missing = Select.make("manager").relationship("manager", "name")
+    assert missing.search_options("ada") == {}
+
+    import almasix.orbit.forms.select_relationship as rel_mod
+
+    def _related(**kwargs: Any) -> object:
+        return object()
+
+    def _loaded(**kwargs: Any) -> dict[str, str]:
+        return {"9": "Ada"}
+
+    original_resolve, original_load = rel_mod.resolve_related_model, rel_mod.load_relationship_options
+    rel_mod.resolve_related_model = _related  # type: ignore[assignment]
+    rel_mod.load_relationship_options = _loaded  # type: ignore[assignment]
+    try:
+        found = Select.make("manager").relationship("manager", "name", model=object)
+        assert found.search_options("ada") == {"9": "Ada"}
+    finally:
+        rel_mod.resolve_related_model = original_resolve
+        rel_mod.load_relationship_options = original_load
+
+    html = TextInput.make("name").render("", form_errors={"name": ["Required"]})
+    assert 'class="or-field-error"' in html
+    assert "is-invalid" in html
+    plain = TextInput.make("name").render("", form_errors={"data.name": "Bad"})
+    assert "Bad" in plain
+    assert TextInput.make("name").render("", form_errors="nope")
+    assert "or-field-error" not in TextInput.make("name").render("")
+
+
+def test_morph_search_options_and_untyped_fallback() -> None:
+    field = MorphToSelect.make("owner").types(
+        [
+            "App\\User",
+            {"label": "Bare"},
+            {"type": "team", "options": {"1": "Platform"}},
+        ]
+    )
+    assert field.search_options(morph_type="") == {}
+    assert field._embedded_options_for_type("missing") == {}
+    assert field.search_options("plat", morph_type="team") == {"1": "Platform"}
+
+    untyped = MorphToSelect.make("owner").options({"1": "Ada", "2": "Sam"})
+    html = untyped.render({"type": "user", "id": "1"})
+    assert "Ada" in html
+    assert "Sam" in html
+
+
+def test_repeater_validation_uses_item_paths() -> None:
+    from almasix.orbit.forms.form import _get_path
+
+    class BlankLabel(TextInput):
+        def get_label(self, **ctx: Any) -> str:
+            return ""
+
+    class NoSchema(TextInput):
+        def get_schema(self) -> None:
+            return None
+
+    form = Form.make("f").schema(
+        [
+            Repeater.make("links").schema(
+                [TextInput.make("url").label("URL").required(), BlankLabel.make("note").required()]
+            ),
+            NoSchema.make("blob"),
+            Repeater.make("empty").schema([TextInput.make()]),
+        ]
+    )
+    errors = form.validate({"links": [{}, {"url": "https://ok.test"}], "blob": [1]})
+    assert "links.0.url" in errors
+    assert any("note" in message.lower() or "required" in message.lower() for message in errors["links.0.note"])
+    assert _get_path({"a": [1]}, "a.5") is None
+    assert _get_path({"a": "x"}, "a.0") is None
+    html = Repeater.make("links").schema([TextInput.make()]).render([{}])
+    assert "or-field" in html

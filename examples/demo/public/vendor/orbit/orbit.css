@@ -3524,16 +3524,70 @@ html.dark .or-login-logo-dark {
   background: transparent;
 }
 
+/* Fieldset: same card language as Section, legend drawn as the header strip. */
+.or-fieldset {
+  min-width: 0;
+  margin: 0 0 1.25rem;
+  padding: 0 1.1rem 1.1rem;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius);
+  background: var(--or-card);
+  box-shadow: var(--or-shadow-card);
+}
+
+.or-fieldset > .or-fieldset-legend {
+  /* Floating the legend pulls it inside the border box so it can span the card. */
+  float: left;
+  box-sizing: border-box;
+  width: calc(100% + 2.2rem);
+  margin: 0 -1.1rem 1.1rem;
+  padding: 0.75rem 1.1rem;
+  border-bottom: 1px solid var(--or-line);
+  border-radius: var(--or-radius) var(--or-radius) 0 0;
+  background: color-mix(in srgb, var(--or-card) 92%, var(--or-shell));
+  color: var(--or-ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.or-fieldset > .or-fieldset-legend + * {
+  clear: both;
+}
+
+.or-fieldset > :not(.or-fieldset-legend) + * {
+  margin-top: 1rem;
+}
+
 .or-fieldset-bare {
-  border: 0;
   padding: 0;
+  border: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.or-fieldset-bare .or-fieldset-legend {
+.or-fieldset-bare > .or-fieldset-legend {
+  float: none;
+  width: auto;
+  margin: 0 0 0.5rem;
   padding: 0;
-  margin-bottom: 0.5rem;
+  border: 0;
+  background: transparent;
+}
+
+/* Inline validation message under a field. */
+.or-field-error {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0.35rem 0 0;
+  color: var(--or-danger, #dc2626);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.or-field.is-invalid :is(.or-input, .or-select, .or-textarea, .or-combobox-trigger) {
+  border-color: var(--or-danger, #dc2626);
 }
 
 .or-section-icon {
@@ -6160,6 +6214,13 @@ html.dark .or-login-logo-dark {
 
 .or-field-FileUpload.or-file-avatar .filepond--panel-root {
   border-radius: 9999px;
+}
+
+/* Once a photo is in place, the circle shows the photo only — no upload prompt. */
+.or-field-FileUpload.or-file-avatar .filepond--root:has(.filepond--item) .filepond--drop-label {
+  opacity: 0 !important;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .or-field-FileUpload .filepond--browser.filepond--browser {

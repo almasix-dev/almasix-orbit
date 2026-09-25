@@ -12,6 +12,19 @@ from almasix.orbit.support.evaluate import evaluate
 from almasix.orbit.support.html import e
 
 
+def _filter_options(options: Mapping[Any, Any], needle: str, limit: int | None) -> dict[str, str]:
+    """Case-insensitive label/value filter, capped to ``limit`` entries."""
+    folded = str(needle or "").casefold()
+    out: dict[str, str] = {}
+    for key, label in options.items():
+        if folded and folded not in str(label).casefold() and folded not in str(key).casefold():
+            continue
+        out[str(key)] = str(label)
+        if limit and len(out) >= limit:
+            break
+    return out
+
+
 def _flatten_options(raw: Any) -> dict[Any, Any]:
     """Flatten option groups into a value → label map."""
     if raw is None:
@@ -922,12 +935,29 @@ class Field(Component):
             f"{self._slot_html(self._after_content, 'or-after-content', **ctx)}"
             f"{self._slot_html(self._below_content, 'or-below-content', **ctx)}"
             f"{self._helper_html(**ctx)}"
+            f"{self._error_html(name, **ctx)}"
             f"{self._slot_html(self._below_error, 'or-below-error', **ctx)}"
         )
+        invalid = " is-invalid" if self._field_errors(name, **ctx) else ""
         return (
-            f'<div class="or-field or-field-{type(self).__name__}{inline}" data-field="{name}"'
+            f'<div class="or-field or-field-{type(self).__name__}{inline}{invalid}" data-field="{name}"'
             f"{wrapper_attrs}>{body}</div>"
         )
+
+    def _field_errors(self, name: str, **ctx: Any) -> list[str]:
+        bag = ctx.get("form_errors")
+        if not isinstance(bag, Mapping):
+            return []
+        key = str(name or "").removeprefix("data.")
+        found = bag.get(key) or bag.get(f"data.{key}") or []
+        return [str(m) for m in (found if isinstance(found, (list, tuple)) else [found])]
+
+    def _error_html(self, name: str, **ctx: Any) -> str:
+        messages = self._field_errors(name, **ctx)
+        if not messages:
+            return ""
+        items = "".join(f"<span>{e(m)}</span>" for m in messages)
+        return f'<p class="or-field-error" role="alert">{items}</p>'
 
     def apply_dehydrate_transforms(self, value: Any) -> Any:
         """Apply trim / strip_characters before custom dehydrate callbacks."""
@@ -1259,6 +1289,52 @@ class Select(Field):
             option_label=rel.get("option_label"),
         )
 
+    def search_options(self, search: str = "", state: Any = None, **ctx: Any) -> dict[str, str]:
+        """One capped page of ``{value: label}`` for the combobox dropdown.
+
+        An empty ``search`` returns the first page, so the dropdown has records
+        to pick from as soon as it opens.
+        """
+        needle = str(search or "").strip()
+        limit = self.effective_options_limit()
+        if self._get_search_results_using is not None:
+            raw = evaluate(self._get_search_results_using, needle, state=state, field=self, **ctx)
+            out: dict[str, str] = {}
+            if isinstance(raw, Mapping):
+                out = {str(k): str(v) for k, v in raw.items()}
+            elif isinstance(raw, (list, tuple)):
+                for item in raw:
+                    if isinstance(item, (list, tuple)) and len(item) >= 2:
+                        out[str(item[0])] = str(item[1])
+                    elif isinstance(item, Mapping) and "value" in item:
+                        out[str(item["value"])] = str(item.get("label", item["value"]))
+            return dict(list(out.items())[:limit])
+        rel = self.get_relationship()
+        if rel and self._options in (None, {}):
+            from almasix.orbit.forms.select_relationship import (
+                load_relationship_options,
+                resolve_related_model,
+            )
+
+            related = resolve_related_model(
+                relationship_name=rel.get("name"),
+                related_model=rel.get("model"),
+                owner_model=self._owner_model(**ctx),
+            )
+            if related is None:
+                return {}
+            return load_relationship_options(
+                model=related,
+                title_attribute=str(rel.get("title_attribute") or "id"),
+                search=needle or None,
+                search_columns=rel.get("search_columns"),
+                limit=limit,
+                modify_query=rel.get("modify_query"),
+                get_option_label=rel.get("get_option_label"),
+                option_label=rel.get("option_label"),
+            )
+        return _filter_options(self.get_options(**ctx), needle, limit)
+
     def uses_combobox(self) -> bool:
         """Filament: searchable / multiple / allowHtml / native(false) → custom combobox."""
         return bool(
@@ -1459,11 +1535,16 @@ class Select(Field):
             f' data-debounce="{debounce}"'
             f'{" data-wrap-labels" if self._wrap_labels else ""}'
             f' @keydown.escape.window="close()"'
+            f' @orbit-select-options.window="receiveOptions($event.detail)"'
             f' @click.outside="close()">'
             f'<select class="or-select or-combobox-native" id="or-{name}" name="{name}"'
             f'{multi}{disabled} x-ref="select"{self._after_state_attr()} '
             f'tabindex="-1" aria-hidden="true">{placeholder_opt}{opts_html}</select>'
-            f'<div class="or-combobox-control" :class="{{ \'is-open\': open, \'is-disabled\': disabled }}">'
+            # Alpine renders the control + list; Conduit morph must never patch them
+            # (a patched x-for goes inert and options stop responding to clicks).
+            # Only the hidden native <select> above follows server renders.
+            f'<div class="or-combobox-control" wire:ignore conduit:ignore '
+            f':class="{{ \'is-open\': open, \'is-disabled\': disabled }}">'
             f'<div class="or-combobox-trigger" x-ref="trigger" role="combobox" '
             f'tabindex="0" @click="toggle()" @keydown.down.prevent="move(1)" '
             f'@keydown.up.prevent="move(-1)" @keydown.enter.prevent="chooseActive()" '
@@ -1502,7 +1583,8 @@ class Select(Field):
             f'<span aria-hidden="true">×</span></button>'
             f'<span class="or-combobox-chevron" aria-hidden="true"></span>'
             f"</div>"
-            f'<ul class="or-combobox-dropdown" x-ref="list" id="or-{name}-list" '
+            f'<ul class="or-combobox-dropdown" wire:ignore conduit:ignore '
+            f'x-ref="list" id="or-{name}-list" '
             f'role="listbox" x-show="open" '
             f':aria-activedescendant="activeId">'
             f'<li class="or-combobox-status" x-show="statusMessage" x-text="statusMessage"></li>'
@@ -3209,6 +3291,35 @@ class MorphToSelect(Select):
         result = callback(type=morph_type, search=search)
         return dict(result or {})
 
+    def _embedded_options_for_type(self, morph_type: str) -> dict[Any, Any]:
+        for t in self._types:
+            if isinstance(t, Mapping):
+                key = str(t.get("type") or t.get("value") or t.get("name") or "")
+                if key == morph_type and t.get("options"):
+                    return dict(t["options"])
+        return {}
+
+    def search_options(
+        self,
+        search: str = "",
+        state: Any = None,
+        *,
+        morph_type: str = "",
+        **ctx: Any,
+    ) -> dict[str, str]:
+        """Record options for one morph type (``options_using`` or per-type ``options``)."""
+        kind = str(morph_type or "").strip()
+        if not kind:
+            return {}
+        needle = str(search or "").strip()
+        limit = self.effective_options_limit()
+        if self._options_using is not None:
+            # The loader sees the query (it may match columns other than the label).
+            # Still drop labels that miss the query so a loader that ignores search
+            # cannot leak the full list into the dropdown.
+            return _filter_options(self.get_options_for_type(kind, needle), needle, limit)
+        return _filter_options(self._embedded_options_for_type(kind), needle, limit)
+
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
             return ""
@@ -3252,18 +3363,9 @@ class MorphToSelect(Select):
         id_opts: dict[Any, Any] = {}
         options_limit = self.effective_options_limit()
         if effective_type:
-            id_opts = self.get_options_for_type(effective_type, search)
-            if not id_opts:
-                id_opts = id_options_by_type.get(effective_type, {})
-            if not id_opts:
-                id_opts = self.get_options(**ctx)
-            if search:
-                needle = search.casefold()
-                id_opts = {
-                    k: v for k, v in id_opts.items() if needle in str(v).casefold()
-                }
-            if options_limit and len(id_opts) > options_limit:
-                id_opts = dict(list(id_opts.items())[:options_limit])
+            id_opts = self.search_options(search, morph_type=effective_type)
+            if not id_opts and not self._types:
+                id_opts = _filter_options(self.get_options(**ctx), search, options_limit)
 
         id_opts_html = []
         for k, v in id_opts.items():
@@ -3320,11 +3422,16 @@ class MorphToSelect(Select):
             "",
             record_combobox,
         )
+        # Record options always come from the server for the chosen type
+        # (``loadSelectOptions`` → ``orbit-select-options``), so the combobox
+        # behaves exactly like a Many2One and never waits on a remorph.
         record_combobox = record_combobox.replace(
             'class="or-combobox"',
             (
                 'class="or-combobox or-morph-record-combobox" '
-                f'data-morph-id-combobox data-field="{e(id_state_path)}"'
+                f'data-morph-id-combobox data-field="{e(id_state_path)}" '
+                f'data-morph-field="{name}" data-morph-type="{e(effective_type)}" '
+                'data-ajax-search="true"'
             ),
             1,
         )

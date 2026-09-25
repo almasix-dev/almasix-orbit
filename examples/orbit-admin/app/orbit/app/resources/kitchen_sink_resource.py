@@ -207,11 +207,13 @@ class KitchenSinkResource(Resource):
                             .schema(
                                 [
                                     Fieldset.make()
-                                    .label("Links")
+                                    .label("Online presence")
                                     .schema(
                                         [
                                             Repeater.make("links")
-                                            .schema([TextInput.make("url").label("URL")])
+                                            .schema(
+                                                [TextInput.make("url").label("URL").url()]
+                                            )
                                             .cloneable()
                                             .reorderable()
                                             .label("Links"),

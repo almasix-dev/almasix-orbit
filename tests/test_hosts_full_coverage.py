@@ -635,3 +635,177 @@ def test_hosts_remaining_branch_partials(monkeypatch: pytest.MonkeyPatch) -> Non
             return B()
 
     assert asyncio.run(RegisterHost._email_taken(QueryMiss, "free@x.com")) is False
+
+
+def test_load_select_options_and_save_toasts(monkeypatch: pytest.MonkeyPatch) -> None:
+    from almasix.orbit.forms import MorphToSelect, Repeater, Select
+    from almasix.orbit.panels.panel import Panel
+    from almasix.orbit.panels.resource import Resource
+
+    def factory() -> Form:
+        return Form.make("f").schema(
+            [
+                Select.make("author").options({"1": "Ada", "2": "Sam"}),
+                MorphToSelect.make("owner").types(
+                    [{"type": "user", "label": "User", "options": {"3": "Grace"}}]
+                ),
+                Repeater.make("links").schema([Select.make("kind").options({"a": "A"})]),
+                TextInput.make("name").required(),
+            ]
+        )
+
+    class Host(FormHost):
+        _form_factory = staticmethod(factory)
+
+    host = Host()
+    host.conduit_id = "cid"
+    host.conduit_name = "form"
+    host.data = {"author": "1", "owner": {"type": "user", "id": None}, "links": [{}]}
+    host.loadSelectOptions("data.author", "ada", "", 1)
+    host.loadSelectOptions("data.owner.id", "", "user", 2)
+    host.loadSelectOptions("data.links.0.kind", "", "", 3)
+    host.loadSelectOptions("data.missing", "", "", 4)
+    notes = host.take_dispatches()
+    by_path = {n["params"]["path"]: n["params"]["options"] for n in notes}
+    assert ["1", "Ada"] in by_path["data.author"]
+    assert ["3", "Grace"] in by_path["data.owner.id"]
+    assert ["a", "A"] in by_path["data.links.0.kind"]
+    assert by_path["data.missing"] == []
+
+    class BoomSelect(Select):
+        def search_options(self, search: str = "", state: Any = None, **ctx: Any) -> dict[str, str]:
+            raise RuntimeError("search down")
+
+    class BoomForm(FormHost):
+        _form_factory = staticmethod(lambda: Form.make("b").schema([BoomSelect.make("author")]))
+
+    boom = BoomForm()
+    boom.loadSelectOptions("author", "x")
+    assert boom.take_dispatches()[-1]["params"]["options"] == []
+
+    class ResourceBoom(Host):
+        def get_resource(self) -> Any:
+            raise RuntimeError("no resource")
+
+    ResourceBoom().loadSelectOptions("data.author", "")
+
+    class NoForm:
+        pass
+
+    bare = FormHost()
+    assert bare._find_select_field("author") is None
+    bare._options_form = lambda: NoForm()  # type: ignore[method-assign]
+    assert bare._find_select_field("author") is None
+
+    class BadFactory(FormHost):
+        @staticmethod
+        def _form_factory() -> Form:
+            raise RuntimeError("no form")
+
+    assert BadFactory()._options_form() is None
+
+    failed = Host()
+    failed.data = {}
+    failed.save()
+    assert failed._validate_or_fail("edit") is False
+    toast = failed.take_dispatches()[-1]
+    assert toast["event"] == "orbit-form-failed"
+    assert "validation error" in toast["params"]["body"]
+
+    class RaisingForm(Form):
+        def validate(self, data: dict[str, Any] | None = None, **ctx: Any) -> dict[str, list[str]]:
+            raise RuntimeError("validator broke")
+
+    class RaiseHost(FormHost):
+        _form_factory = staticmethod(lambda: RaisingForm.make("r"))
+
+    raiser = RaiseHost()
+    assert raiser._validate_or_fail("edit") is False
+    assert "validator broke" in raiser.take_dispatches()[-1]["params"]["body"]
+
+    class StringErrors(Form):
+        def validate(self, data: dict[str, Any] | None = None, **ctx: Any) -> dict[str, Any]:
+            return {"name": "plain"}
+
+    class StringHost(FormHost):
+        _form_factory = staticmethod(lambda: StringErrors.make("s").schema([TextInput.make("name")]))
+
+    stringy = StringHost()
+    assert stringy._validate_or_fail("edit") is False
+    assert stringy.get_error_bag()["name"] == ["plain"]
+
+    class Locked(Resource):
+        slug = "locked"
+        records_mutable = False
+        records: ClassVar[list[dict[str, Any]]] = [{"id": 1, "name": "A"}]
+
+        @classmethod
+        def form(cls, form: Form) -> Form:
+            raise RuntimeError("form down")
+
+        @classmethod
+        def get_records(cls):
+            return list(cls.records)
+
+    class NeedName(Resource):
+        slug = "need-name"
+        records_mutable = True
+        records: ClassVar[list[dict[str, Any]]] = []
+
+        @classmethod
+        def form(cls, form: Form) -> Form:
+            return form.schema(
+                [TextInput.make("name").required(), TextInput.make("email").required()]
+            )
+
+        @classmethod
+        def get_records(cls):
+            return list(cls.records)
+
+    panel = Panel.make("toast").path("/")
+    needing = CreateRecordHost.bind(panel=panel, resource=NeedName)()
+    needing.data = {}
+    assert needing.create() is None
+    assert "errors" in needing.take_dispatches()[-1]["params"]["body"]
+    editing = EditRecordHost.bind(panel=panel, resource=NeedName)()
+    editing.data = {}
+    assert editing.save() is None
+
+    create = CreateRecordHost.bind(panel=panel, resource=Locked)()
+    assert create.create() is None
+    assert create._options_form() is None
+    assert any(d["event"] == "orbit-form-failed" for d in create.take_dispatches())
+
+    edit = EditRecordHost.bind(panel=panel, resource=Locked)()
+    edit.record_id = "1"
+    edit.data = {"id": 1, "name": "A"}
+    assert edit.save() is None
+
+    class Mutable(Resource):
+        slug = "mutable"
+        records_mutable = True
+        records: ClassVar[list[dict[str, Any]]] = []
+
+        @classmethod
+        def form(cls, form: Form) -> Form:
+            return form.schema([TextInput.make("name")])
+
+        @classmethod
+        def get_records(cls):
+            return list(cls.records)
+
+    async def _explode(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(hosts_mod, "_resource_model", lambda resource: object)
+    monkeypatch.setattr(hosts_mod, "_orm_create", _explode)
+    monkeypatch.setattr(hosts_mod, "_orm_update", _explode)
+    creating = CreateRecordHost.bind(panel=panel, resource=Mutable)()
+    creating.data = {"name": "Ada"}
+    asyncio.run(creating.create())
+    assert "db down" in creating.take_dispatches()[-1]["params"]["body"]
+    saving = EditRecordHost.bind(panel=panel, resource=Mutable)()
+    saving.record_id = "1"
+    saving.data = {"name": "Ada"}
+    asyncio.run(saving.save())
+    assert "db down" in saving.take_dispatches()[-1]["params"]["body"]
