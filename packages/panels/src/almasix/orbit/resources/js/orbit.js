@@ -2396,6 +2396,36 @@
       }
     };
 
+    // wire:change is not a bound directive, so key renames never reached the host
+    // and rows stayed key1 / key2. Commit on change and again just before save.
+    const commitKeyValueKey = (input) => {
+      if (!(input instanceof HTMLInputElement)) return;
+      if (input.readOnly || input.disabled) return;
+      const row = input.closest(".or-key-value-row");
+      const field = input.closest("[data-field]")?.getAttribute("data-field") || "";
+      const previous = row?.getAttribute("data-key") || "";
+      const next = input.value.trim();
+      if (!field || !previous || next === previous) return;
+      const wire = window.orbitWire?.(input);
+      if (wire && typeof wire.setKeyValueKey === "function") {
+        wire.setKeyValueKey(field, previous, next);
+        row.setAttribute("data-key", next);
+      }
+    };
+    if (typeof document !== "undefined" && !window.__orbitKeyValueKeys) {
+      window.__orbitKeyValueKeys = true;
+      document.addEventListener(
+        "change",
+        (event) => {
+          const el = event.target;
+          if (el instanceof HTMLInputElement && el.classList.contains("or-key-value-key")) {
+            commitKeyValueKey(el);
+          }
+        },
+        true,
+      );
+    }
+
     // Before Conduit submit, flush Alpine list fields so Save sees latest chips/checks
     // even if a coalesce timer hasn't fired yet.
     if (typeof document !== "undefined" && !window.__orbitAlpineFormFlush) {
@@ -2408,6 +2438,11 @@
           const hasSubmit =
             form.hasAttribute("conduit:submit") || form.hasAttribute("wire:submit");
           if (!hasSubmit) return;
+          // Key inputs use wire:change, which the client does not bind. Push the
+          // rename before submit collects the value inputs under the old key.
+          form.querySelectorAll(".or-key-value-key").forEach((input) => {
+            commitKeyValueKey(input);
+          });
           form
             .querySelectorAll(
               ".or-field-TagsInput, .or-field-CheckboxList, .or-combobox[data-sync-path]",
