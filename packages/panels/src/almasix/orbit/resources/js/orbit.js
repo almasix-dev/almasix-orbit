@@ -1929,9 +1929,15 @@
         }
         const comboRoot = el.querySelector("[data-morph-id-combobox]");
         if (comboRoot) {
-          // When the record combobox opens/focuses, preload options without requiring typing.
+          // Preload only when the record select still has no real options.
           comboRoot.addEventListener("focusin", () => {
-            this.ensureRecordOptions({ keepValue: true, preload: true });
+            const idSelect = el.querySelector("[data-morph-id]");
+            const loaded =
+              idSelect instanceof HTMLSelectElement &&
+              [...idSelect.options].some((o) => o.value !== "");
+            if (!loaded) {
+              this.ensureRecordOptions({ keepValue: true, preload: true });
+            }
           });
         }
         const searchInput = el.querySelector("[data-morph-id-combobox] .or-combobox-search");
@@ -1973,6 +1979,12 @@
         const idSelect = root?.querySelector?.("[data-morph-id]");
         if (!idSelect) return;
         const previous = keepValue ? idSelect.value : "";
+        const combo = this.recordCombobox();
+        // Prefer in-flight Alpine selection (choose may have run before native sync).
+        const pending =
+          keepValue && combo && !combo.multiple && combo.state != null && combo.state !== ""
+            ? String(combo.state)
+            : "";
         const opts = { ...(this.optionsByType[type] || {}) };
         let entries = Object.entries(opts);
         if (Number.isFinite(this.optionsLimit) && this.optionsLimit > 0) {
@@ -1991,18 +2003,18 @@
                   .replace(/</g, "&lt;")}</option>`,
             )
             .join("");
-        if (previous && [...idSelect.options].some((o) => o.value === previous)) {
-          idSelect.value = previous;
-        } else {
+        const preferred = pending || previous;
+        if (preferred && [...idSelect.options].some((o) => o.value === preferred)) {
+          idSelect.value = preferred;
+        } else if (!keepValue) {
           idSelect.value = "";
         }
-        const combo = this.recordCombobox();
         if (combo && typeof combo.readFromSelect === "function") {
-          combo.readFromSelect();
-          if (!keepValue || !previous || idSelect.value !== previous) {
+          if (!keepValue) {
             combo.state = combo.multiple ? [] : "";
             combo.q = "";
           }
+          combo.readFromSelect();
         }
       },
       onTypeChange(type) {
