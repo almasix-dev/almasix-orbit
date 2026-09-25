@@ -1867,6 +1867,23 @@
         } else {
           select.value = this.state == null ? "" : String(this.state);
         }
+        // MorphToSelect (and similar) use data-sync-path + sync_data_path so Conduit
+        // does not remorph — remorph races throw Idiomorph M_ID and clear selection.
+        const syncPath = this.$el.getAttribute("data-sync-path");
+        if (syncPath) {
+          const value = this.multiple
+            ? this.selectedValues
+            : this.state == null || this.state === ""
+              ? null
+              : this.state;
+          const wire = window.orbitWire?.(this.$el);
+          if (wire && typeof wire.sync_data_path === "function") {
+            wire.sync_data_path(syncPath, value);
+          } else if (wire && typeof wire.$set === "function") {
+            wire.$set(syncPath, value);
+          }
+          return;
+        }
         select.dispatchEvent(new Event("input", { bubbles: true }));
         select.dispatchEvent(new Event("change", { bubbles: true }));
       },
@@ -2019,8 +2036,23 @@
       },
       onTypeChange(type) {
         this.type = type || "";
-        this.ensureRecordOptions({ keepValue: false, preload: true });
         const wire = window.orbitWire?.(this.root || this.$el);
+        const fieldPath = this.field
+          ? this.field.startsWith("data.")
+            ? this.field
+            : `data.${this.field}`
+          : "";
+        // Embedded options: rebuild locally and sync without remorph (avoids M_ID).
+        if (!type || this.hasEmbeddedOptions(type)) {
+          this.ensureRecordOptions({ keepValue: false, preload: false });
+          if (wire && fieldPath && typeof wire.sync_data_path === "function") {
+            wire.sync_data_path(fieldPath, { type: type || "", id: null });
+          } else if (wire && typeof wire.setMorphType === "function" && this.field) {
+            wire.setMorphType(this.field, type);
+          }
+          return;
+        }
+        this.ensureRecordOptions({ keepValue: false, preload: true });
         if (wire && typeof wire.setMorphType === "function" && this.field) {
           wire.setMorphType(this.field, type);
         }

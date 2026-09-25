@@ -1321,6 +1321,9 @@ class FormDataMutations:
         searches = dict(getattr(self, "morph_search", None) or {})
         searches.pop(field, None)
         self.morph_search = searches
+        # Remorph only when live search may need server options; embedded maps
+        # rebuild client-side. Always remorph here so options_using loaders refresh.
+        # Callers with fully embedded options should prefer sync_data_path instead.
 
     def searchMorphOptions(self, name: str, search: str = "") -> None:
         """Server-side search for the record leg of a MorphToSelect."""

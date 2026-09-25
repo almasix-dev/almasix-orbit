@@ -3263,9 +3263,6 @@ class MorphToSelect(Select):
             )
 
         type_path = f"{name}.{e(self._type_field)}" if name else e(self._type_field)
-        type_wire = self._wire_binding(
-            f"{self.get_state_path() or ''}.{self._type_field}".lstrip(".")
-        )
         id_state_path = f"{self.get_state_path() or ''}.{self._id_field}".lstrip(".")
 
         options_json = e(
@@ -3307,11 +3304,24 @@ class MorphToSelect(Select):
             self._get_search_results_using = prior_get_search
 
         # Tag combobox + native select so Alpine can refresh options on type change.
+        # No conduit:model on the id select — remorph races crash Idiomorph (M_ID) and
+        # wipe Alpine selection. Sync via data-sync-path → sync_data_path instead.
+        id_sync_path = (
+            id_state_path
+            if str(id_state_path).startswith("data.")
+            else f"data.{id_state_path}"
+        )
+        record_combobox = re.sub(
+            r'\s*(?:conduit|wire):model(?:\.[a-z]+)?="[^"]*"',
+            "",
+            record_combobox,
+        )
         record_combobox = record_combobox.replace(
             'class="or-combobox"',
             (
                 'class="or-combobox or-morph-record-combobox" '
-                f'data-morph-id-combobox data-field="{e(id_state_path)}"'
+                f'data-morph-id-combobox data-field="{e(id_state_path)}" '
+                f'data-sync-path="{e(id_sync_path)}"'
             ),
             1,
         )
@@ -3322,19 +3332,20 @@ class MorphToSelect(Select):
         )
 
         searchable_attr = ' data-searchable="true"' if prior_searchable else ""
+        # Type select also avoids conduit:model — onTypeChange syncs once (no double remorph).
         control = (
             f'<div class="or-morph-to-select" data-field="{name}" '
             f'data-options-by-type="{options_json}" '
             f'data-options-limit="{options_limit}" '
             f'data-type-field="{e(self._type_field)}" '
-            f'data-id-field="{e(self._id_field)}"'
+            f'data-id-field="{e(self._id_field)}" '
+            f'data-sync-path="data.{name}"'
             f"{searchable_attr} "
             f'x-data="orbitMorphToSelect">'
             f'<div class="or-morph-to-select__type">'
             f'<label class="or-morph-sublabel" for="or-{name}-type">Type</label>'
             f'<select class="or-select or-select-morph or-select-morph-type" '
-            f'id="or-{name}-type" name="{type_path}" data-morph-type{disabled}'
-            f"{type_wire} "
+            f'id="or-{name}-type" name="{type_path}" data-morph-type{disabled} '
             f"@change=\"$data.onTypeChange($event.target.value)\">"
             f'{"".join(type_opts_html)}</select></div>'
             f'<div class="or-morph-to-select__record" data-morph-record '

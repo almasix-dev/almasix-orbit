@@ -720,8 +720,9 @@ def test_morph_to_select_loads_options_for_the_chosen_type() -> None:
     assert "Second post" not in html
     assert "$data.onTypeChange" in html
     assert "or-morph-record-combobox" in html
-    assert 'conduit:model="data.commentable.type"' in html
-    assert 'conduit:model="data.commentable.id"' in html
+    assert 'data-sync-path="data.commentable.id"' in html
+    assert 'conduit:model="data.commentable.type"' not in html
+    assert 'conduit:model="data.commentable.id"' not in html
     assert "or-morph-to-select__type" in html
     assert calls == [("post", "launch")]
 
