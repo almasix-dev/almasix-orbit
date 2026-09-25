@@ -1639,7 +1639,10 @@
       fieldName: "",
 
       init() {
+        // Alpine rebinds `$el` to the event target inside nested @click/@mousedown
+        // handlers (e.g. option choose) — pin the x-data root for sync_path / wire.
         const root = this.$el;
+        this._rootEl = root;
         this.multiple = root.getAttribute("data-multiple") === "true";
         this.searchable = root.hasAttribute("data-searchable");
         this.ajax = root.getAttribute("data-ajax-search") === "true";
@@ -1668,6 +1671,12 @@
             });
           }
         });
+      },
+
+      rootEl() {
+        if (this.$root?.isConnected) return this.$root;
+        if (this._rootEl?.isConnected) return this._rootEl;
+        return this.$el;
       },
 
       get selectedItems() {
@@ -1757,9 +1766,34 @@
 
       openPanel() {
         if (this.disabled) return;
+        const select = this.$refs.select;
+        // Soft-sync: refresh state/disabled from the native select without rebuilding
+        // the options array on every open (full readFromSelect remounts x-for nodes
+        // and can drop the click under the cursor on subsequent chooses).
+        if (select instanceof HTMLSelectElement) {
+          this.disabled = select.disabled;
+          const needsOptions =
+            this.ajax || this.options.filter((o) => o.value !== "").length === 0;
+          if (needsOptions) {
+            this.readFromSelect();
+          } else if (this.multiple) {
+            this.state = Array.from(select.selectedOptions)
+              .map((o) => String(o.value))
+              .filter((v) => v !== "");
+          } else {
+            this.state = select.value || "";
+          }
+        } else {
+          this.readFromSelect();
+        }
+        const alreadyOpen = this.open;
         this.open = true;
         this.activeIndex = this.visibleOptions.findIndex((o) => this.isSelected(o.value));
         if (this.activeIndex < 0 && this.visibleOptions.length) this.activeIndex = 0;
+        // Searchable AJAX selects preload a capped page on first open (empty query).
+        if (this.ajax && !alreadyOpen) {
+          this.requestOptions(this.q || "");
+        }
       },
 
       close() {
@@ -1825,18 +1859,24 @@
         this.deselect(values[values.length - 1]);
       },
 
+      requestOptions(query) {
+        this.searching = true;
+        const wireRoot = this.rootEl()?.closest?.(
+          "[wire\\:id], [conduit\\:id], [data-conduit]",
+        );
+        const wire = wireRoot && (wireRoot.__wire || wireRoot.__conduit);
+        if (wire && typeof wire.searchSelectOptions === "function") {
+          wire.searchSelectOptions(this.fieldName, query || "");
+          return;
+        }
+        this.searching = false;
+      },
+
       onSearch() {
         if (this.ajax) {
-          this.searching = true;
-          const wireRoot = this.$el.closest(
-            "[wire\\:id], [conduit\\:id], [data-conduit]",
-          );
-          const wire = wireRoot && (wireRoot.__wire || wireRoot.__conduit);
-          if (wire && typeof wire.searchSelectOptions === "function") {
-            wire.searchSelectOptions(this.fieldName, this.q || "");
-            return;
-          }
-          this.searching = false;
+          this.requestOptions(this.q || "");
+          if (!this.open) this.open = true;
+          return;
         }
         this.openPanel();
         this.activeIndex = this.visibleOptions.length ? 0 : -1;
@@ -1853,6 +1893,27 @@
         } else {
           select.value = this.state == null ? "" : String(this.state);
         }
+        // MorphToSelect (and similar) use data-sync-path + sync_data_path so Conduit
+        // does not remorph — remorph races throw Idiomorph M_ID and clear selection.
+        // Must read attrs from the x-data root: during option @mousedown/@click,
+        // Alpine sets `$el` to the <li>, which has no data-sync-path — falling
+        // through to change events remorphs the field and breaks later chooses.
+        const root = this.rootEl();
+        const syncPath = root?.getAttribute?.("data-sync-path");
+        if (syncPath) {
+          const value = this.multiple
+            ? this.selectedValues
+            : this.state == null || this.state === ""
+              ? null
+              : this.state;
+          const wire = window.orbitWire?.(root);
+          if (wire && typeof wire.sync_data_path === "function") {
+            wire.sync_data_path(syncPath, value);
+          } else if (wire && typeof wire.$set === "function") {
+            wire.$set(syncPath, value);
+          }
+          return;
+        }
         select.dispatchEvent(new Event("input", { bubbles: true }));
         select.dispatchEvent(new Event("change", { bubbles: true }));
       },
@@ -1866,65 +1927,168 @@
       optionsByType: {},
       searchable: false,
       field: "",
+      type: "",
+      root: null,
+      optionsLimit: 50,
       init() {
-        const el = this.$el;
+        // Pin the x-data root — inside @change handlers Alpine sets this.$el to the select.
+        this.root = this.$el;
+        const el = this.root;
         this.field = el.getAttribute("data-field") || "";
         this.searchable = el.getAttribute("data-searchable") === "true";
+        const limitAttr = el.getAttribute("data-options-limit");
+        this.optionsLimit =
+          limitAttr != null && limitAttr !== "" ? Number(limitAttr) : 50;
         try {
           this.optionsByType = JSON.parse(el.getAttribute("data-options-by-type") || "{}") || {};
         } catch (_) {
           this.optionsByType = {};
         }
-        const search = el.querySelector("[data-morph-search]");
-        if (search) {
+        const typeSelect = el.querySelector("[data-morph-type]");
+        this.type = typeSelect?.value || "";
+        // Remorph may replace the id <select>; re-attach when needed and ignore
+        // combobox dropdown noise so we don't loop on Alpine re-renders.
+        const attachIdObserver = () => {
+          const idSelect = el.querySelector("[data-morph-id]");
+          if (!idSelect || idSelect === this._observedSelect) return;
+          this._idOptionsObserver?.disconnect?.();
+          this._observedSelect = idSelect;
+          this._idOptionsObserver = new MutationObserver(() => {
+            const combo = this.recordCombobox();
+            if (combo && typeof combo.readFromSelect === "function") {
+              combo.readFromSelect();
+            }
+            // Select node replaced by Conduit morph — follow it.
+            if (!idSelect.isConnected) {
+              this._observedSelect = null;
+              attachIdObserver();
+            }
+          });
+          this._idOptionsObserver.observe(idSelect, { childList: true });
+        };
+        if (typeof MutationObserver !== "undefined") {
+          attachIdObserver();
+          this._rootObserver = new MutationObserver(() => attachIdObserver());
+          this._rootObserver.observe(el, { childList: true, subtree: true });
+        }
+        if (this.type) {
+          this.ensureRecordOptions({ keepValue: true, preload: false });
+        }
+        const comboRoot = el.querySelector("[data-morph-id-combobox]");
+        if (comboRoot) {
+          // Preload only when the record select still has no real options.
+          comboRoot.addEventListener("focusin", () => {
+            const idSelect = el.querySelector("[data-morph-id]");
+            const loaded =
+              idSelect instanceof HTMLSelectElement &&
+              [...idSelect.options].some((o) => o.value !== "");
+            if (!loaded) {
+              this.ensureRecordOptions({ keepValue: true, preload: true });
+            }
+          });
+        }
+        const searchInput = el.querySelector("[data-morph-id-combobox] .or-combobox-search");
+        if (searchInput instanceof HTMLInputElement && this.searchable) {
           let timer = null;
-          search.addEventListener("input", () => {
+          searchInput.addEventListener("input", () => {
             clearTimeout(timer);
-            timer = setTimeout(() => this.onSearch(search.value), 280);
+            timer = setTimeout(() => this.onSearch(searchInput.value), 280);
           });
         }
       },
-      rebuildIdOptions(type, { keepValue = false, filter = "" } = {}) {
-        const idSelect = this.$el.querySelector("[data-morph-id]");
+      recordCombobox() {
+        const root = (this.root || this.$el)?.querySelector?.("[data-morph-id-combobox]");
+        if (!root || typeof window.Alpine?.$data !== "function") return null;
+        try {
+          return window.Alpine.$data(root);
+        } catch (_) {
+          return null;
+        }
+      },
+      hasEmbeddedOptions(type) {
+        const opts = this.optionsByType[type];
+        return Boolean(opts && Object.keys(opts).length);
+      },
+      ensureRecordOptions({ keepValue = true, preload = false } = {}) {
+        const type = this.type || "";
+        if (!type) return;
+        if (this.hasEmbeddedOptions(type)) {
+          this.rebuildIdOptions(type, { keepValue });
+          return;
+        }
+        // No embedded options — ask the server for a capped first page (empty search).
+        if (preload && this.searchable) {
+          this.onSearch("");
+        }
+      },
+      rebuildIdOptions(type, { keepValue = false } = {}) {
+        const root = this.root || this.$el;
+        const idSelect = root?.querySelector?.("[data-morph-id]");
         if (!idSelect) return;
         const previous = keepValue ? idSelect.value : "";
+        const combo = this.recordCombobox();
+        // Prefer in-flight Alpine selection (choose may have run before native sync).
+        const pending =
+          keepValue && combo && !combo.multiple && combo.state != null && combo.state !== ""
+            ? String(combo.state)
+            : "";
         const opts = { ...(this.optionsByType[type] || {}) };
-        const needle = String(filter || "").toLowerCase();
-        const entries = Object.entries(opts).filter(([, label]) => {
-          if (!needle) return true;
-          return String(label).toLowerCase().includes(needle);
-        });
+        let entries = Object.entries(opts);
+        if (Number.isFinite(this.optionsLimit) && this.optionsLimit > 0) {
+          entries = entries.slice(0, this.optionsLimit);
+        }
         idSelect.innerHTML =
-          '<option value="">Record…</option>' +
+          '<option value="">—</option>' +
           entries
             .map(
               ([value, label]) =>
-                `<option value="${String(value).replace(/"/g, "&quot;")}">${String(label)
+                `<option value="${String(value).replace(/"/g, "&quot;")}" data-label="${String(label)
+                  .replace(/&/g, "&amp;")
+                  .replace(/"/g, "&quot;")
+                  .replace(/</g, "&lt;")}">${String(label)
                   .replace(/&/g, "&amp;")
                   .replace(/</g, "&lt;")}</option>`,
             )
             .join("");
-        if (previous && [...idSelect.options].some((o) => o.value === previous)) {
-          idSelect.value = previous;
+        const preferred = pending || previous;
+        if (preferred && [...idSelect.options].some((o) => o.value === preferred)) {
+          idSelect.value = preferred;
+        } else if (!keepValue) {
+          idSelect.value = "";
+        }
+        if (combo && typeof combo.readFromSelect === "function") {
+          if (!keepValue) {
+            combo.state = combo.multiple ? [] : "";
+            combo.q = "";
+          }
+          combo.readFromSelect();
         }
       },
       onTypeChange(type) {
-        this.rebuildIdOptions(type);
-        const search = this.$el.querySelector("[data-morph-search]");
-        if (search) search.value = "";
-        const wire = window.orbitWire?.(this.$el);
+        this.type = type || "";
+        const wire = window.orbitWire?.(this.root || this.$el);
+        const fieldPath = this.field
+          ? this.field.startsWith("data.")
+            ? this.field
+            : `data.${this.field}`
+          : "";
+        // Embedded options: rebuild locally and sync without remorph (avoids M_ID).
+        if (!type || this.hasEmbeddedOptions(type)) {
+          this.ensureRecordOptions({ keepValue: false, preload: false });
+          if (wire && fieldPath && typeof wire.sync_data_path === "function") {
+            wire.sync_data_path(fieldPath, { type: type || "", id: null });
+          } else if (wire && typeof wire.setMorphType === "function" && this.field) {
+            wire.setMorphType(this.field, type);
+          }
+          return;
+        }
+        this.ensureRecordOptions({ keepValue: false, preload: true });
         if (wire && typeof wire.setMorphType === "function" && this.field) {
           wire.setMorphType(this.field, type);
         }
       },
       onSearch(query) {
-        const typeSelect = this.$el.querySelector("[data-morph-type]");
-        const type = typeSelect?.value || "";
-        // Prefer static client filter when options are embedded; still notify host for loaders.
-        if (Object.keys(this.optionsByType).length) {
-          this.rebuildIdOptions(type, { keepValue: true, filter: query });
-        }
-        const wire = window.orbitWire?.(this.$el);
+        const wire = window.orbitWire?.(this.root || this.$el);
         if (wire && typeof wire.searchMorphOptions === "function" && this.field) {
           wire.searchMorphOptions(this.field, query);
         }

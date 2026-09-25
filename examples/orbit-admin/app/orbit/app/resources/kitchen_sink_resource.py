@@ -65,6 +65,7 @@ class KitchenSinkResource(Resource):
             "active": True,
             "joined": "2024-01-15",
             "owner": {},
+            "manager_id": None,
             "links": [{"url": "https://orbit.almasix.com"}],
             "meta": {"team": "core"},
             "blocks": [{"type": "hero", "heading": "Welcome"}],
@@ -181,7 +182,7 @@ class KitchenSinkResource(Resource):
                                     .image_editor_aspect_ratios(["1:1"])
                                     .label("Avatar"),
                                     MorphToSelect.make("owner")
-                                    .label("Owner")
+                                    .label("Owner (MorphTo)")
                                     .searchable()
                                     .types(
                                         [
@@ -196,6 +197,17 @@ class KitchenSinkResource(Resource):
                                                 "options": {"10": "Platform"},
                                             },
                                         ]
+                                    ),
+                                    Select.make("manager_id")
+                                    .label("Manager (Many2One)")
+                                    .searchable()
+                                    .placeholder("Select manager…")
+                                    .options(
+                                        {
+                                            "1": "Ada Lovelace",
+                                            "2": "Alan Turing",
+                                            "3": "Grace Hopper",
+                                        }
                                     ),
                                 ]
                             ),

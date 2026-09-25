@@ -1639,7 +1639,10 @@
       fieldName: "",
 
       init() {
+        // Alpine rebinds `$el` to the event target inside nested @click/@mousedown
+        // handlers (e.g. option choose) — pin the x-data root for sync_path / wire.
         const root = this.$el;
+        this._rootEl = root;
         this.multiple = root.getAttribute("data-multiple") === "true";
         this.searchable = root.hasAttribute("data-searchable");
         this.ajax = root.getAttribute("data-ajax-search") === "true";
@@ -1668,6 +1671,12 @@
             });
           }
         });
+      },
+
+      rootEl() {
+        if (this.$root?.isConnected) return this.$root;
+        if (this._rootEl?.isConnected) return this._rootEl;
+        return this.$el;
       },
 
       get selectedItems() {
@@ -1757,9 +1766,26 @@
 
       openPanel() {
         if (this.disabled) return;
-        // Remorph / parent rebuilds often update the native <select> without
-        // refreshing Alpine state — always re-sync before showing the list.
-        this.readFromSelect();
+        const select = this.$refs.select;
+        // Soft-sync: refresh state/disabled from the native select without rebuilding
+        // the options array on every open (full readFromSelect remounts x-for nodes
+        // and can drop the click under the cursor on subsequent chooses).
+        if (select instanceof HTMLSelectElement) {
+          this.disabled = select.disabled;
+          const needsOptions =
+            this.ajax || this.options.filter((o) => o.value !== "").length === 0;
+          if (needsOptions) {
+            this.readFromSelect();
+          } else if (this.multiple) {
+            this.state = Array.from(select.selectedOptions)
+              .map((o) => String(o.value))
+              .filter((v) => v !== "");
+          } else {
+            this.state = select.value || "";
+          }
+        } else {
+          this.readFromSelect();
+        }
         const alreadyOpen = this.open;
         this.open = true;
         this.activeIndex = this.visibleOptions.findIndex((o) => this.isSelected(o.value));
@@ -1835,7 +1861,7 @@
 
       requestOptions(query) {
         this.searching = true;
-        const wireRoot = this.$el.closest(
+        const wireRoot = this.rootEl()?.closest?.(
           "[wire\\:id], [conduit\\:id], [data-conduit]",
         );
         const wire = wireRoot && (wireRoot.__wire || wireRoot.__conduit);
@@ -1869,14 +1895,18 @@
         }
         // MorphToSelect (and similar) use data-sync-path + sync_data_path so Conduit
         // does not remorph — remorph races throw Idiomorph M_ID and clear selection.
-        const syncPath = this.$el.getAttribute("data-sync-path");
+        // Must read attrs from the x-data root: during option @mousedown/@click,
+        // Alpine sets `$el` to the <li>, which has no data-sync-path — falling
+        // through to change events remorphs the field and breaks later chooses.
+        const root = this.rootEl();
+        const syncPath = root?.getAttribute?.("data-sync-path");
         if (syncPath) {
           const value = this.multiple
             ? this.selectedValues
             : this.state == null || this.state === ""
               ? null
               : this.state;
-          const wire = window.orbitWire?.(this.$el);
+          const wire = window.orbitWire?.(root);
           if (wire && typeof wire.sync_data_path === "function") {
             wire.sync_data_path(syncPath, value);
           } else if (wire && typeof wire.$set === "function") {
