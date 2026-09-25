@@ -1514,7 +1514,8 @@ class Select(Field):
             f'}}" '
             f':aria-selected="isSelected(opt.value).toString()" '
             f'@mouseenter="activeIndex = idx" '
-            f'@click="choose(opt)" '
+            f'@mousedown.prevent="choose(opt)" '
+            f'@click.prevent="choose(opt)" '
             f'x-html="allowHtml ? opt.labelHtml : undefined" '
             f'x-text="allowHtml ? \'\' : opt.label"></li>'
             f"</template></ul></div>"
