@@ -5469,6 +5469,9 @@ html.dark .or-login-logo-dark {
 
 .or-morph-to-select {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
 }
 
 .or-morph-to-select .or-select {
@@ -6252,19 +6255,12 @@ html.dark .or-field-FileUpload .filepond--panel-root,
   background: var(--or-surface-2, var(--or-surface));
 }
 
-/* Morph-to select — type + record side by side */
+/* Morph-to select — type first, then Many2One-style record combobox */
 .or-morph-to-select {
-  display: grid;
-  grid-template-columns: minmax(7.5rem, 0.38fr) minmax(11rem, 1fr);
-  gap: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
   width: 100%;
-  align-items: start;
-}
-
-@media (max-width: 640px) {
-  .or-morph-to-select {
-    grid-template-columns: 1fr;
-  }
 }
 
 .or-morph-to-select__type,
@@ -6273,6 +6269,12 @@ html.dark .or-field-FileUpload .filepond--panel-root,
   flex-direction: column;
   gap: 0.3rem;
   min-width: 0;
+  width: 100%;
+}
+
+.or-morph-to-select .or-select-morph-type,
+.or-morph-to-select .or-morph-record-combobox {
+  width: 100%;
 }
 
 .or-morph-sublabel {
@@ -6281,10 +6283,6 @@ html.dark .or-field-FileUpload .filepond--panel-root,
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--or-muted);
-}
-
-.or-morph-search {
-  width: 100%;
 }
 
 /* Rich editor placeholder */

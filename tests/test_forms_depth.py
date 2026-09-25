@@ -742,19 +742,28 @@ def test_morph_to_select_falls_back_to_flat_options() -> None:
     assert MorphToSelect.make("commentable").hidden().render(None) == ""
 
 
-def test_morph_to_select_defaults_first_type_and_layout() -> None:
+def test_morph_to_select_starts_with_type_then_record_combobox() -> None:
     field = MorphToSelect.make("owner").searchable().types(
         [
             {"type": "user", "label": "User", "options": {"1": "Ada"}},
             {"type": "team", "label": "Team", "options": {"10": "Platform"}},
         ]
     )
-    html = field.render(None)
-    assert 'value="user" selected' in html
-    assert "Ada" in html
-    assert "or-morph-sublabel" in html
-    assert "data-options-by-type=" in html
-    assert "orbitMorphToSelect" in html
+    empty = field.render(None)
+    assert "Select type…" in empty
+    assert 'value="user" selected' not in empty
+    assert "or-morph-to-select__type" in empty
+    assert "or-morph-record-combobox" in empty
+    assert "orbitCombobox" in empty
+    assert "orbitMorphToSelect" in empty
+    assert 'x-show="Boolean(type)"' in empty
+    assert "data-options-by-type=" in empty
+    assert "or-morph-sublabel" in empty
+
+    filled = field.render({"type": "user", "id": "1"})
+    assert '<option value="user" selected>User</option>' in filled
+    assert "Ada" in filled
+    assert "or-select-morph-id" in filled
 
 
 # --------------------------------------------------------------------------- ModalTableSelect

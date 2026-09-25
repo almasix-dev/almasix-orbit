@@ -1866,6 +1866,7 @@
       optionsByType: {},
       searchable: false,
       field: "",
+      type: "",
       init() {
         const el = this.$el;
         this.field = el.getAttribute("data-field") || "";
@@ -1875,55 +1876,69 @@
         } catch (_) {
           this.optionsByType = {};
         }
-        const search = el.querySelector("[data-morph-search]");
-        if (search) {
+        const typeSelect = el.querySelector("[data-morph-type]");
+        this.type = typeSelect?.value || "";
+        // Combobox search → server morph search (options_using). Local filter stays in orbitCombobox.
+        const searchInput = el.querySelector("[data-morph-id-combobox] .or-combobox-search");
+        if (searchInput instanceof HTMLInputElement && this.searchable) {
           let timer = null;
-          search.addEventListener("input", () => {
+          searchInput.addEventListener("input", () => {
             clearTimeout(timer);
-            timer = setTimeout(() => this.onSearch(search.value), 280);
+            timer = setTimeout(() => this.onSearch(searchInput.value), 280);
           });
         }
       },
-      rebuildIdOptions(type, { keepValue = false, filter = "" } = {}) {
+      recordCombobox() {
+        const root = this.$el.querySelector("[data-morph-id-combobox]");
+        if (!root || typeof window.Alpine?.$data !== "function") return null;
+        try {
+          return window.Alpine.$data(root);
+        } catch (_) {
+          return null;
+        }
+      },
+      rebuildIdOptions(type, { keepValue = false } = {}) {
         const idSelect = this.$el.querySelector("[data-morph-id]");
         if (!idSelect) return;
         const previous = keepValue ? idSelect.value : "";
         const opts = { ...(this.optionsByType[type] || {}) };
-        const needle = String(filter || "").toLowerCase();
-        const entries = Object.entries(opts).filter(([, label]) => {
-          if (!needle) return true;
-          return String(label).toLowerCase().includes(needle);
-        });
+        const entries = Object.entries(opts);
         idSelect.innerHTML =
-          '<option value="">Record…</option>' +
+          '<option value="">—</option>' +
           entries
             .map(
               ([value, label]) =>
-                `<option value="${String(value).replace(/"/g, "&quot;")}">${String(label)
+                `<option value="${String(value).replace(/"/g, "&quot;")}" data-label="${String(label)
+                  .replace(/&/g, "&amp;")
+                  .replace(/"/g, "&quot;")
+                  .replace(/</g, "&lt;")}">${String(label)
                   .replace(/&/g, "&amp;")
                   .replace(/</g, "&lt;")}</option>`,
             )
             .join("");
         if (previous && [...idSelect.options].some((o) => o.value === previous)) {
           idSelect.value = previous;
+        } else {
+          idSelect.value = "";
+        }
+        const combo = this.recordCombobox();
+        if (combo && typeof combo.readFromSelect === "function") {
+          combo.readFromSelect();
+          if (!keepValue || !previous || idSelect.value !== previous) {
+            combo.state = combo.multiple ? [] : "";
+            combo.q = "";
+          }
         }
       },
       onTypeChange(type) {
+        this.type = type || "";
         this.rebuildIdOptions(type);
-        const search = this.$el.querySelector("[data-morph-search]");
-        if (search) search.value = "";
         const wire = window.orbitWire?.(this.$el);
         if (wire && typeof wire.setMorphType === "function" && this.field) {
           wire.setMorphType(this.field, type);
         }
       },
       onSearch(query) {
-        const typeSelect = this.$el.querySelector("[data-morph-type]");
-        const type = typeSelect?.value || "";
-        // Prefer static client filter when options are embedded; still notify host for loaders.
-        if (Object.keys(this.optionsByType).length) {
-          this.rebuildIdOptions(type, { keepValue: true, filter: query });
-        }
         const wire = window.orbitWire?.(this.$el);
         if (wire && typeof wire.searchMorphOptions === "function" && this.field) {
           wire.searchMorphOptions(this.field, query);

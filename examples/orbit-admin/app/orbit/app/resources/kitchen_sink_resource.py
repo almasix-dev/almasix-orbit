@@ -64,7 +64,7 @@ class KitchenSinkResource(Resource):
             "color": "#3366ff",
             "active": True,
             "joined": "2024-01-15",
-            "owner": {"type": "user", "id": "1"},
+            "owner": {},
             "links": [{"url": "https://orbit.almasix.com"}],
             "meta": {"team": "core"},
             "blocks": [{"type": "hero", "heading": "Welcome"}],

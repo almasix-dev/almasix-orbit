@@ -3228,65 +3228,115 @@ class MorphToSelect(Select):
             for k, v in self.get_options(**ctx).items():
                 type_options.append((str(k), str(v)))
 
-        # Default the type select to the first option so the record list is not empty.
-        effective_type = str(type_value or "")
-        if not effective_type and type_options:
-            effective_type = type_options[0][0]
+        # Only show a selected type when state actually has one — record combobox
+        # stays hidden until the operator picks a morph type.
+        effective_type = str(type_value or "").strip()
 
-        type_opts_html = ['<option value="">Type…</option>']
+        type_opts_html = ['<option value="">Select type…</option>']
         for k, v in type_options:
             sel = " selected" if effective_type and str(k) == effective_type else ""
             type_opts_html.append(f'<option value="{e(k)}"{sel}>{e(v)}</option>')
 
         search = str((ctx.get("morph_search") or {}).get(self.get_state_path() or "", ""))
-        id_opts = self.get_options_for_type(effective_type, search)
-        if not id_opts:
-            id_opts = id_options_by_type.get(effective_type, {})
-        if not id_opts:
-            id_opts = self.get_options(**ctx)
-        if search:
-            needle = search.casefold()
-            id_opts = {k: v for k, v in id_opts.items() if needle in str(v).casefold()}
+        id_opts: dict[Any, Any] = {}
+        if effective_type:
+            id_opts = self.get_options_for_type(effective_type, search)
+            if not id_opts:
+                id_opts = id_options_by_type.get(effective_type, {})
+            if not id_opts:
+                id_opts = self.get_options(**ctx)
+            if search:
+                needle = search.casefold()
+                id_opts = {
+                    k: v for k, v in id_opts.items() if needle in str(v).casefold()
+                }
 
-        id_opts_html = ['<option value="">Record…</option>']
+        id_opts_html = []
         for k, v in id_opts.items():
             sel = " selected" if id_value is not None and str(k) == str(id_value) else ""
-            id_opts_html.append(f'<option value="{e(k)}"{sel}>{e(v)}</option>')
-
-        type_path = f"{name}.{e(self._type_field)}" if name else e(self._type_field)
-        id_path = f"{name}.{e(self._id_field)}" if name else e(self._id_field)
-        type_wire = self._wire_binding(f"{self.get_state_path() or ''}.{self._type_field}".lstrip("."))
-        id_wire = self._wire_binding(f"{self.get_state_path() or ''}.{self._id_field}".lstrip("."))
-
-        # Static options for client-side type switching (kitchen sink / no remorph delay).
-        options_json = e(json.dumps({k: {str(ik): str(iv) for ik, iv in v.items()} for k, v in id_options_by_type.items()}))
-
-        search_box = ""
-        if self._searchable:
-            search_box = (
-                '<input type="search" class="or-input or-morph-search" '
-                'placeholder="Search records…" value="' + e(search) + '" data-morph-search '
-                f'aria-label="Search records"{disabled} />'
+            id_opts_html.append(
+                f'<option value="{e(k)}" data-label="{e(v)}"{sel}>{e(v)}</option>'
             )
 
+        type_path = f"{name}.{e(self._type_field)}" if name else e(self._type_field)
+        type_wire = self._wire_binding(
+            f"{self.get_state_path() or ''}.{self._type_field}".lstrip(".")
+        )
+        id_state_path = f"{self.get_state_path() or ''}.{self._id_field}".lstrip(".")
+
+        options_json = e(
+            json.dumps(
+                {
+                    k: {str(ik): str(iv) for ik, iv in v.items()}
+                    for k, v in id_options_by_type.items()
+                }
+            )
+        )
+
+        # Many2One-style searchable combobox for the record (always combobox UX).
+        # Local options only here — type-aware AJAX goes through searchMorphOptions.
+        prior_searchable = self._searchable
+        prior_native = self._native
+        prior_selectable = self._selectable_placeholder
+        prior_get_search = self._get_search_results_using
+        self._searchable = True
+        self._native = False
+        self._selectable_placeholder = True
+        self._get_search_results_using = None
+        try:
+            combobox_ctx = dict(ctx)
+            select_search = dict(combobox_ctx.get("select_search") or {})
+            select_search[id_state_path] = search
+            select_search[self.get_state_path() or ""] = search
+            combobox_ctx["select_search"] = select_search
+            record_combobox = self._render_combobox(
+                name=id_state_path,
+                opts_html="".join(id_opts_html),
+                state=id_value if effective_type else None,
+                searchable=True,
+                **combobox_ctx,
+            )
+        finally:
+            self._searchable = prior_searchable
+            self._native = prior_native
+            self._selectable_placeholder = prior_selectable
+            self._get_search_results_using = prior_get_search
+
+        # Tag combobox + native select so Alpine can refresh options on type change.
+        record_combobox = record_combobox.replace(
+            'class="or-combobox"',
+            (
+                'class="or-combobox or-morph-record-combobox" '
+                f'data-morph-id-combobox data-field="{e(id_state_path)}"'
+            ),
+            1,
+        )
+        record_combobox = record_combobox.replace(
+            'class="or-select or-combobox-native"',
+            'class="or-select or-combobox-native or-select-morph or-select-morph-id" data-morph-id',
+            1,
+        )
+
+        searchable_attr = ' data-searchable="true"' if prior_searchable else ""
         control = (
             f'<div class="or-morph-to-select" data-field="{name}" '
             f'data-options-by-type="{options_json}" '
-            f'data-searchable="{str(self._searchable).lower()}" '
+            f'data-type-field="{e(self._type_field)}" '
+            f'data-id-field="{e(self._id_field)}"'
+            f"{searchable_attr} "
             f'x-data="orbitMorphToSelect">'
             f'<div class="or-morph-to-select__type">'
-            f'<span class="or-morph-sublabel">Type</span>'
+            f'<label class="or-morph-sublabel" for="or-{name}-type">Type</label>'
             f'<select class="or-select or-select-morph or-select-morph-type" '
             f'id="or-{name}-type" name="{type_path}" data-morph-type{disabled}'
             f"{type_wire} "
             f"@change=\"onTypeChange($event.target.value)\">"
             f'{"".join(type_opts_html)}</select></div>'
-            f'<div class="or-morph-to-select__record">'
-            f'<span class="or-morph-sublabel">Record</span>'
-            f"{search_box}"
-            f'<select class="or-select or-select-morph or-select-morph-id" '
-            f'id="or-{name}-id" name="{id_path}" data-morph-id{disabled}{id_wire}>'
-            f'{"".join(id_opts_html)}</select></div></div>'
+            f'<div class="or-morph-to-select__record" data-morph-record '
+            f'x-show="Boolean(type)" x-cloak '
+            f'x-transition.opacity.duration.120ms>'
+            f'<label class="or-morph-sublabel" id="or-{name}-record-label">Record</label>'
+            f"{record_combobox}</div></div>"
         )
         return self.wrap_field(name, control, **ctx)
 
