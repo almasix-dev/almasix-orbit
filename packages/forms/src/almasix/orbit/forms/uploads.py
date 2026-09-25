@@ -63,10 +63,14 @@ class UploadStorage(Protocol):
 
 
 class MemoryUploadStorage:
-    """Keeps files in a dict — the default until an app configures a disk."""
+    """Keeps files in a dict — the default until an app configures a disk.
 
-    def __init__(self, base_url: str = "/storage") -> None:
-        self.base_url = base_url.rstrip("/")
+    URLs point at ``/orbit-uploads/...``, which Orbit serves from this store
+    so demos and tests can preview uploads without a filesystem disk.
+    """
+
+    def __init__(self, base_url: str = "/orbit-uploads") -> None:
+        self.base_url = base_url.rstrip("/") or "/orbit-uploads"
         self.files: dict[str, bytes] = {}
 
     async def store(self, data: bytes, filename: str, rules: UploadRules) -> StoredUpload:
@@ -82,6 +86,15 @@ class MemoryUploadStorage:
 
     async def delete(self, path: str, rules: UploadRules) -> bool:
         return self.files.pop(path, None) is not None
+
+    def get_bytes(self, path: str) -> bytes | None:
+        key = str(path or "").lstrip("/")
+        if key in self.files:
+            return self.files[key]
+        # Tolerate accidental ``orbit-uploads/`` prefixes in the path.
+        if key.startswith("orbit-uploads/"):
+            return self.files.get(key[len("orbit-uploads/") :])
+        return None
 
 
 class FilesystemUploadStorage:
@@ -212,6 +225,8 @@ def public_upload_url(path: str, *, base_url: str = "/storage") -> str:
 
     Bare filenames (``uuid.png``) must not resolve relative to the edit page
     (``/resource/1/uuid.png``); they belong under the storage base URL.
+    Memory uploads use ``/orbit-uploads/...`` (served by Orbit); disk uploads
+    use ``/storage/...`` (``public/storage`` symlink).
     """
     text = str(path or "").strip()
     if not text:
@@ -220,6 +235,14 @@ def public_upload_url(path: str, *, base_url: str = "/storage") -> str:
         return text
     if text.startswith("/"):
         return text
+    # Prefer memory URL when the in-memory store still holds the bytes.
+    try:
+        storage = get_upload_storage()
+    except Exception:
+        storage = None
+    if isinstance(storage, MemoryUploadStorage) and storage.get_bytes(text) is not None:
+        root = (storage.base_url or "/orbit-uploads").rstrip("/") or "/orbit-uploads"
+        return f"{root}/{text.lstrip('/')}"
     root = (base_url or "/storage").rstrip("/") or "/storage"
     return f"{root}/{text.lstrip('/')}"
 

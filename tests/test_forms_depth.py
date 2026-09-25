@@ -183,6 +183,38 @@ def test_disk_url_falls_back_when_the_disk_cannot_build_one() -> None:
     assert public_upload_url("") == ""
 
 
+def test_memory_upload_urls_use_orbit_uploads_prefix(
+    memory_storage: MemoryUploadStorage,
+) -> None:
+    from almasix.orbit.forms.uploads import public_upload_url
+
+    stored = run(store_upload(b"img", "a.png", UploadRules(directory="avatars")))
+    assert stored.url.startswith("/orbit-uploads/")
+    assert public_upload_url(stored.path) == stored.url
+    assert memory_storage.get_bytes(stored.path) == b"img"
+    assert memory_storage.get_bytes(f"orbit-uploads/{stored.path}") == b"img"
+
+
+def test_public_upload_url_tolerates_get_storage_errors(monkeypatch) -> None:
+    from almasix.orbit.forms import uploads as uploads_mod
+
+    monkeypatch.setattr(
+        uploads_mod,
+        "get_upload_storage",
+        lambda: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    assert uploads_mod.public_upload_url("x.png") == "/storage/x.png"
+
+
+def test_handle_serve_upload_requires_memory_storage() -> None:
+    from almasix.orbit.panels.uploads import handle_serve_upload
+
+    set_upload_storage(FilesystemUploadStorage())
+    out = run(handle_serve_upload("a.png"))
+    assert getattr(out, "status_code", None) == 404
+    set_upload_storage(MemoryUploadStorage())
+
+
 def test_maybe_await_passes_plain_values_through() -> None:
     async def coro() -> str:
         return "awaited"

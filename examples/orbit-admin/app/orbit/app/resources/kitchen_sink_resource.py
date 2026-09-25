@@ -174,6 +174,8 @@ class KitchenSinkResource(Resource):
                                     .native(True),
                                     FileUpload.make("avatar")
                                     .avatar()
+                                    .disk("public")
+                                    .directory("kitchen-avatars")
                                     .image_editor()
                                     .image_editor_aspect_ratios(["1:1"])
                                     .label("Avatar"),

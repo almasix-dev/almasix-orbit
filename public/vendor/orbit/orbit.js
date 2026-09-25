@@ -2474,20 +2474,26 @@
           }
         };
 
-        const existing = parseExisting(root).map((file) => ({
-          source: file.path,
-          options: {
-            type: "local",
-            file: {
-              name: file.name || String(file.path).split("/").pop(),
-              type: file.mime || undefined,
-              size: undefined,
+        root._orbitUploadUrls = root._orbitUploadUrls || {};
+        const existing = parseExisting(root).map((file) => {
+          const path = file.path;
+          const url = file.url || root._orbitUploadUrls[path] || path;
+          if (path && url) root._orbitUploadUrls[path] = url;
+          return {
+            source: path,
+            options: {
+              type: "local",
+              file: {
+                name: file.name || String(path).split("/").pop(),
+                type: file.mime || undefined,
+                size: undefined,
+              },
+              metadata: {
+                poster: url,
+              },
             },
-            metadata: {
-              poster: file.url || file.path,
-            },
-          },
-        }));
+          };
+        });
 
         let stylePanelLayout = null;
         if (avatar) stylePanelLayout = "circle";
@@ -2517,6 +2523,19 @@
                 : null,
           allowImagePreview: imagePreview || avatar,
           allowFilePoster: true,
+          // Skip client transforms for already-stored locals — ImageTransform can
+          // throw (e.g. M_ID) when remorphing after save with incomplete metadata.
+          imageTransformImageFilter: (file) => {
+            try {
+              const origin = file?.origin ?? file?.file?.origin;
+              const localOrigin =
+                (window.FilePond && window.FilePond.FileOrigin?.LOCAL) ?? 3;
+              if (origin === localOrigin) return false;
+            } catch (_) {
+              /* ignore */
+            }
+            return true;
+          },
           files: existing,
           labelIdle: avatar
             ? '<span class="filepond--label-action">Upload avatar</span>'
@@ -2539,6 +2558,9 @@
                 try {
                   const result = JSON.parse(request.responseText || "{}");
                   if (result.ok && result.file?.path) {
+                    if (result.file.url) {
+                      root._orbitUploadUrls[result.file.path] = result.file.url;
+                    }
                     load(result.file.path);
                   } else {
                     error(result.error || "Upload failed.");
@@ -2588,9 +2610,20 @@
             },
             load: (source, load, error, progress, abort) => {
               const match = parseExisting(root).find((file) => file.path === source);
-              const url = match?.url || source;
-              const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-              fetch(url, {
+              const url =
+                match?.url || root._orbitUploadUrls?.[source] || source;
+              // Absolute path required — relative URLs resolve against the edit page.
+              const resolved =
+                typeof url === "string" &&
+                url &&
+                !url.startsWith("/") &&
+                !/^https?:/i.test(url) &&
+                !url.startsWith("data:")
+                  ? `/storage/${url.replace(/^\/+/, "")}`
+                  : url;
+              const controller =
+                typeof AbortController !== "undefined" ? new AbortController() : null;
+              fetch(resolved, {
                 credentials: "same-origin",
                 signal: controller?.signal,
               })
@@ -2602,7 +2635,13 @@
                   progress(true, blob.size, blob.size);
                   load(blob);
                 })
-                .catch(() => error("Could not load file."));
+                .catch(() => {
+                  try {
+                    error("Could not load file.");
+                  } catch (_) {
+                    /* FilePond may reject after destroy during morph */
+                  }
+                });
               return {
                 abort: () => {
                   controller?.abort();

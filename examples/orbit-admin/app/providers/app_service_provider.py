@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from almasix.orbit.forms import FilesystemUploadStorage, set_upload_storage
 from almasix.providers import ServiceProvider
 
 _REPO = Path(__file__).resolve().parents[4]
@@ -27,3 +28,16 @@ class AppServiceProvider(ServiceProvider):
         for src, name in _ASSETS:
             if src.is_file():
                 (dest_dir / name).write_bytes(src.read_bytes())
+
+        storage_root = Path(self.app.path("storage", "app"))
+        storage_root.mkdir(parents=True, exist_ok=True)
+        public_root = storage_root / "public"
+        public_root.mkdir(parents=True, exist_ok=True)
+        link = Path(self.app.path("public", "storage"))
+        if not link.exists():
+            try:
+                link.symlink_to(public_root.resolve(), target_is_directory=True)
+            except OSError:
+                pass
+        # Persist uploads on disk so avatar previews survive save/re-edit.
+        set_upload_storage(FilesystemUploadStorage(base_url="/storage"))
