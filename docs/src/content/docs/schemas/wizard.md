@@ -13,7 +13,28 @@ Reach for it on onboarding, multi-page creates, and any form that is too long fo
 
 ## Basic wizard
 
-Steps as dicts (`label` + `schema`) or as `(label, components)` tuples. Wizards are **linear by default**: Continue validates the current pane (HTML5 constraints) before unlocking the next step, and nav buttons for future steps stay locked until reached.
+Prefer a `WizardStep` for each pane. The step owns its label, description, icons, and schema:
+
+```python title="app/orbit/resources/user_resource.py"
+from almasix.orbit.forms import TextInput
+from almasix.orbit.schemas import Wizard, WizardStep
+
+Wizard.make("onboard").steps(
+    WizardStep.make("account")
+        .label("Account")
+        .description("We will send a confirmation to this address.")
+        .icon("heroicon-o-envelope")
+        .schema([TextInput.make("email").email().required()]),
+    WizardStep.make("profile")
+        .label("Profile")
+        .completed_icon("heroicon-o-check")
+        .schema([TextInput.make("name").required()]),
+)
+```
+
+`.description(...)` is the sentence under the step title. `.icon(...)` replaces the step number in the stepper. `.completed_icon(...)` replaces the check mark after the step has been passed. `.extra_attributes({...})` adds classes and data attributes on the step button.
+
+Dicts (`label` + `schema`) and `(label, components)` tuples still work when a step needs no extra chrome. Wizards are **linear by default**: Continue validates the current pane (HTML5 constraints) before unlocking the next step, and nav buttons for future steps stay locked until reached.
 
 ```python title="app/orbit/resources/user_resource.py"
 from almasix.orbit.forms import TextInput, Textarea
@@ -104,7 +125,10 @@ Wizard.make("onboard")
 
 | Method | Role |
 |--------|------|
-| `.steps(...)` | Dicts (`label` / `id`, `schema` / `components`, optional `description`) or `(label, components)` tuples |
+| `.steps(...)` | `WizardStep` components, dicts, or `(label, components)` tuples |
+| `WizardStep.description` | Sentence under the step title |
+| `WizardStep.icon` | Icon in place of the step number |
+| `WizardStep.completed_icon` | Icon in place of the check mark once the step is passed |
 | `.start_step(index)` | Zero-based first pane |
 | `.linear()` / `.non_linear()` | Lock ahead steps vs free nav jump |
 | `.vertical()` | Side-rail stepper instead of top row |

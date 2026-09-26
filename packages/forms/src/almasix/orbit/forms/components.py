@@ -2597,11 +2597,52 @@ RICH_EDITOR_TOOLS: dict[str, str] = {
 class RichEditor(Textarea):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
-        self._toolbar_buttons: list[str] = ["bold", "italic", "link"]
+        self._editor_mode: str = "simple"
+        self._toolbar_buttons: list[str] = [
+            "bold",
+            "italic",
+            "strike",
+            "code",
+            "h2",
+            "h3",
+            "bulletList",
+            "orderedList",
+            "blockquote",
+            "link",
+            "undo",
+            "redo",
+        ]
         self._placeholder: str | None = None
         self._merge_tags: list[str] = []
         self._custom_tools: dict[str, str] = {}
         self._min_height: str | None = None
+
+    def mode(self, value: str) -> Self:
+        """Editor chrome: ``simple`` (toolbar), ``notion`` (slash commands), or ``document`` (page)."""
+        token = str(value or "").strip().lower()
+        if token == "document":
+            self._editor_mode = "document"
+        elif token == "notion":
+            self._editor_mode = "notion"
+        else:
+            self._editor_mode = "simple"
+        return self
+
+    def simple(self) -> Self:
+        return self.mode("simple")
+
+    def notion(self) -> Self:
+        return self.mode("notion")
+
+    def document(self) -> Self:
+        return self.mode("document")
+
+    def docx(self) -> Self:
+        """Page chrome, same as :meth:`document`."""
+        return self.document()
+
+    def toolbar(self, buttons: Sequence[str]) -> Self:
+        return self.toolbar_buttons(buttons)
 
     def toolbar_buttons(self, buttons: Sequence[str]) -> Self:
         self._toolbar_buttons = list(buttons)
@@ -2650,35 +2691,28 @@ class RichEditor(Textarea):
         label = e(self.get_label(**ctx))
         val = "" if state is None else str(state)
         is_disabled = self.is_disabled(**ctx) or self._readonly
-        disabled = " disabled" if is_disabled else ""
-        disabled_attr = ' data-editor-disabled="true"' if is_disabled else ""
-        live = " wire:model.live" if self._live else " wire:model"
-        toolbar = ",".join(self._toolbar_buttons)
-        toolbar_spans = "".join(
-            f'<button type="button" class="or-editor-tool" data-tool="{e(b)}" '
-            f'aria-label="{e(self.tool_label(b))}" title="{e(self.tool_label(b))}">'
-            f"{e(self.tool_label(b))}</button>"
-            for b in self._toolbar_buttons
-        )
-        for tag in self._merge_tags:
-            toolbar_spans += (
-                f'<button type="button" class="or-editor-tool or-editor-merge-tag" '
-                f'data-tool="mergeTag:{e(tag)}" title="Insert {e(tag)}">{{{{ {e(tag)} }}}}</button>'
-            )
+        path = f"data.{name}" if name and not str(name).startswith("data.") else name
+        toolbar_attr = e(json.dumps(self._toolbar_buttons))
         placeholder_attr = (
-            f' data-placeholder="{e(self._placeholder)}"' if self._placeholder else ""
+            f' data-rich-placeholder="{e(self._placeholder)}"' if self._placeholder else ""
+        )
+        merge_attr = (
+            f' data-rich-merge-tags="{e(json.dumps(self._merge_tags))}"' if self._merge_tags else ""
         )
         height = f' style="min-height: {e(self._min_height)}"' if self._min_height else ""
         helper = self._helper_html(**ctx)
         return (
             f'<div class="or-field or-field-RichEditor" data-field="{name}">'
             f'<label class="or-label" for="or-{name}">{label}</label>'
-            f'<div class="or-editor-toolbar" data-toolbar="{e(toolbar)}">{toolbar_spans}</div>'
-            f'<div class="or-editor or-editor-rich" id="or-{name}-editor" data-tiptap '
-            f'data-toolbar="{e(toolbar)}" data-input="or-{name}"'
-            f"{placeholder_attr}{disabled_attr}{height}{disabled}></div>"
+            f'<div class="or-rich-editor" id="or-{name}-editor" x-data="orbitRichEditor" '
+            f'wire:ignore conduit:ignore data-rich-mode="{e(self._editor_mode)}" '
+            f'data-rich-toolbar="{toolbar_attr}" data-rich-path="{e(path)}" '
+            f'data-rich-disabled="{"true" if is_disabled else "false"}"'
+            f"{placeholder_attr}{merge_attr}{height}>"
+            f'<div class="or-rich-editor__host" x-ref="host"></div>'
             f'<input type="hidden" class="or-editor-input" id="or-{name}" name="{name}" '
-            f'value="{e(val)}"{live}="{name}" data-tiptap-input />{helper}</div>'
+            f'value="{e(val)}" data-rich-input />'
+            f"</div>{helper}</div>"
         )
 
 
@@ -3256,6 +3290,7 @@ class MorphToSelect(Select):
         self._types: list[Any] = []
         self._type_field: str = "type"
         self._id_field: str = "id"
+        self._title_attribute: str = "name"
         self._options_using: Callable[..., Mapping[Any, Any]] | None = None
 
     def types(self, types: Sequence[Any]) -> Self:
@@ -3269,6 +3304,11 @@ class MorphToSelect(Select):
 
     def id_attribute(self, name: str) -> Self:
         self._id_field = name
+        return self
+
+    def title_attribute(self, name: str) -> Self:
+        """Column used when a view shows the related record (default ``name``)."""
+        self._title_attribute = name
         return self
 
     def get_types(self) -> list[Any]:

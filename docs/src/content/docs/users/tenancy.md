@@ -165,7 +165,7 @@ Tenancy()
     .menu_items([{"label": "Invite members", "url": "/admin/invite"}])
 ```
 
-Live list hosts wire `setTenant(slug)` so choosing an option updates the current tenant and re-scopes list data. A hidden `<select>` mirrors the choice for accessibility and Conduit state (`wire:model.live="tenant"`).
+The switcher sits in the topbar, outside the page itself. Choosing a team still calls `setTenant(slug)` on the current page, updates the current tenant, and re-scopes a list that was already loaded. A hidden `<select>` mirrors the choice (`wire:model.live="tenant"`).
 
 ## Scope queries and associate creates
 

@@ -209,6 +209,7 @@ def test_image_entry_circular_stacked() -> None:
         .render(record={"photos": ["/a.png", "/b.png", "/c.png"]})
     )
     assert "or-avatar-stack" in stacked and "+1" in stacked
+    assert "/c.png" in stacked
     defaulted = ImageEntry.make("photo").default_image_url("/fallback.png").render(record={})
     assert "/fallback.png" in defaulted
 

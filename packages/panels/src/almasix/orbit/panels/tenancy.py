@@ -382,6 +382,7 @@ class Tenancy:
             t_avatar = _avatar_html(t)
             options_html.append(
                 f'<button type="button" class="or-tenant-option{active}" '
+                f'data-tenant="{e(t.slug)}" '
                 f'wire:click="setTenant(\'{e(t.slug)}\')" '
                 f'@click="open = false">'
                 f"{t_avatar}<span>{e(t.name)}</span></button>"

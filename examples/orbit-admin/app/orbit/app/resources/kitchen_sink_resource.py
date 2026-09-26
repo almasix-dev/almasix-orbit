@@ -38,8 +38,10 @@ from almasix.orbit.schemas import (
     Group,
     Section,
     Split,
+    Tab,
     Tabs,
     Wizard,
+    WizardStep,
 )
 from almasix.orbit.tables import TextColumn, Table
 
@@ -70,24 +72,30 @@ class KitchenSinkResource(Resource):
     navigation_group = "Demos"
     slug = "kitchen-sink"
     record_title_attribute = "name"
+    table_content_max_width = "screen-2xl"
+    form_content_max_width = "screen-lg"
+    infolist_content_max_width = "screen-lg"
 
     @classmethod
     def form(cls, form: Form) -> Form:
         return form.schema(
             [
                 Callout.make()
-                .info()
+                .success()
                 .label("Kitchen sink")
                 .description(
                     "Every field family on one form, saved to the kitchen_sinks table. "
                     "Manager and Owner load from users and teams."
                 ),
                 Wizard.make("onboard")
-                .skippable()
-                .vertical()
+                .skippable(False)
+                .vertical(False)
                 .steps(
-                    (
-                        "Profile",
+                    WizardStep.make("profile")
+                    .label("Profile")
+                    .description("Name, email, and role.")
+                    .icon("heroicon-o-user-group")
+                    .schema(
                         [
                             Section.make("basics")
                             .heading("Basics")
@@ -108,15 +116,18 @@ class KitchenSinkResource(Resource):
                                     Textarea.make("bio").rows(3).label("Bio"),
                                 ]
                             ),
-                        ],
+                        ]
                     ),
-                    (
-                        "Preferences",
+                    WizardStep.make("preferences")
+                    .label("Preferences")
+                    .icon("heroicon-o-cog-6-tooth")
+                    .schema(
                         [
                             Tabs.make("prefs")
                             .tabs(
-                                (
-                                    "Plan",
+                                Tab.make("plan")
+                                .label("Plan")
+                                .schema(
                                     [
                                         Radio.make("plan")
                                         .options({"free": "Free", "pro": "Pro"})
@@ -125,13 +136,14 @@ class KitchenSinkResource(Resource):
                                         .label("Plan"),
                                         MoneyInput.make("amount").currency("USD").label("Budget"),
                                         ColorPicker.make("color").label("Accent"),
-                                    ],
+                                    ]
                                 ),
-                                {
-                                    "label": "Extras",
-                                    "icon": "heroicon-o-sparkles",
-                                    "badge": 2,
-                                    "schema": [
+                                Tab.make("extras")
+                                .label("Extras")
+                                .icon("heroicon-o-rectangle-stack")
+                                .badge(2)
+                                .schema(
+                                    [
                                         CheckboxList.make("features")
                                         .options({"api": "API", "sso": "SSO"})
                                         .bulk_toggleable()
@@ -143,13 +155,16 @@ class KitchenSinkResource(Resource):
                                         ToggleButtons.make("priority")
                                         .options({"low": "Low", "high": "High"})
                                         .label("Priority"),
-                                    ],
-                                },
+                                    ]
+                                ),
                             ),
-                        ],
+                        ]
                     ),
-                    (
-                        "Content",
+                    WizardStep.make("content")
+                    .label("Content")
+                    .icon("heroicon-o-document-text")
+                    .completed_icon("heroicon-o-check")
+                    .schema(
                         [
                             Group.make()
                             .columns(2)
@@ -161,7 +176,7 @@ class KitchenSinkResource(Resource):
                                     DateTimePicker.make("reviewed_at")
                                     .label("Reviewed at")
                                     .seconds()
-                                    .hours12(),
+                                    .hours24(),
                                     TimePicker.make("opens_at")
                                     .label("Opens at")
                                     .hours12()
@@ -173,7 +188,7 @@ class KitchenSinkResource(Resource):
                                     .label("Native date")
                                     .native(True),
                                     FileUpload.make("avatar")
-                                    .avatar()
+                                    .image()
                                     .disk("public")
                                     .directory("kitchen-avatars")
                                     .image_editor()
@@ -182,10 +197,21 @@ class KitchenSinkResource(Resource):
                                     MorphToSelect.make("owner")
                                     .label("Owner (MorphTo)")
                                     .searchable()
+                                    .title_attribute("name")
                                     .types(
                                         [
-                                            {"type": "user", "label": "User"},
-                                            {"type": "team", "label": "Team"},
+                                            {
+                                                "type": "user",
+                                                "label": "User",
+                                                "model": User,
+                                                "title_attribute": "name",
+                                            },
+                                            {
+                                                "type": "team",
+                                                "label": "Team",
+                                                "model": Team,
+                                                "title_attribute": "name",
+                                            },
                                         ]
                                     )
                                     .options_using(_owner_options),

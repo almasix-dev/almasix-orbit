@@ -23,7 +23,7 @@ ImageEntry.make("photo").label("Cover").width(96).height(96).alt("Cover")
 
 ## Circular and square
 
-`.circular()` rounds the image; `.square()` forces a square crop (clears circular).
+`.circular()` rounds the image; `.square()` forces a square crop (clears circular). Clicking an image opens it full size. `.lightbox(False)` leaves the picture static. `.gallery()` shows every URL in a list instead of only the first; clicking one opens a scrollable view of the whole list.
 
 ```python title="app/orbit/resources/post_resource.py"
 ImageEntry.make("photo").label("Avatar").circular().size(56).alt("Avatar")
@@ -44,7 +44,7 @@ ImageEntry.make("photo").label("Avatar").circular().size(56).alt("Avatar")
 
 ## Stacked images
 
-When state is a list of URLs, `.stacked()` overlaps them. `.limit(n)` caps how many are shown and renders `+N` for the overflow.
+When state is a list of URLs, `.stacked()` overlaps them. `.limit(n)` caps how many are shown and renders `+N` for the overflow. Clicking the stack opens a scrollable lightbox of every photo, including the ones hidden behind `+N`.
 
 ```python title="app/orbit/resources/post_resource.py"
 ImageEntry.make("photos")
@@ -76,7 +76,9 @@ ImageEntry.make("photo")
 |--------|-------|
 | `.circular` / `.square` | Shape |
 | `.size` / `.image_size` / `.width` / `.height` | Dimensions |
-| `.stacked` / `.limit` / `.overlap` / `.ring` | Stack layout |
+| `.stacked` / `.limit` / `.overlap` / `.ring` | Stack layout; click opens every photo |
+| `.lightbox` | Full-size view (on by default) |
+| `.gallery` | Show every URL, not only the first |
 | `.default_image_url` | Fallback URL when empty |
 | `.alt` / `.extra_img_attributes` | Accessibility + img attrs |
 | `.placeholder` | Text when empty (no default image) |

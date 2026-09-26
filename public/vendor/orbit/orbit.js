@@ -21,6 +21,42 @@
     );
   };
 
+  if (!window.__orbitTenantSwitch) {
+    window.__orbitTenantSwitch = true;
+    document.addEventListener("click", (event) => {
+      const option = event.target?.closest?.(".or-tenant-option");
+      if (!(option instanceof HTMLElement)) return;
+      // Inside a page host, Conduit already calls setTenant.
+      if (option.closest("[conduit\\:id], [wire\\:id], [data-conduit-id]")) return;
+      const slug = option.getAttribute("data-tenant") || "";
+      if (!slug) return;
+      const root =
+        document.querySelector(
+          "main [conduit\\:id], main [wire\\:id], main [data-conduit-id]"
+        ) ||
+        document.querySelector("[conduit\\:id], [wire\\:id], [data-conduit-id]");
+      const wire = root?.__wire || window.orbitWire?.(root);
+      try {
+        if (wire && typeof wire.setTenant === "function") wire.setTenant(slug);
+      } catch (_) {
+        /* the list host re-scopes when the call lands */
+      }
+      document.querySelectorAll(".or-tenant-option").forEach((btn) => {
+        btn.classList.toggle("is-active", btn === option);
+      });
+      const name = option.querySelector("span:not(.or-tenant-avatar)")?.textContent?.trim();
+      if (name) {
+        document.querySelectorAll(".or-tenant-name").forEach((el) => {
+          el.textContent = name;
+        });
+      }
+      const marker = document.querySelector("[data-orbit-tenant]");
+      if (marker) marker.setAttribute("data-orbit-tenant", slug);
+      const select = document.getElementById("or-tenant");
+      if (select instanceof HTMLSelectElement) select.value = slug;
+    });
+  }
+
   const register = () => {
     if (typeof window === "undefined" || !window.Alpine) {
       return;
@@ -2629,6 +2665,305 @@
       },
     }));
 
+    const parseAspectRatios = (raw) =>
+      String(raw || "")
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map((token) => {
+          const [width, height] = token.split(":").map(Number);
+          if (!(width > 0) || !(height > 0)) return null;
+          return { label: token, value: width / height };
+        })
+        .filter(Boolean);
+
+    const isImageFile = (item) => {
+      const type = item?.file?.type || item?.fileType || "";
+      if (String(type).startsWith("image/")) return true;
+      const name = item?.filename || item?.file?.name || "";
+      return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(String(name));
+    };
+
+    const ensureCropper = () => {
+      if (window.Cropper) return Promise.resolve();
+      if (!document.querySelector("link[data-orbit-cropper]")) {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = "/vendor/orbit/cropper.min.css";
+        link.setAttribute("data-orbit-cropper", "1");
+        document.head.appendChild(link);
+      }
+      if (window.__orbitCropperLoading) return window.__orbitCropperLoading;
+      window.__orbitCropperLoading = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "/vendor/orbit/cropper.min.js";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Could not load the image editor."));
+        document.head.appendChild(script);
+      });
+      return window.__orbitCropperLoading;
+    };
+
+    const blobForItem = async (root, item) => {
+      const current = item?.file;
+      if (current instanceof Blob && current.size > 0) return current;
+      const poster = typeof item?.getMetadata === "function" ? item.getMetadata("poster") : "";
+      const source = typeof item?.source === "string" ? item.source : item?.serverId;
+      let url = poster || root._orbitUploadUrls?.[source] || "";
+      if (!url && typeof source === "string" && source) {
+        url =
+          source.startsWith("/") || /^https?:/i.test(source) || source.startsWith("data:")
+            ? source
+            : `/storage/${String(source).replace(/^\/+/, "")}`;
+      }
+      if (!url) return current instanceof Blob ? current : null;
+      try {
+        const response = await fetch(url, { credentials: "same-origin" });
+        if (!response.ok) return current instanceof Blob ? current : null;
+        const blob = await response.blob();
+        const name = item?.filename || current?.name || "image.jpg";
+        return new File([blob], name, { type: blob.type || item?.fileType || "image/jpeg" });
+      } catch (_) {
+        return current instanceof Blob ? current : null;
+      }
+    };
+
+    const cropperDialog = () => {
+      let dialog = document.getElementById("or-cropper");
+      if (dialog) return dialog;
+      dialog = document.createElement("dialog");
+      dialog.id = "or-cropper";
+      dialog.className = "or-cropper";
+      dialog.innerHTML =
+        '<form method="dialog" class="or-cropper-form">' +
+        '<div class="or-cropper-head"><h2 class="or-cropper-title">Edit image</h2>' +
+        '<button type="button" class="or-cropper-close" data-crop-cancel aria-label="Close">&times;</button></div>' +
+        '<div class="or-cropper-stage"><img alt="" data-crop-image /></div>' +
+        '<div class="or-cropper-ratios" data-crop-ratios></div>' +
+        '<div class="or-cropper-tools">' +
+        '<button type="button" class="or-cropper-tool" data-crop-zoom="-0.1" aria-label="Zoom out">−</button>' +
+        '<button type="button" class="or-cropper-tool" data-crop-zoom="0.1" aria-label="Zoom in">+</button>' +
+        '<button type="button" class="or-cropper-tool" data-crop-rotate="-90" aria-label="Rotate left">↺</button>' +
+        '<button type="button" class="or-cropper-tool" data-crop-rotate="90" aria-label="Rotate right">↻</button>' +
+        '<button type="button" class="or-cropper-tool" data-crop-flip="x">Flip H</button>' +
+        '<button type="button" class="or-cropper-tool" data-crop-flip="y">Flip V</button>' +
+        '<button type="button" class="or-cropper-tool is-active" data-crop-drag="crop">Crop</button>' +
+        '<button type="button" class="or-cropper-tool" data-crop-drag="move">Move</button>' +
+        '<button type="button" class="or-cropper-tool" data-crop-reset>Reset</button>' +
+        "</div>" +
+        '<div class="or-cropper-metrics">' +
+        '<label>X <input type="number" data-crop-field="x" step="1" /></label>' +
+        '<label>Y <input type="number" data-crop-field="y" step="1" /></label>' +
+        '<label>W <input type="number" data-crop-field="width" step="1" min="1" /></label>' +
+        '<label>H <input type="number" data-crop-field="height" step="1" min="1" /></label>' +
+        '<label>° <input type="number" data-crop-field="rotate" step="1" /></label>' +
+        "</div>" +
+        '<div class="or-cropper-actions">' +
+        '<span class="or-cropper-spacer"></span>' +
+        '<button type="button" class="or-btn or-btn-gray or-btn-sm" data-crop-cancel>Cancel</button>' +
+        '<button type="button" class="or-btn or-btn-primary or-btn-sm" data-crop-save>Save</button>' +
+        "</div></form>";
+      const finish = (save) => {
+        const session = dialog._session;
+        const cropper = dialog._cropper;
+        dialog._cropper = null;
+        dialog._session = null;
+        const file = session?.file || session?.item?.file;
+        const mime =
+          file?.type === "image/png" || file?.type === "image/webp" ? file.type : "image/jpeg";
+        const canvas = save
+          ? cropper?.getCroppedCanvas?.({
+              imageSmoothingEnabled: true,
+              imageSmoothingQuality: "high",
+              fillColor: mime === "image/jpeg" ? "#fff" : "transparent",
+            })
+          : null;
+        if (cropper) cropper.destroy();
+        if (session?.url) URL.revokeObjectURL(session.url);
+        if (dialog.open) dialog.close();
+        if (!session) return;
+        if (!save || !canvas) {
+          if (session.fresh) session.pond.removeFile?.(session.item.id);
+          return;
+        }
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return;
+            const name = file?.name || "image.jpg";
+            session.root._orbitSkipCrop = true;
+            try {
+              session.pond.removeFile(session.item.id);
+            } catch (_) {
+              /* already gone */
+            }
+            session.pond
+              .addFile(new File([blob], name, { type: blob.type || mime }))
+              .then((added) => session.pond.processFile?.(added?.id))
+              .finally(() => {
+                session.root._orbitSkipCrop = false;
+              });
+          },
+          mime,
+          0.92,
+        );
+      };
+      const applyMetrics = () => {
+        const cropper = dialog._cropper;
+        if (!cropper) return;
+        const read = (name) => Number(dialog.querySelector(`[data-crop-field="${name}"]`)?.value);
+        const data = {
+          x: read("x"),
+          y: read("y"),
+          width: read("width"),
+          height: read("height"),
+          rotate: read("rotate"),
+        };
+        if (Object.values(data).some((value) => Number.isNaN(value))) return;
+        cropper.setData(data);
+      };
+      dialog.addEventListener("change", (event) => {
+        if (event.target?.matches?.("[data-crop-field]")) applyMetrics();
+      });
+      dialog.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        const cropper = dialog._cropper;
+        if (target.closest("[data-crop-cancel]")) finish(false);
+        else if (target.closest("[data-crop-save]")) finish(true);
+        const rotate = target.closest("[data-crop-rotate]");
+        if (rotate && cropper) cropper.rotate(Number(rotate.getAttribute("data-crop-rotate")) || 90);
+        const zoom = target.closest("[data-crop-zoom]");
+        if (zoom && cropper) cropper.zoom(Number(zoom.getAttribute("data-crop-zoom")) || 0.1);
+        const flip = target.closest("[data-crop-flip]");
+        if (flip && cropper) {
+          const axis = flip.getAttribute("data-crop-flip");
+          if (axis === "y") {
+            dialog._scaleY = -(dialog._scaleY || 1);
+            cropper.scaleY(dialog._scaleY);
+          } else {
+            dialog._scaleX = -(dialog._scaleX || 1);
+            cropper.scaleX(dialog._scaleX);
+          }
+        }
+        const drag = target.closest("[data-crop-drag]");
+        if (drag && cropper) {
+          const mode = drag.getAttribute("data-crop-drag") || "crop";
+          cropper.setDragMode(mode);
+          dialog.querySelectorAll("[data-crop-drag]").forEach((button) => {
+            button.classList.toggle("is-active", button === drag);
+          });
+        }
+        if (target.closest("[data-crop-reset]") && cropper) {
+          dialog._scaleX = 1;
+          dialog._scaleY = 1;
+          cropper.reset();
+        }
+        const ratio = target.closest("[data-crop-ratio]");
+        if (ratio && cropper) {
+          const raw = ratio.getAttribute("data-crop-ratio");
+          cropper.setAspectRatio(raw === "free" ? NaN : Number(raw));
+          dialog.querySelectorAll("[data-crop-ratio]").forEach((button) => {
+            button.classList.toggle("is-active", button === ratio);
+          });
+        }
+      });
+      dialog.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        finish(false);
+      });
+      document.body.appendChild(dialog);
+      return dialog;
+    };
+
+    const openImageCropper = ({ root, pond, item, ratios, avatar, fresh }) => {
+      const live = pond?.getFile?.(item?.id) || item;
+      blobForItem(root, live)
+        .then((file) => {
+          if (!(file instanceof Blob)) throw new Error("missing image");
+          return ensureCropper().then(() => file);
+        })
+        .then((file) => {
+          if (!window.Cropper) throw new Error("missing cropper");
+          const dialog = cropperDialog();
+          if (dialog._cropper) {
+            dialog._cropper.destroy();
+            dialog._cropper = null;
+          }
+          if (dialog._session?.url) URL.revokeObjectURL(dialog._session.url);
+          const url = URL.createObjectURL(file);
+          dialog._session = { root, pond, item: live, file, fresh, url };
+          dialog._scaleX = 1;
+          dialog._scaleY = 1;
+          dialog.classList.toggle("is-circle", Boolean(avatar));
+          const ratioHost = dialog.querySelector("[data-crop-ratios]");
+          const choices = [
+            ...(ratios.length ? ratios : avatar ? [{ label: "1:1", value: 1 }] : []),
+            { label: "Free", value: "free" },
+          ];
+          ratioHost.innerHTML = choices
+            .map(
+              (choice, index) =>
+                `<button type="button" class="or-cropper-ratio${index === 0 ? " is-active" : ""}" data-crop-ratio="${choice.value}">${choice.label}</button>`,
+            )
+            .join("");
+          const image = dialog.querySelector("[data-crop-image]");
+          if (dialog.open) dialog.close();
+          image.onload = () => {
+            image.onload = null;
+            if (dialog._cropper) dialog._cropper.destroy();
+            const first = choices[0];
+            dialog._cropper = new window.Cropper(image, {
+              aspectRatio: first && first.value !== "free" ? first.value : NaN,
+              viewMode: 1,
+              autoCropArea: 1,
+              responsive: true,
+              background: false,
+              guides: true,
+              crop(event) {
+                const detail = event.detail || {};
+                ["x", "y", "width", "height", "rotate"].forEach((name) => {
+                  const input = dialog.querySelector(`[data-crop-field="${name}"]`);
+                  if (!input || document.activeElement === input) return;
+                  const value = detail[name];
+                  if (typeof value === "number" && !Number.isNaN(value)) {
+                    input.value = String(Math.round(value));
+                  }
+                });
+              },
+            });
+          };
+          image.src = url;
+          dialog.showModal();
+        })
+        .catch((error) => {
+          console.error("[orbit] image editor", error);
+          if (fresh) pond.processFile?.(live?.id);
+        });
+    };
+
+    const attachImageEditButton = (root, pond, item, ratios, avatar) => {
+      const el = root.querySelector(`#filepond--item-${CSS.escape(String(item.id))}`);
+      if (!el || el.querySelector(".or-file-edit")) return;
+      const host = el.querySelector(".filepond--file") || el;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "or-file-edit";
+      button.setAttribute("data-file-id", String(item.id));
+      button.setAttribute("aria-label", "Edit image");
+      button.innerHTML =
+        '<svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M13.586 3.586a2 2 0 112.828 2.828l-8.5 8.5a1 1 0 01-.414.25l-3 1a1 1 0 01-1.25-1.25l1-3a1 1 0 01.25-.414l8.5-8.5z"/></svg>';
+      button.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+      });
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const live = pond.getFile?.(item.id) || item;
+        openImageCropper({ root, pond, item: live, ratios, avatar, fresh: false });
+      });
+      host.appendChild(button);
+    };
+
     const bootFileUploads = () => {
       const FilePond = window.FilePond;
       if (!FilePond) return;
@@ -2706,10 +3041,6 @@
         const imageEditor = root.getAttribute("data-image-editor") === "true";
         const previewHeight = root.getAttribute("data-preview-height");
         const aspectRaw = root.getAttribute("data-aspect-ratios") || "";
-        const aspect = aspectRaw
-          .split(",")
-          .map((part) => part.trim())
-          .filter(Boolean)[0];
 
         const pushState = (pond) => {
           const wire = window.orbitWire?.(root);
@@ -2908,18 +3239,9 @@
         };
 
         if (imageEditor) {
-          options.allowImageCrop = true;
-          options.allowImageResize = true;
-          options.allowImageTransform = true;
-          if (aspect) {
-            // "16:9" → 16/9
-            const parts = aspect.split(":").map(Number);
-            if (parts.length === 2 && parts[0] > 0 && parts[1] > 0) {
-              options.imageCropAspectRatio = parts[0] / parts[1];
-            }
-          } else if (avatar) {
-            options.imageCropAspectRatio = 1;
-          }
+          // Crop happens in the dialog, not as a silent transform on upload.
+          options.allowImagePreview = true;
+          options.instantUpload = false;
         }
 
         try {
@@ -2929,6 +3251,35 @@
           pond.on("processfile", sync);
           pond.on("removefile", sync);
           pond.on("reorderfiles", sync);
+          if (imageEditor) {
+            const ratios = parseAspectRatios(aspectRaw);
+            const inputOrigin = window.FilePond?.FileOrigin?.INPUT ?? 1;
+            const paintEditButtons = () => {
+              pond.getFiles().forEach((item) => {
+                if (isImageFile(item)) attachImageEditButton(root, pond, item, ratios, avatar);
+              });
+            };
+            root._orbitEditObserver = new MutationObserver(paintEditButtons);
+            root._orbitEditObserver.observe(root, { childList: true, subtree: true });
+            pond.on("addfile", (error, item) => {
+              if (error || !item) return;
+              // Captured now: the cropped replacement is added while this flag
+              // is set, and the flag clears before the timeout below runs.
+              const skipEditor = Boolean(root._orbitSkipCrop);
+              window.setTimeout(() => {
+                if (!isImageFile(item)) {
+                  if (!skipEditor && item.origin === inputOrigin) {
+                    pond.processFile?.(item.id);
+                  }
+                  return;
+                }
+                attachImageEditButton(root, pond, item, ratios, avatar);
+                if (!skipEditor && item.origin === inputOrigin) {
+                  openImageCropper({ root, pond, item, ratios, avatar, fresh: true });
+                }
+              }, 40);
+            });
+          }
           // Do not sync on every updatefiles — that fires before upload completes
           // and can push null into form state while FilePond is still processing.
         } catch (err) {
@@ -2939,6 +3290,55 @@
 
       document.querySelectorAll("[data-upload-field]").forEach(initField);
     };
+    if (!window.__orbitLightbox) {
+      window.__orbitLightbox = true;
+      document.addEventListener("click", (event) => {
+        const trigger = event.target?.closest?.("[data-lightbox]");
+        if (!trigger) return;
+        event.preventDefault();
+        const host = trigger.closest("[data-lightbox-gallery]") || trigger;
+        const raw = host.getAttribute("data-lightbox-gallery") || "";
+        let urls = [];
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) urls = parsed.filter(Boolean);
+          } catch (_) {
+            urls = [];
+          }
+        }
+        const focus = trigger.getAttribute("data-lightbox") || "";
+        if (!urls.length && focus) urls = [focus];
+        if (!urls.length) return;
+        const start = focus ? Math.max(0, urls.indexOf(focus)) : 0;
+        let dialog = document.getElementById("or-lightbox");
+        if (!dialog) {
+          dialog = document.createElement("dialog");
+          dialog.id = "or-lightbox";
+          dialog.className = "or-lightbox";
+          dialog.innerHTML =
+            '<button type="button" class="or-lightbox-close" data-lightbox-close aria-label="Close">&times;</button><div class="or-lightbox-scroll"></div>';
+          dialog.addEventListener("click", (click) => {
+            const target = click.target;
+            if (target === dialog || target?.closest?.("[data-lightbox-close]")) dialog.close();
+          });
+          document.body.appendChild(dialog);
+        }
+        const scroll = dialog.querySelector(".or-lightbox-scroll");
+        if (scroll) {
+          scroll.replaceChildren();
+          urls.forEach((url) => {
+            const image = document.createElement("img");
+            image.src = url;
+            image.alt = "";
+            scroll.appendChild(image);
+          });
+        }
+        dialog.showModal();
+        const frame = scroll?.children?.[start];
+        frame?.scrollIntoView?.({ block: "nearest" });
+      });
+    }
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", bootFileUploads);
     } else {
@@ -2960,104 +3360,71 @@
       });
     }
 
-    const bootTipTap = () => {
-      const nodes = document.querySelectorAll(".or-editor-rich[data-tiptap]");
-      if (!nodes.length) return;
-
-      const initEditor = (root) => {
-        if (root.dataset.tiptapBound === "1") return;
-        const input =
-          root.querySelector("[data-tiptap-input]") ||
-          document.getElementById(root.getAttribute("data-input") || "");
-        const surface =
-          root.querySelector("[data-tiptap-surface]") ||
-          (() => {
-            const el = document.createElement("div");
-            el.className = "or-tiptap-surface";
-            el.setAttribute("contenteditable", "true");
-            el.dataset.tiptapSurface = "1";
-            root.appendChild(el);
-            return el;
-          })();
-        root.dataset.tiptapBound = "1";
-
-        const toolbar = root.parentElement?.querySelector(".or-editor-toolbar");
-        if (toolbar) {
-          toolbar.addEventListener("click", (event) => {
-            const btn = event.target instanceof Element ? event.target.closest("[data-tool]") : null;
-            if (!(btn instanceof HTMLElement)) return;
-            event.preventDefault();
-            const tool = btn.getAttribute("data-tool") || "";
-            const block = {
-              h1: "<h1>",
-              h2: "<h2>",
-              h3: "<h3>",
-              heading: "<h2>",
-              paragraph: "<p>",
-              blockquote: "<blockquote>",
-              codeBlock: "<pre>",
-            }[tool];
-            const cmd = {
-              bold: "bold",
-              italic: "italic",
-              underline: "underline",
-              strike: "strikeThrough",
-              link: "createLink",
-              unlink: "unlink",
-              bulletList: "insertUnorderedList",
-              orderedList: "insertOrderedList",
-              alignStart: "justifyLeft",
-              alignCenter: "justifyCenter",
-              alignEnd: "justifyRight",
-              undo: "undo",
-              redo: "redo",
-              clearFormat: "removeFormat",
-              horizontalRule: "insertHorizontalRule",
-            }[tool];
-            surface.focus();
-            if (block) {
-              document.execCommand("formatBlock", false, block);
-            } else if (cmd === "createLink") {
-              const url = window.prompt("URL");
-              if (url) document.execCommand(cmd, false, url);
-            } else if (tool === "image") {
-              const src = window.prompt("Image URL");
-              if (src) document.execCommand("insertImage", false, src);
-            } else if (tool.startsWith("mergeTag:")) {
-              document.execCommand("insertText", false, `{{ ${tool.slice(9)} }}`);
-            } else if (cmd) {
-              document.execCommand(cmd, false);
-            }
-            sync();
-          });
+    window.Alpine.data("orbitRichEditor", () => ({
+      html: "",
+      mount: null,
+      async init() {
+        const el = this.$el;
+        const input = el.querySelector("[data-rich-input]");
+        const host = this.$refs.host;
+        if (!host) return;
+        this.html = input instanceof HTMLInputElement ? input.value : "";
+        const mode = el.getAttribute("data-rich-mode") || "simple";
+        const disabled = el.getAttribute("data-rich-disabled") === "true";
+        const placeholder = el.getAttribute("data-rich-placeholder") || "";
+        const path = el.getAttribute("data-rich-path") || "";
+        let toolbar;
+        try {
+          toolbar = JSON.parse(el.getAttribute("data-rich-toolbar") || "[]");
+        } catch (_) {
+          toolbar = undefined;
         }
-
-        const sync = () => {
-          if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
-            input.value = surface.innerHTML;
-            input.dispatchEvent(new Event("input", { bubbles: true }));
-          }
+        const onChange = (html) => {
+          this.html = html || "";
+          if (input instanceof HTMLInputElement) input.value = this.html;
+          syncWirePath(el, path, this.html);
         };
-        surface.addEventListener("input", sync);
-        if (input && !surface.innerHTML) {
-          surface.innerHTML = input.value || "";
+        const shared = {
+          initialHtml: this.html,
+          editable: !disabled,
+          placeholder,
+          onChange,
+        };
+        try {
+          if (mode === "document") {
+            const mod = await import("/vendor/orbit/rich-editor/document.js");
+            this.mount = mod.mountDocumentEditor(host, {
+              ...shared,
+              brandLabel: "Orbit",
+              documentTitle: path || "Document",
+              placeholder: placeholder || "Start typing your document…",
+            });
+            return;
+          }
+          if (mode === "notion") {
+            const mod = await import("/vendor/orbit/rich-editor/notion.js");
+            this.mount = mod.mountNotionEditor(host, {
+              ...shared,
+              placeholder: placeholder || "Type '/' for commands…",
+            });
+            return;
+          }
+          const mod = await import("/vendor/orbit/rich-editor/simple.js");
+          this.mount = mod.mountSimpleEditor(host, {
+            ...shared,
+            toolbar: Array.isArray(toolbar) ? toolbar : undefined,
+            placeholder: placeholder || "Start writing…",
+          });
+        } catch (err) {
+          console.error(err);
+          host.textContent = "Rich editor failed to load.";
         }
-        const placeholder = root.getAttribute("data-placeholder");
-        if (placeholder) {
-          surface.setAttribute("data-placeholder", placeholder);
-        }
-        if (root.getAttribute("data-editor-disabled") === "true") {
-          surface.setAttribute("contenteditable", "false");
-        }
-      };
-
-      nodes.forEach(initEditor);
-    };
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", bootTipTap);
-    } else {
-      bootTipTap();
-    }
+      },
+      destroy() {
+        this.mount?.destroy?.();
+        this.mount = null;
+      },
+    }));
   };
 
   if (typeof window !== "undefined" && window.Alpine) {

@@ -337,9 +337,9 @@ TextEntry.make("greeting").state(
 TextEntry.make("email").format_state_using(lambda state, **_: str(state or "").lower())
 ```
 
-## Empty infolist → readonly form fallback
+## Empty infolist → form layout
 
-Leave `infolist()` empty (or return the untouched builder) and Orbit still gives you a show page. `get_infolist()` notices there are no components and **projects the form schema** into read-only `TextEntry`s:
+Leave `infolist()` empty (or return the untouched builder) and Orbit still gives you a show page. `get_infolist()` notices there are no components and **builds the infolist from the form layout**: sections, grids, splits, fieldsets, tabs, and wizard steps stay in the same arrangement. A wizard that is linear on the form is opened on the view, so every step can be selected from the step list. Scalar fields become text entries. A Key-Value field becomes a two-column table, and a Repeater lists each item with the same child fields instead of a JSON blob. A relationship select and a morph select show the related record using the display field from the form (`name`, `title`, or whatever you set), instead of the raw id. Money shows the currency symbol, tags stay as chips, checkboxes and toggles become a Yes or No chip, and dates and times use a written date (`September 5, 2026`) and a 12-hour clock. Rich text is shown as formatted HTML with scripts and unsafe links removed. A color picker shows a swatch beside the color value. An avatar upload and an image upload are shown as the picture, not the stored file path. Clicking that picture opens it full size.
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.forms import Form, TextInput, Textarea
@@ -358,13 +358,7 @@ def infolist(cls, infolist: Infolist) -> Infolist:
     return infolist  # empty on purpose
 ```
 
-Under the hood:
-
-1. `get_form().readonly()` — same fields, edit chrome dialed down.
-2. Walk nested layouts / repeaters for every `Field`.
-3. Emit `TextEntry.make(name).label(field.get_label())` for each.
-
-So create/edit and view stay in sync until you’re ready to hand-craft badges, prose, and copyable slugs. Define an explicit `.schema([...])` whenever the show page should look different from the form — the fallback politely steps aside.
+Create/edit and view stay in sync until you’re ready to hand-craft badges, prose, and copyable slugs. Define an explicit `.schema([...])` whenever the show page should look different from the form — that schema is used as-is.
 
 ## Shared Entry API cheat sheet
 

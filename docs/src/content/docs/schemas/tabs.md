@@ -24,7 +24,24 @@ Tabs.make("main")
 
 ## Defining tabs
 
-`.tabs(...)` accepts either dicts or `(label, components)` tuples:
+Prefer a `Tab` for each panel. The tab owns its label, icon, badge, and schema, so each one can be styled on its own:
+
+```python title="app/orbit/schemas/tabs_components.py"
+from almasix.orbit.schemas import Tab, Tabs
+
+Tabs.make("main").tabs(
+    Tab.make("account").label("Account").icon("heroicon-o-user").schema([
+        TextInput.make("email"),
+    ]),
+    Tab.make("seo").label("SEO").badge("3").badge_color("info").schema([
+        TextInput.make("slug"),
+    ]),
+)
+```
+
+`.icon(...)` draws an icon on the tab button. `.badge(...)` adds a count (a string or a callable). `.badge_color(...)` tints it: `success`, `danger`, `warning`, or `info`. `.extra_attributes({...})` adds classes and data attributes on the button.
+
+`.tabs(...)` still accepts dicts or `(label, components)` tuples when the tab needs no extra chrome:
 
 ```python title="app/orbit/schemas/tabs_defs.py"
 Tabs.make("main").tabs(
@@ -75,7 +92,10 @@ Tabs.make("settings")
 
 | Method | Role |
 |--------|------|
-| `.tabs` | One or more tab defs (dict or `(label, schema)` tuple) |
+| `.tabs` | `Tab` components, dicts, or `(label, schema)` tuples |
+| `Tab.icon` | Icon on the tab button |
+| `Tab.badge` | Badge text or callable |
+| `Tab.badge_color` | `success`, `danger`, `warning`, or `info` |
 | `.active_tab` | Zero-based initially selected tab |
 | `.persist_tab` | Persist the active tab in the host |
 | `.schema` | Extra children outside tab defs (rare) |

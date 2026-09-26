@@ -3,7 +3,7 @@ title: Viewing records
 description: The read-only record page — infolist, record title, header actions, and relation managers.
 ---
 
-The view page at `{resource}/{id}` is the read-only face of a record: an [infolist](/infolists/overview/) of its values, header actions, and any relation managers the resource declares.
+The view page at `{resource}/{id}` is the read-only face of a record: an [infolist](/infolists/overview/) of its values, header actions, and any relation managers the resource declares. Its width defaults to `screen-lg`. Set `infolist_content_max_width` on the resource to change just this page — see [Content width](/resources/overview/#content-width).
 
 ![Orbit resource view page (light)](/examples/light/resources/view-record.png)
 

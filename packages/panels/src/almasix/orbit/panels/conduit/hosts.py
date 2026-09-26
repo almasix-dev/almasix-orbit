@@ -460,11 +460,13 @@ class OrbitPageHost(ConduitHost):
         if tenancy is None:
             return
         found = tenancy.find_by_slug(self.tenant)
-        if found is not None:
-            tenancy.current(found)
-            stamp = getattr(panel, "_stamp_tenant_paths", None)
-            if callable(stamp):
-                stamp(found)
+        if found is None:
+            return
+        tenancy.current(found)
+        stamp = getattr(panel, "_stamp_tenant_paths", None)
+        if callable(stamp):
+            stamp(found)
+        self.refresh_for_tenant()
 
     def updatedTenant(self, value: Any = None) -> None:
         self.setTenant(str(value if value is not None else self.tenant))
@@ -503,6 +505,10 @@ class OrbitPageHost(ConduitHost):
         scoped_rows = tenancy.scope_query(records)
         return list(scoped_rows) if isinstance(scoped_rows, list) else scoped_rows
 
+    def refresh_for_tenant(self) -> None:
+        """Re-filter already loaded rows after the current tenant changes."""
+        return None
+
 
 class ListRecordsHost(OrbitPageHost):
     """Index page host — table search/sort/tabs live on Conduit state."""
@@ -540,15 +546,29 @@ class ListRecordsHost(OrbitPageHost):
                 stored = getattr(resource, "records", None)
                 if isinstance(stored, list):
                     self.records = list(stored)
-        self.records = self._apply_tenant_scope(self.records, resource)
+        self._commit_scoped_records(resource)
         self._mount_list_page(resource)
         return None
 
     async def _mount_orm(self, model: type[Any], *, resource: type[Any] | None = None) -> None:
         self.records = await _orm_fetch_all(model)
         res = resource or self.get_resource()
-        self.records = self._apply_tenant_scope(self.records, res)
+        self._commit_scoped_records(res)
         self._mount_list_page(res)
+
+    def _commit_scoped_records(self, resource: type[Any]) -> None:
+        """Keep the full row set, then show only the current tenant's rows."""
+        self._unscoped_records = list(self.records)
+        self.records = self._apply_tenant_scope(self.records, resource)
+
+    def refresh_for_tenant(self) -> None:
+        source = getattr(self, "_unscoped_records", None)
+        if source is None:
+            return
+        self.records = self._apply_tenant_scope(list(source), self.get_resource())
+        self.page = 1
+        self.selected = []
+        self.select_all = False
 
     def _mount_list_page(self, resource: type[Any]) -> None:
         from almasix.orbit.panels.pages.resource_pages import ListRecords

@@ -263,11 +263,22 @@ def test_list_host_applies_scope_query() -> None:
     panel = Panel.make("admin").tenant(tenancy)
     host_cls = ListRecordsHost.bind(panel=panel, resource=_PostResource)
     host = host_cls()
+    host.setTenant("acme")
     host.mount()
     assert host.records == [{"id": 1, "title": "A", "tenant_id": 1}]
     host.setTenant("acme")
     assert panel.get_tenant().slug == "acme"  # type: ignore[union-attr]
     host.updatedTenant("acme")
+    host.setTenant("beta")
+    assert [row["id"] for row in host.records] == [1]
+    beta = Tenant(2, "Beta", slug="beta")
+    tenancy.tenants([Tenant(1, "Acme", slug="acme"), beta])
+    host.page = 3
+    host.selected = ["1"]
+    host.setTenant("beta")
+    assert [row["id"] for row in host.records] == [2]
+    assert host.page == 1
+    assert host.selected == []
 
     _PostResource.scope_to_tenant(False)
     host2 = host_cls()

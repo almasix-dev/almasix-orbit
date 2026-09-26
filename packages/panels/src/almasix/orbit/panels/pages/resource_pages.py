@@ -23,15 +23,28 @@ _FORM_SAVE_SHORTCUT = (
 
 
 def _resource_width_style(resource: type[Any], *, operation: str | None = None) -> str:
-    raw = getattr(resource, "content_max_width", None)
-    if operation in {"create", "edit", "view"}:
-        form_raw = getattr(resource, "form_content_max_width", None)
-        if form_raw:
-            raw = form_raw
-        elif not raw:
+    """Inline max-width for one resource page.
+
+    ``content_max_width`` applies to every page unless a page-specific value is set:
+    ``table_content_max_width`` (list), ``form_content_max_width`` (create and edit),
+    ``infolist_content_max_width`` (view). Create, edit, and view fall back to
+    ``screen-lg`` when nothing is set. The list page then uses the panel width.
+    """
+    shared = getattr(resource, "content_max_width", None) or None
+    if operation == "list":
+        raw = getattr(resource, "table_content_max_width", None) or shared
+        if not raw:
+            return ""
+    elif operation == "view":
+        raw = getattr(resource, "infolist_content_max_width", None) or shared
+        if not raw:
             raw = DEFAULT_FORM_CONTENT_MAX_WIDTH
-    if not raw:
-        return ""
+    else:
+        raw = getattr(resource, "form_content_max_width", None) or shared
+        if operation in {"create", "edit"} and not raw:
+            raw = DEFAULT_FORM_CONTENT_MAX_WIDTH
+        elif not raw:
+            return ""
     return f' style="max-width: {e(resolve_content_max_width(raw).css_value)}"'
 
 

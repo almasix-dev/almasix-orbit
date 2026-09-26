@@ -130,7 +130,7 @@ def test_advanced_field_renders() -> None:
     assert "orbitTagsInput" in TagsInput.make("tags").render("one, two")
     assert TagsInput.make("h").hidden().render() == ""
 
-    assert "or-editor-rich" in RichEditor.make("body").render("hi")
+    assert "or-rich-editor" in RichEditor.make("body").render("hi")
     assert "or-editor-markdown" in MarkdownEditor.make("md").render("# x")
     assert "or-editor-code" in CodeEditor.make("src").render("print(1)")
 

@@ -328,11 +328,12 @@ def test_repeater_builder_relationship_controls() -> None:
 def test_rich_editor_tiptap_attrs() -> None:
     ed = RichEditor.make("body").toolbar_buttons(["bold", "italic", "link", "strike"]).rows(8)
     html = ed.render("<p>Hi</p>")
-    assert "or-editor-rich" in html
-    assert "data-tiptap" in html
-    assert 'data-toolbar="bold,italic,link,strike"' in html
+    assert "or-rich-editor" in html
+    assert 'data-rich-mode="simple"' in html
+    assert "bold" in html and "strike" in html
     assert 'type="hidden"' in html
-    assert "data-tiptap-input" in html
+    assert "data-rich-input" in html
+    assert "orbitRichEditor" in html
     assert ed.get_toolbar_buttons() == ["bold", "italic", "link", "strike"]
 
 
