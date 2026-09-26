@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "almasix-orbit-notifications"
-version = "0.4.4"
+version = "0.5.0"
 description = "Orbit flash, database, and broadcast notifications"
 readme = "README.md"
 requires-python = ">=3.11"
