@@ -794,6 +794,7 @@ def test_final_branch_coverage() -> None:
 
     from almasix.orbit.panels.conduit.hosts import CreateRecordHost
     from almasix.orbit.panels.routing import mount_panel
+    from almasix.orbit.panels.tenancy import _active_tenants
     from almasix.routing.router import Router
 
     # is_tenant_scoped shadowed by bool → hit is_scoped_to_tenant ClassVar check
@@ -852,6 +853,14 @@ def test_final_branch_coverage() -> None:
     t2 = Tenancy().tenant_route_prefix(True)
     p2 = Panel.make("emptyid").resources([_PostResource]).tenant(t2)
     p2._stamp_tenant_paths(SimpleNamespace(slug="", id=""))
+
+    # A recycled object id must not revive another company's request tenant.
+    fresh = Tenancy().model(_Team)
+    stale = _active_tenants.set({id(fresh): Tenant(1, "A", slug="a")})
+    try:
+        assert fresh.get_current() is None
+    finally:
+        _active_tenants.reset(stale)
 
     # Sidebar empty switcher branch
     shell = (

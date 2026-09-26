@@ -15,6 +15,9 @@ _active_tenants: ContextVar[dict[int, Tenant | None] | None] = ContextVar(
     "orbit_active_tenants",
     default=None,
 )
+# Monotonic token. ``id(tenancy)`` is unsafe: a collected instance's id can be
+# reused, and the request cache would then show the wrong company.
+_request_keys = 0
 
 
 class Tenant:
@@ -78,6 +81,9 @@ class Tenancy:
     """Panel-level multi-tenancy configuration and helpers."""
 
     def __init__(self) -> None:
+        global _request_keys
+        _request_keys += 1
+        self._request_key = _request_keys
         self._tenant_model: type[Any] | None = None
         self._ownership_relationship = "tenant"
         self._slug_attribute = "slug"
@@ -143,8 +149,8 @@ class Tenancy:
     def get_current(self) -> Tenant | None:
         """Tenant for this request, otherwise the configured fallback."""
         active = _active_tenants.get()
-        if isinstance(active, dict) and id(self) in active:
-            return active[id(self)]
+        if isinstance(active, dict) and self._request_key in active:
+            return active[self._request_key]
         return self._current
 
     def adopt(self, tenant: Tenant | Any | None) -> Tenant | None:
@@ -152,17 +158,17 @@ class Tenancy:
         coerced = None if tenant is None else self.coerce_tenant(tenant)
         prev = _active_tenants.get()
         mapping = dict(prev) if isinstance(prev, dict) else {}
-        mapping[id(self)] = coerced
+        mapping[self._request_key] = coerced
         _active_tenants.set(mapping)
         return coerced
 
     def release(self) -> None:
         """Drop the request override so :meth:`get_current` returns the fallback."""
         prev = _active_tenants.get()
-        if not isinstance(prev, dict) or id(self) not in prev:
+        if not isinstance(prev, dict) or self._request_key not in prev:
             return
         mapping = dict(prev)
-        del mapping[id(self)]
+        del mapping[self._request_key]
         _active_tenants.set(mapping)
 
     def allows(self, user: Any, tenant: Tenant | Any | None) -> bool:
