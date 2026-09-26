@@ -26,6 +26,8 @@
     document.addEventListener("click", (event) => {
       const option = event.target?.closest?.(".or-tenant-option");
       if (!(option instanceof HTMLElement)) return;
+      // A route prefix makes the option a link; the next page applies the slug.
+      if (option.tagName === "A" && option.getAttribute("href")) return;
       // Inside a page host, Conduit already calls setTenant.
       if (option.closest("[conduit\\:id], [wire\\:id], [data-conduit-id]")) return;
       const slug = option.getAttribute("data-tenant") || "";
@@ -37,7 +39,8 @@
         document.querySelector("[conduit\\:id], [wire\\:id], [data-conduit-id]");
       const wire = root?.__wire || window.orbitWire?.(root);
       try {
-        if (wire && typeof wire.setTenant === "function") wire.setTenant(slug);
+        const hop = wire && (wire.switchTenant || wire.setTenant);
+        if (typeof hop === "function") hop.call(wire, slug);
       } catch (_) {
         /* the list host re-scopes when the call lands */
       }
@@ -171,6 +174,7 @@
           }
           curMain.replaceWith(nextMain);
           this._spaSwapNav(doc);
+          this._spaSwapSwitcher(doc);
           if (this.collapsed) this.expandSidebarNav();
           // Re-bind Alpine + Conduit on the swapped main (list tabs, tables, forms).
           try {
@@ -213,6 +217,22 @@
         }
         // Breadcrumbs sit outside main.or-content — swap/insert/remove them too.
         this._spaSwapBreadcrumbs(doc);
+      },
+      _spaSwapSwitcher(doc) {
+        // The switcher lives in the topbar, outside the nodes _spaSwapNav replaces.
+        // Leave it in place and the label stays on the previous team until a second click.
+        const nextNodes = doc.querySelectorAll(".or-tenant-switcher");
+        const curNodes = document.querySelectorAll(".or-tenant-switcher");
+        if (!nextNodes.length || curNodes.length !== nextNodes.length) return;
+        curNodes.forEach((el, i) => {
+          const replacement = nextNodes[i].cloneNode(true);
+          el.replaceWith(replacement);
+          try {
+            window.Alpine?.initTree?.(replacement);
+          } catch (_) {
+            /* ignore */
+          }
+        });
       },
       _spaSwapBreadcrumbs(doc) {
         const next = doc.querySelector("nav.or-breadcrumbs");

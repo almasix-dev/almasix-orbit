@@ -50,6 +50,7 @@ def _demo_tenancy() -> Tenancy:
         .current(acme)
         .registration(True)
         .profile(True)
+        .tenant_route_prefix(True)
         .scope_using(
             lambda rows, tenant: [
                 r

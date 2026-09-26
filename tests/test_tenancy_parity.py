@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 from almasix.orbit.panels import (
@@ -794,6 +794,7 @@ def test_final_branch_coverage() -> None:
 
     from almasix.orbit.panels.conduit.hosts import CreateRecordHost
     from almasix.orbit.panels.routing import mount_panel
+    from almasix.orbit.panels.tenancy import _active_tenants
     from almasix.routing.router import Router
 
     # is_tenant_scoped shadowed by bool → hit is_scoped_to_tenant ClassVar check
@@ -852,6 +853,14 @@ def test_final_branch_coverage() -> None:
     t2 = Tenancy().tenant_route_prefix(True)
     p2 = Panel.make("emptyid").resources([_PostResource]).tenant(t2)
     p2._stamp_tenant_paths(SimpleNamespace(slug="", id=""))
+
+    # A recycled object id must not revive another company's request tenant.
+    fresh = Tenancy().model(_Team)
+    stale = _active_tenants.set({id(fresh): Tenant(1, "A", slug="a")})
+    try:
+        assert fresh.get_current() is None
+    finally:
+        _active_tenants.reset(stale)
 
     # Sidebar empty switcher branch
     shell = (
@@ -971,3 +980,584 @@ def test_last_partial_branches() -> None:
     # stamp with tenant=None while route prefix enabled
     t2 = Tenancy().tenant_route_prefix(True).tenants([Tenant(1, "A", slug="a")])
     Panel.make("stampnone").resources([_PostResource]).tenant(t2)._stamp_tenant_paths(None)
+
+
+def test_request_tenant_session_scope_and_membership(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Per-request tenant, session memory, default scope, and membership gates."""
+    import asyncio
+    from types import SimpleNamespace
+
+    from almasix.http.request import reset_request, set_request
+    from almasix.orbit.panels.conduit import hosts as hosts_mod
+
+    original_resource_model = hosts_mod._resource_model
+    from almasix.orbit.panels.routing import (
+        _apply_tenant_slug,
+        _form_fields,
+        _global_search_groups,
+        _is_post,
+        _tenant_destination,
+        mount_panel,
+    )
+    from almasix.orm import Model
+    from almasix.routing.router import Router
+    from almasix.session.store import Session, reset_session, set_session
+
+    acme = Tenant(1, "Acme", slug="acme")
+    beta = Tenant(2, "Beta", slug="beta")
+    left = Tenancy().tenants([acme, beta]).current(acme)
+    right = Tenancy().tenants([Tenant(3, "Other", slug="other")]).current(
+        Tenant(3, "Other", slug="other")
+    )
+    left.adopt(beta)
+    assert left.get_current().slug == "beta"  # type: ignore[union-attr]
+    assert right.get_current().slug == "other"  # type: ignore[union-attr]
+    assert left._current.slug == "acme"  # type: ignore[union-attr]
+    left.current(acme)
+    assert left.get_current().slug == "acme"  # type: ignore[union-attr]
+
+    scoped = Tenancy().current(acme)
+    rows = scoped.scope_query(
+        [
+            {"tenant_id": 1, "title": "A"},
+            {"tenant_id": 2, "title": "B"},
+            {"title": "shared"},
+            SimpleNamespace(title="plain"),
+        ]
+    )
+    assert [getattr(r, "title", None) or r.get("title") for r in rows] == ["A", "shared", "plain"]
+
+    class _Query:
+        def where(self, column: str, value: Any) -> str:
+            return f"{column}={value}"
+
+    assert scoped.scope_query(_Query()) == "tenant_id=1"
+
+    class _BadQuery:
+        def where(self, column: str, value: Any) -> str:
+            raise RuntimeError(column)
+
+    bad = _BadQuery()
+    assert scoped.scope_query(bad) is bad
+    assert scoped.scope_query(object()) is not None
+    assert Tenancy().scope_query([1, 2]) == [1, 2]
+
+    class _BoomUser:
+        def can_access_tenant(self, tenant: Any) -> bool:
+            raise RuntimeError(getattr(tenant, "slug", ""))
+
+    class _Deny:
+        def can_access_tenant(self, tenant: Any) -> bool:
+            return False
+
+    assert scoped.allows(None, acme) is True
+    assert scoped.allows(_Deny(), acme) is False
+    assert scoped.allows(_BoomUser(), acme) is False
+    assert scoped.allows(_Deny(), None) is False
+    visible = Tenancy().tenants([acme, beta]).resolve_tenants(user=_Deny())
+    assert visible == []
+
+    token = set_session(Session())
+    try:
+        scoped.remember_slug("ops", "beta")
+        assert scoped.recall_slug("ops") == "beta"
+        scoped.remember_slug("ops", None)
+        assert scoped.recall_slug("ops") is None
+    finally:
+        reset_session(token)
+    assert scoped.recall_slug("ops") is None
+    scoped.remember_slug("ops", "beta")
+
+    import almasix.http.helpers as http_helpers
+    import almasix.session.store as session_store
+
+    def _explode() -> None:
+        raise RuntimeError("unavailable")
+
+    original_session = session_store.get_session
+    monkeypatch.setattr(session_store, "get_session", _explode)
+    scoped.remember_slug("ops", "beta")
+    assert scoped.recall_slug("ops") is None
+    monkeypatch.setattr(session_store, "get_session", original_session)
+
+    panel = Panel.make("sess").path("admin").tenant(
+        Tenancy().tenants([acme, beta]).current(acme).tenant_route_prefix(True)
+    )
+    session = set_session(Session())
+    try:
+        panel.get_tenancy().remember_slug("sess", "beta")  # type: ignore[union-attr]
+        _apply_tenant_slug(panel, None)
+        assert panel.get_tenant().slug == "beta"  # type: ignore[union-attr]
+        _apply_tenant_slug(panel, "acme")
+        assert panel.get_tenant().slug == "acme"  # type: ignore[union-attr]
+    finally:
+        reset_session(session)
+
+    bare = Panel.make("bare").tenant(Tenancy().tenants([acme]).current(acme))
+    bare.get_tenancy().adopt(beta)  # type: ignore[union-attr]
+    _apply_tenant_slug(bare, "")
+    assert bare.get_tenant().slug == "acme"  # type: ignore[union-attr]
+
+    prefixed = (
+        Tenancy()
+        .tenants([acme, beta])
+        .current(acme)
+        .tenant_route_prefix(True)
+    )
+    html = prefixed.render_switcher(panel=Panel.make("pref").path("admin"))
+    assert '<a class="or-tenant-option' in html
+    assert "setTenant(" not in html
+    assert 'href="' in html
+    req_token = set_request(SimpleNamespace(path="/admin/acme/posts"))  # type: ignore[arg-type]
+    try:
+        assert prefixed.switch_path("beta", Panel.make("pref").path("admin")) == "/admin/beta"
+    finally:
+        reset_request(req_token)
+    original_request = http_helpers.request
+    monkeypatch.setattr(http_helpers, "request", _explode)
+    assert prefixed.switch_path("beta", Panel.make("pref").path("admin")).endswith("/beta")
+    monkeypatch.setattr(http_helpers, "request", original_request)
+
+    deny_panel = (
+        Panel.make("deny")
+        .tenant(Tenancy().tenants([acme, beta]).current(acme))
+        .user(_Deny())
+    )
+    host = OrbitPageHost.bind(panel=deny_panel, resource=_PostResource)()
+    host.setTenant("beta")
+    assert host.get_panel().get_tenant().slug == "acme"
+
+    adopted = Tenancy().tenants([acme, beta]).current(acme)
+    adopted.adopt(beta)
+    assert adopted.associate_record({"title": "n"})["tenant_id"] == 2
+
+    reg_panel = (
+        Panel.make("reg")
+        .path("admin")
+        .login(False)
+        .tenant(
+            Tenancy()
+            .tenants([acme])
+            .current(acme)
+            .tenant_route_prefix("team")
+            .registration(True)
+            .profile(True)
+        )
+    )
+    created = RegisterTenant.handle_registration(
+        {"name": "Gamma Labs", "slug": "acme"},
+        panel=reg_panel,
+    )
+    assert created.slug == "acme-2"
+    assert reg_panel.get_tenancy().find_by_slug("acme-2") is not None  # type: ignore[union-attr]
+    unnamed = RegisterTenant.handle_registration({}, panel=reg_panel)
+    assert unnamed.slug == "tenant"
+    saved = EditTenantProfile.handle_save(
+        {"name": "Gamma", "slug": "gamma"},
+        panel=reg_panel,
+        tenant=created,
+    )
+    assert saved.slug == "gamma"
+    assert _tenant_destination(reg_panel, saved).endswith("/team/gamma")
+    assert _tenant_destination(Panel.make("home").path("admin"), saved) == "/admin"
+    assert _is_post(SimpleNamespace()) is False
+    assert _form_fields(SimpleNamespace(post=lambda: "nope", all=lambda: {"name": "Z"})) == {
+        "name": "Z"
+    }
+
+    class _TeamModel(Model):
+        @classmethod
+        def create(cls, attributes: dict[str, Any] | None = None, **kwargs: Any) -> Any:
+            data = dict(attributes or {})
+            data.update(kwargs)
+            return SimpleNamespace(id=8, name=data.get("name"), slug=data.get("slug"))
+
+    orm_panel = Panel.make("ormt").tenant(Tenancy().model(_TeamModel).tenants([acme]).current(acme))
+    made = RegisterTenant.handle_registration({"name": "North", "slug": "north"}, panel=orm_panel)
+    assert made.slug == "north"
+
+    class _Saved(Model):
+        fillable = ("name", "slug")
+
+        def save(self) -> None:
+            object.__setattr__(self, "saved", True)
+
+    row = _Saved(name="Old", slug="old")
+    row.id = 3
+    updated = EditTenantProfile.handle_save(
+        {"name": "New", "slug": "new"},
+        panel=orm_panel,
+        tenant=row,
+    )
+    assert updated.slug == "new"
+    assert row.saved is True  # type: ignore[attr-defined]
+
+    class _Strict(Model):
+        def __setattr__(self, key: str, value: Any) -> None:
+            raise RuntimeError(key)
+
+        save = None
+
+    strict = _Strict.__new__(_Strict)
+    object.__setattr__(strict, "id", 4)
+    object.__setattr__(strict, "name", "Keep")
+    object.__setattr__(strict, "slug", "keep")
+    kept = EditTenantProfile.handle_save({"name": "Nope"}, panel=orm_panel, tenant=strict)
+    assert kept.slug == "keep"
+
+    open_scope = Tenancy().current(acme)
+    assert open_scope.orm_constraint() == ("tenant_id", 1)
+    assert Tenancy().scope_using(lambda q, t: q).current(acme).orm_constraint() is None
+    disabled = Tenancy().current(acme)
+    disabled.disable()
+    assert disabled.orm_constraint() is None
+    assert open_scope.orm_constraint(SimpleNamespace(is_scoped_to_tenant=False)) is None
+    assert Tenancy().orm_constraint(_PostResource) is None
+
+    class _OptOut(Resource):
+        slug = "shared"
+        is_scoped_to_tenant = False
+
+        @classmethod
+        def is_tenant_scoped(cls) -> bool:
+            return False
+
+    assert open_scope.orm_constraint(_OptOut) is None
+
+    class _ColumnModel:
+        fillable = ("tenant_id",)
+        casts = {"title": "str"}
+        seen: list[tuple[str, Any]] = []
+
+        @classmethod
+        def where(cls, column: str, value: Any) -> Any:
+            cls.seen.append((column, value))
+
+            class _Built:
+                @staticmethod
+                async def get() -> list[Any]:
+                    return [SimpleNamespace(id=1, tenant_id=value, title="Kept")]
+
+            return _Built()
+
+        @classmethod
+        async def all(cls) -> list[Any]:
+            return [SimpleNamespace(id=2, title="All")]
+
+    class _NoWhere:
+        fillable = ("tenant_id",)
+
+        @classmethod
+        async def all(cls) -> list[Any]:
+            return [SimpleNamespace(id=9, title="All")]
+
+    class _NoColumn:
+        @classmethod
+        async def all(cls) -> list[Any]:
+            return [SimpleNamespace(id=4, title="Open")]
+
+    class _CastOnly:
+        fillable = ("title",)
+        casts = {"tenant_id": "int"}
+
+        @classmethod
+        def where(cls, column: str, value: Any) -> Any:
+            return [SimpleNamespace(id=1, tenant_id=value, title="Cast")]
+
+    async def _fetch() -> None:
+        from almasix.orbit.panels.conduit.hosts import _orm_fetch_all
+
+        filtered = await _orm_fetch_all(_ColumnModel, tenant_fk="tenant_id", tenant_id=1)
+        assert filtered[0]["title"] == "Kept"
+        plain = await _orm_fetch_all(_NoWhere, tenant_fk="tenant_id", tenant_id=1)
+        assert plain[0]["title"] == "All"
+        opened = await _orm_fetch_all(_NoColumn, tenant_fk="tenant_id", tenant_id=1)
+        assert opened[0]["title"] == "Open"
+        casted = await _orm_fetch_all(_CastOnly, tenant_fk="tenant_id", tenant_id=1)
+        assert casted[0]["title"] == "Cast"
+        everything = await _orm_fetch_all(_ColumnModel)
+        assert everything[0]["title"] == "All"
+
+    asyncio.run(_fetch())
+
+    class _Searchable(Resource):
+        slug = "searchable"
+
+        @classmethod
+        def is_globally_searchable(cls) -> bool:
+            return True
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("title")])
+
+    search_panel = Panel.make("gs").tenant(open_scope).resources([_Searchable])
+
+    async def _search() -> None:
+        monkeypatch.setattr(hosts_mod, "_resource_model", lambda resource: _ColumnModel)
+        groups = await _global_search_groups(search_panel, "kept", None)
+        assert groups == [] or isinstance(groups, list)
+
+    asyncio.run(_search())
+
+    class _ListModel:
+        fillable = ("tenant_id",)
+
+        @classmethod
+        def where(cls, column: str, value: Any) -> Any:
+            class _Built:
+                @staticmethod
+                def get() -> list[Any]:
+                    return [SimpleNamespace(id=1, tenant_id=value, title="Scoped")]
+
+            return _Built()
+
+        @classmethod
+        def all(cls) -> list[Any]:
+            return []
+
+    async def _mount() -> None:
+        monkeypatch.setattr(hosts_mod, "_resource_model", lambda resource: _ListModel)
+        host = ListRecordsHost.bind(
+            panel=Panel.make("listt").tenant(Tenancy().current(Tenant(7, "Seven", slug="seven"))),
+            resource=_PostResource,
+        )()
+        await host.mount()
+        assert host.records[0]["title"] == "Scoped"
+
+    asyncio.run(_mount())
+
+    router = Router()
+    mount_panel(router, reg_panel)
+
+    class _PostReq:
+        method = "POST"
+        path = "/admin/new"
+        url = SimpleNamespace(path="/admin/new")
+
+        def post(self) -> dict[str, str]:
+            return {"name": "Delta", "slug": "delta"}
+
+    async def _post() -> None:
+        for route in router.routes:
+            name = str(getattr(route, "route_name", "") or "")
+            fn = getattr(route, "action", None)
+            if name.endswith("tenant.register") and callable(fn):
+                await fn(_PostReq(), tenant=None)
+            if name.endswith("tenant.profile") and callable(fn):
+                req = _PostReq()
+                req.path = "/admin/team/acme/profile"
+                await fn(req, tenant="acme")
+
+    asyncio.run(_post())
+    assert reg_panel.get_tenancy().find_by_slug("delta") is not None  # type: ignore[union-attr]
+
+    assert RegisterTenant.form(object()) is not None
+    assert EditTenantProfile.form("profile-form") == "profile-form"
+
+    class _BlankForm(RegisterTenant):
+        @classmethod
+        def form(cls, form: Any = None) -> Any:
+            return object()
+
+    class _BlankProfile(EditTenantProfile):
+        @classmethod
+        def form(cls, form: Any = None) -> Any:
+            return object()
+
+    assert "Configure a registration form." in _BlankForm.render()
+    assert "Configure a profile form." in _BlankProfile.render()
+
+    EditTenantProfile.handle_save({}, panel=reg_panel)
+    extra = EditTenantProfile.handle_save(
+        {"name": "Extra", "slug": "extra"},
+        panel=reg_panel,
+        tenant=Tenant(99, "Extra", slug="extra"),
+    )
+    assert extra.slug == "extra"
+    assert reg_panel.get_tenancy().find_by_slug("extra") is not None  # type: ignore[union-attr]
+
+    plain_panel = SimpleNamespace()
+    with pytest.raises(NotImplementedError):
+        RegisterTenant.handle_registration({"name": "Nope"}, panel=plain_panel)
+    off = Panel.make("disabled").tenant(Tenancy().disable())
+    with pytest.raises(NotImplementedError):
+        RegisterTenant.handle_registration({"name": "Nope"}, panel=off)
+
+    crowded = Tenancy().tenants(
+        [Tenant(1, "Acme", slug="acme"), Tenant(2, "Acme 2", slug="acme-2")]
+    )
+    from almasix.orbit.panels.pages.tenancy import _unique_slug
+
+    assert _unique_slug(crowded, "acme") == "acme-3"
+
+    assert scoped.allows(SimpleNamespace(), acme) is True
+    owned = scoped.scope_query(
+        [SimpleNamespace(tenant_id=1, title="mine"), SimpleNamespace(tenant_id=9, title="theirs")]
+    )
+    assert [row.title for row in owned] == ["mine"]
+    assert Tenancy().tenants([acme]).current(None).orm_constraint(SimpleNamespace()) is None
+    nameless = Tenancy().tenants([acme]).current(acme).ownership_relationship("")
+    assert nameless.orm_constraint() == ("tenant_id", 1)
+    assert _form_fields(SimpleNamespace(all=lambda: {"a": "1"})) == {"a": "1"}
+    assert _form_fields(SimpleNamespace(post=lambda: None)) == {}
+    assert _form_fields(SimpleNamespace(all=lambda: "nope")) == {}
+    prefix_on = Panel.make("pre").path("admin").tenant(Tenancy().tenant_route_prefix(True))
+    assert _tenant_destination(prefix_on, acme) == "/admin/acme"
+    assert prefixed.switch_path("beta", SimpleNamespace()) == "/beta"
+    req_token = set_request(SimpleNamespace(path="/admin/other/posts"))  # type: ignore[arg-type]
+    try:
+        assert prefixed.switch_path("beta") == "/beta"
+    finally:
+        reset_request(req_token)
+
+    home = Panel.make("root").path("/")
+    assert prefixed.switch_path("beta", home) == "/beta"
+    assert prefixed.switch_path("beta", SimpleNamespace()) == "/beta"
+    nested = Panel.make("nested").path("admin")
+    assert prefixed.switch_path("beta", nested) == "/admin/beta"
+    team = Tenancy().tenants([acme, beta]).current(acme).tenant_route_prefix("team")
+    assert team.switch_path("beta", home) == "/team/beta"
+    assert team.switch_path("beta") == "/team/beta"
+    plain = Tenancy().current(acme)
+    assert plain.switch_path("beta", nested) == "/admin"
+    assert plain.switch_path("beta") == "/"
+
+    from almasix.orbit.panels.tenancy import _numeric_id
+
+    assert _numeric_id(True) is None
+    assert _numeric_id(None) is None
+    assert _numeric_id("4") == 4
+    shared = Tenancy().tenants(
+        [
+            Tenant(1, "Acme", slug="acme"),
+            Tenant(1, "Beta", slug="beta"),
+            Tenant("code", "Gamma", slug="gamma"),
+        ]
+    )
+    assert [t.id for t in shared.get_tenants()] == [1, 2, "code"]
+    assert shared.get_tenants()[1].slug == "beta"
+
+    class _Ids(Resource):
+        slug = "unique-ids"
+        model = None
+        records_mutable = True
+        records: ClassVar[list[dict[str, Any]]] = [
+            {"id": 1, "title": "Acme only", "tenant_id": 1},
+        ]
+
+        @classmethod
+        def get_records(cls) -> list[dict[str, Any]]:
+            return list(cls.records)
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("title")])
+
+    hosts_mod._resource_model = original_resource_model
+    id_panel = Panel.make("idco").tenant(
+        Tenancy()
+        .tenants([Tenant(1, "Acme", slug="acme"), Tenant(2, "Beta", slug="beta")])
+        .current(Tenant(2, "Beta", slug="beta"))
+    )
+    listing = ListRecordsHost.bind(panel=id_panel, resource=_Ids)()
+    assert listing._records_for_new_id()[0]["id"] == 1
+    listing.mount()
+    assert listing.records == []
+    from almasix.orbit.panels.conduit.hosts import _numeric_record_id
+
+    assert _numeric_record_id(True) is None
+    assert _numeric_record_id("x") is None
+    assert _numeric_record_id(2) == 2
+    assert ListRecordsHost()._records_for_new_id() == []
+    listing.mountAction(
+        "create",
+        None,
+        {"data": {"title": "Beta row", "tenant_id": 2, "id": 1}},
+    )
+    assert listing.records[0]["id"] == 2
+    assert {row["id"] for row in _Ids.records} == {1, 2}
+    imported = listing.runImport(
+        {
+            "content": '[{"id": 1, "title": "Dup"}, {"title": "Fresh"}, {"id": 9, "title": "Open"}]',
+            "filename": "rows.json",
+        }
+    )
+    assert imported["imported"] == 3
+    assert {row["id"] for row in _Ids.records} == {1, 2, 3, 4, 9}
+
+    class _NoStore(Resource):
+        slug = "no-store"
+        model = None
+        records_mutable = True
+
+        @classmethod
+        def table(cls, table: Table) -> Table:
+            return table.columns([TextColumn.make("title")])
+
+    loose = ListRecordsHost.bind(panel=Panel.make("loose"), resource=_NoStore)()
+    loose.mountAction("create", None, {"data": {"title": "Only"}})
+    assert loose.records[0]["id"] == 1
+    assert loose._records_for_new_id()[0]["title"] == "Only"
+    class _BareHost(OrbitPageHost):
+        _panel = None
+
+    _BareHost().switchTenant("beta")
+    OrbitPageHost.bind(panel=Panel.make("noten"), resource=_PostResource)().switchTenant("beta")
+
+    home_host = OrbitPageHost.bind(
+        panel=Panel.make("gohome")
+        .path("admin")
+        .tenant(Tenancy().tenants([acme, beta]).current(acme).tenant_route_prefix(True)),
+        resource=_PostResource,
+    )()
+    home_host.switchTenant("beta")
+    assert home_host.take_redirect()["url"] == "/admin/beta"
+    home_host.switchTenant("missing")
+    assert home_host.take_redirect() is None
+
+    nav_panel = Panel.make("navt").path("admin").tenant(
+        Tenancy().tenants([acme, beta]).current(acme).tenant_route_prefix(True)
+    )
+    assert "/admin/acme" in [item["url"] for item in nav_panel._collect_navigation_items()]
+    team_panel = Panel.make("navteam").path("admin").tenant(
+        Tenancy().tenants([acme]).current(acme).tenant_route_prefix("team")
+    )
+    assert "/admin/team/acme" in [
+        item["url"] for item in team_panel._collect_navigation_items()
+    ]
+
+    quiet = OrbitPageHost.bind(panel=deny_panel, resource=_PostResource)()
+    quiet.tenant = ""
+    deny_panel.get_tenancy().current(None)  # type: ignore[union-attr]
+    quiet._sync_tenant_from_panel()
+    assert quiet.tenant == ""
+
+    class _SearchQuiet(Resource):
+        slug = "search-quiet"
+
+        @classmethod
+        def is_globally_searchable(cls) -> bool:
+            return True
+
+    quiet_panel = Panel.make("gs2").tenant(
+        Tenancy().current(acme).scope_using(lambda query, tenant: query)
+    ).resources([_SearchQuiet])
+
+    async def _search_without_constraint() -> None:
+        monkeypatch.setattr(hosts_mod, "_resource_model", lambda resource: _NoWhere)
+        groups = await _global_search_groups(quiet_panel, "all", None)
+        assert isinstance(groups, list)
+
+    asyncio.run(_search_without_constraint())
+
+    async def _mount_without_constraint() -> None:
+        monkeypatch.setattr(hosts_mod, "_resource_model", lambda resource: _NoWhere)
+        listed = ListRecordsHost.bind(
+            panel=Panel.make("listopen").tenant(Tenancy().scope_using(lambda query, tenant: query)),
+            resource=_PostResource,
+        )()
+        await listed.mount()
+        assert listed.records[0]["title"] == "All"
+
+    asyncio.run(_mount_without_constraint())

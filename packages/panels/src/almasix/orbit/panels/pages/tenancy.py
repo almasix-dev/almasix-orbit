@@ -23,14 +23,54 @@ class RegisterTenant(Page):
     @classmethod
     def form(cls, form: Any = None) -> Any:
         """Return / mutate the registration form schema."""
-        return form
+        if form is not None:
+            return form
+        from almasix.orbit.forms import Form, TextInput
+
+        return Form.make("tenant").schema(
+            [
+                TextInput.make("name").label("Name").required(),
+                TextInput.make("slug").label("URL slug").required(),
+            ]
+        )
 
     @classmethod
     def handle_registration(cls, data: dict[str, Any], **ctx: Any) -> Any:
-        """Create and return the new tenant. Hosts call this after validation."""
-        raise NotImplementedError(
-            f"{cls.__name__}.handle_registration() must create and return a tenant"
-        )
+        """Create and return the new tenant.
+
+        With a panel, the tenant is stored on the tenancy list (or created
+        through the tenant model). Without a panel, subclasses must override.
+        """
+        from almasix.orbit.panels.tenancy import Tenant, _numeric_id, _slugify
+
+        panel = ctx.get("panel")
+        tenancy = _panel_tenancy(panel)
+        if tenancy is None:
+            raise NotImplementedError(
+                f"{cls.__name__}.handle_registration() must create and return a tenant"
+            )
+        name = str((data or {}).get("name") or "").strip() or "Tenant"
+        slug = str((data or {}).get("slug") or "").strip() or _slugify(name)
+        slug = _unique_slug(tenancy, slug)
+        model = tenancy.get_tenant_model()
+        if _is_orm_model(model):
+            payload = {
+                tenancy.get_name_attribute(): name,
+                tenancy.get_slug_attribute(): slug,
+            }
+            created = model.create(payload)
+            tenant = tenancy.coerce_tenant(created)
+        else:
+            existing = tenancy.get_tenants()
+            numbers = [n for t in existing if (n := _numeric_id(getattr(t, "id", None))) is not None]
+            next_id = (max(numbers) if numbers else 0) + 1
+            tenant = Tenant(next_id, name, slug=slug)
+            tenancy.tenants([*existing, tenant])
+        tenancy.current(tenant)
+        tenancy.adopt(tenant)
+        panel_id = str(getattr(panel, "id", "") or "")
+        tenancy.remember_slug(panel_id, tenant.slug)
+        return tenant
 
     @classmethod
     def render(cls, **ctx: Any) -> str:
@@ -46,6 +86,12 @@ class RegisterTenant(Page):
                 form_html = built.render(ctx.get("state") or {}, **ctx)
         if not form_html:
             form_html = '<p class="or-muted">Configure a registration form.</p>'
+        else:
+            form_html = (
+                f'<form method="post" class="or-tenant-form">{form_html}'
+                f'<button type="submit" class="or-btn or-btn-primary">Create tenant</button>'
+                f"</form>"
+            )
         return (
             f'<div class="or-page or-page-tenant-register">'
             f'<h1 class="or-page-title">{e(cls.get_title())}</h1>'
@@ -69,14 +115,72 @@ class EditTenantProfile(Page):
     @classmethod
     def form(cls, form: Any = None) -> Any:
         """Return / mutate the profile form schema."""
-        return form
+        if form is not None:
+            return form
+        from almasix.orbit.forms import Form, TextInput
+
+        return Form.make("tenant").schema(
+            [
+                TextInput.make("name").label("Name").required(),
+                TextInput.make("slug").label("URL slug").required(),
+            ]
+        )
 
     @classmethod
     def handle_save(cls, data: dict[str, Any], **ctx: Any) -> Any:
-        """Persist tenant profile changes. Hosts call this after validation."""
-        raise NotImplementedError(
-            f"{cls.__name__}.handle_save() must persist tenant profile changes"
-        )
+        """Persist tenant profile changes.
+
+        With a panel, the current tenant's name and slug are updated.
+        Without a panel, subclasses must override.
+        """
+        from almasix.orbit.panels.tenancy import Tenant
+
+        panel = ctx.get("panel")
+        tenancy = _panel_tenancy(panel)
+        current = ctx.get("tenant")
+        if tenancy is not None and current is None:
+            current = tenancy.get_current()
+        if tenancy is None or current is None:
+            raise NotImplementedError(
+                f"{cls.__name__}.handle_save() must persist tenant profile changes"
+            )
+        name = str((data or {}).get("name") or getattr(current, "name", "") or "").strip()
+        slug = str((data or {}).get("slug") or getattr(current, "slug", "") or "").strip()
+        if _is_orm_model(type(current)) and not isinstance(current, Tenant):
+            name_attr = tenancy.get_name_attribute()
+            slug_attr = tenancy.get_slug_attribute()
+            try:
+                setattr(current, name_attr, name or getattr(current, name_attr, name))
+                setattr(current, slug_attr, slug or getattr(current, slug_attr, slug))
+            except Exception:
+                pass
+            save = getattr(current, "save", None)
+            if callable(save):
+                save()
+            tenant = tenancy.coerce_tenant(current)
+        else:
+            tenant = Tenant(
+                getattr(current, "id", None),
+                name or str(getattr(current, "name", "Tenant")),
+                slug=slug or str(getattr(current, "slug", "")),
+                avatar_url=getattr(current, "avatar_url", None),
+            )
+            replaced = False
+            tenants: list[Any] = []
+            for item in tenancy.get_tenants():
+                if getattr(item, "id", None) == tenant.id:
+                    tenants.append(tenant)
+                    replaced = True
+                else:
+                    tenants.append(item)
+            if not replaced:
+                tenants.append(tenant)
+            tenancy.tenants(tenants)
+        tenancy.current(tenant)
+        tenancy.adopt(tenant)
+        panel_id = str(getattr(panel, "id", "") or "")
+        tenancy.remember_slug(panel_id, tenant.slug)
+        return tenant
 
     @classmethod
     def render(cls, **ctx: Any) -> str:
@@ -100,6 +204,12 @@ class EditTenantProfile(Page):
                 subtitle = f'<p class="or-muted">{e(str(name))}</p>'
         if not form_html:
             form_html = '<p class="or-muted">Configure a profile form.</p>'
+        else:
+            form_html = (
+                f'<form method="post" class="or-tenant-form">{form_html}'
+                f'<button type="submit" class="or-btn or-btn-primary">Save profile</button>'
+                f"</form>"
+            )
         return (
             f'<div class="or-page or-page-tenant-profile">'
             f'<h1 class="or-page-title">{e(cls.get_title())}</h1>'
@@ -223,3 +333,33 @@ class ManageBilling(Page):
             f'<div class="or-billing-plans">{body}</div>'
             f"</div>"
         )
+
+
+def _panel_tenancy(panel: Any) -> Any:
+    if panel is None:
+        return None
+    getter = getattr(panel, "get_tenancy", None)
+    if not callable(getter):
+        return None
+    tenancy = getter()
+    if tenancy is None or not getattr(tenancy, "is_enabled", lambda: False)():
+        return None
+    return tenancy
+
+
+def _is_orm_model(model: Any) -> bool:
+    if model is None or not isinstance(model, type):
+        return False
+    from almasix.orm import Model
+
+    return issubclass(model, Model) and model is not Model
+
+
+def _unique_slug(tenancy: Any, slug: str) -> str:
+    taken = {str(getattr(tenant, "slug", "")) for tenant in tenancy.get_tenants()}
+    if slug not in taken:
+        return slug
+    index = 2
+    while f"{slug}-{index}" in taken:
+        index += 1
+    return f"{slug}-{index}"

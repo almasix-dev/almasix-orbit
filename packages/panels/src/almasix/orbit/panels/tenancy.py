@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Sequence
+from contextvars import ContextVar
 from typing import Any, Protocol, Self, runtime_checkable
 
 from almasix.orbit.support.html import e
+
+# Request-local override. The configured ``.current()`` stays the fallback so
+# one visitor's switch cannot leak through the shared panel object.
+_active_tenants: ContextVar[dict[int, Tenant | None] | None] = ContextVar(
+    "orbit_active_tenants",
+    default=None,
+)
+# Monotonic token. ``id(tenancy)`` is unsafe: a collected instance's id can be
+# reused, and the request cache would then show the wrong company.
+_request_keys = 0
 
 
 class Tenant:
@@ -69,6 +81,9 @@ class Tenancy:
     """Panel-level multi-tenancy configuration and helpers."""
 
     def __init__(self) -> None:
+        global _request_keys
+        _request_keys += 1
+        self._request_key = _request_keys
         self._tenant_model: type[Any] | None = None
         self._ownership_relationship = "tenant"
         self._slug_attribute = "slug"
@@ -122,15 +137,101 @@ class Tenancy:
         return self
 
     def tenants(self, tenants: Sequence[Tenant | Any]) -> Self:
-        self._tenants = [self.coerce_tenant(t) for t in tenants]
+        self._tenants = _dedupe_tenant_ids([self.coerce_tenant(t) for t in tenants])
         return self
 
     def current(self, tenant: Tenant | Any | None) -> Self:
+        """Set the fallback tenant used when this request has not chosen one."""
         self._current = None if tenant is None else self.coerce_tenant(tenant)
+        self.release()
         return self
 
     def get_current(self) -> Tenant | None:
+        """Tenant for this request, otherwise the configured fallback."""
+        active = _active_tenants.get()
+        if isinstance(active, dict) and self._request_key in active:
+            return active[self._request_key]
         return self._current
+
+    def adopt(self, tenant: Tenant | Any | None) -> Tenant | None:
+        """Select ``tenant`` for this request only. Does not change the fallback."""
+        coerced = None if tenant is None else self.coerce_tenant(tenant)
+        prev = _active_tenants.get()
+        mapping = dict(prev) if isinstance(prev, dict) else {}
+        mapping[self._request_key] = coerced
+        _active_tenants.set(mapping)
+        return coerced
+
+    def release(self) -> None:
+        """Drop the request override so :meth:`get_current` returns the fallback."""
+        prev = _active_tenants.get()
+        if not isinstance(prev, dict) or self._request_key not in prev:
+            return
+        mapping = dict(prev)
+        del mapping[self._request_key]
+        _active_tenants.set(mapping)
+
+    def allows(self, user: Any, tenant: Tenant | Any | None) -> bool:
+        """True when ``user`` may open ``tenant``. No user means no membership gate."""
+        if tenant is None:
+            return False
+        if user is None:
+            return True
+        checker = getattr(user, "can_access_tenant", None)
+        if not callable(checker):
+            return True
+        try:
+            return bool(checker(tenant))
+        except Exception:
+            return False
+
+    def session_key(self, panel_id: str) -> str:
+        return f"orbit.tenant.{panel_id or 'default'}"
+
+    def remember_slug(self, panel_id: str, slug: str | None) -> None:
+        """Store the chosen slug on the current session, when one is started."""
+        try:
+            from almasix.session.store import get_session
+
+            store = get_session()
+        except Exception:
+            return
+        if store is None:
+            return
+        key = self.session_key(panel_id)
+        if slug:
+            store.put(key, str(slug))
+        else:
+            store.forget(key)
+
+    def recall_slug(self, panel_id: str) -> str | None:
+        """Slug saved for this panel, or ``None`` outside a session."""
+        try:
+            from almasix.session.store import get_session
+
+            store = get_session()
+        except Exception:
+            return None
+        if store is None:
+            return None
+        value = store.get(self.session_key(panel_id))
+        text = str(value).strip() if value else ""
+        return text or None
+
+    def switch_path(self, slug: str, panel: Any = None) -> str:
+        """Panel home for ``slug``. Switching always leaves the page you were on."""
+        extra = self.route_prefix_segment() if self.get_tenant_route_prefix() else ""
+        if panel is not None and hasattr(panel, "url"):
+            if self.get_tenant_route_prefix():
+                if extra:
+                    return str(panel.url(extra, slug))
+                return str(panel.url(slug))
+            return str(panel.url() or "/") or "/"
+        if self.get_tenant_route_prefix():
+            if extra:
+                return f"/{extra}/{slug}"
+            return f"/{slug}"
+        return "/"
 
     def find_by_slug(self, slug: str | None) -> Tenant | None:
         if slug is None or slug == "":
@@ -147,7 +248,7 @@ class Tenancy:
     def resolve_tenants(self, user: Any = None, panel: Any = None) -> list[Tenant]:
         """Prefer configured tenants; else ask a :class:`HasTenants` user."""
         if self._tenants:
-            return list(self._tenants)
+            return [tenant for tenant in self._tenants if self.allows(user, tenant)]
         if user is None:
             return []
         getter = getattr(user, "get_tenants", None)
@@ -182,9 +283,35 @@ class Tenancy:
         return self
 
     def scope_query(self, query: Any) -> Any:
-        if self._current is None or self._scope is None:
+        """Limit ``query`` to the current tenant.
+
+        A ``scope_using`` callback replaces the default. Without one, rows and
+        queries that carry the ownership id (``tenant_id`` by default) are
+        filtered. Rows with no ownership field stay, so shared catalogs keep
+        showing.
+        """
+        tenant = self.get_current()
+        if tenant is None:
             return query
-        return self._scope(query, self._current)
+        if self._scope is not None:
+            return self._scope(query, tenant)
+        fk = f"{self._ownership_relationship or 'tenant'}_id"
+        return _default_tenant_scope(query, tenant, fk)
+
+    def orm_constraint(self, resource: Any = None) -> tuple[str, Any] | None:
+        """``(column, id)`` for an ORM ``where`` when no custom scope callback is set."""
+        if self._scope is not None or not self.is_enabled():
+            return None
+        if resource is not None:
+            scoped = getattr(resource, "is_tenant_scoped", None)
+            if callable(scoped) and not scoped():
+                return None
+            if not getattr(resource, "is_scoped_to_tenant", True):
+                return None
+        tenant = self.get_current()
+        if tenant is None:
+            return None
+        return (f"{self._ownership_relationship or 'tenant'}_id", tenant.id)
 
     def associate_using(self, callback: Callable[[Any, Tenant], Any]) -> Self:
         """Set ownership on create: ``callback(record, tenant) -> record``."""
@@ -193,19 +320,20 @@ class Tenancy:
 
     def associate_record(self, record: Any) -> Any:
         """Attach the current tenant to ``record`` (FK helper; hosts opt in)."""
-        if self._current is None:
+        current = self.get_current()
+        if current is None:
             return record
         if self._associate is not None:
-            return self._associate(record, self._current)
+            return self._associate(record, current)
         rel = self._ownership_relationship or "tenant"
         fk = f"{rel}_id"
         if isinstance(record, dict):
             out = dict(record)
-            out.setdefault(fk, self._current.id)
+            out.setdefault(fk, current.id)
             return out
         if not hasattr(record, fk) or getattr(record, fk, None) is None:
             try:
-                setattr(record, fk, self._current.id)
+                setattr(record, fk, current.id)
             except Exception:
                 pass
         return record
@@ -365,13 +493,13 @@ class Tenancy:
         return f'<div class="or-tenant-menu-actions">{"".join(bits)}</div>'
 
     def render_switcher(self, *, user: Any = None, panel: Any = None) -> str:
-        tenants = self.resolve_tenants(user=user, panel=panel) or self.get_tenants()
-        if not tenants and self._current is None:
+        tenants = self.resolve_tenants(user=user, panel=panel)
+        current = self.get_current()
+        if not tenants and current is None:
             return ""
-        current = self._current
         if current is None and tenants:
             current = tenants[0]
-        label = e(current.name if current else "Tenant")
+        button_label = e(current.name if current else "Tenant")
         avatar = _avatar_html(current)
         options_html: list[str] = []
         select_opts: list[str] = []
@@ -380,13 +508,20 @@ class Tenancy:
             active = " is-active" if is_current else ""
             sel = " selected" if is_current else ""
             t_avatar = _avatar_html(t)
-            options_html.append(
-                f'<button type="button" class="or-tenant-option{active}" '
-                f'data-tenant="{e(t.slug)}" '
-                f'wire:click="setTenant(\'{e(t.slug)}\')" '
-                f'@click="open = false">'
-                f"{t_avatar}<span>{e(t.name)}</span></button>"
-            )
+            option_label = f"{t_avatar}<span>{e(t.name)}</span>"
+            if self.get_tenant_route_prefix():
+                href = e(self.switch_path(t.slug, panel))
+                options_html.append(
+                    f'<a class="or-tenant-option{active}" href="{href}" '
+                    f'data-tenant="{e(t.slug)}">{option_label}</a>'
+                )
+            else:
+                options_html.append(
+                    f'<button type="button" class="or-tenant-option{active}" '
+                    f'data-tenant="{e(t.slug)}" '
+                    f'wire:click="setTenant(\'{e(t.slug)}\')" '
+                    f'@click="open = false">{option_label}</button>'
+                )
             select_opts.append(
                 f'<option value="{e(t.slug)}"{sel}>{e(t.name)}</option>'
             )
@@ -412,7 +547,7 @@ class Tenancy:
             '@click="open = !open" aria-haspopup="true" '
             ':aria-expanded="open">'
             f"{avatar}"
-            f'<span class="or-tenant-name">{label}</span>'
+            f'<span class="or-tenant-name">{button_label}</span>'
             '<svg class="or-icon or-tenant-chevron" width="14" height="14" '
             'viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">'
             '<path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17'
@@ -458,6 +593,77 @@ def _resolve_tenancy_page(
     if isinstance(value, type):
         return value
     return default_cls
+
+
+def _numeric_id(value: Any) -> int | None:
+    """Integer id, or ``None`` when ``value`` is not a plain number."""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    text = str(value).strip()
+    if text.isdigit():
+        return int(text)
+    return None
+
+
+def _dedupe_tenant_ids(tenants: list[Tenant]) -> list[Tenant]:
+    """Give each company its own numeric id. Later duplicates take the next free number."""
+    taken: set[int] = set()
+    out: list[Tenant] = []
+    for tenant in tenants:
+        number = _numeric_id(tenant.id)
+        if number is None:
+            out.append(tenant)
+            continue
+        if number in taken:
+            number = max(taken) + 1
+            tenant = Tenant(
+                number,
+                tenant.name,
+                slug=tenant.slug,
+                avatar_url=tenant.avatar_url,
+            )
+        taken.add(number)
+        out.append(tenant)
+    return out
+
+
+def _row_tenant_id(row: Any, keys: tuple[str, ...]) -> Any:
+    """Ownership id when ``row`` carries one of ``keys``, else ``None``."""
+    if isinstance(row, dict):
+        for key in keys:
+            if key in row:
+                return row.get(key)
+        return None
+    for key in keys:
+        if hasattr(row, key):
+            return getattr(row, key)
+    return None
+
+
+def _default_tenant_scope(query: Any, tenant: Tenant, fk: str) -> Any:
+    """Keep rows that belong to ``tenant`` or that have no ownership field."""
+    keys = (fk, "tenant_id") if fk != "tenant_id" else ("tenant_id",)
+    if isinstance(query, list):
+        kept: list[Any] = []
+        for row in query:
+            owner = _row_tenant_id(row, keys)
+            if owner is None or str(owner) == str(tenant.id):
+                kept.append(row)
+        return kept
+    where = getattr(query, "where", None)
+    if callable(where):
+        try:
+            return where(fk, tenant.id)
+        except Exception:
+            return query
+    return query
+
+
+def _slugify(value: str) -> str:
+    text = re.sub(r"[^a-z0-9]+", "-", str(value or "").lower()).strip("-")
+    return text or "tenant"
 
 
 def _attr(obj: Any, name: str | None) -> Any:

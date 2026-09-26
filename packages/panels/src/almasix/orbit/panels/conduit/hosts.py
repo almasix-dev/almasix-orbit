@@ -53,6 +53,17 @@ def _find_record(records: Iterable[Any], record_id: str) -> Any | None:
     return None
 
 
+def _numeric_record_id(value: Any) -> int | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    text = str(value).strip()
+    if text.isdigit():
+        return int(text)
+    return None
+
+
 def _next_record_id(records: Iterable[Any]) -> int:
     next_id = 1
     for record in records:
@@ -227,8 +238,29 @@ async def _await_maybe(value: Any) -> Any:
     return value
 
 
-async def _orm_fetch_all(model: type[Any]) -> list[dict[str, Any]]:
-    rows = await _await_maybe(model.all())
+def _model_has_column(model: type[Any], name: str) -> bool:
+    for attr in ("fillable", "casts"):
+        bag = getattr(model, attr, None)
+        if isinstance(bag, (list, tuple, set, dict)) and name in bag:
+            return True
+    return False
+
+
+async def _orm_fetch_all(
+    model: type[Any],
+    *,
+    tenant_fk: str | None = None,
+    tenant_id: Any = None,
+) -> list[dict[str, Any]]:
+    rows: Any = None
+    if tenant_fk and tenant_id is not None and _model_has_column(model, tenant_fk):
+        where = getattr(model, "where", None)
+        if callable(where):
+            built = where(tenant_fk, tenant_id)
+            getter = getattr(built, "get", None)
+            rows = await _await_maybe(getter() if callable(getter) else built)
+    if rows is None:
+        rows = await _await_maybe(model.all())
     return [_as_record_dict(r) for r in (rows or [])]
 
 
@@ -462,11 +494,32 @@ class OrbitPageHost(ConduitHost):
         found = tenancy.find_by_slug(self.tenant)
         if found is None:
             return
-        tenancy.current(found)
+        from almasix.orbit.panels.routing import _current_user
+
+        if not tenancy.allows(_current_user(panel), found):
+            return
+        tenancy.adopt(found)
+        panel_id = str(getattr(panel, "id", "") or "")
+        tenancy.remember_slug(panel_id, found.slug)
         stamp = getattr(panel, "_stamp_tenant_paths", None)
         if callable(stamp):
             stamp(found)
         self.refresh_for_tenant()
+
+    def switchTenant(self, slug: str = "") -> None:
+        """Switch tenant and open that team's panel home."""
+        self.setTenant(slug)
+        panel = self.get_panel()
+        if panel is None:
+            return
+        get_tenancy = getattr(panel, "get_tenancy", None)
+        tenancy = get_tenancy() if callable(get_tenancy) else None
+        if tenancy is None:
+            return
+        current = tenancy.get_current()
+        if current is None or current.slug != str(slug or ""):
+            return
+        self.redirect(tenancy.switch_path(current.slug, panel) or "/")
 
     def updatedTenant(self, value: Any = None) -> None:
         self.setTenant(str(value if value is not None else self.tenant))
@@ -551,8 +604,16 @@ class ListRecordsHost(OrbitPageHost):
         return None
 
     async def _mount_orm(self, model: type[Any], *, resource: type[Any] | None = None) -> None:
-        self.records = await _orm_fetch_all(model)
         res = resource or self.get_resource()
+        fk: str | None = None
+        tenant_id: Any = None
+        panel = self.get_panel()
+        tenancy = panel.get_tenancy() if panel is not None and hasattr(panel, "get_tenancy") else None
+        if tenancy is not None and hasattr(tenancy, "orm_constraint"):
+            constraint = tenancy.orm_constraint(res)
+            if constraint is not None:
+                fk, tenant_id = constraint
+        self.records = await _orm_fetch_all(model, tenant_fk=fk, tenant_id=tenant_id)
         self._commit_scoped_records(res)
         self._mount_list_page(res)
 
@@ -836,6 +897,29 @@ class ListRecordsHost(OrbitPageHost):
             return str(record.get("id", ""))
         return str(getattr(record, "id", "") or "")
 
+    def _records_for_new_id(self) -> list[Any]:
+        """Every stored row, including other companies hidden by the current scope."""
+        current = list(self.records)
+        full = getattr(self, "_unscoped_records", None)
+        if isinstance(full, list):
+            seen = {_record_key(row) for row in full}
+            return [*full, *[row for row in current if _record_key(row) not in seen]]
+        try:
+            stored = _resource_records(self.get_resource())
+        except RuntimeError:
+            stored = []
+        if stored:
+            return list(stored)
+        return current
+
+    def _persist_full_records(self, full: list[Any]) -> None:
+        """Save ``full`` (all companies) and show only the current company's rows."""
+        self._unscoped_records = list(full)
+        resource = self.get_resource()
+        if isinstance(getattr(resource, "records", None), list):
+            resource.records = list(full)
+        self.records = self._apply_tenant_scope(list(full), resource)
+
     def _sync_resource_records(self) -> None:
         resource = self.get_resource()
         if isinstance(getattr(resource, "records", None), list):
@@ -944,14 +1028,9 @@ class ListRecordsHost(OrbitPageHost):
             self.select_all = False
             return None
         if action_name == "create" and data:
-            next_id = 1
-            for r in self.records:
-                try:
-                    next_id = max(next_id, int(self._record_key(r) or 0) + 1)
-                except (TypeError, ValueError):
-                    pass
-            self.records = [*self.records, {"id": next_id, **dict(data)}]
-            self._sync_resource_records()
+            full = self._records_for_new_id()
+            row = {**dict(data), "id": _next_record_id(full)}
+            self._persist_full_records([*full, row])
             return None
         if action_name == "edit" and rid and data:
             out: list[Any] = []
@@ -1008,20 +1087,24 @@ class ListRecordsHost(OrbitPageHost):
         }
 
         def writer(chunk: list[dict[str, Any]]) -> None:
-            next_id = 1
-            for row in self.records:
-                try:
-                    next_id = max(next_id, int(self._record_key(row) or 0) + 1)
-                except (TypeError, ValueError):
-                    pass
+            full = self._records_for_new_id()
+            taken = {
+                n
+                for row in full
+                if (n := _numeric_record_id(_record_key(row) or None)) is not None
+            }
+            next_id = _next_record_id(full)
             appended: list[Any] = []
             for row in chunk:
                 record = dict(row)
-                record.setdefault("id", next_id)
-                next_id += 1
+                number = _numeric_record_id(record.get("id"))
+                if number is None or number in taken:
+                    number = next_id
+                    record["id"] = number
+                taken.add(number)
+                next_id = number + 1
                 appended.append(record)
-            self.records = [*self.records, *appended]
-            self._sync_resource_records()
+            self._persist_full_records([*full, *appended])
 
         report = get_job_runner().run_import(
             action, source, filename=filename, options=options, writer=writer

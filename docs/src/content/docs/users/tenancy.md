@@ -9,11 +9,11 @@ A **tenant** is the organization boundary your panel works inside — a team, wo
 
 Without tenancy, every resource shares one pool of data. With tenancy turned on:
 
-1. Orbit stores a current `Tenant` on the panel.
+1. Orbit keeps a current `Tenant` for this request and remembers the choice in the browser session.
 2. The topbar shows a **switcher** so the user can change teams.
-3. You register callbacks to **scope** list queries and **associate** creates with that tenant.
+3. Lists and model reads filter to that tenant. Replace the filter with `scope_using` when a resource needs a different rule, and stamp creates with `associate_using`.
 
-That separation is what stops Team A from reading Team B’s records — but only if your queries actually filter. The switcher and URL slug choose *which* tenant is current; your scoping code enforces the boundary.
+That separation is what stops Team A from reading Team B’s records. The switcher, session, and URL slug choose *which* tenant is current. The default scope (or your `scope_using` callback) enforces the boundary.
 
 ```python title="app/orbit/tenancy/basics.py"
 from almasix.orbit.panels import Tenant
@@ -34,7 +34,7 @@ Switching changes the **context** for the rest of the panel: which rows appear i
 The switcher alone is not a security control. A determined user can still request another tenant’s slug in the URL. You must:
 
 - Resolve the slug against membership (`HasTenants.can_access_tenant` or your own check).
-- Filter every tenant-owned read with `scope_using` / `scope_query` (or an equivalent ORM global scope).
+- Filter every tenant-owned read. The default scope keeps rows for the current tenant and rows with no ownership field. Use `scope_using` when that rule is not enough.
 - Stamp ownership on create with `associate_using` / `associate_record`.
 
 See [Security notes](#security-notes) at the end of this page.
@@ -144,7 +144,7 @@ class User:
 
 `get_tenants` returns what the switcher may show. `can_access_tenant` gates URL and switcher access — never rely on the slug in the URL alone.
 
-`Tenancy.resolve_tenants(user=..., panel=...)` prefers a configured `.tenants([...])` list; otherwise it calls `get_tenants` and filters with `can_access_tenant`.
+`Tenancy.resolve_tenants(user=..., panel=...)` prefers a configured `.tenants([...])` list; otherwise it calls `get_tenants`. Either way, a user with `can_access_tenant` only sees teams they can open.
 
 ## Switcher UI
 
@@ -165,11 +165,13 @@ Tenancy()
     .menu_items([{"label": "Invite members", "url": "/admin/invite"}])
 ```
 
-The switcher sits in the topbar, outside the page itself. Choosing a team still calls `setTenant(slug)` on the current page, updates the current tenant, and re-scopes a list that was already loaded. A hidden `<select>` mirrors the choice (`wire:model.live="tenant"`).
+The switcher sits in the topbar, outside the page itself. The choice is stored in the session for this browser, not on the shared panel, so one visitor cannot change another visitor's team.
+
+Choosing a team opens that team's home page. With the route prefix on, Acme's home is `/acme` and Beta's is `/beta`. A refresh stays on the team in the URL. Without a prefix, the choice is stored in the session and the browser opens the panel home. Each company gets its own numeric id, and a new row never reuses a number that already belongs to another company. A hidden `<select>` mirrors the choice (`wire:model.live="tenant"`).
 
 ## Scope queries and associate creates
 
-Scoping is the heart of tenancy. Register a callback that receives the query (or in-memory list) and the current `Tenant`:
+Scoping is the heart of tenancy. With no callback, Orbit keeps rows that belong to the current tenant and rows that have no ownership field (`tenant_id`, or `{ownership}_id`). Shared catalogs stay visible. Pass `scope_using` when the rule is different — that callback replaces the default:
 
 ```python title="app/providers/orbit_panel_provider.py"
 Tenancy()
@@ -200,7 +202,7 @@ If you omit `associate_using`, `associate_record` sets `{ownership_relationship}
 | API | Notes |
 |-----|--------|
 | `.scope_using` | `callback(query, tenant) -> query` |
-| `.scope_query` | Apply the callback for the current tenant |
+| `.scope_query` | Apply the default scope, or your callback, for the current tenant |
 | `.associate_using` | `callback(record, tenant) -> record` |
 | `.associate_record` | Stamp ownership on create |
 
@@ -259,7 +261,7 @@ class RegisterTeam(RegisterTenant):
 
     @classmethod
     def handle_registration(cls, data, **ctx):
-        # Persist and return the new tenant (model or Tenant)
+        # Optional. The default page already saves a tenant on ctx["panel"].
         ...
 ```
 
@@ -276,7 +278,7 @@ class EditTeamProfile(EditTenantProfile):
         ...
 ```
 
-Default routes under the panel path: `/new` (register), `/profile` (profile), `/billing` (billing). `.tenant_billing(True)` mounts `ManageBilling` and an in-process `MemoryBillingProvider`. Pass a page class to replace the UI, and `.billing_provider(...)` to talk to Stripe or another processor.
+Default routes under the panel path: `/new` (register), `/profile` (profile), `/billing` (billing). The default register page creates a tenant (on the configured list, or through the tenant model) and the profile page updates the current tenant's name and slug. Subclass either page when you need different fields. `.tenant_billing(True)` mounts `ManageBilling` and an in-process `MemoryBillingProvider`. Pass a page class to replace the UI, and `.billing_provider(...)` to talk to Stripe or another processor.
 
 These pages default to `should_register_navigation = False` so they appear in the switcher menu, not the sidebar.
 
@@ -288,7 +290,7 @@ These pages default to `should_register_navigation = False` so they appear in th
 
 ## Tenant route prefix
 
-Optionally put the tenant slug in resource and page URLs:
+Put the tenant slug in resource and page URLs when each team should have its own address. `Panel.tenant(Team)` turns this on. A `Tenancy()` you build yourself stays off until you opt in:
 
 ```python title="app/providers/orbit_panel_provider.py"
 Tenancy()
@@ -318,7 +320,7 @@ Use `.unique_middleware_key("admin")` when multiple panels need distinct scope n
 
 ## Security notes
 
-- **Always scope queries.** The switcher and URL slug only choose the current tenant. Your `scope_using` callback (or equivalent ORM global scope) must filter every tenant-owned read.
+- **Always scope queries.** The switcher, session, and URL slug only choose the current tenant. The default scope filters rows that carry the ownership id. Replace it with `scope_using` when a resource needs a different rule, and still filter every tenant-owned read.
 - **Never trust the URL alone.** Resolve the slug against `HasTenants.can_access_tenant` (or your own membership table) before setting the current tenant.
 - **Associate on write.** Use `associate_record` / `associate_using` so creates cannot omit the ownership FK.
 - **Opt out deliberately.** Global resources should set `is_scoped_to_tenant = False` only when they are truly shared across tenants.
@@ -326,7 +328,7 @@ Use `.unique_middleware_key("admin")` when multiple panels need distinct scope n
 
 ## Try it in orbit-admin
 
-The Orbit Admin sample enables tenancy on the `app` panel with two fake teams (**Acme Corp**, **Beta Labs**) and a **Scoped projects** resource under the **Tenancy** nav group. Open the switcher in the topbar, pick a team, and watch the project list change.
+The Orbit Admin sample enables tenancy on the `app` panel with two fake teams (**Acme Corp**, **Beta Labs**). Open the switcher in the topbar and pick a team. The dashboard stats, charts, and recent posts change with the team, and **Scoped projects** under the **Tenancy** nav group lists only that team's rows.
 
 ```python title="examples/orbit-admin/app/orbit/app/panel.py"
 from almasix.orbit.panels import Tenancy, Tenant
@@ -339,6 +341,7 @@ Tenancy()
         ]
     )
     .current(Tenant(1, "Acme Corp", slug="acme"))
+    .tenant_route_prefix(True)
     .scope_using(
         lambda rows, tenant: [
             r
