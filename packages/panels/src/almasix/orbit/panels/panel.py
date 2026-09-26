@@ -407,8 +407,10 @@ class Panel:
             return self
         if isinstance(model, Tenancy):
             self._tenancy = model
+        elif model is True:
+            self._tenancy = Tenancy()
         else:
-            tenancy = Tenancy().model(model)  # type: ignore[arg-type]
+            tenancy = Tenancy().model(model).tenant_route_prefix(True)  # type: ignore[arg-type]
             if ownership_relationship:
                 tenancy.ownership_relationship(ownership_relationship)
             if slug_attribute:
@@ -1173,7 +1175,14 @@ class Panel:
         dash = self.dashboard_page() if self.dashboard_enabled() else None
         if dash is not None and dash not in self._pages:
             if self._should_register(dash, **ctx) and self._can_access_page(dash, user):
-                items.append(self._page_nav_dict(dash, url=self.url(), sort_default=-100, **ctx))
+                items.append(
+                    self._page_nav_dict(
+                        dash,
+                        url=self._tenant_home_url(tenant),
+                        sort_default=-100,
+                        **ctx,
+                    )
+                )
 
         for res in self._resources:
             cluster = self._resolve_cluster(res)
@@ -1193,7 +1202,14 @@ class Panel:
                 continue
             if dash is not None and page is dash:
                 if self._should_register(page, **ctx) and self._can_access_page(page, user):
-                    items.append(self._page_nav_dict(page, url=self.url(), sort_default=-100, **ctx))
+                    items.append(
+                        self._page_nav_dict(
+                            page,
+                            url=self._tenant_home_url(tenant),
+                            sort_default=-100,
+                            **ctx,
+                        )
+                    )
                 continue
             if not self._should_register(page, **ctx):
                 continue
@@ -1239,6 +1255,20 @@ class Panel:
             items.append(item.to_nav_dict(**ctx))
         items.sort(key=lambda i: (i.get("sort") or 0, i.get("label") or ""))
         return items
+
+    def _tenant_home_url(self, tenant: Any = None) -> str:
+        """Dashboard URL, including the current tenant slug when prefixes are on."""
+        tenancy = self._tenancy
+        slug = getattr(tenant, "slug", None) if tenant is not None else None
+        if (
+            tenancy is not None
+            and tenancy.is_enabled()
+            and tenancy.get_tenant_route_prefix()
+            and slug
+        ):
+            extra = tenancy.route_prefix_segment()
+            return self.url(extra, str(slug)) if extra else self.url(str(slug))
+        return self.url()
 
     def _stamp_tenant_paths(self, tenant: Any = None) -> None:
         """Stamp ``_tenant_path`` on resources/pages when tenant URL prefixes are on."""

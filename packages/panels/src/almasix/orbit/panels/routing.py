@@ -253,25 +253,59 @@ def _instantiate_host(host_cls: type, extras: dict[str, Any] | None = None) -> A
     return Conduit.component(name, **payload)
 
 
-def _apply_tenant_slug(panel: Panel, slug: str | None, user: Any = None) -> None:
-    """Resolve ``slug`` against panel tenancy and set the current tenant."""
+def _is_post(request: Any) -> bool:
+    return str(getattr(request, "method", "GET") or "GET").upper() == "POST"
+
+
+def _form_fields(request: Any) -> dict[str, Any]:
+    data: dict[str, Any] = {}
+    post = getattr(request, "post", None)
+    if callable(post):
+        raw = post()
+        if isinstance(raw, dict):
+            data.update(raw)
+    if not data:
+        all_fn = getattr(request, "all", None)
+        if callable(all_fn):
+            raw = all_fn()
+            if isinstance(raw, dict):
+                data.update(raw)
+    return data
+
+
+def _tenant_destination(panel: Panel, tenant: Any) -> str:
+    slug = getattr(tenant, "slug", None)
     tenancy = panel.get_tenancy()
-    if tenancy is None or not tenancy.is_enabled() or not slug:
+    if tenancy is not None and tenancy.get_tenant_route_prefix() and slug:
+        extra = tenancy.route_prefix_segment()
+        if extra:
+            return panel.url(extra, str(slug))
+        return panel.url(str(slug))
+    return panel.url() or "/"
+
+
+def _apply_tenant_slug(panel: Panel, slug: str | None, user: Any = None) -> None:
+    """Resolve the URL slug or the session slug and select that tenant for this request."""
+    tenancy = panel.get_tenancy()
+    if tenancy is None or not tenancy.is_enabled():
         return
-    found = tenancy.find_by_slug(str(slug))
+    chosen = str(slug).strip() if slug else ""
+    if not chosen:
+        chosen = tenancy.recall_slug(str(getattr(panel, "id", "") or "")) or ""
+    if not chosen:
+        tenancy.release()
+        return
+    found = tenancy.find_by_slug(chosen)
     if found is None:
         # Also search user-resolved tenants (HasTenants).
-        for t in tenancy.resolve_tenants(user=user, panel=panel):
-            if t.slug == str(slug) or str(t.id) == str(slug):
-                found = t
+        for candidate in tenancy.resolve_tenants(user=user, panel=panel):
+            if candidate.slug == chosen or str(candidate.id) == chosen:
+                found = candidate
                 break
-    if found is None:
+    if found is None or not tenancy.allows(user, found):
         return
-    if user is not None:
-        checker = getattr(user, "can_access_tenant", None)
-        if callable(checker) and not checker(found):
-            return
-    tenancy.current(found)
+    tenancy.adopt(found)
+    tenancy.remember_slug(str(getattr(panel, "id", "") or ""), found.slug)
     stamp = getattr(panel, "_stamp_tenant_paths", None)
     if callable(stamp):
         stamp(found)
@@ -464,7 +498,16 @@ async def _global_search_groups(panel: Panel, term: str, user: Any) -> list[dict
             continue
         model = _resource_model(resource)
         if model is not None:
-            records_by_resource[resource] = await _orm_fetch_all(model)
+            fk: str | None = None
+            tenant_id: Any = None
+            search_tenancy = panel.get_tenancy()
+            if search_tenancy is not None and hasattr(search_tenancy, "orm_constraint"):
+                constraint = search_tenancy.orm_constraint(resource)
+                if constraint is not None:
+                    fk, tenant_id = constraint
+            records_by_resource[resource] = await _orm_fetch_all(
+                model, tenant_fk=fk, tenant_id=tenant_id
+            )
         else:
             records_by_resource[resource] = _resource_records(resource)
     groups = collect_global_search_results(
@@ -506,6 +549,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
         *,
         name: str,
         mw: list[str] | None = None,
+        methods: list[str] | None = None,
     ) -> None:
         # Empty ``uri`` (root panel home) uses concat so ``full == ""`` can normalize to ``/``.
         if uri.startswith("/") or uri == "":
@@ -517,7 +561,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
         # Guest routes pass ``mw=`` explicitly (e.g. ``["web"]``); others use auth stack.
         stack = mw if mw is not None else auth_middleware
         router.add(
-            ["GET"],
+            methods or ["GET"],
             full,
             action,
             name=name,
@@ -897,6 +941,13 @@ def mount_panel(router: Any, panel: Panel) -> None:
                 if gated is not None:
                     return gated
                 _apply_tenant_slug(panel, tenant, user)
+                if _is_post(request):
+                    created = reg_page.handle_registration(
+                        _form_fields(request),
+                        panel=panel,
+                        user=user,
+                    )
+                    return _redirect(_tenant_destination(panel, created))
                 html_body = reg_page.render(
                     panel=panel, user=user, tenant=panel.get_tenant()
                 )
@@ -913,6 +964,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
                 reg_slug,
                 tenant_register_action,
                 name=f"orbit.{panel.id}.tenant.register",
+                methods=["GET", "POST"],
             )
 
         profile_page = tenancy.profile_page()
@@ -933,6 +985,14 @@ def mount_panel(router: Any, panel: Panel) -> None:
                 if gated is not None:
                     return gated
                 _apply_tenant_slug(panel, tenant, user)
+                if _is_post(request):
+                    saved = profile_page.handle_save(
+                        _form_fields(request),
+                        panel=panel,
+                        user=user,
+                        tenant=panel.get_tenant(),
+                    )
+                    return _redirect(_tenant_destination(panel, saved))
                 html_body = profile_page.render(
                     panel=panel, user=user, tenant=panel.get_tenant()
                 )
@@ -949,6 +1009,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
                 profile_uri,
                 tenant_profile_action,
                 name=f"orbit.{panel.id}.tenant.profile",
+                methods=["GET", "POST"],
             )
 
         billing_page = tenancy.billing_page()
