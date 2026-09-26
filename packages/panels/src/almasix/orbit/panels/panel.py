@@ -1785,6 +1785,9 @@ class Panel:
             # tab spinner alive for tens of seconds. --or-font already falls back to
             # system UI fonts; apps can inject a webfont via panels::head hooks.
             '  <link rel="stylesheet" href="/vendor/orbit/orbit.css" />\n'
+            '  <link rel="stylesheet" href="/vendor/orbit/rich-editor/styles.css" />\n'
+            '  <link rel="stylesheet" href="/vendor/orbit/rich-editor/simple.css" />\n'
+            '  <link rel="stylesheet" href="/vendor/orbit/rich-editor/notion.css" />\n'
             '  <link rel="stylesheet" href="/vendor/orbit/filepond.bundle.min.css" />\n'
             '  <link rel="stylesheet" href="/vendor/orbit/flowbite-datepicker.min.css" />\n'
             # Chart + FilePond before orbit.js so boot hooks find globals.

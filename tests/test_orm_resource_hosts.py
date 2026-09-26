@@ -781,8 +781,27 @@ def test_resource_pages_hydrate_and_width() -> None:
     form = R.get_form()
     data = rp._hydrate_form_state(form, SimpleNamespace(name="Ada", email="a@t", extra=1))
     assert data["name"] == "Ada"
-    assert rp._resource_width_style(R, operation="edit")
-    assert rp._resource_width_style(R, operation="list")
+    assert "48rem" in rp._resource_width_style(R, operation="edit")
+    assert "100%" in rp._resource_width_style(R, operation="list")
+    assert "100%" in rp._resource_width_style(R, operation="view")
+    assert rp._resource_width_style(R, operation=None)
+
+    class Narrow(Resource):
+        table_content_max_width = "screen-sm"
+        form_content_max_width = "screen-md"
+        infolist_content_max_width = "screen-lg"
+
+    assert "40rem" in rp._resource_width_style(Narrow, operation="list")
+    assert "48rem" in rp._resource_width_style(Narrow, operation="create")
+    assert "64rem" in rp._resource_width_style(Narrow, operation="view")
+
+    class Defaults(Resource):
+        pass
+
+    assert rp._resource_width_style(Defaults, operation="list") == ""
+    assert rp._resource_width_style(Defaults, operation=None) == ""
+    assert "64rem" in rp._resource_width_style(Defaults, operation="edit")
+    assert "64rem" in rp._resource_width_style(Defaults, operation="view")
     assert rp._record_id({"id": 3}) == "3"
     assert rp._record_id(SimpleNamespace(id=4)) == "4"
     assert rp._record_id(None) == ""

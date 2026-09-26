@@ -65,6 +65,10 @@ class PostResource(Resource):
 | `global_search_result_limit` | `5` | Most results this resource contributes |
 | `soft_deletes` | `False` | Adds a trashed filter plus restore / force-delete actions |
 | `permission_prefix` | slug | Ability prefix |
+| `content_max_width` | panel width | Shared max width for the list, form, and view when a page-specific value is unset |
+| `table_content_max_width` | `content_max_width`, then the panel | List page |
+| `form_content_max_width` | `content_max_width`, then `screen-lg` | Create and edit pages |
+| `infolist_content_max_width` | `content_max_width`, then `screen-lg` | View page |
 
 ### Record titles
 
@@ -76,6 +80,19 @@ PostResource.get_record_title({"id": 3, "title": ""})               # "Post #3"
 ```
 
 Override `get_record_title(record)` when the title is computed from several fields.
+
+### Content width
+
+Each page can cap how wide its content grows. Tokens match the panel widths (`screen-sm` through `screen-2xl`, `full`, `7xl`, …) or a CSS length such as `720px`.
+
+```python
+class PostResource(Resource):
+    table_content_max_width = "full"       # list
+    form_content_max_width = "screen-md"   # create and edit
+    infolist_content_max_width = "screen-lg"  # view
+```
+
+`content_max_width` sets the same cap for all three when you do not set the page-specific value. Leave the table unset and the list uses the [panel content width](/panels/configuration/). Create, edit, and view use `screen-lg` (64rem) when neither the page value nor `content_max_width` is set.
 
 ## Configure hooks
 

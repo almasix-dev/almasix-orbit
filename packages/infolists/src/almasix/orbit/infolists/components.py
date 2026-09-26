@@ -545,13 +545,13 @@ class Entry(Component):
 
         if self.is_label_hidden():
             label_html = (
-                f'<dt class="or-entry-label or-sr-only">{e(self.get_label(**eval_ctx))}</dt>'
+                f'<div class="or-entry-label or-sr-only">{e(self.get_label(**eval_ctx))}</div>'
             )
         else:
             before = self._slot_html(self._before_label, "or-before-label", **eval_ctx)
             after = self._slot_html(self._after_label, "or-after-label", **eval_ctx)
             label_html = (
-                f"{before}<dt class=\"or-entry-label\">{e(self.get_label(**eval_ctx))}</dt>{after}"
+                f'{before}<div class="or-entry-label">{e(self.get_label(**eval_ctx))}</div>{after}'
             )
 
         body = (
@@ -561,7 +561,7 @@ class Entry(Component):
             f"{self._hint_html(**eval_ctx)}"
             f"{self._slot_html(self._above_content, 'or-above-content', **eval_ctx)}"
             f"{self._slot_html(self._before_content, 'or-before-content', **eval_ctx)}"
-            f'<dd class="or-entry-dd"{title_attr}>{self._affix_wrap(inner)}</dd>'
+            f'<div class="or-entry-dd"{title_attr}>{self._affix_wrap(inner)}</div>'
             f"{self._slot_html(self._after_content, 'or-after-content', **eval_ctx)}"
             f"{self._slot_html(self._below_content, 'or-below-content', **eval_ctx)}"
             f"{self._helper_html(**eval_ctx)}"
@@ -801,6 +801,8 @@ class ImageEntry(Entry):
         self._ring: str | int | None = None
         self._overlap: str | int | None = None
         self._extra_img_attributes: dict[str, Any] = {}
+        self._lightbox = True
+        self._gallery = False
 
     def circular(self, condition: bool = True) -> Self:
         self._circular = condition
@@ -853,6 +855,16 @@ class ImageEntry(Entry):
 
     def extra_img_attributes(self, attrs: dict[str, Any]) -> Self:
         self._extra_img_attributes.update(attrs)
+        return self
+
+    def lightbox(self, condition: bool = True) -> Self:
+        """Clicking the image opens it full size. On by default; pass ``False`` to keep a static image."""
+        self._lightbox = condition
+        return self
+
+    def gallery(self, condition: bool = True) -> Self:
+        """Show every image in a list, instead of only the first."""
+        self._gallery = condition
         return self
 
     def _resolved_alt(self, record: Any, **ctx: Any) -> str:
@@ -912,6 +924,31 @@ class ImageEntry(Entry):
         alt = self._resolved_alt(record, **ctx)
         extra_attrs = self._extra_img_attrs_html(record, **ctx)
 
+        gallery_attr = (
+            f' data-lightbox-gallery="{e(json.dumps(urls))}"' if self._lightbox and len(urls) > 1 else ""
+        )
+
+        def one_img(url: str, *, stacked: bool, style: str) -> str:
+            stack_c = " or-avatar-stacked" if stacked else ""
+            # Stacked thumbs carry the focused URL; the stack button owns the gallery.
+            focus = f' data-lightbox="{e(url)}"' if self._lightbox and stacked else ""
+            tag = (
+                f'<img class="or-entry-image or-avatar{stack_c}{shape}{size_c}" '
+                f'src="{e(url)}" alt="{e(alt)}"{style}{extra_attrs}{focus} />'
+            )
+            if not self._lightbox or stacked:
+                return tag
+            return (
+                f'<button type="button" class="or-lightbox-trigger" '
+                f'data-lightbox="{e(url)}"{gallery_attr} aria-label="View image">{tag}</button>'
+            )
+
+        if self._gallery and len(urls) > 1:
+            size_style = f' style="{e(";".join(base_style_parts))}"' if base_style_parts else ""
+            imgs = "".join(one_img(u, stacked=False, style=size_style) for u in urls)
+            inner = f'<div class="or-entry-gallery">{imgs}</div>'
+            return self.wrap_entry(inner, record=record, state=value, **ctx)
+
         if self._stacked and len(urls) > 1:
             limit = self._stacked_limit if self._stacked_limit is not None else len(urls)
             shown = urls[:limit]
@@ -922,21 +959,26 @@ class ImageEntry(Entry):
                 amt_px = f"{amt}px" if isinstance(amt, int) or str(amt).isdigit() else str(amt)
                 stack_style_parts.append(f"--or-avatar-overlap:{amt_px}")
             stack_style = f' style="{e(";".join(stack_style_parts))}"' if stack_style_parts else ""
-            imgs = "".join(
-                f'<img class="or-entry-image or-avatar or-avatar-stacked{shape}{size_c}" '
-                f'src="{e(u)}" alt="{e(alt)}"{stack_style}{extra_attrs} />'
-                for u in shown
-            )
-            more = f'<span class="or-avatar-more">+{extra}</span>' if extra > 0 else ""
-            inner = f'<div class="or-avatar-stack">{imgs}{more}</div>'
+            imgs = "".join(one_img(u, stacked=True, style=stack_style) for u in shown)
+            more = ""
+            if extra > 0:
+                more_focus = (
+                    f' data-lightbox="{e(urls[len(shown)])}"' if self._lightbox else ""
+                )
+                more = f'<span class="or-avatar-more"{more_focus}>+{extra}</span>'
+            body = f"{imgs}{more}"
+            if self._lightbox:
+                inner = (
+                    f'<button type="button" class="or-lightbox-trigger or-avatar-stack" '
+                    f'data-lightbox-gallery="{e(json.dumps(urls))}" '
+                    f'aria-label="View images">{body}</button>'
+                )
+            else:
+                inner = f'<div class="or-avatar-stack">{body}</div>'
             return self.wrap_entry(inner, record=record, state=value, **ctx)
 
         size_style = f' style="{e(";".join(base_style_parts))}"' if base_style_parts else ""
-        u = urls[0]
-        inner = (
-            f'<img class="or-entry-image or-avatar{shape}{size_c}" src="{e(u)}" '
-            f'alt="{e(alt)}"{size_style}{extra_attrs} />'
-        )
+        inner = one_img(urls[0], stacked=False, style=size_style)
         return self.wrap_entry(inner, record=record, state=value, **ctx)
 
 

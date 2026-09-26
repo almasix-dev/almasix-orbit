@@ -7,7 +7,7 @@ description: ColorEntry shows a swatch plus the color value, optionally copyable
 
 `ColorEntry` renders a small swatch (`or-color-swatch`) beside the hex / CSS color string so brand accents and theme tokens are obvious at a glance on the view page. Empty state uses `.placeholder(...)` instead of inventing `#000000` for display when a placeholder is set.
 
-Pair with `.copyable()` when operators need to grab the hex. Label chrome follows the stacked default from the [overview](/infolists/overview/).
+Pair with `.copyable()` when operators need to grab the hex. Label chrome follows the stacked default from the [overview](/infolists/overview/). When a resource leaves its infolist empty, a color picker on the form is shown with this swatch.
 
 ## Basic color entry
 

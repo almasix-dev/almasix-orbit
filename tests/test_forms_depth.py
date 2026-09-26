@@ -612,12 +612,12 @@ def test_rich_editor_renders_the_requested_toolbar() -> None:
         .min_height(320)
         .render("<p>Hi</p>")
     )
-    assert 'data-tool="bold"' in html
-    assert 'data-tool="h2"' in html
-    assert 'data-tool="mergeTag:customer_name"' in html
-    assert "{{ customer_name }}" in html
-    assert 'data-placeholder="Write something…"' in html
+    assert "or-rich-editor" in html
+    assert "bold" in html and "bulletList" in html
+    assert "customer_name" in html
+    assert 'data-rich-placeholder="Write something…"' in html
     assert 'style="min-height: 320px"' in html
+    assert 'value="&lt;p&gt;Hi&lt;/p&gt;"' in html or "<p>Hi</p>" in html
 
 
 def test_rich_editor_toolbar_button_appends_a_tool() -> None:
@@ -629,10 +629,10 @@ def test_rich_editor_toolbar_button_appends_a_tool() -> None:
         .toolbar_button("callout", "Callout box")
     )
     assert editor.get_toolbar_buttons() == ["bold", "italic", "callout"]
-    html = editor.render(None)
-    assert 'data-tool="bold"' in html
-    assert 'data-tool="italic"' in html
-    assert ">Callout box<" in html
+    assert editor.tool_label("callout") == "Callout box"
+    html = editor.notion().render(None)
+    assert 'data-rich-mode="notion"' in html
+    assert "bold" in html and "italic" in html
 
 
 def test_rich_editor_labels_and_heights() -> None:
@@ -644,9 +644,11 @@ def test_rich_editor_labels_and_heights() -> None:
 
 
 def test_disabled_rich_editor_locks_the_surface() -> None:
-    html = RichEditor.make("body").disabled().render("<p>Hi</p>")
-    assert 'data-editor-disabled="true"' in html
-    assert " disabled" in html
+    html = RichEditor.make("body").disabled().document().render("<p>Hi</p>")
+    assert 'data-rich-disabled="true"' in html
+    assert 'data-rich-mode="document"' in html
+    assert RichEditor.make("body").simple().docx().mode("nope")._editor_mode == "simple"
+    assert RichEditor.make("body").toolbar(["bold"]).get_toolbar_buttons() == ["bold"]
 
 
 # --------------------------------------------------------------------------- KeyValue

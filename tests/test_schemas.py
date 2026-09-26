@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from almasix.orbit.forms.components import TextInput
-from almasix.orbit.schemas.layouts import Fieldset, Grid, Section, Tabs, Wizard
+from almasix.orbit.schemas.layouts import Fieldset, Grid, Section, Tab, Tabs, Wizard, WizardStep
 from almasix.orbit.schemas.schema import Schema
 
 
@@ -72,6 +72,70 @@ def test_tabs_and_wizard() -> None:
     assert 'data-linear="true"' in wh
     assert "or-wizard--vertical" in Wizard.make().vertical().steps(("S", [a])).render({})
     assert "Step 1" in wh
+
+
+def test_tab_and_wizard_step_components() -> None:
+    from almasix.orbit.forms.walk import iter_fields
+    from almasix.orbit.support.component import Component
+
+    account = (
+        Tab.make("account")
+        .label("Account")
+        .icon("heroicon-o-user")
+        .badge(lambda **_: "2")
+        .badge_color("success")
+        .extra_attributes(
+            {"class": "is-account", "data-note": "hi", "hidden": False, "open": True}
+        )
+        .schema([TextInput.make("email")])
+    )
+    tabs = Tabs.make("main").tabs(
+        account,
+        Tab.make("Secret").schema([TextInput.make("secret")]).hidden(),
+        {"label": "Plain", "schema": [TextInput.make("plain")]},
+        {"id": "seo", "label": "SEO", "badge": "1", "badge_color": "info", "schema": []},
+    )
+    html = tabs.render({"email": "a@b.c"})
+    assert "Account" in html and "Secret" not in html and "Plain" in html and "SEO" in html
+    assert "or-tab-icon" in html and "or-nav-badge-success" in html and "or-nav-badge-info" in html
+    assert "is-account" in html and 'data-note="hi"' in html and " open" in html
+    assert 'data-tab-id="account"' in html
+    assert ">2<" in html
+    names = {field.get_name() for field in iter_fields([tabs])}
+    assert names == {"email", "secret", "plain"}
+
+    class Loose(Component):
+        def __init__(self) -> None:
+            super().__init__("loose")
+            self._tabs = [("T", [TextInput.make("from_tuple")]), object()]
+            self._steps = [object()]
+
+    assert "from_tuple" in {field.get_name() for field in iter_fields([Loose()])}
+
+    wizard = Wizard.make().steps(
+        WizardStep.make("account")
+        .label("Account")
+        .description("Email first")
+        .icon("heroicon-o-user")
+        .completed_icon("heroicon-o-check")
+        .extra_attributes({"class": "is-step", "data-step-note": "1"})
+        .schema([TextInput.make("email")]),
+        WizardStep.make("Skip").schema([TextInput.make("nope")]).hidden(),
+        {"label": "Bare", "schema": [TextInput.make("bare")]},
+        {
+            "id": "done",
+            "label": "Done",
+            "icon": "heroicon-o-flag",
+            "completed_icon": "heroicon-o-check",
+            "description": "End",
+            "schema": [],
+        },
+    )
+    wh = wizard.render({})
+    assert "Email first" in wh and "End" in wh and "Bare" in wh
+    assert "nope" not in wh
+    assert "is-step" in wh and 'data-step-note="1"' in wh
+    assert "or-wizard-nav-index" in wh
 
 
 def test_flex_callout_empty_state_and_primes() -> None:

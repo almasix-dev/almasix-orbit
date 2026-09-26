@@ -218,7 +218,9 @@ FileUpload.make('import')
 
 ## Image editor
 
-`.image_editor()` (and `.image_editor_aspect_ratios([...])`, which turns the editor on) enables crop, resize, and transform on image uploads before they are posted. The first aspect ratio in the list becomes the crop guide (`16:9` → width/height); avatars default to a square crop when no ratios are set.
+`.image_editor()` opens a crop dialog for image uploads. Choosing a new image opens it immediately. A pencil on the preview opens it again later, including for an image that is already saved. The dialog has the crop box, aspect-ratio choices (including free), zoom, rotate, flip, move, reset, and numeric position and size. Save replaces the file with the cropped image and uploads that. Cancel on a new image discards it.
+
+`.image_editor_aspect_ratios([...])` turns the editor on and lists those ratios as choices (`1:1`, `16:9`). The first ratio is selected when the dialog opens. An avatar with no ratios uses a square crop and a circular guide.
 
 ```python title="app/orbit/resources/example_resource.py"
 FileUpload.make('hero')

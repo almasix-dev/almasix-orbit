@@ -139,10 +139,10 @@ html.or-scroll-lock body {
   z-index: 40;
 }
 
-/* Sidebar layouts (full tree or apps split): slim divider against the body */
-.or-app-sidebar .or-sidebar,
-.or-app-apps .or-sidebar,
-.or-app-split .or-sidebar {
+/* Icon rail only — expanded sidebar sits flush against the content. */
+.or-app.is-collapsed:not(.is-fully-collapsed).or-app-sidebar .or-sidebar,
+.or-app.is-collapsed:not(.is-fully-collapsed).or-app-apps .or-sidebar,
+.or-app.is-collapsed:not(.is-fully-collapsed).or-app-split .or-sidebar {
   border-right: 1px solid var(--or-line);
 }
 
@@ -2498,6 +2498,170 @@ html.dark .or-login-logo-dark {
   margin-bottom: 0.5rem;
 }
 
+.filepond--item .or-file-edit {
+  position: absolute;
+  z-index: 200;
+  top: 0.4rem;
+  right: 0.4rem;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--or-line);
+  border-radius: 999px;
+  background: var(--or-card);
+  color: var(--or-ink);
+  box-shadow: var(--or-shadow-card);
+  cursor: pointer;
+}
+
+.or-file-avatar .or-file-edit {
+  top: 12%;
+  right: 12%;
+}
+
+.or-cropper {
+  width: min(40rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 0;
+  border: 1px solid var(--or-line);
+  border-radius: var(--or-radius-lg);
+  background: var(--or-card);
+  color: var(--or-ink);
+  box-shadow: var(--or-shadow-card);
+}
+
+.or-cropper::backdrop {
+  background: rgb(15 23 42 / 0.55);
+}
+
+.or-cropper-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem;
+}
+
+.or-cropper-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.or-cropper-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.or-cropper-close {
+  border: 0;
+  background: transparent;
+  color: var(--or-muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.or-cropper-stage {
+  max-height: min(24rem, 60vh);
+  overflow: hidden;
+  border-radius: var(--or-radius);
+  background: color-mix(in srgb, var(--or-ink) 6%, var(--or-card));
+}
+
+.or-cropper-stage img {
+  display: block;
+  max-width: 100%;
+}
+
+.or-cropper-ratios,
+.or-cropper-tools,
+.or-cropper-metrics,
+.or-cropper-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.or-cropper-tool,
+.or-cropper-metrics label {
+  border: 1px solid var(--or-line);
+  background: var(--or-card);
+  color: var(--or-ink);
+  border-radius: var(--or-radius);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.or-cropper-tool {
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+}
+
+.or-cropper-tool.is-active {
+  border-color: var(--or-primary);
+  background: color-mix(in srgb, var(--or-primary) 14%, var(--or-card));
+  color: var(--or-primary-deep);
+}
+
+.or-cropper-metrics label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  color: var(--or-muted);
+}
+
+.or-cropper-metrics input {
+  width: 4.2rem;
+  border: 0;
+  background: transparent;
+  color: var(--or-ink);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.or-cropper-spacer {
+  flex: 1;
+}
+
+.or-cropper-ratio {
+  border: 1px solid var(--or-line);
+  background: var(--or-card);
+  color: var(--or-ink);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.or-cropper-ratio.is-active {
+  border-color: var(--or-primary);
+  background: color-mix(in srgb, var(--or-primary) 14%, var(--or-card));
+  color: var(--or-primary-deep);
+}
+
+.or-cropper.is-circle .cropper-view-box,
+.or-cropper.is-circle .cropper-face {
+  border-radius: 50%;
+}
+
+.or-cropper .cropper-view-box {
+  outline-color: var(--or-primary);
+}
+
+.or-cropper .cropper-line,
+.or-cropper .cropper-point {
+  background-color: var(--or-primary);
+}
+
 .or-table-wrap,
 .or-list-card {
   overflow: visible;
@@ -4006,6 +4170,81 @@ html.dark .or-login-logo-dark {
   vertical-align: middle;
 }
 
+.or-lightbox-trigger {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: zoom-in;
+  border-radius: inherit;
+}
+
+.or-lightbox-trigger.or-avatar-stack {
+  align-items: center;
+}
+
+.or-entry-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.or-lightbox-trigger img.or-entry-image:not(.or-avatar-circle) {
+  max-height: 10rem;
+  width: auto;
+  border-radius: var(--or-radius);
+}
+
+.or-lightbox {
+  width: min(64rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.or-lightbox::backdrop {
+  background: rgb(15 23 42 / 0.72);
+}
+
+.or-lightbox-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+
+.or-lightbox img,
+.or-lightbox-scroll img {
+  display: block;
+  max-width: min(64rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 6rem);
+  margin: 0 auto;
+  border-radius: var(--or-radius);
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.or-lightbox-close {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--or-card);
+  color: var(--or-ink);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .or-entry-icon {
   display: inline-flex;
   margin-right: 0.35rem;
@@ -5125,6 +5364,16 @@ html.dark .or-login-logo-dark {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--or-primary) 20%, transparent);
 }
 
+.or-tags-readonly {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.or-tags-readonly .or-tag {
+  padding-right: 0.55rem;
+}
+
 .or-tag {
   display: inline-flex;
   align-items: center;
@@ -5669,11 +5918,6 @@ html.dark .or-login-logo-dark {
 @media (max-width: 900px) {
   .or-app {
     grid-template-columns: 1fr;
-  }
-
-  .or-sidebar {
-    border-right: 0;
-    border-bottom: 1px solid var(--or-line);
   }
 
   .or-grid-cols-2,

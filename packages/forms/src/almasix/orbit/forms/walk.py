@@ -39,13 +39,21 @@ def iter_fields(components: Sequence[Component], *, nested: bool = True) -> list
         tabs = getattr(component, "_tabs", None)
         if isinstance(tabs, list) and tabs:
             for entry in tabs:
-                comps = entry[1] if isinstance(entry, (list, tuple)) and len(entry) >= 2 else []
+                if isinstance(entry, (list, tuple)) and len(entry) >= 2:
+                    comps = entry[1]
+                else:
+                    child = getattr(entry, "get_child_components", None)
+                    comps = child() if callable(child) else []
                 fields.extend(iter_fields(list(comps), nested=nested))
             continue
         steps = getattr(component, "_steps", None)
         if isinstance(steps, list) and steps:
             for entry in steps:
-                comps = entry[1] if isinstance(entry, (list, tuple)) and len(entry) >= 2 else []
+                if isinstance(entry, (list, tuple)) and len(entry) >= 2:
+                    comps = entry[1]
+                else:
+                    child = getattr(entry, "get_child_components", None)
+                    comps = child() if callable(child) else []
                 fields.extend(iter_fields(list(comps), nested=nested))
             continue
         children = getattr(component, "get_components", None)

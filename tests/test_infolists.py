@@ -40,6 +40,21 @@ def test_entries_and_infolist_render() -> None:
     assert "or-badge" in entry.render(record=record)
     assert "or-entry" in IconEntry.make("icon").render(record=record)
     assert "or-entry-image" in ImageEntry.make("photo").render(record=record)
+    stacked = ImageEntry.make("photo").stacked().lightbox().render(
+        record={"photo": ["/a.png", "/b.png"]}
+    )
+    assert "data-lightbox-gallery" in stacked
+    assert "/a.png" in stacked and "/b.png" in stacked
+    static = ImageEntry.make("photo").lightbox(False).render(record={"photo": "/a.png"})
+    assert "or-lightbox-trigger" not in static and "or-entry-image" in static
+    plain_stack = ImageEntry.make("photo").stacked().lightbox(False).render(
+        record={"photo": ["/a.png", "/b.png"]}
+    )
+    assert "or-avatar-stack" in plain_stack and "or-lightbox-trigger" not in plain_stack
+    gallery = ImageEntry.make("photo").gallery().lightbox().render(
+        record={"photo": ["/a.png", "/b.png"]}
+    )
+    assert "or-entry-gallery" in gallery and "data-lightbox-gallery" in gallery
     assert ImageEntry.make("photo").render(record={"photo": ""})
     assert "or-color-swatch" in ColorEntry.make("color").render(record=record)
     assert "<pre" in CodeEntry.make("code").render(record=record)

@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
     # Production PyPI releases only — no path / editable pins.
     "almasix[conduit]>=0.9.4",
-    "almasix-orbit>=0.4.3",
+    "almasix-orbit>=0.4.4",
     "almasix-conduit>=0.2.1",
 ]
 

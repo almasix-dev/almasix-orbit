@@ -20,9 +20,7 @@ from almasix.orbit.actions.presets import (
 )
 from almasix.orbit.forms.form import Form
 from almasix.orbit.forms.walk import iter_fields
-from almasix.orbit.infolists.components import TextEntry
 from almasix.orbit.infolists.infolist import Infolist
-from almasix.orbit.support.component import Component
 from almasix.orbit.tables.filters import TrashedFilter, is_trashed
 from almasix.orbit.tables.table import Table
 
@@ -64,8 +62,12 @@ class Resource:
     soft_deletes: ClassVar[bool] = False
     permission_prefix: ClassVar[str | None] = None
     content_max_width: ClassVar[str | None] = None
-    #: Max width for create/edit/view pages (list keeps panel / content_max_width).
+    #: List page. Falls back to ``content_max_width``, then the panel width.
+    table_content_max_width: ClassVar[str | None] = None
+    #: Create and edit pages. Falls back to ``content_max_width``, then ``screen-lg``.
     form_content_max_width: ClassVar[str | None] = None
+    #: View page. Falls back to ``content_max_width``, then ``screen-lg``.
+    infolist_content_max_width: ClassVar[str | None] = None
     #: ``True`` → CRUD mutates records. ``False`` → seed/demo list is read-only.
     #: ``None`` (default) → mutable when ``model`` is an Almasix ORM ``Model``.
     records_mutable: ClassVar[bool | None] = None
@@ -391,16 +393,10 @@ class Resource:
         infolist = cls.infolist(Infolist.make("infolist"))
         if infolist.get_components():
             return infolist
-        # Fallback: readonly projection of the form schema
-        form = cls.get_form().readonly()
-        entries: list[Component] = []
-        for field in iter_fields(form.get_components()):
-            name = field.get_name()
-            if not name:
-                continue
-            entry = TextEntry.make(name).label(field.get_label())
-            entries.append(entry)
-        return Infolist.make("infolist").schema(entries)
+        # No infolist schema: mirror the form's layout, including nested entries.
+        from almasix.orbit.panels.infolist_from_form import components_from_form
+
+        return Infolist.make("infolist").schema(components_from_form(cls.get_form().get_components()))
 
     @classmethod
     def get_relations(cls) -> list[type[Any]]:

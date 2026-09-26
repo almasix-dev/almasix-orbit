@@ -1116,6 +1116,23 @@ def mount_orbit_assets(router: Any) -> None:
             name="orbit.assets.flowbite.datepicker.js",
         )
 
+    if "/vendor/orbit/cropper.min.js" not in uris:
+        router.add(
+            ["GET"],
+            "/vendor/orbit/cropper.min.js",
+            _vendor_js("cropper.min.js"),
+            name="orbit.assets.cropper.js",
+        )
+    if "/vendor/orbit/cropper.min.css" not in uris:
+        router.add(
+            ["GET"],
+            "/vendor/orbit/cropper.min.css",
+            _vendor_css(
+                "cropper.min.css",
+                missing="/* missing cropper.min.css */",
+            ),
+            name="orbit.assets.cropper.css",
+        )
     if "/vendor/orbit/filepond.bundle.min.css" not in uris:
         router.add(
             ["GET"],
@@ -1126,6 +1143,28 @@ def mount_orbit_assets(router: Any) -> None:
             ),
             name="orbit.assets.filepond.css",
         )
+    rich_dir = _ASSETS / "js" / "rich-editor"
+
+    async def orbit_rich_editor(file: str = "") -> Any:
+        from almasix.http import Response
+
+        name = Path(file).name
+        if name != file or not name.endswith((".js", ".css")):
+            return Response("Not found", status_code=404)
+        path = rich_dir / name
+        if not path.is_file():
+            return Response("Not found", status_code=404)
+        media = "text/css; charset=utf-8" if name.endswith(".css") else "text/javascript; charset=utf-8"
+        return Response(path.read_text(encoding="utf-8"), media_type=media)
+
+    if "/vendor/orbit/rich-editor/{file}" not in uris:
+        router.add(
+            ["GET"],
+            "/vendor/orbit/rich-editor/{file}",
+            orbit_rich_editor,
+            name="orbit.assets.rich_editor",
+        )
+
     if "/vendor/orbit/flowbite-datepicker.min.css" not in uris:
         router.add(
             ["GET"],

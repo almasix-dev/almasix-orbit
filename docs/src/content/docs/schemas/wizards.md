@@ -30,7 +30,7 @@ Wizard.make("onboard")
 
 ## Defining steps
 
-`.steps(...)` accepts dicts or `(label, components)` tuples. Dict keys: `label` (or `id`), `schema` / `components`, optional `description`.
+Prefer `WizardStep` when a step needs its own description, icon, or completed icon. Dicts and `(label, components)` tuples still work. Dict keys: `label` (or `id`), `schema` / `components`, optional `description`, `icon`, and `completed_icon`. See [Wizard](/schemas/wizard/).
 
 ```python title="app/orbit/schemas/wizard_steps.py"
 Wizard.make("onboard").steps(

@@ -401,12 +401,24 @@ def test_mount_dashboard_pages_logout_and_assets(monkeypatch) -> None:
     fb_js = next(r for r in assets_router.routes if r.uri.endswith("flowbite-datepicker.min.js"))
     pond_js = next(r for r in assets_router.routes if r.uri.endswith("filepond.bundle.min.js"))
     pond_css = next(r for r in assets_router.routes if r.uri.endswith("filepond.bundle.min.css"))
+    cropper_js = next(r for r in assets_router.routes if r.uri.endswith("cropper.min.js"))
+    cropper_css = next(r for r in assets_router.routes if r.uri.endswith("cropper.min.css"))
     assert asyncio.run(css_route.action()) is not None
     assert asyncio.run(js_route.action()) is not None
     assert asyncio.run(dp_route.action()) is not None
     assert asyncio.run(fb_js.action()) is not None
     assert asyncio.run(pond_js.action()) is not None
     assert asyncio.run(pond_css.action()) is not None
+    assert b"Cropper" in (asyncio.run(cropper_js.action()).body or b"")
+    assert b"cropper" in (asyncio.run(cropper_css.action()).body or b"")
+    rich_route = next(r for r in assets_router.routes if "rich-editor" in (r.uri or ""))
+    rich_ok = asyncio.run(rich_route.action(file="icons.js"))
+    rich_missing = asyncio.run(rich_route.action(file="missing.js"))
+    rich_bad = asyncio.run(rich_route.action(file="../icons.js"))
+    assert getattr(rich_ok, "status_code", 200) in (200, None)
+    assert "icons" in (getattr(rich_ok, "body", None) or getattr(rich_ok, "content", b"") or b"").decode() if isinstance(getattr(rich_ok, "body", None) or getattr(rich_ok, "content", None), (bytes, bytearray)) else "export" in str(getattr(rich_ok, "body", rich_ok))
+    assert getattr(rich_missing, "status_code", None) == 404
+    assert getattr(rich_bad, "status_code", None) == 404
     mem_route = next(
         r for r in assets_router.routes if str(getattr(r, "uri", "")).startswith("/orbit-uploads")
     )

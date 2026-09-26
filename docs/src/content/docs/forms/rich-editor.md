@@ -5,9 +5,9 @@ description: RichEditor is a formatted writing surface with a toolbar, merge tag
 
 ## Introduction
 
-`RichEditor` is the field for long-form HTML: post bodies, product descriptions, email templates. The operator writes on a contenteditable surface; toolbar buttons run `document.execCommand` (and insert merge tags as `{{ name }}`); a hidden input holds the HTML that gets saved with the record.
+`RichEditor` is the field for long-form HTML: post bodies, product descriptions, email templates. The operator writes in a formatted editor. A hidden input holds the HTML that gets saved with the record.
 
-Default tools are **Bold**, **Italic**, and **Link**. Replace that list with `.toolbar_buttons([...])`, append one tool with `.toolbar_button("h2")`, and add insertable placeholders with `.merge_tags(["customer_name"])`.
+The default chrome is a fixed toolbar (history, headings, lists, marks, alignment, images, and find-and-replace). `.notion()` switches to slash commands and a bubble toolbar. `.document()` (or `.docx()`) switches to a page. `.toolbar([...])` records which tools you care about, `.placeholder()` sets the empty-state hint, and `.merge_tags([...])` names placeholders such as `customer_name` for templates.
 
 ```python title="app/orbit/resources/post_resource.py"
 RichEditor.make("body")
@@ -35,7 +35,7 @@ RichEditor.make('body')
 
 ## Custom toolbar
 
-`.toolbar_buttons()` replaces the default tool list. Each entry becomes a toolbar button with `data-tool="{name}"` and a short label. Stick to tools your Alpine/TipTap bridge implements.
+`.toolbar()` replaces the recorded tool list. The fixed toolbar still draws the full editing chrome; the list is what you declare for that field.
 
 ```python title="app/orbit/resources/example_resource.py"
 RichEditor.make('content')
@@ -49,7 +49,7 @@ RichEditor.make('content')
 
 ## Merge tags
 
-`.merge_tags([...])` adds extra toolbar buttons that insert `{{ tag }}` at the caret. Use them for mail-merge fields, contract tokens, or any placeholder your renderer later substitutes.
+`.merge_tags([...])` names placeholders such as `{{ customer_name }}` that a later renderer can substitute. Use them for mail-merge fields and contract tokens.
 
 ```python title="app/orbit/resources/example_resource.py"
 RichEditor.make('template')

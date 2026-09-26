@@ -61,7 +61,7 @@ Resources backed by an ORM model are mutable by default; seed lists are not unle
 
 ## Page width
 
-Create, edit, and view pages use a narrower content width than the list page so forms stay readable. Override per resource:
+Create and edit pages default to `screen-lg` so the form stays readable. Set `form_content_max_width` on the resource to change just those pages. The list and the view have their own settings — see [Content width](/resources/overview/#content-width).
 
 ```python
 class PostResource(Resource):

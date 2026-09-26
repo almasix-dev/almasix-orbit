@@ -81,6 +81,18 @@ class OrbitServiceProvider(ServiceProvider):
                 _HERE
                 / "resources"
                 / "vendor"
+                / "cropper.min.js": self.app.path(
+                    "public", "vendor", "orbit", "cropper.min.js"
+                ),
+                _HERE
+                / "resources"
+                / "vendor"
+                / "cropper.min.css": self.app.path(
+                    "public", "vendor", "orbit", "cropper.min.css"
+                ),
+                _HERE
+                / "resources"
+                / "vendor"
                 / "flowbite-datepicker.min.js": self.app.path(
                     "public", "vendor", "orbit", "flowbite-datepicker.min.js"
                 ),

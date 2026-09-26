@@ -32,6 +32,7 @@ class InfolistsOverviewResource(Resource):
     navigation_icon = "heroicon-o-queue-list"
     navigation_sort = 0
     record_title_attribute = "title"
+    infolist_content_max_width = 'screen-2xl'
 
     records: ClassVar[list[dict[str, Any]]] = [
         {
@@ -124,7 +125,8 @@ class InfolistsOverviewResource(Resource):
 
     @classmethod
     def infolist(cls, infolist: Infolist) -> Infolist:
-        return infolist.columns(2).schema(
+        return (infolist.columns(2)
+        .schema(
             [
                 Section.make("basics")
                 .heading("Basics")
@@ -208,4 +210,4 @@ class InfolistsOverviewResource(Resource):
                     ]
                 ),
             ]
-        )
+        ))

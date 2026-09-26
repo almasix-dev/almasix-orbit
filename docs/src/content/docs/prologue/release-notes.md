@@ -12,6 +12,36 @@ header switcher.
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+## 0.4.4
+
+View pages follow the form, images open full size, and the tenant switcher filters the current list.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.4.4'
+```
+
+### Infolists
+
+- An empty infolist follows the form layout: sections, grids, tabs, and wizard steps stay in place
+- A color picker shows a swatch; money, tags, yes/no, and dates are formatted; rich text is sanitized HTML
+- Relationship and morph selects show the related record’s display field
+- Every image opens in a lightbox. A stacked image opens a scrollable view of every photo, including those behind `+N`
+
+### Forms
+
+- `.image_editor()` opens a crop dialog (zoom, rotate, flip, move, aspect ratio, and numeric crop box)
+- Rich text uses the simple, notion, and document editors, themed with the panel
+- Tabs and wizard steps are `Tab` and `WizardStep` components (icon, badge, description)
+
+### Resources
+
+- `table_content_max_width`, `form_content_max_width`, and `infolist_content_max_width` set the width of each page
+
+### Tenancy and shell
+
+- The topbar tenant switcher updates the current tenant and re-scopes the open list
+- The sidebar divider shows only while the sidebar is collapsed to the icon rail
+
 ## 0.4.3
 
 Flowbite date/time pickers, notifications production adapter, demo showcase polish, and shell/form fixes after 0.4.2.

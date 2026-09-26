@@ -288,29 +288,77 @@ class Section(Layout):
         )
 
 
+def _extra_markup(component: Component, **ctx: Any) -> tuple[str, str]:
+    """Split ``extra_attributes`` into a class token and an attribute string."""
+    attrs = dict(component.get_extra_attributes(**ctx))
+    extra_class = str(attrs.pop("class", "") or "").strip()
+    parts: list[str] = []
+    for key, value in attrs.items():
+        if value is True:
+            parts.append(e(str(key)))
+        elif value is False or value is None:
+            continue
+        else:
+            parts.append(f'{e(str(key))}="{e(value)}"')
+    attr_html = (" " + " ".join(parts)) if parts else ""
+    return extra_class, attr_html
+
+
+class Tab(Layout):
+    """One panel inside :class:`Tabs`.
+
+    ``Tab.make("Account").icon(...).badge(...).schema([...])`` is the way to
+    style a tab. ``Tabs.tabs`` still accepts ``(label, schema)`` tuples and
+    dicts, and turns those into ``Tab`` instances.
+    """
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._icon: str | None = None
+        self._badge: Any = None
+        self._badge_color: str | None = None
+
+    def icon(self, name: str | None) -> Self:
+        self._icon = name
+        return self
+
+    def badge(self, value: Any) -> Self:
+        self._badge = value
+        return self
+
+    def badge_color(self, color: str | None) -> Self:
+        """Tint the badge. ``success``, ``danger``, ``warning``, or ``info``."""
+        self._badge_color = color
+        return self
+
+
 class Tabs(Layout):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
-        # (label, components, icon, badge)
-        self._tabs: list[tuple[str, list[Component], str | None, Any]] = []
+        self._tabs: list[Tab] = []
         self._persist_tab = False
         self._active_tab: int = 0
 
-    def tabs(self, *tab_defs: tuple[str, Sequence[Component]] | dict[str, Any]) -> Self:
-        parsed: list[tuple[str, list[Component], str | None, Any]] = []
+    def tabs(self, *tab_defs: Tab | tuple[str, Sequence[Component]] | dict[str, Any]) -> Self:
+        parsed: list[Tab] = []
         for item in tab_defs:
+            if isinstance(item, Tab):
+                parsed.append(item)
+                continue
             if isinstance(item, dict):
-                parsed.append(
-                    (
-                        str(item.get("label") or item.get("id") or "Tab"),
-                        list(item.get("schema") or item.get("components") or []),
-                        item.get("icon"),
-                        item.get("badge"),
-                    )
-                )
-            else:
-                label, comps = item
-                parsed.append((label, list(comps), None, None))
+                tab = Tab.make(item.get("id") or None)
+                tab.label(str(item.get("label") or item.get("id") or "Tab"))
+                tab.schema(list(item.get("schema") or item.get("components") or []))
+                if item.get("icon"):
+                    tab.icon(str(item["icon"]))
+                if item.get("badge") is not None:
+                    tab.badge(item.get("badge"))
+                if item.get("badge_color"):
+                    tab.badge_color(str(item["badge_color"]))
+                parsed.append(tab)
+                continue
+            label, comps = item
+            parsed.append(Tab.make().label(str(label)).schema(list(comps)))
         self._tabs = parsed
         return self
 
@@ -324,8 +372,8 @@ class Tabs(Layout):
 
     def get_child_components(self) -> list[Component]:
         out: list[Component] = []
-        for _, comps, _, _ in self._tabs:
-            out.extend(comps)
+        for tab in self._tabs:
+            out.extend(tab.get_child_components())
         out.extend(self._schema)
         return out
 
@@ -336,22 +384,31 @@ class Tabs(Layout):
         bodies = []
         data = state if isinstance(state, dict) else {}
         active_i = min(self._active_tab, max(len(self._tabs) - 1, 0)) if self._tabs else 0
-        for i, (label, comps, icon, badge) in enumerate(self._tabs):
+        for i, tab in enumerate(self._tabs):
+            if not tab.is_visible(**ctx):
+                continue
             active = " is-active" if i == active_i else ""
+            icon = tab._icon
             ic = f'<span class="or-tab-icon">{render_icon(icon)}</span>' if icon else ""
             badge_html = ""
+            badge = tab._badge
             if badge is not None:
                 badge_val = badge(**ctx) if callable(badge) else badge
                 if badge_val is not None:
-                    badge_html = f'<span class="or-tab-badge">{e(badge_val)}</span>'
+                    color = f" or-nav-badge-{e(tab._badge_color)}" if tab._badge_color else ""
+                    badge_html = f'<span class="or-tab-badge{color}">{e(badge_val)}</span>'
+            extra_class, extra_attrs = _extra_markup(tab, **ctx)
+            class_attr = f"or-tab{active}{(' ' + extra_class) if extra_class else ''}"
+            tab_id = tab.get_name()
+            id_attr = f' data-tab-id="{e(tab_id)}"' if tab_id else ""
             nav.append(
-                f'<button type="button" class="or-tab{active}" data-tab="{i}" '
+                f'<button type="button" class="{class_attr}" data-tab="{i}"{id_attr}{extra_attrs} '
                 f'@click="tab = {i}" :class="tab === {i} && \'is-active\'">'
-                f"{ic}{e(label)}{badge_html}</button>"
+                f"{ic}{e(tab.get_label(**ctx))}{badge_html}</button>"
             )
             inner = "".join(
                 c.render(child_render_state(c, data), **ctx)
-                for c in comps
+                for c in tab.get_child_components()
                 if c.is_visible(**ctx)
             )
             bodies.append(
@@ -391,29 +448,65 @@ class Fieldset(Layout):
         )
 
 
+class WizardStep(Layout):
+    """One step inside :class:`Wizard`.
+
+    ``WizardStep.make("Account").description(...).icon(...).schema([...])``
+    carries the label, copy, and icons. ``Wizard.steps`` still accepts
+    ``(label, schema)`` tuples and dicts.
+    """
+
+    def __init__(self, name: str | None = None) -> None:
+        super().__init__(name)
+        self._description: str | None = None
+        self._icon: str | None = None
+        self._completed_icon: str | None = None
+
+    def description(self, text: str | None) -> Self:
+        self._description = text
+        return self
+
+    def icon(self, name: str | None) -> Self:
+        self._icon = name
+        return self
+
+    def completed_icon(self, name: str | None) -> Self:
+        """Icon shown in the stepper once this step has been passed."""
+        self._completed_icon = name
+        return self
+
+
 class Wizard(Layout):
     def __init__(self, name: str | None = None) -> None:
         super().__init__(name)
-        self._steps: list[tuple[str, list[Component], str | None]] = []
+        self._steps: list[WizardStep] = []
         self._skippable = False
         self._start_step: int = 0
         self._linear = True
         self._vertical = False
 
-    def steps(self, *step_defs: tuple[str, Sequence[Component]] | dict[str, Any]) -> Self:
-        parsed: list[tuple[str, list[Component], str | None]] = []
+    def steps(
+        self, *step_defs: WizardStep | tuple[str, Sequence[Component]] | dict[str, Any]
+    ) -> Self:
+        parsed: list[WizardStep] = []
         for item in step_defs:
+            if isinstance(item, WizardStep):
+                parsed.append(item)
+                continue
             if isinstance(item, dict):
-                parsed.append(
-                    (
-                        str(item.get("label") or item.get("id") or "Step"),
-                        list(item.get("schema") or item.get("components") or []),
-                        item.get("description"),
-                    )
-                )
-            else:
-                label, comps = item
-                parsed.append((label, list(comps), None))
+                step = WizardStep.make(item.get("id") or None)
+                step.label(str(item.get("label") or item.get("id") or "Step"))
+                step.schema(list(item.get("schema") or item.get("components") or []))
+                if item.get("description"):
+                    step.description(str(item["description"]))
+                if item.get("icon"):
+                    step.icon(str(item["icon"]))
+                if item.get("completed_icon"):
+                    step.completed_icon(str(item["completed_icon"]))
+                parsed.append(step)
+                continue
+            label, comps = item
+            parsed.append(WizardStep.make().label(str(label)).schema(list(comps)))
         self._steps = parsed
         return self
 
@@ -447,8 +540,8 @@ class Wizard(Layout):
 
     def get_child_components(self) -> list[Component]:
         out: list[Component] = []
-        for _, comps, _ in self._steps:
-            out.extend(comps)
+        for step in self._steps:
+            out.extend(step.get_child_components())
         out.extend(self._schema)
         return out
 
@@ -458,17 +551,21 @@ class Wizard(Layout):
         parts = []
         nav = []
         data = state if isinstance(state, dict) else {}
-        total = len(self._steps)
+        visible = [step for step in self._steps if step.is_visible(**ctx)]
+        total = len(visible)
         start = min(self._start_step, max(total - 1, 0)) if total else 0
         last = max(total - 1, 0)
-        for i, (label, comps, description) in enumerate(self._steps):
+        for i, step in enumerate(visible):
+            label = step.get_label(**ctx)
             inner = "".join(
                 c.render(child_render_state(c, data), **ctx)
-                for c in comps
+                for c in step.get_child_components()
                 if c.is_visible(**ctx)
             )
             desc = (
-                f'<p class="or-wizard-step-desc">{e(description)}</p>' if description else ""
+                f'<p class="or-wizard-step-desc">{e(step._description)}</p>'
+                if step._description
+                else ""
             )
             parts.append(
                 f'<div class="or-wizard-step" data-step="{i}" x-show="step === {i}" '
@@ -480,8 +577,12 @@ class Wizard(Layout):
                 if i < last
                 else ""
             )
+            index_num = render_icon(step._icon) if step._icon else str(i + 1)
+            done = render_icon(step._completed_icon) if step._completed_icon else "✓"
+            extra_class, extra_attrs = _extra_markup(step, **ctx)
+            nav_class = "or-wizard-nav-item" + (f" {extra_class}" if extra_class else "")
             nav.append(
-                f'<button type="button" class="or-wizard-nav-item" data-step="{i}" '
+                f'<button type="button" class="{nav_class}" data-step="{i}"{extra_attrs} '
                 f'@click="go({i})" '
                 f":class=\"{{ "
                 f"'is-active': step === {i}, "
@@ -492,8 +593,8 @@ class Wizard(Layout):
                 f':disabled="linear && {i} > maxReached" '
                 f':aria-disabled="(linear && {i} > maxReached).toString()">'
                 f'<span class="or-wizard-nav-index" aria-hidden="true">'
-                f'<span class="or-wizard-nav-index-num" x-show="step <= {i}">{i + 1}</span>'
-                f'<span class="or-wizard-nav-check" x-cloak x-show="step > {i}">✓</span>'
+                f'<span class="or-wizard-nav-index-num" x-show="step <= {i}">{index_num}</span>'
+                f'<span class="or-wizard-nav-check" x-cloak x-show="step > {i}">{done}</span>'
                 f"</span>"
                 f'<span class="or-wizard-nav-text">'
                 f'<span class="or-wizard-nav-label">{e(label)}</span>'
