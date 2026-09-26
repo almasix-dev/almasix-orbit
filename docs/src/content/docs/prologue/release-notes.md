@@ -12,6 +12,23 @@ header switcher.
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+## 0.5.0
+
+The current team stays on the request. Switching teams opens that team's home, and each company keeps its own numeric id.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.5.0'
+```
+
+### Tenancy
+
+- The current tenant is stored for this request and remembered in the session, so one visitor cannot change another visitor's team
+- Choosing a team opens that team's panel home. With the route prefix on, Acme's home is `/acme` and Beta's is `/beta`
+- `Panel.tenant(Model)` turns the route prefix on
+- Each company gets its own numeric id. A new row never reuses a number that already belongs to another company
+- Register and profile pages save the company
+- Demo dashboard numbers follow the current team
+
 ## 0.4.4
 
 View pages follow the form, images open full size, and the tenant switcher filters the current list.
