@@ -6,7 +6,7 @@ from pkgutil import extend_path
 
 __path__ = extend_path(__path__, __name__)
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 try:
     from almasix.orbit.panels.navigation import NavigationGroup as NavigationGroup

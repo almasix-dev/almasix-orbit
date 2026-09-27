@@ -343,13 +343,21 @@ def test_mount_dashboard_pages_logout_and_assets(monkeypatch) -> None:
         def render(cls, **ctx: Any) -> str:
             return '<div class="or-page">Reports</div>'
 
+    class AsyncPage(Page):
+        title = "Async note"
+        slug = "async-note"
+
+        @classmethod
+        async def render(cls, **ctx: Any) -> str:
+            return '<div class="or-page">ASYNC_PAGE</div>'
+
     router = Router()
     panel = (
         Panel.make("empty")
         .path("empty")
         .middleware([], replace=True)
         .login()
-        .pages([CustomPage])
+        .pages([CustomPage, AsyncPage])
         .user(OrbitUser.default())
     )
     mount_panel(router, panel)
@@ -376,6 +384,12 @@ def test_mount_dashboard_pages_logout_and_assets(monkeypatch) -> None:
     page_route = next(r for r in router.routes if "reports" in (r.uri or ""))
     page_out = asyncio.run(page_route.action(_Req("/empty/reports")))
     assert page_out is not None
+
+    async_route = next(r for r in router.routes if "async-note" in (r.uri or ""))
+    async_out = asyncio.run(async_route.action(_Req("/empty/async-note")))
+    raw = getattr(async_out, "body", getattr(async_out, "content", async_out))
+    text = raw.decode() if isinstance(raw, (bytes, bytearray)) else str(raw)
+    assert "ASYNC_PAGE" in text
 
     # Guest gate on custom page
     guest_panel = Panel.make("guesty").path("guesty").middleware([], replace=True).login().pages([CustomPage])

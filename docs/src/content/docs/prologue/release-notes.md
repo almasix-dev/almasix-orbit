@@ -12,6 +12,19 @@ header switcher.
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+## 0.5.2
+
+A custom page can load its own records before it renders.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.5.2'
+```
+
+### Pages
+
+- `Page.render` may be a coroutine. The panel waits for it, then places the HTML in the shell
+- A sync `render` still returns HTML immediately
+
 ## 0.5.1
 
 A view dialog shows the record, and a list can hide records the current user may not open.
