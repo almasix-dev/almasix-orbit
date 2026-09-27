@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 from typing import Any
 
@@ -123,6 +124,14 @@ def _auth_gate(panel: Panel, path: str | None, user: Any) -> Any | None:
     if _is_guest_path(panel, path):
         return None
     return _redirect(_login_path(panel))
+
+
+async def _rendered_page(page_cls: Any, **ctx: Any) -> str:
+    """Render a panel page, awaiting the result when the page loads data itself."""
+    rendered = page_cls.render(**ctx)
+    if inspect.isawaitable(rendered):
+        rendered = await rendered
+    return rendered
 
 
 def _html_response(body: str) -> Any:
@@ -585,7 +594,8 @@ def mount_panel(router: Any, panel: Panel) -> None:
                 return gated
             _apply_tenant_slug(panel, tenant, user)
             page_filters = _dashboard_page_filters(request, page_cls)
-            html_body = page_cls.render(
+            html_body = await _rendered_page(
+                page_cls,
                 brand=getattr(panel, "_brand", "Orbit"),
                 user=user,
                 panel=panel,
@@ -903,7 +913,13 @@ def mount_panel(router: Any, panel: Panel) -> None:
                     return gated
                 _apply_tenant_slug(panel, tenant, user)
                 html_body = (
-                    page_cls.render(panel=panel, user=user, tenant=panel.get_tenant())
+                    await _rendered_page(
+                        page_cls,
+                        panel=panel,
+                        user=user,
+                        tenant=panel.get_tenant(),
+                        request=request,
+                    )
                     if hasattr(page_cls, "render")
                     else ""
                 )
