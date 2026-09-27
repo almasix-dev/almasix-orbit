@@ -23,7 +23,7 @@ ActionGroup.make([
 
 ## Dropdown (default)
 
-`.dropdown()` (default `True`) renders a trigger button plus an Alpine `orbitDropdown` menu. Nested actions keep their own colors, icons, and modal attributes.
+`.dropdown()` (default `True`) renders a trigger button plus an Alpine `orbitDropdown` menu. Nested actions keep their own colors, icons, and modal attributes. Choosing an action closes the menu.
 
 ```python title="app/orbit/actions/dropdown.py"
 from almasix.orbit.actions import ActionGroup, EditAction, DeleteAction

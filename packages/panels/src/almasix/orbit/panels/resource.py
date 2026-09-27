@@ -384,7 +384,7 @@ class Resource:
             table.header_actions(
                 [CreateAction.make().url(lambda **_: cls.page_url("create"))]
             )
-        if table._record_url is None:
+        if table._record_url is None and not table.has_modal_view_action():
             table.record_url(lambda record=None, **_: cls.page_url("view", record))
         return table
 

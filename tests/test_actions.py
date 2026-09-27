@@ -357,8 +357,15 @@ def test_create_view_bulk_extras() -> None:
 
     view = ViewAction.make().form([TextInput.make("title")])
     assert view.is_modal() is True
-    assert view.is_disabled_form() is True
-    assert "disabled" in view.render({"title": "Hi"}, record={"title": "Hi"})
+    assert view.is_disabled_form() is False
+    viewed = view.render({"title": "Hi"}, record={"title": "Hi"})
+    assert "or-infolist" in viewed
+    assert "Hi" in viewed
+    assert 'data-has-infolist="true"' in viewed
+    assert 'data-modal-footer="false"' in viewed
+    assert 'data-has-form="true"' not in viewed
+    assert 'name="title"' not in viewed
+    assert "wire:click" not in viewed
 
     bulk = (
         BulkAction.make("bulk")

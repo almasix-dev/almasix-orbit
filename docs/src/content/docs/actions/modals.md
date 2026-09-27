@@ -49,7 +49,7 @@ EditAction.make()
 
 ![Orbit Action form modal (dark)](/examples/dark/actions/modals/form.png)
 
-Seed values with `.fill_form({...})` or by passing `record=` at render time. `.disabled_form()` locks fields (used by [View action](/actions/view/)).
+Seed values with `.fill_form({...})` or by passing `record=` at render time. `.disabled_form()` locks fields on a form modal. A [view action](/actions/view/) renders an infolist instead, with no Save or Cancel.
 
 ## Slide over
 

@@ -2067,7 +2067,8 @@ html.dark .or-login-logo-dark {
   color: var(--or-primary);
 }
 
-.or-tr-clickable {
+.or-tr-clickable,
+.or-record-clickable {
   cursor: pointer;
 }
 

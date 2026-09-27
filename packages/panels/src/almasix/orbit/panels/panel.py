@@ -2863,9 +2863,10 @@ def _action_modal_html() -> str:
         '      <p class="or-modal-body" x-text="description" x-show="description"></p>\n'
         '      <form class="or-modal-form" x-show="hasForm" x-ref="actionForm" '
         '@submit.prevent="confirm()">\n'
-        '        <div class="or-modal-form-fields" x-html="formHtml"></div>\n'
+        '        <div class="or-modal-form-fields" x-html="hasForm ? formHtml : \'\'"></div>\n'
         "      </form>\n"
-        '      <div class="or-modal-actions" '
+        '      <div class="or-modal-infolist" x-show="!hasForm && formHtml" x-html="formHtml"></div>\n'
+        '      <div class="or-modal-actions" x-show="showFooter" '
         ':class="{ \'or-modal-actions-sticky\': stickyFooter }">\n'
         '        <button type="button" class="or-btn or-btn-gray" @click="close()"\n'
         '                x-text="cancelLabel"></button>\n'

@@ -24,6 +24,7 @@ class Action(Component):
         self._modal_heading: str | Callable[..., str] | None = None
         self._modal_description: str | Callable[..., str] | None = None
         self._form_schema: list[Component] = []
+        self._as_infolist = False
         self._url: str | Callable[..., str] | None = None
         self._authorize: Callable[..., bool] | bool | None = None
         self._success_notification: str | None = None
@@ -550,6 +551,16 @@ class Action(Component):
                 field._disabled = prev_disabled
         return "".join(parts)
 
+    def _render_view_infolist(self, record: Any | None = None, **ctx: Any) -> str:
+        """Read-only modal body: the infolist for this view, never a form."""
+        from almasix.orbit.infolists.infolist import Infolist
+        from almasix.orbit.panels.infolist_from_form import components_from_form
+
+        explicit = getattr(self, "_infolist_schema", None)
+        schema = list(explicit) if explicit else components_from_form(self._form_schema)
+        state = record if isinstance(record, dict) else self._resolve_fill_state(record, **ctx)
+        return Infolist.make("view").schema(schema).render(state or {}, **ctx)
+
     def _extra_attrs_html(self, **ctx: Any) -> str:
         attrs = self.get_extra_attributes(**ctx)
         if not attrs:
@@ -718,8 +729,9 @@ class Action(Component):
         ic = render_icon(icon_name) if icon_name else ""
         color = e(self.get_color(**ctx))
         needs_confirm = self.needs_confirmation(**ctx)
-        has_form = bool(self._form_schema)
-        use_modal = self._modal or has_form or needs_confirm
+        has_form = bool(self._form_schema) and not self._as_infolist
+        has_infolist = self._as_infolist and bool(self._form_schema or getattr(self, "_infolist_schema", None))
+        use_modal = self._modal or has_form or has_infolist or needs_confirm
         disabled = self.is_disabled(**ctx) or unauthorized_tooltip or unauthorized_notification
         tip = self.get_tooltip(**ctx)
         if unauthorized_tooltip:
@@ -764,6 +776,7 @@ class Action(Component):
         heading_attr = f' data-modal-heading="{e(heading)}"' if heading else ""
         desc_attr = f' data-modal-description="{e(description)}"' if description else ""
         has_form_attr = ' data-has-form="true"' if has_form else ""
+        infolist_attr = ' data-has-infolist="true" data-modal-footer="false"' if has_infolist else ""
         rid = ""
         if isinstance(record, dict) and record.get("id") is not None:
             rid = str(record.get("id"))
@@ -771,19 +784,26 @@ class Action(Component):
             rid = str(record.id)
         rid_attr = f' data-record-id="{e(rid)}"' if rid else ""
         modal_attrs = self._modal_data_attrs(**ctx)
+        view_record = record if (isinstance(record, dict) or record is not None) else None
+        field_ctx = {k: v for k, v in ctx.items() if k != "record"}
         form_tpl = ""
-        if has_form:
-            form_record = record if (isinstance(record, dict) or record is not None) else None
-            fields = self._render_form_fields(
-                form_record, **{k: v for k, v in ctx.items() if k != "record"}
+        if has_infolist:
+            form_tpl = (
+                '<template class="or-action-form-tpl">'
+                f"{self._render_view_infolist(view_record, **field_ctx)}"
+                "</template>"
             )
+        elif has_form:
+            fields = self._render_form_fields(view_record, **field_ctx)
             form_tpl = f'<template class="or-action-form-tpl">{fields}</template>'
 
         disabled_attr = " disabled" if disabled else ""
-        wire = "" if disabled else f' wire:click="mountAction(\'{name}\')"'
+        wire = ""
+        if not disabled and not has_infolist:
+            wire = f' wire:click="mountAction(\'{name}\')"'
         return (
             f'<button type="button" class="{classes}" data-action="{name}" '
-            f'data-confirm="{confirm}"{has_form_attr}{rid_attr}{heading_attr}{desc_attr}'
+            f'data-confirm="{confirm}"{has_form_attr}{infolist_attr}{rid_attr}{heading_attr}{desc_attr}'
             f"{modal_attrs}{keys_attr}{notif_attrs}{auth_notif}{title_attr}{aria_label}"
             f"{disabled_attr}{extra}{wire}>"
             f"{inner}{badge_html}</button>{form_tpl}"
@@ -834,7 +854,14 @@ class ViewAction(Action):
     def form(self, components: Sequence[Component]) -> Self:
         super().form(components)
         self._modal = True
-        self._disabled_form = True
+        self._as_infolist = True
+        return self
+
+    def infolist(self, components: Sequence[Component]) -> Self:
+        """Show these infolist entries in the view modal instead of mirroring a form."""
+        self._infolist_schema = list(components)
+        self._modal = True
+        self._as_infolist = True
         return self
 
 

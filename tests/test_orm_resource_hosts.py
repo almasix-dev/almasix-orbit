@@ -1121,3 +1121,15 @@ def test_tiny_coverage_edges() -> None:
             sys.modules["enum"] = real_enum
         else:
             sys.modules.pop("enum", None)
+
+
+@pytest.mark.asyncio
+async def test_scope_records_filters_a_list() -> None:
+    class Scoped:
+        @classmethod
+        async def scope_records(cls, user: Any, records: list[Any]) -> list[Any]:
+            return [row for row in records if row.get("id") == 1]
+
+    kept = await hosts_mod._records_in_scope(Scoped, [{"id": 1, "name": "Alan"}, {"id": 2}])
+    assert kept == [{"id": 1, "name": "Alan"}]
+    assert await hosts_mod._records_in_scope(object, [{"id": 1}]) == [{"id": 1}]

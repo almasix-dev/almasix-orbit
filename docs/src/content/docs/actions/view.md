@@ -1,18 +1,17 @@
 ---
 title: View action
-description: ViewAction preset — read-only modal forms or view-page URLs.
+description: ViewAction preset — infolist modals or view-page URLs.
 ---
 
 ## Introduction
 
-`ViewAction` opens a record in read-only mode. Reach for it on table rows or toolbars when users should inspect a record without editing. Defaults: name `view`, label **View**, magnifying-glass icon, gray color.
+`ViewAction` opens a record for reading. On a table row it can open the view page, or a modal that shows the record's infolist. Defaults: name `view`, label **View**, magnifying-glass icon, gray color.
 
 ```python title="app/orbit/resources/post_resource.py"
 from almasix.orbit.actions import ViewAction
 from almasix.orbit.forms import TextInput, Textarea
 
 ViewAction.make()
-    .modal()
     .modal_heading("View post")
     .form([
         TextInput.make("title"),
@@ -24,7 +23,19 @@ ViewAction.make()
 
 ![Orbit ViewAction (dark)](/examples/dark/actions/view.png)
 
-Calling `.form([...])` on `ViewAction` automatically sets `.modal()` and `.disabled_form()` so fields render locked.
+`.form([...])` opens the modal and renders those fields as an infolist: labels and values, not inputs. The dialog has a close button and no Save or Cancel action.
+
+Pass infolist entries directly when the view should not follow the form:
+
+```python title="app/orbit/actions/view_infolist.py"
+from almasix.orbit.actions import ViewAction
+from almasix.orbit.infolists import TextEntry
+
+ViewAction.make().infolist([
+    TextEntry.make("title"),
+    TextEntry.make("body"),
+])
+```
 
 ## View page URL
 
@@ -40,7 +51,7 @@ ViewAction.make().url(lambda record, **_: f"/posts/{record['id']}")
 
 ![Orbit ViewAction URL (dark)](/examples/dark/actions/view/url.png)
 
-Pair with an [Infolist](/infolists/overview/) on the resource when the view page should show typed read-only entries instead of a disabled form.
+The view page uses the resource [infolist](/infolists/overview/).
 
 ## Authorization
 
