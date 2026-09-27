@@ -58,7 +58,8 @@ body {{ margin: 0; background: var(--or-cream, #f8fafc); }}
                     @click="toggleMenu($event)" :aria-expanded="menuOpen.toString()">⋮</button>
                   <div class="or-dropdown-menu or-dropdown-menu-end" id="menu" role="menu"
                     x-show="menuOpen" x-cloak>
-                    <button type="button" class="or-btn or-btn-gray" id="view">View</button>
+                    <button type="button" class="or-btn or-btn-gray" id="view" data-action="view"
+                      onclick="window.chosen='view'">View</button>
                     <button type="button" class="or-btn or-btn-danger" id="delete">Delete</button>
                     <button type="button" class="or-btn or-btn-gray" id="extra">More</button>
                   </div>
@@ -109,6 +110,15 @@ body {{ margin: 0; background: var(--or-cream, #f8fafc); }}
                   && deleteRect.height > 8
                   && deleteRect.top < footerRect.bottom,
               };
+            }"""
+        )
+        page.click("#view")
+        page.wait_for_function(
+            """() => {
+              const menu = document.getElementById('menu');
+              return window.chosen === 'view'
+                && menu
+                && getComputedStyle(menu).display === 'none';
             }"""
         )
         browser.close()

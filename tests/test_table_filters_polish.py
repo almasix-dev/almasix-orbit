@@ -115,6 +115,64 @@ def test_empty_state_actions_and_record_url() -> None:
     assert "Empty" in empty and "Add one" in empty
 
 
+def test_modal_view_action_makes_the_row_clickable() -> None:
+    from almasix.orbit.actions import ViewAction
+
+    table = (
+        Table.make()
+        .columns([TextColumn.make("title")])
+        .actions([ViewAction.make().modal().form([])])
+        .records([{"id": 4, "title": "Notes"}])
+    )
+    html = table.render()
+    assert "or-tr-clickable" in html
+    assert 'data-record-action="view"' in html
+    assert 'data-action="view"' in html
+    assert "data-record-url" not in html
+
+
+def test_row_activation_follows_grouped_and_link_views() -> None:
+    from almasix.orbit.actions import ActionGroup, ViewAction
+
+    grouped = (
+        Table.make()
+        .columns([TextColumn.make("title")])
+        .actions([ActionGroup.make([ViewAction.make().modal().form([])])])
+        .records([{"id": 1, "title": "Grouped"}])
+    )
+    grouped_html = grouped.render()
+    assert 'data-record-action="view"' in grouped_html
+
+    linked = (
+        Table.make()
+        .columns([TextColumn.make("title")])
+        .actions([ViewAction.make().url(lambda record=None, **_: "/posts/1")])
+        .records([{"id": 1, "title": "Linked"}])
+    )
+    assert 'data-record-url="/posts/1"' in linked.render()
+
+    hidden = (
+        Table.make()
+        .columns([TextColumn.make("title")])
+        .actions([ViewAction.make().visible(False).url("/hidden")])
+        .records([{"id": 1, "title": "Hidden"}])
+    )
+    hidden_html = hidden.render()
+    assert "data-record-url" not in hidden_html
+    assert "data-record-action" not in hidden_html
+
+    blank = (
+        Table.make()
+        .columns([TextColumn.make("title")])
+        .actions([ViewAction.make().url(lambda record=None, **_: "")])
+        .records([{"id": 1, "title": "Blank"}])
+    )
+    assert 'data-record-action="view"' in blank.render()
+
+    plain = Table.make().columns([TextColumn.make("title")])
+    assert plain._resolve_record_url({"id": 1}) is None
+
+
 def test_resource_default_record_url() -> None:
     table = _Post.get_table()
     assert table._record_url is not None

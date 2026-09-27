@@ -6,6 +6,7 @@ state and ``wire:*`` actions — the Filament↔Livewire relationship for Orbit.
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Iterable
 from typing import Any, ClassVar
 
@@ -35,6 +36,52 @@ def _resource_records(resource: type[Any]) -> list[Any]:
 def _save_resource_records(resource: type[Any], records: list[Any]) -> None:
     if isinstance(getattr(resource, "records", None), list):
         resource.records = list(records)
+
+
+def _panel_user() -> Any:
+    from almasix.orbit.panels.pages.resource_pages import _auth_user
+
+    return _auth_user()
+
+
+def _policy_overridden(resource: type[Any], name: str) -> bool:
+    """True when this resource replaces the open-by-default Resource check."""
+    from almasix.orbit.panels.resource import Resource
+
+    current = getattr(resource, name, None)
+    base = getattr(Resource, name, None)
+    if not callable(current) or not callable(base):
+        return False
+    return getattr(current, "__func__", current) is not getattr(base, "__func__", base)
+
+
+async def _invoke(fn: Any, *args: Any, **kwargs: Any) -> Any:
+    result = fn(*args, **kwargs)
+    if inspect.isawaitable(result):
+        result = await result
+    return result
+
+
+async def _records_in_scope(resource: type[Any], records: list[Any]) -> list[Any]:
+    fn = getattr(resource, "scope_records", None)
+    if not callable(fn):
+        return list(records)
+    scoped = await _invoke(fn, _panel_user(), list(records))
+    return list(scoped or [])
+
+
+async def _record_in_scope(resource: type[Any], record: Any, *, write: bool) -> bool:
+    fn = getattr(resource, "record_allowed", None)
+    if not callable(fn) or record is None:
+        return True
+    return bool(await _invoke(fn, _panel_user(), record, write=write))
+
+
+def _forbidden_page() -> str:
+    return (
+        '<div class="or-page"><h1 class="or-page-title">Not allowed</h1>'
+        "<p>You do not have access to this record.</p></div>"
+    )
 
 
 def _record_key(record: Any) -> str:
@@ -265,9 +312,12 @@ async def _orm_fetch_all(
 
 
 async def _orm_find(model: type[Any], record_id: str) -> Any | None:
-    found = await _await_maybe(model.find(record_id))
+    finder = getattr(model, "find", None)
+    if not callable(finder):
+        return None
+    found = await _await_maybe(finder(record_id))
     if found is None and str(record_id).isdigit():
-        found = await _await_maybe(model.find(int(record_id)))
+        found = await _await_maybe(finder(int(record_id)))
     return found
 
 
@@ -614,6 +664,7 @@ class ListRecordsHost(OrbitPageHost):
             if constraint is not None:
                 fk, tenant_id = constraint
         self.records = await _orm_fetch_all(model, tenant_fk=fk, tenant_id=tenant_id)
+        self.records = await _records_in_scope(res, self.records)
         self._commit_scoped_records(res)
         self._mount_list_page(res)
 
@@ -1134,6 +1185,14 @@ class ListRecordsHost(OrbitPageHost):
         data: dict[str, Any],
     ) -> None:
         if action_name in {"delete", "force_delete"} and rid:
+            resource = self.get_resource()
+            if _policy_overridden(resource, "can_delete") and not resource.can_delete(
+                _panel_user(), None
+            ):
+                return None
+            found = await _orm_find(model, rid)
+            if not await _record_in_scope(resource, found, write=True):
+                return None
             await _orm_delete_ids(model, {rid})
             self.records = [r for r in self.records if self._record_key(r) != rid]
             self.selected = [s for s in (self.selected or []) if s != rid]
@@ -1148,17 +1207,38 @@ class ListRecordsHost(OrbitPageHost):
                 ]
             return
         if action_name == "delete_bulk":
+            resource = self.get_resource()
+            if _policy_overridden(resource, "can_delete") and not resource.can_delete(
+                _panel_user(), None
+            ):
+                return None
             ids = set(self.get_selected_ids())
+            if callable(getattr(resource, "record_allowed", None)):
+                allowed: set[str] = set()
+                for one in ids:
+                    found = await _orm_find(model, one)
+                    if await _record_in_scope(resource, found, write=True):
+                        allowed.add(str(one))
+                ids = allowed
             await _orm_delete_ids(model, ids)
             self.records = [r for r in self.records if self._record_key(r) not in ids]
             self.selected = []
             self.select_all = False
             return
         if action_name == "create" and data:
+            resource = self.get_resource()
+            if _policy_overridden(resource, "can_create") and not resource.can_create(_panel_user()):
+                return None
+            if not await _record_in_scope(resource, dict(data), write=True):
+                return None
             row = await _orm_create(model, dict(data))
             self.records = [*self.records, row]
             return
         if action_name == "edit" and rid and data:
+            resource = self.get_resource()
+            found = await _orm_find(model, rid)
+            if not await _record_in_scope(resource, found, write=True):
+                return None
             row = await _orm_update(model, rid, dict(data))
             out: list[Any] = []
             replaced = False
@@ -1623,6 +1703,9 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
             return None
         if not self._validate_or_fail("create"):
             return None
+        if _policy_overridden(resource, "can_create") and not resource.can_create(_panel_user()):
+            self._fail_save("You do not have access to create this record.")
+            return None
         model = _resource_model(resource)
         if model is not None:
             return self._create_orm(model, resource)
@@ -1646,6 +1729,9 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
 
     async def _create_orm(self, model: type[Any], resource: type[Any]) -> None:
         payload = dict(self.data or {})
+        if not await _record_in_scope(resource, payload, write=True):
+            self._fail_save("You do not have access to create this record.")
+            return
         panel = self.get_panel()
         tenancy = getattr(panel, "get_tenancy", lambda: None)() if panel else None
         if tenancy is not None and tenancy.is_enabled():
@@ -1674,10 +1760,13 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
     def render(self) -> str:
         from almasix.orbit.panels.pages.resource_pages import CreateRecord
 
+        resource = self.get_resource()
+        if _policy_overridden(resource, "can_create") and not resource.can_create(_panel_user()):
+            return _forbidden_page()
+
         class Bound(CreateRecord):
             pass
 
-        resource = self.get_resource()
         Bound.resource = resource  # type: ignore[misc]
         model = None
         try:
@@ -1787,7 +1876,13 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
         return None
 
     async def _mount_orm(self, model: type[Any]) -> None:
+        self._forbidden = False
         found = await _orm_find(model, self.record_id)
+        resource = self.get_resource()
+        if found is not None and not await _record_in_scope(resource, found, write=True):
+            self._forbidden = True
+            self.data = {}
+            return
         if found is not None:
             self.data = _as_record_dict(found)
             await _await_maybe(self.load_relations(self.data))
@@ -1853,6 +1948,10 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
 
     async def _save_orm(self, model: type[Any], resource: type[Any]) -> None:
         rid = str(self.record_id or self.data.get("id") or "")
+        existing = await _orm_find(model, rid)
+        if not await _record_in_scope(resource, existing, write=True):
+            self._fail_save("You do not have access to this record.")
+            return
         try:
             row = await _orm_update(model, rid, dict(self.data or {}))
         except Exception as exc:
@@ -1896,11 +1995,18 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
         return None
 
     async def _delete_orm(self, model: type[Any], resource: type[Any], rid: str) -> None:
+        if _policy_overridden(resource, "can_delete") and not resource.can_delete(_panel_user(), None):
+            return
+        found = await _orm_find(model, rid)
+        if not await _record_in_scope(resource, found, write=True):
+            return
         await _orm_delete_ids(model, {rid})
         self.dispatch("orbit-record-deleted", record_id=rid)
         self.redirect(resource.page_url("index"))
 
     def render(self) -> str:
+        if getattr(self, "_forbidden", False):
+            return _forbidden_page()
         from almasix.orbit.panels.pages.resource_pages import EditRecord
 
         class Bound(EditRecord):
@@ -1952,7 +2058,13 @@ class ViewRecordHost(RelationRecords, OrbitPageHost):
         return None
 
     async def _mount_orm(self, model: type[Any]) -> None:
+        self._forbidden = False
         found = await _orm_find(model, self.record_id)
+        resource = self.get_resource()
+        if found is not None and not await _record_in_scope(resource, found, write=False):
+            self._forbidden = True
+            self.record = {}
+            return
         if found is not None:
             self.record = _as_record_dict(found)
             await _await_maybe(self.load_relations(self.record))
@@ -2005,11 +2117,18 @@ class ViewRecordHost(RelationRecords, OrbitPageHost):
         self.dispatch("orbit-record-restored", record_id=rid)
 
     async def _delete_orm(self, model: type[Any], resource: type[Any], rid: str) -> None:
+        if _policy_overridden(resource, "can_delete") and not resource.can_delete(_panel_user(), None):
+            return
+        found = await _orm_find(model, rid)
+        if not await _record_in_scope(resource, found, write=True):
+            return
         await _orm_delete_ids(model, {rid})
         self.dispatch("orbit-record-deleted", record_id=rid)
         self.redirect(resource.page_url("index"))
 
     def render(self) -> str:
+        if getattr(self, "_forbidden", False):
+            return _forbidden_page()
         from almasix.orbit.panels.pages.resource_pages import ViewRecord
 
         class Bound(ViewRecord):

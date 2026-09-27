@@ -30,6 +30,22 @@ def _conduit_click(expression: str) -> str:
     return f' conduit:click="{safe}" wire:click="{safe}"'
 
 
+def _find_view_action(actions: Sequence[Action]) -> Action | None:
+    """First ``ViewAction``, including actions nested in a group."""
+    from almasix.orbit.actions.action import ViewAction
+    from almasix.orbit.actions.presets import ActionGroup
+
+    for action in actions:
+        if isinstance(action, ActionGroup):
+            found = _find_view_action(getattr(action, "_actions", []))
+            if found is not None:
+                return found
+            continue
+        if isinstance(action, ViewAction):
+            return action
+    return None
+
+
 def _alpine_wire_call(method_call: str, *, event: str = "change") -> str:
     """Call a Conduit/Livewire host method from Alpine (Conduit has no wire:change calls)."""
     safe = (
@@ -1246,6 +1262,58 @@ class Table(Component):
             f'<tr class="or-tr or-summary-row" data-summary-scope="{e(scope)}">'
             f'{"".join(cells)}</tr>'
         )
+    def has_modal_view_action(self) -> bool:
+        """True when a view action opens in a modal instead of navigating."""
+        action = _find_view_action(self._actions)
+        return action is not None and action.is_modal()
+
+    def _row_activation(self, record: Any, **ctx: Any) -> tuple[str | None, str | None]:
+        """How a row opens its record: a URL, or the name of a view action.
+
+        An explicit record URL wins. Otherwise a visible view action makes the
+        row clickable — a link view navigates, a modal view runs that action.
+        """
+        if self._record_url is not None:
+            return self._resolve_record_url(record, **ctx), None
+        action = _find_view_action(self._actions)
+        if action is None:
+            return None, None
+        view_ctx = {**ctx, "record": record}
+        if not action.is_visible(**view_ctx) or not action.can(**view_ctx):
+            return None, None
+        if not action.is_modal():
+            url = action.get_url(**view_ctx)
+            if url:
+                return url, None
+        return None, (action.get_name() or "view")
+
+    def _activation_markup(self, record: Any, **ctx: Any) -> tuple[str, str]:
+        """CSS classes and attributes that open the record from a row or card."""
+        href, view_name = self._row_activation(record, **ctx)
+        if href:
+            target_js = (
+                f"window.open('{e(href)}','_blank')"
+                if self._open_record_url_in_new_tab
+                else f"location.href='{e(href)}'"
+            )
+            attrs = (
+                f' data-record-url="{e(href)}" tabindex="0" '
+                f"onclick=\"if(!event.target.closest('a,button,input,label'))"
+                f" {target_js}\""
+            )
+            if self._open_record_url_in_new_tab:
+                attrs += ' data-record-url-new-tab="true"'
+            return " or-tr-clickable", attrs
+        if not view_name:
+            return "", ""
+        safe = "".join(ch for ch in view_name if ch.isalnum() or ch in "_-") or "view"
+        attrs = (
+            f' data-record-action="{e(view_name)}" tabindex="0" '
+            "onclick=\"if(!event.target.closest('a,button,input,label'))"
+            f"{{const b=this.querySelector('[data-action={safe}]');if(b)b.click();}}\""
+        )
+        return " or-tr-clickable or-record-clickable", attrs
+
     def _resolve_record_url(self, record: Any, **ctx: Any) -> str | None:
         url = self._record_url
         if url is None:
@@ -1281,7 +1349,6 @@ class Table(Component):
         if self._actions:
             acts = self._render_actions(self._actions, record, **ctx)
             cells += f'<td class="or-td or-td-actions"><div class="or-row-actions">{acts}</div></td>'
-        href = self._resolve_record_url(record, **ctx)
         row_class = "or-tr or-list-row"
         row_attrs = ""
         group_key = ctx.get("group_key")
@@ -1291,20 +1358,9 @@ class Table(Component):
         extra_classes = self._resolve_record_classes(record, **ctx)
         if extra_classes:
             row_class += f" {extra_classes}"
-        if href:
-            row_class += " or-tr-clickable"
-            target_js = (
-                f"window.open('{e(href)}','_blank')"
-                if self._open_record_url_in_new_tab
-                else f"location.href='{e(href)}'"
-            )
-            row_attrs += (
-                f' data-record-url="{e(href)}" tabindex="0" '
-                f"onclick=\"if(!event.target.closest('a,button,input,label'))"
-                f" {target_js}\""
-            )
-            if self._open_record_url_in_new_tab:
-                row_attrs += ' data-record-url-new-tab="true"'
+        click_class, click_attrs = self._activation_markup(record, **ctx)
+        row_class += click_class
+        row_attrs += click_attrs
         return f'<tr class="{row_class}"{row_attrs}>{cells}</tr>'
 
     def _resolve_record_classes(self, record: Any, **ctx: Any) -> str:
@@ -1345,11 +1401,12 @@ class Table(Component):
                 f'<div class="or-table-record-card-actions">'
                 f"{self._render_actions(self._actions, record, **ctx)}</div>"
             )
-        href = self._resolve_record_url(record, **ctx)
+        href, _view_name = self._row_activation(record, **ctx)
         link_open = f'<a class="or-table-record-card-link" href="{e(href)}">' if href else ""
         link_close = "</a>" if href else ""
+        click_class, click_attrs = self._activation_markup(record, **ctx)
         return (
-            f'<article class="or-table-record-card or-card">'
+            f'<article class="or-table-record-card or-card{click_class}"{click_attrs}>'
             f"{link_open}{title_html}{link_close}"
             f'<div class="or-table-record-card-body">{"".join(fields)}</div>{footer}</article>'
         )

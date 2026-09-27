@@ -223,7 +223,7 @@ table.record_url(lambda record: f"/posts/{record['id']}")
 table.open_record_url_in_new_tab()  # optional
 ```
 
-On resource tables the list host often supplies a view/edit URL already; `.record_url()` overrides it. Individual columns can still use `.url(...)` for cell links.
+On resource tables the list host often supplies a view/edit URL already; `.record_url()` overrides it. A view action also makes the row clickable when no record URL is set: a page view follows that page, and a dialog view runs the view action. Individual columns can still use `.url(...)` for cell links.
 
 ## Reordering records
 

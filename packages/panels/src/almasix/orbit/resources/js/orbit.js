@@ -505,6 +505,26 @@
           this.closeMenu();
         };
         document.addEventListener("pointerdown", this._onDocPointer, true);
+        // Choosing an item closes the menu after the click so the action still runs.
+        this._onActionChosen = (event) => {
+          if (!this.menuOpen) {
+            return;
+          }
+          const target = event.target;
+          if (!(target instanceof Element)) {
+            return;
+          }
+          const menu = this._menu;
+          if (!menu?.contains(target)) {
+            return;
+          }
+          const chosen = target.closest("a[href], button, [data-action], [role='menuitem']");
+          if (!chosen || chosen === this._trigger || chosen.hasAttribute("aria-haspopup")) {
+            return;
+          }
+          queueMicrotask(() => this.closeMenu());
+        };
+        document.addEventListener("click", this._onActionChosen, true);
       },
       destroy() {
         this.closeMenu();
@@ -513,6 +533,9 @@
         }
         if (this._onDocPointer) {
           document.removeEventListener("pointerdown", this._onDocPointer, true);
+        }
+        if (this._onActionChosen) {
+          document.removeEventListener("click", this._onActionChosen, true);
         }
       },
       _dropdownRoot() {
@@ -1515,6 +1538,7 @@
       modalAutofocus: true,
       submitLabel: "Confirm",
       cancelLabel: "Cancel",
+      showFooter: true,
       get confirmOnly() {
         return this.needsConfirm && !this.hasForm;
       },
@@ -1547,6 +1571,7 @@
             detail.submitLabel ||
             (this.hasForm ? (this.needsConfirm ? "Confirm" : "Save") : "Confirm");
           this.cancelLabel = detail.cancelLabel || "Cancel";
+          this.showFooter = detail.showFooter !== false;
           this.open = true;
           if (this.modalAutofocus) {
             this.$nextTick?.(() => {
@@ -1620,15 +1645,16 @@
         }
         const needsConfirm = btn.getAttribute("data-confirm") === "true";
         const hasForm = btn.getAttribute("data-has-form") === "true";
+        const hasInfolist = btn.getAttribute("data-has-infolist") === "true";
         // Immediate actions (no modal): toast success notification after click.
-        if (!needsConfirm && !hasForm && btn.hasAttribute("data-success-notification")) {
+        if (!needsConfirm && !hasForm && !hasInfolist && btn.hasAttribute("data-success-notification")) {
           queueMicrotask(() => toastFromActionEl(btn));
         }
         const click = btn.getAttribute("wire:click") || "";
-        if (!needsConfirm && !hasForm) {
+        if (!needsConfirm && !hasForm && !hasInfolist) {
           return;
         }
-        if (!click.includes("mountAction") && !needsConfirm && !hasForm) {
+        if (!click.includes("mountAction") && !needsConfirm && !hasForm && !hasInfolist) {
           return;
         }
         // Intercept before Conduit/Livewire so confirm / modal form always shows.
@@ -1659,6 +1685,7 @@
               confirm: needsConfirm,
               hasForm,
               formHtml,
+              showFooter: btn.getAttribute("data-modal-footer") !== "false",
               recordId: btn.getAttribute("data-record-id") || "",
               pendingEl: btn,
               slideOver: btn.getAttribute("data-slide-over") === "true",

@@ -171,7 +171,7 @@ Action.make("admin")
 
 ## Schema / form
 
-`.form([...])` (alias `.schema([...])`) collects fields before the callback runs. The panel modal host clones the embedded `<template class="or-action-form-tpl">`. Use `.fill_form({...})` to seed values and `.disabled_form()` for read-only (ViewAction does this automatically).
+`.form([...])` (alias `.schema([...])`) collects fields before the callback runs. The panel modal host clones the embedded `<template class="or-action-form-tpl">`. Use `.fill_form({...})` to seed values and `.disabled_form()` for a locked form. `ViewAction.form(...)` does not use that path: it renders the matching infolist and the dialog has no Save or Cancel.
 
 ```python title="app/orbit/actions/schema.py"
 from almasix.orbit.actions import Action
@@ -258,7 +258,7 @@ Action.make("publish")
 |-------|----------|
 | [`CreateAction`](/actions/create/) | `create`, plus icon, primary; `.create_another` |
 | [`EditAction`](/actions/edit/) | `edit`, pencil, primary |
-| [`ViewAction`](/actions/view/) | `view`, magnifying glass, gray; disabled form |
+| [`ViewAction`](/actions/view/) | `view`, magnifying glass, gray; infolist modal |
 | [`DeleteAction`](/actions/delete/) | `delete`, trash, danger, confirmation |
 | `DeleteBulkAction` | `delete_bulk`, “Delete selected”, confirmation |
 | [`ReplicateAction`](/actions/replicate/) | replica helpers + exclude attributes |
