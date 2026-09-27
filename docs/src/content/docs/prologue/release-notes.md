@@ -12,6 +12,25 @@ header switcher.
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+## 0.5.1
+
+A view dialog shows the record, and a list can hide records the current user may not open.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.5.1'
+```
+
+### Tables and actions
+
+- A view action opened as a dialog shows the infolist: labels and values, with a close button and no Save or Cancel. Create and edit dialogs stay forms
+- Clicking a row follows its view action. A link view opens the page. A dialog view opens the dialog
+- Choosing an action inside a menu closes the menu
+
+### Record scope
+
+- `scope_records` filters the rows on a list
+- `record_allowed` refuses a direct link to view, create, edit, or delete a record outside that scope
+
 ## 0.5.0
 
 The current team stays on the request. Switching teams opens that team's home, and each company keeps its own numeric id.
