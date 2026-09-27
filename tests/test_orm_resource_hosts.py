@@ -1133,3 +1133,110 @@ async def test_scope_records_filters_a_list() -> None:
     kept = await hosts_mod._records_in_scope(Scoped, [{"id": 1, "name": "Alan"}, {"id": 2}])
     assert kept == [{"id": 1, "name": "Alan"}]
     assert await hosts_mod._records_in_scope(object, [{"id": 1}]) == [{"id": 1}]
+
+
+class _Gate(Resource):
+    slug = "gate"
+    records_mutable = True
+    allow_create = True
+    allow_delete = True
+
+    @classmethod
+    def form(cls, form: Form) -> Form:
+        return form.schema([TextInput.make("title")])
+
+    @classmethod
+    def can_create(cls, user: Any) -> bool:
+        return cls.allow_create
+
+    @classmethod
+    def can_delete(cls, user: Any, record: Any = None) -> bool:
+        return cls.allow_delete
+
+    @classmethod
+    def scope_records(cls, user: Any, records: list[Any]) -> list[Any]:
+        return [row for row in records if row.get("keep")]
+
+    @classmethod
+    async def record_allowed(cls, user: Any, record: Any, *, write: bool = False) -> bool:
+        if isinstance(record, dict):
+            return bool(record.get("ok"))
+        return bool(getattr(record, "ok", False))
+
+
+@pytest.mark.asyncio
+async def test_record_scope_refuses_out_of_scope_writes(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert hosts_mod._policy_overridden(object, "can_create") is False
+    assert await hosts_mod._record_in_scope(_Gate, None, write=True) is True
+    assert "Not allowed" in hosts_mod._forbidden_page()
+    assert await hosts_mod._orm_find(object, "1") is None
+
+    _OrmModel.reset()
+    kept = await _OrmModel.create({"title": "Kept", "keep": True, "ok": False})
+    allowed = await _OrmModel.create({"title": "Ok", "keep": True, "ok": True})
+    monkeypatch.setattr(hosts_mod, "_resource_model", lambda resource: _OrmModel)
+    monkeypatch.setattr(hosts_mod, "_resource_mutable", lambda resource: True)
+    panel = _panel()
+
+    listing = ListRecordsHost.bind(panel=panel, resource=_Gate)()
+    await listing.mount()
+    assert {row["title"] for row in listing.records} == {"Kept", "Ok"}
+
+    listing.records = [_as_record_dict(kept), _as_record_dict(allowed)]
+    _Gate.allow_delete = False
+    await listing.mountAction("delete", str(kept.id), {"data": {}})
+    await listing.mountAction("delete_bulk", None, {"data": {}})
+    assert any(row.get("title") == "Kept" for row in listing.records)
+
+    _Gate.allow_delete = True
+    listing.selected = [str(kept.id), str(allowed.id)]
+    await listing.mountAction("delete", str(kept.id), {"data": {}})
+    await listing.mountAction("delete_bulk", None, {"data": {}})
+    assert any(row.get("title") == "Kept" for row in listing.records)
+    assert all(row.get("title") != "Ok" for row in listing.records)
+
+    _Gate.allow_create = False
+    before = len(listing.records)
+    await listing.mountAction("create", None, {"data": {"title": "Nope", "ok": True}})
+    assert len(listing.records) == before
+    _Gate.allow_create = True
+    await listing.mountAction("create", None, {"data": {"title": "Blocked"}})
+    assert all(row.get("title") != "Blocked" for row in listing.records)
+    await listing.mountAction("edit", str(kept.id), {"data": {"title": "Changed"}})
+    assert any(row.get("title") == "Kept" for row in listing.records)
+
+    _Gate.allow_create = False
+    creating = CreateRecordHost.bind(panel=panel, resource=_Gate)()
+    creating.data = {"title": "New"}
+    assert creating.create() is None
+    assert "Not allowed" in creating.render()
+    _Gate.allow_create = True
+    creating.data = {"title": "New"}
+    await creating.create()
+    assert "access" in creating.take_dispatches()[-1]["params"]["body"]
+
+    editing = EditRecordHost.bind(panel=panel, resource=_Gate)()
+    editing.record_id = str(kept.id)
+    await editing.mount()
+    assert editing._forbidden is True
+    assert "Not allowed" in editing.render()
+    editing.data = {"title": "Kept"}
+    await editing.save()
+    assert "access" in editing.take_dispatches()[-1]["params"]["body"]
+    _Gate.allow_delete = False
+    await editing.mountAction("delete", str(kept.id), {"data": {}})
+    assert await _OrmModel.find(kept.id) is not None
+    _Gate.allow_delete = True
+    await editing.mountAction("delete", str(kept.id), {"data": {}})
+    assert await _OrmModel.find(kept.id) is not None
+
+    viewing = ViewRecordHost.bind(panel=panel, resource=_Gate)()
+    viewing.record_id = str(kept.id)
+    await viewing.mount()
+    assert viewing._forbidden is True
+    assert "Not allowed" in viewing.render()
+    _Gate.allow_delete = False
+    await viewing.mountAction("delete", str(kept.id), {"data": {}})
+    _Gate.allow_delete = True
+    await viewing.mountAction("delete", str(kept.id), {"data": {}})
+    assert await _OrmModel.find(kept.id) is not None

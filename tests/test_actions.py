@@ -25,6 +25,7 @@ from almasix.orbit.actions import (
     ViewAction,
 )
 from almasix.orbit.forms.components import TextInput
+from almasix.orbit.infolists import TextEntry
 
 
 def test_action_authorize_call_and_render() -> None:
@@ -366,6 +367,11 @@ def test_create_view_bulk_extras() -> None:
     assert 'data-has-form="true"' not in viewed
     assert 'name="title"' not in viewed
     assert "wire:click" not in viewed
+
+    explicit = ViewAction.make().infolist([TextEntry.make("title")])
+    explicit_html = explicit.render({"title": "Bye"}, record={"title": "Bye"})
+    assert "Bye" in explicit_html
+    assert "or-infolist" in explicit_html
 
     bulk = (
         BulkAction.make("bulk")

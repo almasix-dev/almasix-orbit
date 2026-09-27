@@ -312,9 +312,12 @@ async def _orm_fetch_all(
 
 
 async def _orm_find(model: type[Any], record_id: str) -> Any | None:
-    found = await _await_maybe(model.find(record_id))
+    finder = getattr(model, "find", None)
+    if not callable(finder):
+        return None
+    found = await _await_maybe(finder(record_id))
     if found is None and str(record_id).isdigit():
-        found = await _await_maybe(model.find(int(record_id)))
+        found = await _await_maybe(finder(int(record_id)))
     return found
 
 
