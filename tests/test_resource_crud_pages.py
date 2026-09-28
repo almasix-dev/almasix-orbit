@@ -47,7 +47,7 @@ def test_edit_and_view_load_record_by_id() -> None:
     assert "or-page-actions" in html
     assert 'data-action="view"' in html
     assert 'data-action="delete"' in html
-    assert "max-width: 64rem" in html
+    assert "max-width:" not in html
 
     view = ViewRecordHost.bind(panel=panel, resource=_DemoResource)()
     view.record_id = "1"

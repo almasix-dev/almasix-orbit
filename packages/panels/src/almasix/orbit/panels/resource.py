@@ -64,9 +64,9 @@ class Resource:
     content_max_width: ClassVar[str | None] = None
     #: List page. Falls back to ``content_max_width``, then the panel width.
     table_content_max_width: ClassVar[str | None] = None
-    #: Create and edit pages. Falls back to ``content_max_width``, then ``screen-lg``.
+    #: Create and edit pages. Falls back to ``content_max_width``, then the panel width.
     form_content_max_width: ClassVar[str | None] = None
-    #: View page. Falls back to ``content_max_width``, then ``screen-lg``.
+    #: View page. Falls back to ``content_max_width``, then the panel width.
     infolist_content_max_width: ClassVar[str | None] = None
     #: ``True`` → CRUD mutates records. ``False`` → seed/demo list is read-only.
     #: ``None`` (default) → mutable when ``model`` is an Almasix ORM ``Model``.

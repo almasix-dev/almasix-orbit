@@ -7,7 +7,7 @@ The list page is the front door of a [resource](/resources/overview/). It render
 
 You get a working list page for free: register a resource on a panel and the index route exists. Everything below is about shaping it.
 
-The list uses the panel content width unless the resource sets `table_content_max_width` (or the shared `content_max_width`). See [Content width](/resources/overview/#content-width).
+The list uses the panel content width unless the resource sets `table_content_max_width` (or the shared `content_max_width`). `full` fills that panel width rather than the viewport. See [Content width](/resources/overview/#content-width).
 
 ![Orbit list page (light)](/examples/light/resources/listing.png)
 

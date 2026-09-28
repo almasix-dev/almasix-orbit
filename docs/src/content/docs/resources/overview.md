@@ -67,8 +67,8 @@ class PostResource(Resource):
 | `permission_prefix` | slug | Ability prefix |
 | `content_max_width` | panel width | Shared max width for the list, form, and view when a page-specific value is unset |
 | `table_content_max_width` | `content_max_width`, then the panel | List page |
-| `form_content_max_width` | `content_max_width`, then `screen-lg` | Create and edit pages |
-| `infolist_content_max_width` | `content_max_width`, then `screen-lg` | View page |
+| `form_content_max_width` | `content_max_width`, then the panel | Create and edit pages |
+| `infolist_content_max_width` | `content_max_width`, then the panel | View page |
 
 ### Record titles
 
@@ -92,7 +92,9 @@ class PostResource(Resource):
     infolist_content_max_width = "screen-lg"  # view
 ```
 
-`content_max_width` sets the same cap for all three when you do not set the page-specific value. Leave the table unset and the list uses the [panel content width](/panels/configuration/). Create, edit, and view use `screen-lg` (64rem) when neither the page value nor `content_max_width` is set.
+`content_max_width` sets the same cap for all three when you do not set the page-specific value. Leave a page unset and it uses the [panel content width](/panels/configuration/) — `screen-2xl` (96rem) unless the panel changes it.
+
+`full` fills that panel width. A panel set to `screen-2xl` and a resource set to `full` both stop at 96rem. The page does not grow to the whole viewport.
 
 ## Configure hooks
 

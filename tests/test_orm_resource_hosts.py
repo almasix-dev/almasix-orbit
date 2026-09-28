@@ -782,8 +782,9 @@ def test_resource_pages_hydrate_and_width() -> None:
     data = rp._hydrate_form_state(form, SimpleNamespace(name="Ada", email="a@t", extra=1))
     assert data["name"] == "Ada"
     assert "48rem" in rp._resource_width_style(R, operation="edit")
-    assert "100%" in rp._resource_width_style(R, operation="list")
-    assert "100%" in rp._resource_width_style(R, operation="view")
+    assert "var(--or-content-max, 96rem)" in rp._resource_width_style(R, operation="list")
+    assert "var(--or-content-max, 96rem)" in rp._resource_width_style(R, operation="view")
+    assert "100%" not in rp._resource_width_style(R, operation="list")
     assert rp._resource_width_style(R, operation=None)
 
     class Narrow(Resource):
@@ -800,8 +801,9 @@ def test_resource_pages_hydrate_and_width() -> None:
 
     assert rp._resource_width_style(Defaults, operation="list") == ""
     assert rp._resource_width_style(Defaults, operation=None) == ""
-    assert "64rem" in rp._resource_width_style(Defaults, operation="edit")
-    assert "64rem" in rp._resource_width_style(Defaults, operation="view")
+    assert rp._resource_width_style(Defaults, operation="edit") == ""
+    assert rp._resource_width_style(Defaults, operation="view") == ""
+    assert rp._resource_width_style(Defaults, operation="create") == ""
     assert rp._record_id({"id": 3}) == "3"
     assert rp._record_id(SimpleNamespace(id=4)) == "4"
     assert rp._record_id(None) == ""
