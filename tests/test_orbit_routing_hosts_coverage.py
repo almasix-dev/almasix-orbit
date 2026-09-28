@@ -448,6 +448,212 @@ def test_mount_dashboard_pages_logout_and_assets(monkeypatch) -> None:
     mount_orbit_assets(assets_router)  # idempotent
 
 
+def test_custom_page_mounts_conduit_host_instead_of_static_render(monkeypatch) -> None:
+    """Pages with get_conduit_host() use make_panel_page_action, not render()."""
+
+    class FormBuilderHost(OrbitPageHost):
+        _conduit_name = "orbit.test.form-builder-host"
+
+        @classmethod
+        def bind(cls, *, panel: Any = None, page: Any = None) -> type[FormBuilderHost]:
+            class Bound(FormBuilderHost):
+                pass
+
+            Bound._panel = panel
+            Bound._page = page  # type: ignore[attr-defined]
+            Bound._conduit_name = f"orbit.{getattr(panel, 'id', 'test')}.form-builder"
+            return Bound
+
+        @classmethod
+        def _public_property_names(cls) -> set[str]:
+            return set()
+
+        def mount(self, **kwargs: Any) -> None:
+            return None
+
+        def render(self) -> str:
+            return '<div class="or-page" data-host="1">FORM-BUILDER-HOST</div>'
+
+    class FormBuilderPage(Page):
+        title = "Form builder"
+        slug = "form-builder"
+
+        @classmethod
+        def get_conduit_host(cls) -> type[Any] | None:
+            return FormBuilderHost
+
+        @classmethod
+        def render(cls, **ctx: Any) -> str:
+            return '<div class="or-page">Form builder requires Conduit.</div>'
+
+    from almasix.orbit.panels import routing as routing_mod
+
+    monkeypatch.setattr(
+        routing_mod,
+        "_instantiate_host",
+        lambda host_cls, extras=None: host_cls(),
+    )
+
+    async def fake_embed(instance: Any) -> str:
+        return instance.render()
+
+    monkeypatch.setattr(routing_mod, "_embed_async", fake_embed)
+
+    router = Router()
+    panel = (
+        Panel.make("builder")
+        .path("builder")
+        .middleware([], replace=True)
+        .login()
+        .pages([FormBuilderPage])
+        .user(OrbitUser.default())
+    )
+    mount_panel(router, panel)
+
+    page_route = next(r for r in router.routes if "form-builder" in (r.uri or ""))
+    out = asyncio.run(page_route.action(_Req("/builder/form-builder")))
+    raw = getattr(out, "body", getattr(out, "content", out))
+    text = raw.decode() if isinstance(raw, (bytes, bytearray)) else str(raw)
+    assert "FORM-BUILDER-HOST" in text
+    assert "Form builder requires Conduit." not in text
+
+
+def test_custom_page_conduit_host_bind_fallbacks(monkeypatch) -> None:
+    """Cover bind(panel, page) TypeError → bind(panel) → mount params."""
+
+    from almasix.orbit.panels import routing as routing_mod
+
+    monkeypatch.setattr(
+        routing_mod,
+        "_instantiate_host",
+        lambda host_cls, extras=None: host_cls(**(extras or {})),
+    )
+
+    async def fake_embed(instance: Any) -> str:
+        return instance.render()
+
+    monkeypatch.setattr(routing_mod, "_embed_async", fake_embed)
+
+    class PanelOnlyHost(OrbitPageHost):
+        _conduit_name = "orbit.test.panel-only-host"
+
+        @classmethod
+        def bind(cls, *, panel: Any = None) -> type[PanelOnlyHost]:
+            class Bound(PanelOnlyHost):
+                pass
+
+            Bound._panel = panel
+            Bound._conduit_name = f"orbit.{getattr(panel, 'id', 'test')}.panel-only"
+            return Bound
+
+        @classmethod
+        def _public_property_names(cls) -> set[str]:
+            return set()
+
+        def mount(self, **kwargs: Any) -> None:
+            return None
+
+        def render(self) -> str:
+            return '<div class="or-page">PANEL-ONLY-HOST</div>'
+
+    class PanelOnlyPage(Page):
+        title = "Panel only"
+        slug = "panel-only"
+
+        @classmethod
+        def get_conduit_host(cls) -> type[Any] | None:
+            return PanelOnlyHost
+
+        @classmethod
+        def render(cls, **ctx: Any) -> str:
+            return '<div class="or-page">static</div>'
+
+    class NoKwargsHost(OrbitPageHost):
+        _conduit_name = "orbit.test.no-kwargs-host"
+
+        @classmethod
+        def bind(cls) -> type[NoKwargsHost]:
+            raise TypeError("bind takes no keyword arguments")
+
+        @classmethod
+        def _public_property_names(cls) -> set[str]:
+            return set()
+
+        def __init__(self, **kwargs: Any) -> None:
+            self._mount = kwargs
+            super().__init__()
+
+        def mount(self, **kwargs: Any) -> None:
+            return None
+
+        def render(self) -> str:
+            return '<div class="or-page">NO-KWARGS-HOST</div>'
+
+    class NoKwargsPage(Page):
+        title = "No kwargs"
+        slug = "no-kwargs"
+
+        @classmethod
+        def get_conduit_host(cls) -> type[Any] | None:
+            return NoKwargsHost
+
+        @classmethod
+        def render(cls, **ctx: Any) -> str:
+            return '<div class="or-page">static</div>'
+
+    class NoBindHost(OrbitPageHost):
+        _conduit_name = "orbit.test.no-bind-host"
+        bind = None  # type: ignore[assignment]
+
+        @classmethod
+        def _public_property_names(cls) -> set[str]:
+            return set()
+
+        def __init__(self, **kwargs: Any) -> None:
+            self._mount = kwargs
+            super().__init__()
+
+        def mount(self, **kwargs: Any) -> None:
+            return None
+
+        def render(self) -> str:
+            return '<div class="or-page">NO-BIND-HOST</div>'
+
+    class NoBindPage(Page):
+        title = "No bind"
+        slug = "no-bind"
+
+        @classmethod
+        def get_conduit_host(cls) -> type[Any] | None:
+            return NoBindHost
+
+        @classmethod
+        def render(cls, **ctx: Any) -> str:
+            return '<div class="or-page">static</div>'
+
+    router = Router()
+    panel = (
+        Panel.make("fallbacks")
+        .path("fallbacks")
+        .middleware([], replace=True)
+        .login()
+        .pages([PanelOnlyPage, NoKwargsPage, NoBindPage])
+        .user(OrbitUser.default())
+    )
+    mount_panel(router, panel)
+
+    for slug, marker in (
+        ("panel-only", "PANEL-ONLY-HOST"),
+        ("no-kwargs", "NO-KWARGS-HOST"),
+        ("no-bind", "NO-BIND-HOST"),
+    ):
+        page_route = next(r for r in router.routes if slug in (r.uri or ""))
+        out = asyncio.run(page_route.action(_Req(f"/fallbacks/{slug}")))
+        raw = getattr(out, "body", getattr(out, "content", out))
+        text = raw.decode() if isinstance(raw, (bytes, bytearray)) else str(raw)
+        assert marker in text
+
+
 def test_mount_registered_panels_and_current_user_fallbacks(monkeypatch) -> None:
     registry = PanelRegistry()
     panel = Panel.make("reg").path("reg").middleware([], replace=True).resources([PostResource])
