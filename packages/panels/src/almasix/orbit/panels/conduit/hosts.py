@@ -369,6 +369,11 @@ async def _load_relation_records(
         relationship = str(getattr(manager, "relationship", ""))
         if not relationship:
             continue
+        query = getattr(manager, "query_records", None)
+        if callable(query) and owner_id:
+            rows = await _await_maybe(query(owner_id))
+            out[relationship] = [_as_record_dict(row) for row in (rows or [])]
+            continue
         related_model = getattr(manager, "related_model", None)
         if _is_orm_model(related_model) and owner_id:
             foreign_key = manager.get_foreign_key(resource)
@@ -1811,7 +1816,7 @@ class RelationRecords:
     ) -> None:
         self.relations = await _load_relation_records(resource, owner)
 
-    def relation_action(self, action_name: str, rid: str) -> Any:
+    def relation_action(self, action_name: str, rid: str, data: dict[str, Any] | None = None) -> Any:
         """Handle ``relation.<relationship>.<action>``; returns True when consumed."""
         parsed = _parse_relation_action(action_name)
         if parsed is None:
@@ -1827,9 +1832,79 @@ class RelationRecords:
             action=action,
             record_id=rid,
         )
+        payload = dict(data or {})
+        if action == "create":
+            if not payload:
+                return True
+            owner_id = str(getattr(self, "record_id", "") or "")
+            return self._create_relation_record(manager, relationship, owner_id, payload)
+        if action == "edit" and rid and payload:
+            return self._update_relation_record(manager, relationship, rid, payload)
         if action == "delete" and rid:
             return self._delete_relation_record(manager, relationship, rid)
         return True
+
+    def _create_relation_record(
+        self,
+        manager: type[Any],
+        relationship: str,
+        owner_id: str,
+        data: dict[str, Any],
+    ) -> Any:
+        related_model = getattr(manager, "related_model", None)
+        payload = {key: value for key, value in data.items() if key != "id"}
+        foreign_key = manager.get_foreign_key(self.get_resource())  # type: ignore[attr-defined]
+        if owner_id:
+            payload[foreign_key] = owner_id
+        if _is_orm_model(related_model):
+            return self._create_relation_orm(related_model, relationship, payload)
+        row = {"id": _next_record_id(self.relations.get(relationship, [])), **payload}
+        rows = [*self.relations.get(relationship, []), row]
+        self.relations = {**self.relations, relationship: rows}
+        return True
+
+    async def _create_relation_orm(
+        self,
+        model: type[Any],
+        relationship: str,
+        payload: dict[str, Any],
+    ) -> None:
+        row = await _orm_create(model, payload)
+        rows = [*self.relations.get(relationship, []), row]
+        self.relations = {**self.relations, relationship: rows}
+
+    def _update_relation_record(
+        self,
+        manager: type[Any],
+        relationship: str,
+        rid: str,
+        data: dict[str, Any],
+    ) -> Any:
+        related_model = getattr(manager, "related_model", None)
+        if _is_orm_model(related_model):
+            return self._update_relation_orm(related_model, relationship, rid, data)
+        rows: list[Any] = []
+        for row in self.relations.get(relationship, []):
+            if _record_key(row) != rid or not isinstance(row, dict):
+                rows.append(row)
+                continue
+            rows.append({**row, **data, "id": row.get("id", rid)})
+        self.relations = {**self.relations, relationship: rows}
+        return True
+
+    async def _update_relation_orm(
+        self,
+        model: type[Any],
+        relationship: str,
+        rid: str,
+        data: dict[str, Any],
+    ) -> None:
+        row = await _orm_update(model, rid, data)
+        rows = [
+            row if _record_key(existing) == rid else existing
+            for existing in self.relations.get(relationship, [])
+        ]
+        self.relations = {**self.relations, relationship: rows}
 
     def _delete_relation_record(self, manager: type[Any], relationship: str, rid: str) -> Any:
         related_model = getattr(manager, "related_model", None)
@@ -1969,10 +2044,10 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
         payload: Any = None,
         **kwargs: Any,
     ) -> Any:
-        action_name, rid, _ = _mount_action_args(name, record_id, payload, **kwargs)
+        action_name, rid, data = _mount_action_args(name, record_id, payload, **kwargs)
         if not rid:
             rid = str(self.record_id or "")
-        relation = self.relation_action(action_name, rid)
+        relation = self.relation_action(action_name, rid, data)
         if relation is not None:
             return relation if not isinstance(relation, bool) else None
         if action_name in {"delete", "force_delete"} and rid:
@@ -2076,10 +2151,10 @@ class ViewRecordHost(RelationRecords, OrbitPageHost):
         payload: Any = None,
         **kwargs: Any,
     ) -> Any:
-        action_name, rid, _ = _mount_action_args(name, record_id, payload, **kwargs)
+        action_name, rid, data = _mount_action_args(name, record_id, payload, **kwargs)
         if not rid:
             rid = str(self.record_id or "")
-        relation = self.relation_action(action_name, rid)
+        relation = self.relation_action(action_name, rid, data)
         if relation is not None:
             return relation if not isinstance(relation, bool) else None
         if action_name in {"delete", "force_delete", "restore"} and rid:

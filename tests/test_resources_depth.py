@@ -366,6 +366,37 @@ def test_relation_create_action_is_consumed_without_error() -> None:
     assert view.mountAction("relation.unknown.delete", "1") is None
 
 
+def test_relation_create_and_edit_write_rows() -> None:
+    panel = _panel()
+    ArticleResource.records = [_article()]
+    view = ViewRecordHost.bind(panel=panel, resource=ArticleResource)()
+    view.record_id = "1"
+    view.mount()
+    view.mountAction("relation.comments.create", None, {"data": {"author": "Grace", "body": "Hi"}})
+    created = next(row for row in view.relations["comments"] if row["author"] == "Grace")
+    assert created["body"] == "Hi"
+    assert created["article_id"] == "1"
+    view.mountAction(
+        "relation.comments.edit",
+        str(created["id"]),
+        {"data": {"body": "Hello"}},
+    )
+    edited = next(row for row in view.relations["comments"] if row["author"] == "Grace")
+    assert edited["body"] == "Hello"
+    assert view.mountAction("relation.comments.archive") is None
+    view.record_id = ""
+    view.mountAction("relation.comments.create", None, {"data": {"author": "Una", "body": "Loose"}})
+    loose = next(row for row in view.relations["comments"] if row["author"] == "Una")
+    assert "article_id" not in loose
+
+    class Bare:
+        id = loose["id"]
+
+    view.relations["comments"].append(Bare())
+    view.mountAction("relation.comments.edit", str(loose["id"]), {"data": {"body": "Still"}})
+    assert any(row is not None and not isinstance(row, dict) for row in view.relations["comments"])
+
+
 def test_relation_helpers() -> None:
     assert _parse_relation_action("relation.comments.delete") == ("comments", "delete")
     assert _parse_relation_action("delete") is None
@@ -400,6 +431,24 @@ async def test_load_relation_records_skips_blank_relationships() -> None:
 
     loaded = await _load_relation_records(WithBlank, _article())
     assert list(loaded) == ["comments"]
+
+
+async def test_load_relation_records_uses_a_custom_query() -> None:
+    class Scoped(RelationManager):
+        relationship = "comments"
+
+        @staticmethod
+        async def query_records(owner_id: str) -> list[dict[str, str]]:
+            return [{"id": owner_id, "body": "nested"}]
+
+    class WithScoped(ArticleResource):
+        @classmethod
+        def get_relations(cls) -> list[type[Any]]:
+            return [Scoped]
+
+    loaded = await _load_relation_records(WithScoped, _article())
+    assert loaded["comments"][0]["body"] == "nested"
+
 
 
 # --- global search -----------------------------------------------------------
@@ -727,8 +776,14 @@ class _Query:
 class OrmComment(Model):
     """Real Model subclass with the query surface stubbed for tests."""
 
-    fillable = ("body",)
+    fillable = ("body", "post_id")
     _store: ClassVar[list[_Row]] = []
+
+    @classmethod
+    async def create(cls, attributes: dict[str, Any]) -> _Row:
+        row = _Row(id=max((item.id for item in cls._store), default=0) + 1, **attributes)
+        cls._store.append(row)
+        return row
 
     @classmethod
     def where(cls, key: str, value: Any) -> _Query:
@@ -794,6 +849,17 @@ async def test_orm_relation_records_load_and_delete() -> None:
 
     await view.mountAction("relation.comments.delete", "5")
     assert view.relations["comments"] == []
+
+    await view.mountAction("relation.comments.create", None, {"data": {"body": "Again"}})
+    await view.mountAction("relation.comments.create", None, {"data": {"body": "Other"}})
+    created_id = str(view.relations["comments"][0]["id"])
+    await view.mountAction(
+        "relation.comments.edit",
+        created_id,
+        {"data": {"body": "Revised"}},
+    )
+    bodies = [row["body"] for row in view.relations["comments"]]
+    assert bodies == ["Revised", "Other"]
 
 
 async def test_orm_relation_records_load_on_edit_host() -> None:
