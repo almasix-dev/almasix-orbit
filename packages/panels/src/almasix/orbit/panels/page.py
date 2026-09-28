@@ -27,6 +27,15 @@ class Page:
     permission: ClassVar[str | None] = None
 
     @classmethod
+    def get_conduit_host(cls) -> type[Any] | None:
+        """Return a Conduit host class for interactive pages, or ``None`` for static HTML.
+
+        Plugins such as Orbit Settings override this so the page mounts through
+        ``make_panel_page_action`` instead of a one-shot ``render()``.
+        """
+        return None
+
+    @classmethod
     def get_slug(cls) -> str:
         if cls.slug:
             return cls.slug
