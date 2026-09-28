@@ -1,6 +1,6 @@
 ---
 title: Date picker
-description: DatePicker uses a Flowbite calendar by default, with min/max bounds and an optional native browser input.
+description: DatePicker uses a Flowbite calendar by default, with a start-and-end range, min/max bounds, and an optional native browser input.
 ---
 
 ## Introduction
@@ -22,6 +22,19 @@ DatePicker.make('starts_on')
 ![Orbit Basic date picker (light)](/examples/light/forms/date-picker/basic.png)
 
 ![Orbit Basic date picker (dark)](/examples/dark/forms/date-picker/basic.png)
+
+
+## Start and end
+
+`.range('ends_on')` keeps one field and posts two dates. The first name is the start. The name you pass is the end. Both values are `YYYY-MM-DD`. The calendar highlights the days between them. The end has to fall on the start or after it.
+
+```python title="app/orbit/resources/example_resource.py"
+DatePicker.make('starts_on')
+    .label('Away')
+    .range('ends_on')
+```
+
+`.native(True)` uses two browser date inputs for the same pair. A date-time field stays a single day; call `.range()` on `DatePicker`.
 
 ## Bounded range
 

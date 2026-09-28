@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any, ClassVar, Self
 
-from almasix.orbit.schemas.layouts import child_render_state
+from almasix.orbit.schemas.layouts import child_render_context, child_render_state
 from almasix.orbit.support.component import Component
 
 
@@ -115,7 +115,7 @@ class Schema(Component):
 
     def render(self, state: Any = None, **ctx: Any) -> str:
         data = state if isinstance(state, dict) else self._state
-        render_ctx = {**ctx}
+        render_ctx = {**child_render_context(data, ctx)}
         if self._operation is not None and "operation" not in render_ctx:
             render_ctx["operation"] = self._operation
         parts = [
