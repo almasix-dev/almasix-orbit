@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from almasix.orbit.actions.action import CreateAction, DeleteAction
+from almasix.orbit.actions.action import CreateAction, DeleteAction, EditAction
 from almasix.orbit.forms.form import Form
 from almasix.orbit.support.html import e
 from almasix.orbit.tables.table import Table
@@ -55,16 +55,20 @@ class RelationManager:
     def get_table(cls) -> Table:
         table = cls.table(Table.make(f"{cls.relationship}_table"))
         if cls.is_mutable:
+            components = cls.get_form().get_components()
             if not table._actions:
-                table.actions([DeleteAction.make(cls.action_name("delete"))])
+                actions: list[Any] = []
+                if components:
+                    actions.append(EditAction.make(cls.action_name("edit")).form(components))
+                actions.append(DeleteAction.make(cls.action_name("delete")))
+                table.actions(actions)
             if not table._header_actions:
-                table.header_actions(
-                    [
-                        CreateAction.make(cls.action_name("create")).label(
-                            f"New {cls.get_record_label()}"
-                        )
-                    ]
+                create = CreateAction.make(cls.action_name("create")).label(
+                    f"New {cls.get_record_label()}"
                 )
+                if components:
+                    create = create.form(components)
+                table.header_actions([create])
         return table
 
     @classmethod
