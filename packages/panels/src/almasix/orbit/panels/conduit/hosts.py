@@ -1741,19 +1741,10 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
             mutated = hook(payload)
             if isinstance(mutated, dict):
                 payload = mutated
-        if callable(getattr(resource, "get_records", None)) and callable(hook):
-            row = payload if isinstance(payload, dict) else {"id": next_id}
+        if callable(hook) and callable(getattr(resource, "get_records", None)):
+            row = payload
         else:
-            row = {
-                "id": (
-                    payload.get("id", next_id)
-                    if isinstance(payload, dict)
-                    else next_id
-                ),
-                **(payload if isinstance(payload, dict) else {}),
-            }
-            if row.get("id") in (None, ""):
-                row["id"] = next_id
+            row = {"id": next_id, **payload}
             records = [*records, row]
             _save_resource_records(resource, records)
         self.created_id = str(row.get("id") or next_id)
