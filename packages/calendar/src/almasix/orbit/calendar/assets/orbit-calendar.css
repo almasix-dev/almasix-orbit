@@ -1,0 +1,136 @@
+.or-schedule-card {
+  margin-top: 0.75rem;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--or-line, #e5e7eb);
+  border-radius: 0.85rem;
+  background: var(--or-card, #fff);
+  box-shadow: var(--or-shadow-card, 0 1px 2px rgb(15 23 42 / 4%));
+}
+
+.or-schedule-layout {
+  display: grid;
+  grid-template-columns: 18rem minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.or-schedule-picker {
+  min-width: 0;
+  padding: 0.85rem 1rem;
+  border-right: 1px solid var(--or-line, #e5e7eb);
+}
+
+.or-schedule-month {
+  margin: 0;
+  font-weight: 600;
+}
+
+.or-schedule-picker .lm-calendar {
+  width: 100%;
+  background: #fff;
+}
+
+.or-schedule-picker .lm-calendar-options,
+.or-schedule-picker .lm-calendar-footer {
+  display: none;
+}
+
+.or-schedule-picker .lm-calendar-icon {
+  font-family: inherit;
+  font-size: 0;
+  line-height: 0;
+  width: 2rem;
+  height: 2rem;
+}
+
+.or-schedule-picker .lm-calendar-navigation button::before {
+  content: "";
+  display: block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin: 0.15rem auto 0;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.or-schedule-picker .lm-calendar-navigation button:first-child::before {
+  margin-top: 0.4rem;
+  transform: rotate(-135deg);
+}
+
+.or-schedule-picker [data-selected="true"] {
+  background: var(--or-primary, #efaf5d);
+  color: var(--or-primary-deep, #46341c);
+}
+
+.or-schedule-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 720px) {
+  .or-schedule-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .or-schedule-picker {
+    border-right: 0;
+    border-bottom: 1px solid var(--or-line, #e5e7eb);
+  }
+}
+
+html[data-theme="dark"] .or-schedule-picker .lm-calendar {
+  background: var(--or-card, #1c1917);
+}
+
+.or-schedule-board,
+.or-schedule .lm-schedule {
+  background: #fff;
+}
+
+.or-schedule .lm-schedule {
+  height: 100%;
+}
+
+html[data-theme="dark"] .or-schedule-board,
+html[data-theme="dark"] .or-schedule .lm-schedule {
+  background: var(--or-card, #1c1917);
+}
+
+.or-schedule .lm-schedule-item {
+  --lm-schedule-background: var(--or-primary, #efaf5d) !important;
+  --lm-schedule-color: var(--or-primary-deep, #46341c) !important;
+}
+
+.or-schedule-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--or-line, #e5e7eb);
+}
+
+.or-schedule-toolbar button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--or-line, #e5e7eb);
+  background: var(--or-card, #fff);
+  color: var(--or-primary-deep, #46341c);
+  cursor: pointer;
+}
+
+.or-schedule-toolbar button.is-active {
+  background: var(--or-primary, #efaf5d);
+  border-color: var(--or-primary, #efaf5d);
+}
+
+.or-schedule-board {
+  height: 52rem;
+  margin: 0.75rem 1rem 1rem;
+}
