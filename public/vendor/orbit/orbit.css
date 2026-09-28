@@ -6654,6 +6654,24 @@ html.dark .or-field-FileUpload .filepond--panel-root,
   opacity: 0.65;
   cursor: not-allowed;
 }
+.or-datepicker--range .or-datepicker__row {
+  align-items: center;
+}
+.or-datepicker__sep {
+  flex: 0 0 auto;
+  color: var(--or-muted, #6b7280);
+  font-size: 0.85rem;
+}
+.datepicker .datepicker-cell.range:not(.range-start):not(.range-end) {
+  background-color: var(--or-primary-wash) !important;
+  color: var(--or-primary-deep) !important;
+  border-radius: 0 !important;
+}
+html.dark .datepicker .datepicker-cell.range:not(.range-start):not(.range-end),
+.dark .datepicker .datepicker-cell.range:not(.range-start):not(.range-end) {
+  background-color: var(--or-primary-wash-strong) !important;
+  color: var(--or-primary-soft) !important;
+}
 .datepicker-dropdown {
   z-index: 1200;
 }

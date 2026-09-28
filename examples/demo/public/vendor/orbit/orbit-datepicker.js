@@ -120,6 +120,24 @@ function formatPickerState(parts, mode, withSeconds) {
   return date + time;
 }
 
+function isoFromPickerDate(value) {
+  if (value == null || value === '') return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return formatPickerState(
+    {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+      day: date.getDate(),
+      hour: 0,
+      minute: 0,
+      second: 0,
+    },
+    'date',
+    false,
+  );
+}
+
 function dateOnlyStamp(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
@@ -397,8 +415,11 @@ function createOrbitDatePicker(cfg = {}) {
     _syncing: false,
     _outsideClose: null,
 
+    range: !!cfg.range,
     getValue: typeof cfg.getValue === 'function' ? cfg.getValue : () => '',
     setValue: typeof cfg.setValue === 'function' ? cfg.setValue : () => {},
+    getEndValue: typeof cfg.getEndValue === 'function' ? cfg.getEndValue : () => '',
+    setEndValue: typeof cfg.setEndValue === 'function' ? cfg.setEndValue : () => {},
     isDisabled: typeof cfg.isDisabled === 'function' ? cfg.isDisabled : () => false,
 
     async init() {
@@ -413,7 +434,7 @@ function createOrbitDatePicker(cfg = {}) {
       }
       this.bindOutsideClose();
       this.$watch(
-        () => this.getValue(),
+        () => `${this.getValue()}|${this.getEndValue()}`,
         () => {
           if (this._syncing) return;
           this.syncPickerFromState();
@@ -596,12 +617,19 @@ function createOrbitDatePicker(cfg = {}) {
           }
         }
 
-        if (!picker?.active) return;
-        const input = this.$refs.dateInput;
-        const pickerEl = picker.pickerElement;
+        const openPicker = picker?.datepickers
+          ? picker.datepickers.find((item) => item?.active)
+          : picker?.active
+            ? picker
+            : null;
+        if (!openPicker) return;
+        const input = this.$refs.dateInput || this.$refs.startInput;
+        const endInput = this.$refs.endInput;
+        const pickerEl = openPicker.pickerElement;
         if (input && (target === input || input.contains(target))) return;
+        if (endInput && (target === endInput || endInput.contains(target))) return;
         if (pickerEl && pickerEl.contains(target)) return;
-        picker.hide();
+        openPicker.hide();
       };
       document.addEventListener('pointerdown', this._outsideClose, true);
     },
@@ -617,10 +645,20 @@ function createOrbitDatePicker(cfg = {}) {
         this.closeTime();
         return;
       }
+      if (picker?.datepickers) {
+        picker.datepickers.forEach((item) => {
+          if (item?.active) item.hide();
+        });
+        return;
+      }
       if (picker?.active) picker.hide();
     },
 
     initPicker() {
+      if (this.range) {
+        this.initRangePicker();
+        return;
+      }
       const input = this.$refs.dateInput;
       if (!input || typeof window.Datepicker !== 'function') return;
 
@@ -713,7 +751,49 @@ function createOrbitDatePicker(cfg = {}) {
       this.syncPickerFromState();
     },
 
+    initRangePicker() {
+      const host = this.$refs.rangeHost;
+      const start = this.$refs.startInput;
+      const end = this.$refs.endInput;
+      if (!host || !start || !end || typeof window.DateRangePicker !== 'function') return;
+
+      const options = this.buildPickerOptions();
+      options.inputs = [start, end];
+      options.allowOneSidedRange = true;
+      picker = new window.DateRangePicker(host, options);
+
+      const commit = () => {
+        if (this._syncing || this.disabled || typeof picker.getDates !== 'function') return;
+        const dates = picker.getDates();
+        this._syncing = true;
+        this.setValue(isoFromPickerDate(dates[0]));
+        this.setEndValue(isoFromPickerDate(dates[1]));
+        queueMicrotask(() => {
+          this._syncing = false;
+        });
+      };
+      start.addEventListener('changeDate', commit);
+      end.addEventListener('changeDate', commit);
+      this.syncRangeFromState();
+    },
+
+    syncRangeFromState() {
+      if (!picker || !picker.datepickers) return;
+      const start = parsePickerBounds(String(this.getValue() || '').trim());
+      const end = parsePickerBounds(String(this.getEndValue() || '').trim());
+      this._syncing = true;
+      picker.datepickers[0].setDate(start || { clear: true });
+      picker.datepickers[1].setDate(end || { clear: true });
+      queueMicrotask(() => {
+        this._syncing = false;
+      });
+    },
+
     syncPickerFromState() {
+      if (this.range) {
+        this.syncRangeFromState();
+        return;
+      }
       if (!picker) return;
       const raw = String(this.getValue() || '').trim();
       if (!raw) {
@@ -1074,6 +1154,19 @@ function createOrbitDatePicker(cfg = {}) {
         if (root?.dataset?.placeholder) {
           this.placeholder = root.dataset.placeholder;
         }
+        this.range = root?.dataset?.range === 'true';
+        const endState = this.$refs.endState;
+        this.getEndValue = () => (endState ? String(endState.value || '') : '');
+        this.setEndValue = (value) => {
+          const next = value == null ? '' : String(value);
+          if (endState) {
+            endState.value = next;
+            endState.dispatchEvent(new Event('input', { bubbles: true }));
+            endState.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          const rangePath = root?.dataset?.rangePath || '';
+          if (rangePath) syncOrbitDatePath(root, rangePath, next);
+        };
         if (root?.dataset?.min) options.min = root.dataset.min;
         if (root?.dataset?.max) options.max = root.dataset.max;
         const path = root?.dataset?.path || "";

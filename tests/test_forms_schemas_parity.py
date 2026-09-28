@@ -144,6 +144,89 @@ def test_date_pickers_and_money_and_color() -> None:
     assert 'data-linear="true"' in Wizard.make().linear().steps(("A", [TextInput.make("a")])).render({})
 
 
+def test_date_picker_range_posts_start_and_end() -> None:
+    from almasix.orbit.forms.form import Form
+    from almasix.orbit.schemas import Grid
+
+    assert 'data-range=' not in DatePicker.make("starts_on").range("").render()
+    assert 'data-range=' not in DateTimePicker.make("when").range("ends_on").render()
+
+    html = DatePicker.make("starts_on").label("Away").range("ends_on").render(
+        "2026-03-01",
+        form_state={"ends_on": "2026-03-18"},
+    )
+    assert 'data-range="true"' in html
+    assert 'name="starts_on"' in html
+    assert 'name="ends_on"' in html
+    assert 'value="2026-03-01"' in html
+    assert 'value="2026-03-18"' in html
+    assert 'x-ref="startInput"' in html
+    assert 'x-ref="endInput"' in html
+    assert "orbitDatePicker" in html
+
+    native = (
+        DatePicker.make("starts_on")
+        .range("ends_on")
+        .native()
+        .min_date("2020-01-01")
+        .max_date("2030-01-01")
+        .disabled()
+        .render("2026-03-01", form_state={"ends_on": "2026-03-18"})
+    )
+    assert native.count('type="date"') == 2
+    assert "disabled" in native
+    assert 'min="2020-01-01"' in native
+    plain = DatePicker.make("starts_on").range("ends_on").native().render()
+    assert 'value=""' in plain
+    assert "disabled" not in plain
+    readonly = DatePicker.make("starts_on").range("ends_on").readonly().render("2026-03-01")
+    assert "is-disabled" in readonly
+    assert "disabled" in DatePicker.make("starts_on").range("ends_on").disabled().render()
+
+    nested = DatePicker.make("starts_on").range("ends_on").state_path("leave.starts_on")
+    nested_html = nested.render(
+        "2026-03-01",
+        form_state={"leave.ends_on": "2026-03-06"},
+    )
+    assert 'name="leave.ends_on"' in nested_html
+    assert 'value="2026-03-06"' in nested_html
+    walked = nested.render("2026-03-01", form_state={"leave": {"ends_on": "2026-03-05"}})
+    assert 'value="2026-03-05"' in walked
+    short = nested.render("2026-03-01", form_state={"ends_on": "2026-03-04"})
+    assert 'value="2026-03-04"' in short
+    missing = nested.render("2026-03-01", form_state={"leave": {"other": 1}})
+    assert 'value=""' in missing
+    empty_end = DatePicker.make("starts_on").range("ends_on").render(
+        "2026-03-01",
+        form_state={},
+    )
+    assert 'value=""' in empty_end
+    broken = nested.render("2026-03-01", form_state={"leave": "nope"})
+    assert 'value=""' in broken
+
+    field = DatePicker.make("starts_on").range("ends_on").range("until")
+    assert 'name="until"' in field.render("2026-03-10")
+    form = Form.make().schema([field])
+    assert form.validate({"starts_on": "2026-03-10", "until": "2026-03-01"})["starts_on"] == [
+        "The end date must be on or after the start date."
+    ]
+    assert len(form.validate({"starts_on": "2026-03-10", "until": "2026-03-01"})["starts_on"]) == 1
+    ordered = Form.make().schema([DatePicker.make("starts_on").range("ends_on")])
+    assert ordered.validate({"starts_on": "2026-03-01", "ends_on": "2026-03-01"}) == {}
+    assert ordered.validate({"starts_on": "2026-03-01", "ends_on": "2026-03-18"}) == {}
+    assert ordered.validate({"starts_on": "2026-03-01"}) == {}
+    assert ordered.validate({"ends_on": "2026-03-18"}) == {}
+
+    page = Form.make().schema(
+        [
+            Grid.make().schema(
+                [DatePicker.make("starts_on").range("ends_on")],
+            )
+        ]
+    ).render({"starts_on": "2026-03-01", "ends_on": "2026-03-09"})
+    assert 'value="2026-03-09"' in page
+
+
 def test_tags_radio_checkbox_list_affix_actions() -> None:
     tags = (
         TagsInput.make("tags")

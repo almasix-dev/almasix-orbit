@@ -56,7 +56,7 @@ class Layout(Component):
 
     def render_children(self, state: Any = None, **ctx: Any) -> str:
         data = state if isinstance(state, dict) else {}
-        child_ctx = {**ctx}
+        child_ctx = {**child_render_context(data, ctx)}
         if self.is_inline_label() or ctx.get("inline_label"):
             child_ctx["inline_label"] = True
         return "".join(
@@ -64,6 +64,13 @@ class Layout(Component):
             for c in self._schema
             if c.is_visible(**child_ctx)
         )
+
+
+def child_render_context(data: dict[str, Any], ctx: dict[str, Any]) -> dict[str, Any]:
+    """Give each field the whole form bag so a range can read its end date."""
+    if "form_state" in ctx:
+        return ctx
+    return {**ctx, "form_state": data}
 
 
 def child_render_state(component: Component, data: dict[str, Any] | None) -> Any:
@@ -128,7 +135,7 @@ class Flex(Layout):
         for child in self._schema:
             if not child.is_visible(**ctx):
                 continue
-            inner = child.render(child_render_state(child, data), **ctx)
+            inner = child.render(child_render_state(child, data), **child_render_context(data, ctx))
             span = child._column_span
             span_cls = f" or-col-span-{span}" if span else ""
             children.append(f'<div class="or-flex-item{span_cls}">{inner}</div>')
@@ -182,7 +189,7 @@ class Split(Layout):
                 continue
             children.append(
                 f'<div class="or-schema-split-item">'
-                f"{child.render(child_render_state(child, data), **ctx)}</div>"
+                f"{child.render(child_render_state(child, data), **child_render_context(data, ctx))}</div>"
             )
         return f'<div class="{classes}">{"".join(children)}</div>'
 
@@ -407,7 +414,7 @@ class Tabs(Layout):
                 f"{ic}{e(tab.get_label(**ctx))}{badge_html}</button>"
             )
             inner = "".join(
-                c.render(child_render_state(c, data), **ctx)
+                c.render(child_render_state(c, data), **child_render_context(data, ctx))
                 for c in tab.get_child_components()
                 if c.is_visible(**ctx)
             )
@@ -558,7 +565,7 @@ class Wizard(Layout):
         for i, step in enumerate(visible):
             label = step.get_label(**ctx)
             inner = "".join(
-                c.render(child_render_state(c, data), **ctx)
+                c.render(child_render_state(c, data), **child_render_context(data, ctx))
                 for c in step.get_child_components()
                 if c.is_visible(**ctx)
             )
