@@ -6,13 +6,13 @@ from typing import Any, ClassVar
 
 from almasix.orbit.actions.action import DeleteAction, EditAction, ViewAction
 from almasix.orbit.forms.walk import iter_fields
-from almasix.orbit.panels.content_width import resolve_content_max_width
+from almasix.orbit.panels.content_width import (
+    DEFAULT_CONTENT_MAX_WIDTH,
+    resolve_content_max_width,
+)
 from almasix.orbit.panels.page import Page
 from almasix.orbit.support.conduit_attrs import conduit_attr
 from almasix.orbit.support.html import e
-
-# Narrower default for create/edit/view so forms/infolists read comfortably.
-DEFAULT_FORM_CONTENT_MAX_WIDTH = "screen-lg"
 
 # Ctrl/Cmd+S submits the create/edit form.
 _FORM_SAVE_SHORTCUT = (
@@ -22,30 +22,38 @@ _FORM_SAVE_SHORTCUT = (
 )
 
 
+def _resource_width_css(raw: str) -> str:
+    """CSS max-width for a resource token.
+
+    ``full`` fills the owning panel. The shell sets ``--or-content-max`` from that
+    panel, so a panel at ``screen-2xl`` and a resource at ``full`` both stop at
+    ``96rem`` instead of 100% of the viewport.
+    """
+    resolved = resolve_content_max_width(raw)
+    if resolved.token == "full":
+        panel_default = resolve_content_max_width(DEFAULT_CONTENT_MAX_WIDTH).css_value
+        return f"var(--or-content-max, {panel_default})"
+    return resolved.css_value
+
+
 def _resource_width_style(resource: type[Any], *, operation: str | None = None) -> str:
     """Inline max-width for one resource page.
 
     ``content_max_width`` applies to every page unless a page-specific value is set:
     ``table_content_max_width`` (list), ``form_content_max_width`` (create and edit),
-    ``infolist_content_max_width`` (view). Create, edit, and view fall back to
-    ``screen-lg`` when nothing is set. The list page then uses the panel width.
+    ``infolist_content_max_width`` (view). When nothing is set, the page inherits the
+    panel width from ``--or-content-max`` on ``.or-page``.
     """
     shared = getattr(resource, "content_max_width", None) or None
     if operation == "list":
         raw = getattr(resource, "table_content_max_width", None) or shared
-        if not raw:
-            return ""
     elif operation == "view":
         raw = getattr(resource, "infolist_content_max_width", None) or shared
-        if not raw:
-            raw = DEFAULT_FORM_CONTENT_MAX_WIDTH
     else:
         raw = getattr(resource, "form_content_max_width", None) or shared
-        if operation in {"create", "edit"} and not raw:
-            raw = DEFAULT_FORM_CONTENT_MAX_WIDTH
-        elif not raw:
-            return ""
-    return f' style="max-width: {e(resolve_content_max_width(raw).css_value)}"'
+    if not raw:
+        return ""
+    return f' style="max-width: {e(_resource_width_css(str(raw)))}"'
 
 
 def _auth_user() -> Any:

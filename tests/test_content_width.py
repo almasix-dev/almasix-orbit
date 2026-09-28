@@ -28,6 +28,62 @@ def test_panel_injects_content_max_css_var() -> None:
     assert panel.to_dict()["content_max_width"] == "screen-lg"
 
 
+def test_resource_pages_inherit_panel_width_and_full_stays_inside_it() -> None:
+    """Unset pages use the panel cap. ``full`` fills that cap, not the viewport."""
+    from almasix.orbit.forms import Form, TextInput
+    from almasix.orbit.panels.conduit.hosts import CreateRecordHost
+    from almasix.orbit.panels.pages import resource_pages as rp
+    from almasix.orbit.panels.resource import Resource
+
+    class PlainResource(Resource):
+        slug = "plain"
+        records_mutable = True
+
+        @classmethod
+        def form(cls, form: Form) -> Form:
+            return form.schema([TextInput.make("name")])
+
+    class FullResource(Resource):
+        slug = "fulls"
+        records_mutable = True
+        content_max_width = "full"
+
+        @classmethod
+        def form(cls, form: Form) -> Form:
+            return form.schema([TextInput.make("name")])
+
+    class MaxWFullResource(Resource):
+        slug = "maxw"
+        content_max_width = "max-w-full"
+
+    for operation in ("list", "create", "edit", "view"):
+        assert rp._resource_width_style(PlainResource, operation=operation) == ""
+
+    panel = Panel.make("admin").content_max_width("screen-2xl").path("/")
+    create = CreateRecordHost.bind(panel=panel, resource=PlainResource)()
+    create.mount()
+    fragment = create.render()
+    assert "max-width:" not in fragment
+    assert "--or-content-max: 96rem" in panel.render_shell(fragment)
+
+    full_style = rp._resource_width_style(FullResource, operation="create")
+    assert "var(--or-content-max, 96rem)" in full_style
+    assert "100%" not in full_style
+    assert "var(--or-content-max, 96rem)" in rp._resource_width_style(
+        MaxWFullResource, operation="list"
+    )
+
+    full_page = CreateRecordHost.bind(panel=panel, resource=FullResource)()
+    full_page.mount()
+    page = full_page.render()
+    assert "max-width: var(--or-content-max, 96rem)" in page
+    assert "max-width: 100%" not in page
+    narrow = Panel.make("narrow").content_max_width("screen-lg").path("/n")
+    wrapped = narrow.render_shell(page)
+    assert "--or-content-max: 64rem" in wrapped
+    assert "max-width: 100%" not in wrapped
+
+
 def test_table_list_card_structure() -> None:
     table = (
         Table.make("posts")

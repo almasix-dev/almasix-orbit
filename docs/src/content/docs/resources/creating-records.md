@@ -61,7 +61,7 @@ Resources backed by an ORM model are mutable by default; seed lists are not unle
 
 ## Page width
 
-Create and edit pages default to `screen-lg` so the form stays readable. Set `form_content_max_width` on the resource to change just those pages. The list and the view have their own settings — see [Content width](/resources/overview/#content-width).
+Create and edit pages use the panel content width. Set `form_content_max_width` (or the shared `content_max_width`) on the resource to cap just those pages. `full` stays inside the panel width. The list and the view have their own settings — see [Content width](/resources/overview/#content-width).
 
 ```python
 class PostResource(Resource):
