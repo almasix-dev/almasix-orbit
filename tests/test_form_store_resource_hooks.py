@@ -10,8 +10,8 @@ from almasix.orbit.panels.conduit.hosts import CreateRecordHost, ListRecordsHost
 from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.resource import Resource
 from almasix.orbit.panels.routing import make_panel_page_action
-from almasix.orbit.tables import Table, TextColumn
 from almasix.orbit.panels.users import OrbitUser
+from almasix.orbit.tables import Table, TextColumn
 
 
 class _Stored(Resource):

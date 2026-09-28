@@ -595,7 +595,9 @@ class OrbitPageHost(ConduitHost):
             if found is not None:
                 tenancy.current(found)
 
-    def _apply_tenant_scope(self, records: list[Any], resource: type[Any] | None = None) -> list[Any]:
+    def _apply_tenant_scope(
+        self, records: list[Any], resource: type[Any] | None = None
+    ) -> list[Any]:
         panel = self.get_panel()
         if panel is None:
             return list(records)
@@ -668,7 +670,9 @@ class ListRecordsHost(OrbitPageHost):
         fk: str | None = None
         tenant_id: Any = None
         panel = self.get_panel()
-        tenancy = panel.get_tenancy() if panel is not None and hasattr(panel, "get_tenancy") else None
+        tenancy = (
+            panel.get_tenancy() if panel is not None and hasattr(panel, "get_tenancy") else None
+        )
         if tenancy is not None and hasattr(tenancy, "orm_constraint"):
             constraint = tenancy.orm_constraint(res)
             if constraint is not None:
@@ -702,6 +706,7 @@ class ListRecordsHost(OrbitPageHost):
         if list_page is None or isinstance(list_page, str):
             list_page = getattr(resource, "list_page", None)
         if list_page is None or list_page is ListRecords or isinstance(list_page, str):
+
             class _DefaultList(ListRecords):
                 pass
 
@@ -1048,14 +1053,18 @@ class ListRecordsHost(OrbitPageHost):
         action_name, rid, data = _mount_action_args(name, record_id, payload, **kwargs)
         resource = self.get_resource()
         mutable = _resource_mutable(resource)
-        if action_name in {
-            "delete",
-            "force_delete",
-            "delete_bulk",
-            "create",
-            "edit",
-            "restore",
-        } and not mutable:
+        if (
+            action_name
+            in {
+                "delete",
+                "force_delete",
+                "delete_bulk",
+                "create",
+                "edit",
+                "restore",
+            }
+            and not mutable
+        ):
             self.dispatch(
                 "orbit-records-readonly",
                 name=action_name,
@@ -1158,9 +1167,7 @@ class ListRecordsHost(OrbitPageHost):
         def writer(chunk: list[dict[str, Any]]) -> None:
             full = self._records_for_new_id()
             taken = {
-                n
-                for row in full
-                if (n := _numeric_record_id(_record_key(row) or None)) is not None
+                n for row in full if (n := _numeric_record_id(_record_key(row) or None)) is not None
             }
             next_id = _next_record_id(full)
             appended: list[Any] = []
@@ -1220,9 +1227,7 @@ class ListRecordsHost(OrbitPageHost):
             restored = await _orm_find(model, rid)
             if restored is not None:
                 row = _as_record_dict(restored)
-                self.records = [
-                    row if self._record_key(r) == rid else r for r in self.records
-                ]
+                self.records = [row if self._record_key(r) == rid else r for r in self.records]
             return
         if action_name == "delete_bulk":
             resource = self.get_resource()
@@ -1245,7 +1250,9 @@ class ListRecordsHost(OrbitPageHost):
             return
         if action_name == "create" and data:
             resource = self.get_resource()
-            if _policy_overridden(resource, "can_create") and not resource.can_create(_panel_user()):
+            if _policy_overridden(resource, "can_create") and not resource.can_create(
+                _panel_user()
+            ):
                 return None
             if not await _record_in_scope(resource, dict(data), write=True):
                 return None
@@ -1826,20 +1833,18 @@ class RelationRecords:
         if any(_is_orm_model(getattr(m, "related_model", None)) for m in managers):
             return self._load_relations_async(resource, owner)
         self.relations = {
-            str(manager.relationship): [
-                _as_record_dict(row) for row in manager.get_records(owner)
-            ]
+            str(manager.relationship): [_as_record_dict(row) for row in manager.get_records(owner)]
             for manager in managers
             if getattr(manager, "relationship", "")
         }
         return None
 
-    async def _load_relations_async(
-        self, resource: type[Any], owner: dict[str, Any]
-    ) -> None:
+    async def _load_relations_async(self, resource: type[Any], owner: dict[str, Any]) -> None:
         self.relations = await _load_relation_records(resource, owner)
 
-    def relation_action(self, action_name: str, rid: str, data: dict[str, Any] | None = None) -> Any:
+    def relation_action(
+        self, action_name: str, rid: str, data: dict[str, Any] | None = None
+    ) -> Any:
         """Handle ``relation.<relationship>.<action>``; returns True when consumed."""
         parsed = _parse_relation_action(action_name)
         if parsed is None:
@@ -1937,9 +1942,7 @@ class RelationRecords:
         self.relations = {**self.relations, relationship: rows}
         return True
 
-    async def _delete_relation_orm(
-        self, model: type[Any], relationship: str, rid: str
-    ) -> None:
+    async def _delete_relation_orm(self, model: type[Any], relationship: str, rid: str) -> None:
         await _orm_delete_ids(model, {rid})
         rows = [r for r in self.relations.get(relationship, []) if _record_key(r) != rid]
         self.relations = {**self.relations, relationship: rows}
@@ -2093,7 +2096,9 @@ class EditRecordHost(RelationRecords, FormDataMutations, OrbitPageHost):
         return None
 
     async def _delete_orm(self, model: type[Any], resource: type[Any], rid: str) -> None:
-        if _policy_overridden(resource, "can_delete") and not resource.can_delete(_panel_user(), None):
+        if _policy_overridden(resource, "can_delete") and not resource.can_delete(
+            _panel_user(), None
+        ):
             return
         found = await _orm_find(model, rid)
         if not await _record_in_scope(resource, found, write=True):
@@ -2215,7 +2220,9 @@ class ViewRecordHost(RelationRecords, OrbitPageHost):
         self.dispatch("orbit-record-restored", record_id=rid)
 
     async def _delete_orm(self, model: type[Any], resource: type[Any], rid: str) -> None:
-        if _policy_overridden(resource, "can_delete") and not resource.can_delete(_panel_user(), None):
+        if _policy_overridden(resource, "can_delete") and not resource.can_delete(
+            _panel_user(), None
+        ):
             return
         found = await _orm_find(model, rid)
         if not await _record_in_scope(resource, found, write=True):
@@ -2279,10 +2286,10 @@ class FormHost(FormDataMutations, ConduitHost):
         return (
             f'<div class="or-page or-page-form"><h1 class="or-page-title">{title}</h1>'
             f'<form class="or-form"{conduit_attr("submit", "save")} '
-            f'x-data '
+            f"x-data "
             f'@keydown.ctrl.s.window.prevent="$el.requestSubmit()" '
             f'@keydown.meta.s.window.prevent="$el.requestSubmit()">'
-            f'{form.render(self.data, select_search=dict(self.select_search or {}), morph_search=dict(self.morph_search or {}), table_select=dict(self.table_select or {}), form_errors=self.get_error_bag())}'
+            f"{form.render(self.data, select_search=dict(self.select_search or {}), morph_search=dict(self.morph_search or {}), table_select=dict(self.table_select or {}), form_errors=self.get_error_bag())}"
             f'<div class="or-form-actions">'
             f'<button type="submit" class="or-btn or-btn-primary">Save</button>'
             f"</div></form></div>"
