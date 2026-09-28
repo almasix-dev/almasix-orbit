@@ -12,6 +12,40 @@ header switcher.
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+## 0.5.3
+
+Calendar schedules, relation create/edit, date ranges, and live custom pages.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.5.3'
+```
+
+### Calendar
+
+- `CalendarPlugin` and `CalendarView` add a schedule widget for day, week, and month views
+
+### Relations
+
+- Relation managers support create and edit actions with forms
+- `query_records` lets a manager supply its own related-row query
+
+### Forms
+
+- `DatePicker.range(end)` captures a start and end date in one control
+
+### Pages
+
+- Custom pages can return a Conduit host from `get_conduit_host()` so forms and settings stay interactive
+- Host binding is applied when the route is registered, so interactive pages no longer fall back to static `render()`
+
+### Layout
+
+- Resource pages without their own content width follow the panel cap; `full` stays inside that cap
+
+### Docs marketplace
+
+- Marketplace star counts refresh on a Worker schedule, with clearer OAuth fallbacks when starring fails
+
 ## 0.5.2
 
 A custom page can load its own records before it renders.
