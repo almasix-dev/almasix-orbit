@@ -128,3 +128,89 @@ def test_mount_panel_registers_live_and_static_pages(monkeypatch: pytest.MonkeyP
     static_route = next(r for r in router.routes if "static-page" in r["path"])
     static_response = asyncio.run(static_route["endpoint"](request=None))
     assert "static-only" in static_response.body
+
+
+class _HostWithoutBind:
+    _conduit_name = "orbit.test.no-bind"
+
+    @classmethod
+    def _public_property_names(cls) -> set[str]:
+        return {"panel", "page", "tenant"}
+
+    def render(self) -> str:
+        return '<div data-live="nobind">x</div>'
+
+
+class LiveNoBindPage(Page):
+    slug = "nobind"
+    title = "NoBind"
+
+    @classmethod
+    def get_conduit_host(cls) -> type[Any] | None:
+        return _HostWithoutBind
+
+    @classmethod
+    def render(cls, **ctx: Any) -> str:
+        return "static"
+
+
+class NonCallableHostPage(Page):
+    """Page whose get_conduit_host attribute is not callable (legacy-style)."""
+
+    slug = "noncallable"
+    title = "NonCallable"
+    get_conduit_host = None  # type: ignore[assignment]
+
+    @classmethod
+    def render(cls, **ctx: Any) -> str:
+        return '<div class="or-page">noncallable</div>'
+
+
+def test_mount_host_without_bind_tenant_and_noncallable(monkeypatch: pytest.MonkeyPatch) -> None:
+    from almasix.orbit.panels import routing as routing_mod
+
+    class FakeRouter:
+        def __init__(self) -> None:
+            self.routes: list[dict[str, Any]] = []
+
+        def add(self, methods: Any, path: str, endpoint: Any = None, **kwargs: Any) -> None:
+            self.routes.append({"path": path, "endpoint": endpoint, **kwargs})
+
+    seen_extras: list[Any] = []
+
+    def fake_instantiate(host_cls: Any, extras: Any = None) -> Any:
+        seen_extras.append(extras)
+        return type("Inst", (), {"render": lambda self: '<div data-live="nobind">x</div>'})()
+
+    monkeypatch.setattr(routing_mod, "_instantiate_host", fake_instantiate)
+
+    async def fake_embed(inst: Any) -> str:
+        return inst.render()
+
+    monkeypatch.setattr(routing_mod, "_embed_async", fake_embed)
+    monkeypatch.setattr(routing_mod, "_current_user", lambda panel=None: None)
+    monkeypatch.setattr(routing_mod, "_auth_gate", lambda *a, **k: None)
+    monkeypatch.setattr(routing_mod, "_apply_tenant_slug", lambda *a, **k: None)
+    monkeypatch.setattr(routing_mod, "_request_path", lambda request=None: "/admin/nobind")
+    monkeypatch.setattr(routing_mod, "_conduit_assets", lambda: "")
+    monkeypatch.setattr(routing_mod, "_html_response", lambda body: type("R", (), {"body": body})())
+
+    async def fake_rendered(page_cls: Any, **ctx: Any) -> str:
+        return page_cls.render(**ctx)
+
+    monkeypatch.setattr(routing_mod, "_rendered_page", fake_rendered)
+
+    panel = Panel.make("admin").path("/admin").pages([LiveNoBindPage, NonCallableHostPage])
+    router = FakeRouter()
+    mount_panel(router, panel)
+
+    import asyncio
+
+    nobind = next(r for r in router.routes if "nobind" in r["path"])
+    resp = asyncio.run(nobind["endpoint"](request=None, tenant="acme"))
+    assert "data-live" in resp.body
+    assert any(isinstance(x, dict) and x.get("tenant") == "acme" for x in seen_extras)
+
+    other = next(r for r in router.routes if "noncallable" in r["path"])
+    other_resp = asyncio.run(other["endpoint"](request=None))
+    assert "noncallable" in other_resp.body
