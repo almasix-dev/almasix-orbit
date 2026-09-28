@@ -124,18 +124,25 @@ const repo = githubRepo ?? '';
 			? document.querySelector<HTMLElement>(`[data-star-count-page="${CSS.escape(slug)}"]`)
 			: null;
 		const baseStars = parseCount(starBtn.dataset.starBase, parseCount(countEl?.textContent, 0));
+		let displayStars = baseStars;
+		let countFloor = 0;
 		let bumped = false;
 
 		const liked = () => Boolean(slug && localStorage.getItem(starKey(slug)));
 		const markLiked = () => {
 			if (slug) localStorage.setItem(starKey(slug), '1');
 		};
+		const applyCount = (value: number) => {
+			displayStars = Math.max(value, countFloor);
+			const next = formatCount(displayStars);
+			if (countEl) countEl.textContent = next;
+			if (pageCountEl) pageCountEl.textContent = next;
+		};
 		const bumpCount = () => {
 			if (bumped) return;
 			bumped = true;
-			const next = formatCount(baseStars + 1);
-			if (countEl) countEl.textContent = next;
-			if (pageCountEl) pageCountEl.textContent = next;
+			countFloor = Math.max(countFloor, displayStars + 1);
+			applyCount(countFloor);
 		};
 		const render = () => {
 			const starred = liked();
@@ -158,6 +165,25 @@ const repo = githubRepo ?? '';
 			markLiked();
 		}
 		render();
+
+		// Refresh SSR count from Worker (~1h cache). Failures keep the build-time value.
+		if (repo) {
+			fetch(`/api/github/stars?repo=${encodeURIComponent(repo)}`, {
+				headers: { Accept: 'application/json' },
+				credentials: 'same-origin',
+			})
+				.then(async (response) => {
+					if (!response.ok) return;
+					const data = (await response.json()) as { stars?: number };
+					if (typeof data.stars === 'number' && Number.isFinite(data.stars)) {
+						applyCount(data.stars);
+					}
+				})
+				.catch(() => {
+					/* keep SSR count */
+				});
+		}
+
 		const statusTimer = window.setInterval(() => {
 			if (oauthReady !== null) {
 				window.clearInterval(statusTimer);
