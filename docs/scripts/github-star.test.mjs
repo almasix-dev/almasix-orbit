@@ -186,7 +186,27 @@ test('handleGithubRequest oauth and star', async () => {
 	);
 	assert.equal(success.status, 302);
 	assert.match(success.headers.get('Location'), /starred=1/);
+	assert.doesNotMatch(success.headers.get('Location'), /already=1/);
 	assert.equal(calls, 2);
+
+	const alreadyOauth = await handleGithubRequest(
+		request(`/api/github/oauth/callback?code=abc&state=${encodeURIComponent(state)}`, {
+			cookie: `orbit_gh_state=${nonce}`,
+		}),
+		env,
+		{
+			fetch: async (url, init) => {
+				if (String(url).includes('access_token')) {
+					return new Response(JSON.stringify({ access_token: 'gho' }), { status: 200 });
+				}
+				assert.equal(init.method, 'PUT');
+				return new Response(null, { status: 304 });
+			},
+		},
+	);
+	assert.equal(alreadyOauth.status, 302);
+	assert.match(alreadyOauth.headers.get('Location'), /starred=1/);
+	assert.match(alreadyOauth.headers.get('Location'), /already=1/);
 
 	const tokenFail = await handleGithubRequest(
 		request(`/api/github/oauth/callback?code=abc&state=${encodeURIComponent(state)}`, {

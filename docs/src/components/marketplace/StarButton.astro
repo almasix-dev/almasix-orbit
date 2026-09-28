@@ -76,9 +76,11 @@ const repo = githubRepo ?? '';
 
 	const params = new URLSearchParams(location.search);
 	const oauthStarred = params.get('starred') === '1';
+	const oauthAlready = params.get('already') === '1';
 	const starError = params.get('star');
-	if (oauthStarred || starError) {
+	if (oauthStarred || oauthAlready || starError) {
 		params.delete('starred');
+		params.delete('already');
 		params.delete('star');
 		const next = `${location.pathname}${params.toString() ? `?${params}` : ''}${location.hash}`;
 		history.replaceState(null, '', next);
@@ -151,7 +153,8 @@ const repo = githubRepo ?? '';
 
 		const alreadyLiked = liked();
 		if (oauthStarred) {
-			if (!alreadyLiked) bumpCount();
+			// Only bump when GitHub created a new star (204), not when already starred (304 → already=1).
+			if (!alreadyLiked && !oauthAlready) bumpCount();
 			markLiked();
 		}
 		render();
@@ -207,8 +210,10 @@ const repo = githubRepo ?? '';
 					openGithub();
 					return;
 				}
+				const data = (await response.json()) as { starred?: boolean; already?: boolean };
 				markLiked();
-				bumpCount();
+				// Bump only for a newly created star; failures never reach here.
+				if (!data.already) bumpCount();
 				render();
 				showMsg('Starred on GitHub as you.');
 			} catch {
