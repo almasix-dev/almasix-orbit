@@ -901,6 +901,35 @@ def mount_panel(router: Any, panel: Panel) -> None:
         if tenant_prefix:
             page_base = f"{tenant_prefix}/{page_base}"
 
+        # Prefer a Conduit host when the page opts in (bound at mount time,
+        # same path as resource CRUD hosts). Capture ``page`` in locals.
+        page_cls = page
+        host_cls: type[Any] | None = None
+        get_host = getattr(page_cls, "get_conduit_host", None)
+        if callable(get_host):
+            host_cls = get_host()
+
+        if host_cls is not None:
+            bound_host: type[Any] = host_cls
+            host_params: dict[str, Any] | None = None
+            bind = getattr(host_cls, "bind", None)
+            if callable(bind):
+                try:
+                    bound_host = bind(panel=panel, page=page_cls)
+                except TypeError:
+                    try:
+                        bound_host = bind(panel=panel)
+                    except TypeError:
+                        host_params = {"panel": panel, "page": page_cls}
+            else:
+                host_params = {"panel": panel, "page": page_cls}
+            _add(
+                f"{page_base}",
+                make_panel_page_action(panel, bound_host, params=host_params),
+                name=f"orbit.{panel.id}.page.{slug}",
+            )
+            continue
+
         def _make_page_action(page_cls: Any) -> Any:
             async def page_action(
                 request: Request,
@@ -912,28 +941,6 @@ def mount_panel(router: Any, panel: Panel) -> None:
                 if gated is not None:
                     return gated
                 _apply_tenant_slug(panel, tenant, user)
-                host_factory = getattr(page_cls, "get_conduit_host", None)
-                if callable(host_factory):
-                    host_cls = host_factory()
-                    if host_cls is not None:
-                        mount_params: dict[str, Any] = {"panel": panel, "page": page_cls}
-                        if tenant:
-                            mount_params["tenant"] = tenant
-                        # Prefer ClassVar bind pattern used by resource hosts.
-                        bind = getattr(host_cls, "bind", None)
-                        if callable(bind):
-                            bound = bind(panel=panel, page=page_cls)
-                            instance = _instantiate_host(bound, None)
-                        else:
-                            instance = _instantiate_host(host_cls, mount_params)
-                        slot = await _embed_async(instance)
-                        body = panel.render_shell(
-                            slot,
-                            user=user,
-                            active_path=path,
-                            extra_head=_conduit_assets(),
-                        )
-                        return _html_response(body)
                 html_body = (
                     await _rendered_page(
                         page_cls,
@@ -957,7 +964,7 @@ def mount_panel(router: Any, panel: Panel) -> None:
 
         _add(
             f"{page_base}",
-            _make_page_action(page),
+            _make_page_action(page_cls),
             name=f"orbit.{panel.id}.page.{slug}",
         )
 

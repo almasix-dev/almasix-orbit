@@ -448,6 +448,76 @@ def test_mount_dashboard_pages_logout_and_assets(monkeypatch) -> None:
     mount_orbit_assets(assets_router)  # idempotent
 
 
+def test_custom_page_mounts_conduit_host_instead_of_static_render(monkeypatch) -> None:
+    """Pages with get_conduit_host() use make_panel_page_action, not render()."""
+
+    class FormBuilderHost(OrbitPageHost):
+        _conduit_name = "orbit.test.form-builder-host"
+
+        @classmethod
+        def bind(cls, *, panel: Any = None, page: Any = None) -> type[FormBuilderHost]:
+            class Bound(FormBuilderHost):
+                pass
+
+            Bound._panel = panel
+            Bound._page = page  # type: ignore[attr-defined]
+            Bound._conduit_name = f"orbit.{getattr(panel, 'id', 'test')}.form-builder"
+            return Bound
+
+        @classmethod
+        def _public_property_names(cls) -> set[str]:
+            return set()
+
+        def mount(self, **kwargs: Any) -> None:
+            return None
+
+        def render(self) -> str:
+            return '<div class="or-page" data-host="1">FORM-BUILDER-HOST</div>'
+
+    class FormBuilderPage(Page):
+        title = "Form builder"
+        slug = "form-builder"
+
+        @classmethod
+        def get_conduit_host(cls) -> type[Any] | None:
+            return FormBuilderHost
+
+        @classmethod
+        def render(cls, **ctx: Any) -> str:
+            return '<div class="or-page">Form builder requires Conduit.</div>'
+
+    from almasix.orbit.panels import routing as routing_mod
+
+    monkeypatch.setattr(
+        routing_mod,
+        "_instantiate_host",
+        lambda host_cls, extras=None: host_cls(),
+    )
+
+    async def fake_embed(instance: Any) -> str:
+        return instance.render()
+
+    monkeypatch.setattr(routing_mod, "_embed_async", fake_embed)
+
+    router = Router()
+    panel = (
+        Panel.make("builder")
+        .path("builder")
+        .middleware([], replace=True)
+        .login()
+        .pages([FormBuilderPage])
+        .user(OrbitUser.default())
+    )
+    mount_panel(router, panel)
+
+    page_route = next(r for r in router.routes if "form-builder" in (r.uri or ""))
+    out = asyncio.run(page_route.action(_Req("/builder/form-builder")))
+    raw = getattr(out, "body", getattr(out, "content", out))
+    text = raw.decode() if isinstance(raw, (bytes, bytearray)) else str(raw)
+    assert "FORM-BUILDER-HOST" in text
+    assert "Form builder requires Conduit." not in text
+
+
 def test_mount_registered_panels_and_current_user_fallbacks(monkeypatch) -> None:
     registry = PanelRegistry()
     panel = Panel.make("reg").path("reg").middleware([], replace=True).resources([PostResource])

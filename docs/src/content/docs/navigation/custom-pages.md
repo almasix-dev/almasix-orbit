@@ -93,4 +93,28 @@ def render(cls, **ctx) -> str:
     return f"<div class='or-page'>{stats}</div>"
 ```
 
+## Interactive Conduit pages
+
+Static `render()` is enough for read-only HTML. For pages that need live Conduit state (forms, designers, toggles), override `get_conduit_host()` so Orbit mounts a host the same way it mounts resource CRUD screens:
+
+```python title="app/orbit/pages/designer_page.py"
+from almasix.orbit import Page
+from app.orbit.hosts.designer_host import DesignerHost
+
+class DesignerPage(Page):
+    slug = "designer"
+    title = "Designer"
+
+    @classmethod
+    def get_conduit_host(cls):
+        return DesignerHost
+
+    @classmethod
+    def render(cls, **ctx) -> str:
+        # Fallback only if no Conduit host is mounted.
+        return '<div class="or-page">Designer requires Conduit.</div>'
+```
+
+Return a host class (or a class already produced by `Host.bind(...)`). Orbit calls `bind(panel=…, page=…)` when that signature exists, then embeds the host in the panel shell. Returning `None` (the default) keeps the static `render()` path.
+
 See also: [Navigation overview](/navigation/overview/), [Widgets](/widgets/overview/), [Panels](/panels/configuration/).
