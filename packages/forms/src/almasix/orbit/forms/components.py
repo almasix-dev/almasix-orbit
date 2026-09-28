@@ -1726,6 +1726,7 @@ class DatePicker(Field):
         self._seconds = False
         self._time_format: str | None = None
         self._minute_step: int | None = None
+        self._range_end: str | None = None
 
     def min_date(self, value: str) -> Self:
         self._min_date = value
@@ -1734,6 +1735,55 @@ class DatePicker(Field):
     def max_date(self, value: str) -> Self:
         self._max_date = value
         return self
+
+    def range(self, end: str) -> Self:
+        """Pick a start and an end. Posts this field and ``end`` as ``YYYY-MM-DD``."""
+        if self._mode != "date":
+            return self
+        token = str(end or "").strip()
+        if not token:
+            return self
+        if self._range_end is None:
+            self.rules(self._range_is_ordered)
+        self._range_end = token
+        return self
+
+    def _range_end_path(self) -> str:
+        end = self._range_end or ""
+        start = self.get_state_path() or ""
+        if "." not in start:
+            return end
+        return f"{start.rsplit('.', 1)[0]}.{end}"
+
+    def _range_end_value(self, **ctx: Any) -> str:
+        name = self._range_end or ""
+        bag = ctx.get("form_state")
+        if not name or not isinstance(bag, dict):
+            return ""
+        path = self._range_end_path()
+        value = bag.get(path)
+        if value is None and name != path:
+            value = bag.get(name)
+        if value is None and "." in path:
+            current: Any = bag
+            for part in path.split("."):
+                if not isinstance(current, dict) or part not in current:
+                    return ""
+                current = current[part]
+            value = current
+        if value is None:
+            return ""
+        return str(value)[:10]
+
+    def _range_is_ordered(self, value: Any, state: dict[str, Any] | None = None) -> str | None:
+        if value in (None, ""):
+            return None
+        end = self._range_end_value(form_state=state)
+        if not end:
+            return None
+        if end < str(value)[:10]:
+            return "The end date must be on or after the start date."
+        return None
 
     def display_format(self, fmt: str) -> Self:
         """Soft display hint for the Flowbite host (locale Intl remains the default)."""
@@ -1949,9 +1999,79 @@ class DatePicker(Field):
         )
         return self.wrap_field(name, host, **ctx)
 
+    def _render_range_native(self, state: Any = None, **ctx: Any) -> str:
+        name = e(self.get_state_path() or "")
+        end_path = e(self._range_end_path())
+        end_val = e(self._range_end_value(**ctx))
+        disabled = " disabled" if self.is_disabled(**ctx) or self._readonly else ""
+        start_val = "" if state is None else e(str(state)[:10])
+        bounds: list[str] = []
+        if self._min_date:
+            bounds.append(f'min="{e(self._min_date)}"')
+        if self._max_date:
+            bounds.append(f'max="{e(self._max_date)}"')
+        bound = (" " + " ".join(bounds)) if bounds else ""
+        control = (
+            f'<div class="or-datepicker or-datepicker--range">'
+            f'<div class="or-datepicker__row">'
+            f'<input class="or-input" id="or-{name}" name="{name}" type="date" '
+            f'value="{start_val}" aria-label="Start"{disabled}{bound}'
+            f'{self._wire_binding(name)}{self._after_state_attr()} />'
+            f'<span class="or-datepicker__sep">to</span>'
+            f'<input class="or-input" id="or-{end_path}" name="{end_path}" type="date" '
+            f'value="{end_val}" aria-label="End"{disabled}{bound}'
+            f'{self._wire_binding(end_path)} />'
+            f"</div></div>"
+        )
+        return self.wrap_field(name, control, **ctx)
+
+    def _render_range_flowbite(self, state: Any = None, **ctx: Any) -> str:
+        name = e(self.get_state_path() or "")
+        end_name = self._range_end_path()
+        end_path = e(end_name)
+        start_wire = f"data.{name}" if name and not str(name).startswith("data.") else name
+        end_wire = f"data.{end_name}" if end_name and not str(end_name).startswith("data.") else end_name
+        start_val = "" if state is None else e(str(state)[:10])
+        end_val = e(self._range_end_value(**ctx))
+        disabled = self.is_disabled(**ctx) or self._readonly
+        disabled_cls = " is-disabled" if disabled else ""
+        disabled_attr = " disabled" if disabled else ""
+        label = e(self.get_label(**ctx) or "Date range")
+        min_date = e(self._min_date or "")
+        max_date = e(self._max_date or "")
+        host = (
+            f'<div class="or-datepicker or-datepicker--date or-datepicker--range{disabled_cls}" '
+            f'data-mode="date" data-range="true" data-min="{min_date}" data-max="{max_date}" '
+            f'data-path="{e(start_wire)}" data-range-path="{e(end_wire)}" '
+            f'x-data="orbitDatePicker" @keydown.escape.window="onEscape()" '
+            f'wire:ignore conduit:ignore>'
+            f'<input type="hidden" x-ref="state" id="or-{name}-state" name="{name}" '
+            f'value="{start_val}"{disabled_attr}{self._wire_binding(name)}'
+            f'{self._after_state_attr()} />'
+            f'<input type="hidden" x-ref="endState" id="or-{end_path}-state" name="{end_path}" '
+            f'value="{end_val}"{disabled_attr}{self._wire_binding(end_path)} />'
+            f'<div class="or-datepicker__row" x-ref="rangeHost">'
+            f'<div class="or-datepicker__host">{self._calendar_icon()}'
+            f'<input id="or-{name}" x-ref="startInput" type="text" autocomplete="off" '
+            f'class="or-input or-datepicker__input" placeholder="Start" :disabled="disabled" '
+            f'aria-label="{label} start" />'
+            f"</div>"
+            f'<span class="or-datepicker__sep">to</span>'
+            f'<div class="or-datepicker__host">{self._calendar_icon()}'
+            f'<input id="or-{end_path}" x-ref="endInput" type="text" autocomplete="off" '
+            f'class="or-input or-datepicker__input" placeholder="End" :disabled="disabled" '
+            f'aria-label="{label} end" />'
+            f"</div></div></div>"
+        )
+        return self.wrap_field(name, host, **ctx)
+
     def render(self, state: Any = None, **ctx: Any) -> str:
         if not self.is_visible(**ctx):
             return ""
+        if self._range_end:
+            if self._native:
+                return self._render_range_native(state, **ctx)
+            return self._render_range_flowbite(state, **ctx)
         if self._native:
             return self._render_native(state, **ctx)
         return self._render_flowbite(state, **ctx)
