@@ -12,6 +12,7 @@ dependencies = [
     "almasix[conduit]>=0.6.0",
     "almasix-orbit",
     "almasix-conduit>=0.2.0",
+    "almasix-orbit-form-builder",
 ]
 
 [project.scripts]
@@ -22,6 +23,7 @@ smith = "almasix.smith.cli:app"
 almasix = { path = "../../../almasix", editable = true }
 almasix-conduit = { path = "../../../almasix-conduit", editable = true }
 almasix-orbit = { path = "../../packages/combined", editable = true }
+almasix-orbit-form-builder = { path = "../../../almasix-orbit-form-builder", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
