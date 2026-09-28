@@ -2,10 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+	branchFromGithubContentUrl,
 	fetchGithubReadme,
 	fetchListingDocsMarkdown,
+	githubRawUrl,
 	githubRepoFromDocsUrl,
 	isListingDocsUrl,
+	rewriteGithubReadmeMedia,
 } from './marketplace-docs.mjs';
 
 test('isListingDocsUrl detects self-referential marketplace links', () => {
@@ -85,4 +88,45 @@ test('fetchListingDocsMarkdown resolves GitHub docs_url to README markdown', asy
 		},
 	);
 	assert.equal(result, '# Plugin docs');
+});
+
+test('rewriteGithubReadmeMedia rewrites relative markdown and HTML images', () => {
+	assert.equal(githubRawUrl('acme/kit', 'main', 'docs/a.png'), 'https://raw.githubusercontent.com/acme/kit/main/docs/a.png');
+	assert.equal(branchFromGithubContentUrl('https://raw.githubusercontent.com/acme/kit/develop/README.md'), 'develop');
+
+	const md = rewriteGithubReadmeMedia(
+		[
+			'![Light](docs/images/general-settings.png)',
+			'<img src="docs/images/general-settings-form.png" alt="form" width="48%" />',
+			'<img src="./docs/images/dark.png" alt="dark" />',
+			'![Abs](https://example.com/a.png)',
+			'![Blob](https://github.com/acme/kit/blob/main/docs/shot.png)',
+		].join('\n'),
+		'acme/kit',
+		'main',
+	);
+	assert.match(md, /!\[Light\]\(https:\/\/raw\.githubusercontent\.com\/acme\/kit\/main\/docs\/images\/general-settings\.png\)/);
+	assert.match(md, /src="https:\/\/raw\.githubusercontent\.com\/acme\/kit\/main\/docs\/images\/general-settings-form\.png"/);
+	assert.match(md, /src="https:\/\/raw\.githubusercontent\.com\/acme\/kit\/main\/docs\/images\/dark\.png"/);
+	assert.match(md, /!\[Abs\]\(https:\/\/example\.com\/a\.png\)/);
+	assert.match(md, /!\[Blob\]\(https:\/\/raw\.githubusercontent\.com\/acme\/kit\/main\/docs\/shot\.png\)/);
+});
+
+test('fetchGithubReadme rewrites media using download_url branch', async () => {
+	const result = await fetchGithubReadme('acme/kit', async (url) => {
+		if (String(url).endsWith('/readme')) {
+			return new Response(
+				JSON.stringify({
+					download_url: 'https://raw.githubusercontent.com/acme/kit/main/README.md',
+					html_url: 'https://github.com/acme/kit/blob/main/README.md',
+				}),
+				{ status: 200, headers: { 'Content-Type': 'application/json' } },
+			);
+		}
+		return new Response('![Shot](docs/images/shot.png)', { status: 200 });
+	});
+	assert.equal(
+		result,
+		'![Shot](https://raw.githubusercontent.com/acme/kit/main/docs/images/shot.png)',
+	);
 });
