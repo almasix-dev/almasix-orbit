@@ -2,9 +2,8 @@
 /**
  * Star the plugin's GitHub repo as the visitor via OAuth when configured.
  *
- * Being logged into github.com in the browser is not enough — Orbit needs a
- * one-time GitHub OAuth grant (cookie). Without Worker OAuth secrets the API
- * returns 501 and this button falls back to opening the repository.
+ * Filament's marketplace "Star" is a plain link to GitHub (no API starring).
+ * Orbit stars as *you* via OAuth + PUT /user/starred when Worker secrets are set.
  */
 import { formatStat } from '../../../scripts/marketplace-lib.mjs';
 
@@ -37,9 +36,18 @@ const repo = githubRepo ?? '';
 	<span data-star-label>Star</span>
 	<span class="market-star-num" data-star-count>{formatStat(stars)}</span>
 </button>
+<p class="market-star-msg" data-star-msg hidden></p>
 
 <script>
 	const starKey = (slug: string) => `orbit-plugin-star:${slug}`;
+
+	const errorCopy: Record<string, string> = {
+		denied: 'GitHub authorization was cancelled.',
+		token: 'Could not finish GitHub sign-in. Check the OAuth app client secret.',
+		scope:
+			'GitHub allowed sign-in but blocked starring. For a classic OAuth App set Worker secret GITHUB_OAUTH_SCOPE=public_repo (then revoke the old grant under GitHub → Settings → Applications and try again).',
+		api: 'GitHub starring failed. Open the repository to star there, or check OAuth scopes.',
+	};
 
 	const params = new URLSearchParams(location.search);
 	const oauthStarred = params.get('starred') === '1';
@@ -49,6 +57,20 @@ const repo = githubRepo ?? '';
 		params.delete('star');
 		const next = `${location.pathname}${params.toString() ? `?${params}` : ''}${location.hash}`;
 		history.replaceState(null, '', next);
+	}
+
+	const showMsg = (text: string, isError = false) => {
+		for (const el of document.querySelectorAll<HTMLElement>('[data-star-msg]')) {
+			el.hidden = !text;
+			el.textContent = text;
+			el.classList.toggle('is-error', isError);
+		}
+	};
+
+	if (starError) {
+		showMsg(errorCopy[starError] ?? `Starring failed (${starError}).`, true);
+	} else if (oauthStarred) {
+		showMsg('Starred on GitHub as you.');
 	}
 
 	let oauthReady: boolean | null = null;
@@ -91,11 +113,10 @@ const repo = githubRepo ?? '';
 
 		if (oauthStarred) markLiked();
 		render();
-		const refreshTitle = () => render();
 		const statusTimer = window.setInterval(() => {
 			if (oauthReady !== null) {
 				window.clearInterval(statusTimer);
-				refreshTitle();
+				render();
 			}
 		}, 100);
 
@@ -109,12 +130,12 @@ const repo = githubRepo ?? '';
 				return;
 			}
 			starBtn.disabled = true;
+			showMsg('');
 			try {
 				if (!repo) {
 					openGithub();
 					return;
 				}
-				// Known-unconfigured site: skip the failing POST and open GitHub.
 				if (oauthReady === false) {
 					openGithub();
 					return;
@@ -133,8 +154,6 @@ const repo = githubRepo ?? '';
 				if (response.status === 401) {
 					const data = (await response.json()) as { authorize?: string };
 					if (data.authorize) {
-						// Full-page OAuth — GitHub authorize, then return here with ?starred=1.
-						// A github.com login cookie alone cannot star on Orbit's behalf.
 						location.href = data.authorize;
 						return;
 					}
@@ -142,11 +161,13 @@ const repo = githubRepo ?? '';
 					return;
 				}
 				if (!response.ok) {
+					showMsg(errorCopy.api, true);
 					openGithub();
 					return;
 				}
 				markLiked();
 				render();
+				showMsg('Starred on GitHub as you.');
 			} catch {
 				openGithub();
 			} finally {
@@ -155,3 +176,14 @@ const repo = githubRepo ?? '';
 		});
 	}
 </script>
+
+<style>
+	.market-star-msg {
+		margin: 0.5rem 0 0;
+		font-size: 0.85rem;
+		color: var(--sl-color-gray-2, #4b5563);
+	}
+	.market-star-msg.is-error {
+		color: var(--sl-color-danger-high, #b91c1c);
+	}
+</style>
