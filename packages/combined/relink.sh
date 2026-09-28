@@ -24,4 +24,5 @@ ln -s "$(rel infolists infolists)" infolists
 ln -s "$(rel notifications notifications)" notifications
 ln -s "$(rel widgets widgets)" widgets
 ln -s "$(rel query-builder query_builder)" query_builder
+ln -s "$(rel calendar calendar)" calendar
 echo "relinked $DEST"
