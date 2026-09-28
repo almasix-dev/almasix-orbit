@@ -2,8 +2,8 @@
 /**
  * Star the plugin's GitHub repo as the visitor via OAuth when configured.
  *
- * Filament's marketplace "Star" is a plain link to GitHub (no API starring).
- * Orbit stars as *you* via OAuth + PUT /user/starred when Worker secrets are set.
+ * When OAuth is configured, stars as *you* via PUT /user/starred and bumps the
+ * displayed count immediately. Without Worker secrets, falls back to opening GitHub.
  */
 import { formatStat } from '../../../scripts/marketplace-lib.mjs';
 
@@ -24,13 +24,14 @@ const repo = githubRepo ?? '';
 	data-star-slug={slug}
 	data-star-href={githubUrl}
 	data-star-repo={repo}
+	data-star-base={stars == null ? '' : String(stars)}
 	aria-pressed="false"
 	title="Star this repository on GitHub"
 >
 	<svg class="market-button-icon market-star-icon" viewBox="0 0 20 20" aria-hidden="true">
 		<path
 			fill="currentColor"
-			d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292Z"
+			d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07 3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292Z"
 		></path>
 	</svg>
 	<span data-star-label>Star</span>
@@ -47,6 +48,30 @@ const repo = githubRepo ?? '';
 		scope:
 			'GitHub allowed sign-in but blocked starring. For a classic OAuth App set Worker secret GITHUB_OAUTH_SCOPE=public_repo (then revoke the old grant under GitHub → Settings → Applications and try again).',
 		api: 'GitHub starring failed. Open the repository to star there, or check OAuth scopes.',
+	};
+
+	const formatCount = (value: number) => {
+		if (value >= 1_000_000) {
+			const m = value / 1_000_000;
+			return `${m >= 10 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, '')}M`;
+		}
+		if (value >= 1000) {
+			const k = value / 1000;
+			return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`;
+		}
+		return String(value);
+	};
+
+	const parseCount = (text: string | null | undefined, fallback = 0) => {
+		const raw = String(text ?? '').trim();
+		if (!raw || raw === '—' || raw === '-') return fallback;
+		if (/^\d+$/.test(raw)) return Number(raw);
+		const k = raw.match(/^(\d+(?:\.\d+)?)k$/i);
+		if (k) return Math.round(Number(k[1]) * 1000);
+		const m = raw.match(/^(\d+(?:\.\d+)?)M$/i);
+		if (m) return Math.round(Number(m[1]) * 1_000_000);
+		const n = Number(raw);
+		return Number.isFinite(n) ? n : fallback;
 	};
 
 	const params = new URLSearchParams(location.search);
@@ -92,10 +117,23 @@ const repo = githubRepo ?? '';
 		const href = starBtn.dataset.starHref ?? '';
 		const repo = starBtn.dataset.starRepo ?? '';
 		const label = starBtn.querySelector('[data-star-label]');
+		const countEl = starBtn.querySelector<HTMLElement>('[data-star-count]');
+		const pageCountEl = slug
+			? document.querySelector<HTMLElement>(`[data-star-count-page="${CSS.escape(slug)}"]`)
+			: null;
+		const baseStars = parseCount(starBtn.dataset.starBase, parseCount(countEl?.textContent, 0));
+		let bumped = false;
 
 		const liked = () => Boolean(slug && localStorage.getItem(starKey(slug)));
 		const markLiked = () => {
 			if (slug) localStorage.setItem(starKey(slug), '1');
+		};
+		const bumpCount = () => {
+			if (bumped) return;
+			bumped = true;
+			const next = formatCount(baseStars + 1);
+			if (countEl) countEl.textContent = next;
+			if (pageCountEl) pageCountEl.textContent = next;
 		};
 		const render = () => {
 			const starred = liked();
@@ -111,7 +149,11 @@ const repo = githubRepo ?? '';
 			}
 		};
 
-		if (oauthStarred) markLiked();
+		const alreadyLiked = liked();
+		if (oauthStarred) {
+			if (!alreadyLiked) bumpCount();
+			markLiked();
+		}
 		render();
 		const statusTimer = window.setInterval(() => {
 			if (oauthReady !== null) {
@@ -166,6 +208,7 @@ const repo = githubRepo ?? '';
 					return;
 				}
 				markLiked();
+				bumpCount();
 				render();
 				showMsg('Starred on GitHub as you.');
 			} catch {
