@@ -106,12 +106,32 @@ test('star and token exchange helpers', async () => {
 		),
 		'gho',
 	);
+	assert.equal(
+		await exchangeOauthCode('c', env, 'https://orbit.almasix.com', async () =>
+			new Response(JSON.stringify({ error: 'bad_verification_code' }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			}),
+		),
+		null,
+	);
 	const withScope = authorizeUrl(env, 'st', 'https://orbit.almasix.com');
 	assert.match(withScope, /scope=public_repo/);
 	const noScope = authorizeUrl({ ...env, GITHUB_OAUTH_SCOPE: '' }, 'st', 'https://orbit.almasix.com');
 	assert.equal(noScope.includes('scope='), false);
+	const oauthDefault = authorizeUrl(
+		{ GITHUB_OAUTH_CLIENT_ID: 'Ov23liEXAMPLE', GITHUB_OAUTH_CLIENT_SECRET: 'x' },
+		'st',
+		'https://orbit.almasix.com',
+	);
+	assert.match(oauthDefault, /scope=public_repo/);
+	const appDefault = authorizeUrl(
+		{ GITHUB_OAUTH_CLIENT_ID: 'Iv1.EXAMPLE', GITHUB_OAUTH_CLIENT_SECRET: 'x' },
+		'st',
+		'https://orbit.almasix.com',
+	);
+	assert.equal(appDefault.includes('scope='), false);
 });
-
 test('handleGithubRequest oauth and star', async () => {
 	const unconfigured = await handleGithubRequest(request('/api/github/star?repo=acme/kit', { method: 'POST' }), {});
 	assert.equal(unconfigured.status, 501);

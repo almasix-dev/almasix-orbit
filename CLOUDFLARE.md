@@ -53,8 +53,9 @@ Workers Builds / dashboard secrets (not git):
 |----------|--------|
 | `GITHUB_OAUTH_CLIENT_ID` | GitHub App or OAuth App client id |
 | `GITHUB_OAUTH_CLIENT_SECRET` | Client secret |
-| `GITHUB_OAUTH_SCOPE` | Empty for a GitHub App with Starring; `public_repo` for a classic OAuth App |
+| `GITHUB_OAUTH_SCOPE` | Classic OAuth App: set `public_repo` (required to star). GitHub App with Starring permission: set to an empty string. If unset, Orbit defaults to `public_repo` for non-`Iv…` client ids. |
 
+After changing scopes, users must **revoke** the old Orbit grant under GitHub → Settings → Applications → Authorized OAuth Apps, then click Star again so GitHub issues a token with the new scope.
 Copy [`docs/.dev.vars.example`](./docs/.dev.vars.example) to `docs/.dev.vars` for `npx wrangler dev`. Never commit `.dev.vars`.
 
 ## Cutover checklist

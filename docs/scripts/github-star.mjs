@@ -181,10 +181,24 @@ export async function exchangeOauthCode(code, env, origin, doFetch = fetch) {
 			redirect_uri: `${origin}/api/github/oauth/callback`,
 		}),
 	});
-	if (!response.ok) return null;
 	const data = await response.json().catch(() => null);
-	const token = data?.access_token;
+	if (!response.ok || !data || data.error) return null;
+	const token = data.access_token;
 	return typeof token === 'string' && token ? token : null;
+}
+
+/**
+ * Classic OAuth Apps need `public_repo` (or similar) to PUT /user/starred.
+ * GitHub Apps (client ids often `Iv…`) rely on app user permissions — omit scope.
+ * Explicit `GITHUB_OAUTH_SCOPE` always wins (use empty string for GitHub Apps).
+ */
+export function resolveOauthScope(env) {
+	if (env != null && 'GITHUB_OAUTH_SCOPE' in env) {
+		return String(env.GITHUB_OAUTH_SCOPE ?? '');
+	}
+	const id = String(env?.GITHUB_OAUTH_CLIENT_ID ?? '');
+	if (id.startsWith('Iv')) return '';
+	return 'public_repo';
 }
 
 export function authorizeUrl(env, state, origin) {
@@ -192,7 +206,7 @@ export function authorizeUrl(env, state, origin) {
 	url.searchParams.set('client_id', env.GITHUB_OAUTH_CLIENT_ID);
 	url.searchParams.set('redirect_uri', `${origin}/api/github/oauth/callback`);
 	url.searchParams.set('state', state);
-	const scope = env.GITHUB_OAUTH_SCOPE;
+	const scope = resolveOauthScope(env);
 	if (scope) url.searchParams.set('scope', scope);
 	return url.toString();
 }
@@ -257,8 +271,10 @@ export async function handleGithubRequest(request, env, deps = {}) {
 		const token = await exchangeOauthCode(code, env, origin, doFetch);
 		if (!token) return fail('token');
 		const starred = await starGithubRepo(payload.repo, token, doFetch);
-		if (!starred.ok) return fail('api');
-		const headers = new Headers({
+		if (!starred.ok) {
+			if (starred.status === 403 || starred.status === 404) return fail('scope');
+			return fail('api');
+		}		const headers = new Headers({
 			Location: `${returnPath}${returnPath.includes('?') ? '&' : '?'}starred=1`,
 			'Cache-Control': 'no-store',
 		});
