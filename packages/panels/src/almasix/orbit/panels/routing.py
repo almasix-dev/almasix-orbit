@@ -912,6 +912,28 @@ def mount_panel(router: Any, panel: Panel) -> None:
                 if gated is not None:
                     return gated
                 _apply_tenant_slug(panel, tenant, user)
+                host_factory = getattr(page_cls, "get_conduit_host", None)
+                if callable(host_factory):
+                    host_cls = host_factory()
+                    if host_cls is not None:
+                        mount_params: dict[str, Any] = {"panel": panel, "page": page_cls}
+                        if tenant:
+                            mount_params["tenant"] = tenant
+                        # Prefer ClassVar bind pattern used by resource hosts.
+                        bind = getattr(host_cls, "bind", None)
+                        if callable(bind):
+                            bound = bind(panel=panel, page=page_cls)
+                            instance = _instantiate_host(bound, None)
+                        else:
+                            instance = _instantiate_host(host_cls, mount_params)
+                        slot = await _embed_async(instance)
+                        body = panel.render_shell(
+                            slot,
+                            user=user,
+                            active_path=path,
+                            extra_head=_conduit_assets(),
+                        )
+                        return _html_response(body)
                 html_body = (
                     await _rendered_page(
                         page_cls,
