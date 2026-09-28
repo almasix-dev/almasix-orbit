@@ -167,6 +167,22 @@ export async function starGithubRepo(repo, token, doFetch = fetch) {
 	return { ok: false, status: response.status, detail };
 }
 
+/** Public repo star count (no OAuth). Optional GITHUB_TOKEN / GH_TOKEN for rate limits. */
+export async function fetchRepoStarCount(repo, env, doFetch = fetch) {
+	const headers = {
+		Accept: 'application/vnd.github+json',
+		'User-Agent': 'almasix-orbit-docs',
+		'X-GitHub-Api-Version': '2022-11-28',
+	};
+	const token = env?.GITHUB_TOKEN || env?.GH_TOKEN;
+	if (token) headers.Authorization = `Bearer ${token}`;
+	const response = await doFetch(`https://api.github.com/repos/${repo}`, { headers });
+	if (!response.ok) return null;
+	const data = await response.json().catch(() => null);
+	const stars = data?.stargazers_count;
+	return typeof stars === 'number' && Number.isFinite(stars) ? stars : null;
+}
+
 export async function exchangeOauthCode(code, env, origin, doFetch = fetch) {
 	const response = await doFetch('https://github.com/login/oauth/access_token', {
 		method: 'POST',
@@ -224,6 +240,15 @@ export async function handleGithubRequest(request, env, deps = {}) {
 	// Public probe — does not require secrets to be present.
 	if (path === '/api/github/status' && request.method === 'GET') {
 		return json({ configured: oauthConfigured(env) });
+	}
+
+	// Public star counts — no OAuth; optional GITHUB_TOKEN / GH_TOKEN for rate limits.
+	if (path === '/api/github/stars' && request.method === 'GET') {
+		const repo = parseOwnerRepo(url.searchParams.get('repo') ?? '');
+		if (!repo) return json({ error: 'invalid_repo' }, 400);
+		const stars = await fetchRepoStarCount(repo, env, doFetch);
+		if (stars == null) return json({ error: 'github' }, 502);
+		return json({ stars }, 200, { 'Cache-Control': 'public, max-age=3600' });
 	}
 
 	if (!oauthConfigured(env)) {

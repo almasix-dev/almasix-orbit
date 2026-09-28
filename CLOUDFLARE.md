@@ -43,6 +43,8 @@ No secrets are required in GitHub Actions for docs (build-only).
 
 ### Marketplace Star on GitHub (runtime)
 
+Marketplace listing star counts are baked at docs build time (SSR fallback). They can also refresh at runtime via public `GET /api/github/stars?repo=owner/repo` (Worker caches the response ~1 hour with `Cache-Control: public, max-age=3600`). Optional Worker `GITHUB_TOKEN` / `GH_TOKEN` improves GitHub API rate limits for that route; it is not used for starring.
+
 Listing **Star on GitHub** calls `POST /api/github/star`. Configure a GitHub App (preferred: user permission **Starring** only, empty `GITHUB_OAUTH_SCOPE`) or a classic OAuth App (`GITHUB_OAUTH_SCOPE=public_repo`). Callback URL:
 
 `https://orbit.almasix.com/api/github/oauth/callback`
