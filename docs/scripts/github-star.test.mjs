@@ -5,6 +5,7 @@ import worker, {
 	authorizeUrl,
 	cookieHeader,
 	exchangeOauthCode,
+	fetchRepoStarCount,
 	handleGithubRequest,
 	hmacHex,
 	oauthConfigured,
@@ -132,6 +133,74 @@ test('star and token exchange helpers', async () => {
 	);
 	assert.equal(appDefault.includes('scope='), false);
 });
+test('GET /api/github/stars public star count', async () => {
+	const invalid = await handleGithubRequest(request('/api/github/stars?repo=nope'), {});
+	assert.equal(invalid.status, 400);
+	assert.equal((await invalid.json()).error, 'invalid_repo');
+
+	const ok = await handleGithubRequest(request('/api/github/stars?repo=acme/kit'), {}, {
+		fetch: async (url, init) => {
+			assert.equal(String(url), 'https://api.github.com/repos/acme/kit');
+			assert.equal(init?.headers?.Authorization, undefined);
+			return new Response(JSON.stringify({ stargazers_count: 42 }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			});
+		},
+	});
+	assert.equal(ok.status, 200);
+	assert.deepEqual(await ok.json(), { stars: 42 });
+	assert.equal(ok.headers.get('Cache-Control'), 'public, max-age=3600');
+
+	const withToken = await handleGithubRequest(
+		request('/api/github/stars?repo=acme/kit'),
+		{ GITHUB_TOKEN: 'pat' },
+		{
+			fetch: async (_url, init) => {
+				assert.equal(init?.headers?.Authorization, 'Bearer pat');
+				return new Response(JSON.stringify({ stargazers_count: 7 }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+				});
+			},
+		},
+	);
+	assert.equal((await withToken.json()).stars, 7);
+
+	const fail = await handleGithubRequest(request('/api/github/stars?repo=acme/kit'), {}, {
+		fetch: async () => new Response('nope', { status: 500 }),
+	});
+	assert.equal(fail.status, 502);
+	assert.equal((await fail.json()).error, 'github');
+	assert.equal(fail.headers.get('Cache-Control'), 'no-store');
+
+	// Works when OAuth is unconfigured (public route before the oauth gate).
+	const noOauth = await handleGithubRequest(request('/api/github/stars?repo=acme/kit'), {}, {
+		fetch: async () =>
+			new Response(JSON.stringify({ stargazers_count: 3 }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			}),
+	});
+	assert.equal(noOauth.status, 200);
+	assert.equal((await noOauth.json()).stars, 3);
+
+	assert.equal(
+		await fetchRepoStarCount('acme/kit', { GH_TOKEN: 'ght' }, async (_url, init) => {
+			assert.equal(init?.headers?.Authorization, 'Bearer ght');
+			return new Response(JSON.stringify({ stargazers_count: 9 }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' },
+			});
+		}),
+		9,
+	);
+	assert.equal(
+		await fetchRepoStarCount('acme/kit', {}, async () => new Response('x', { status: 404 })),
+		null,
+	);
+});
+
 test('handleGithubRequest oauth and star', async () => {
 	const unconfigured = await handleGithubRequest(request('/api/github/star?repo=acme/kit', { method: 'POST' }), {});
 	assert.equal(unconfigured.status, 501);
