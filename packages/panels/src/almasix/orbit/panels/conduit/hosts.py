@@ -641,7 +641,12 @@ class ListRecordsHost(OrbitPageHost):
         if kwargs.get("tenant"):
             self.setTenant(str(kwargs["tenant"]))
         resource = self.get_resource()
-        if "records" in kwargs and kwargs["records"] is not None:
+        getter = getattr(resource, "get_records", None)
+        # Resources that own their own store must not keep a stale snapshot
+        # that hides rows saved on another page.
+        if getattr(resource, "refresh_records_on_mount", False) and callable(getter):
+            self.records = list(getter())
+        elif "records" in kwargs and kwargs["records"] is not None:
             self.records = list(kwargs["records"])
         elif not self.records:
             model = _resource_model(resource)
@@ -1072,8 +1077,16 @@ class ListRecordsHost(OrbitPageHost):
             self._sync_resource_records()
             return None
         if action_name in {"delete", "force_delete"} and rid:
-            self.records = [r for r in self.records if self._record_key(r) != rid]
-            self._sync_resource_records()
+            deleter = getattr(resource, "delete_record", None)
+            if callable(deleter):
+                deleter(rid)
+            if getattr(resource, "refresh_records_on_mount", False) and callable(
+                getattr(resource, "get_records", None)
+            ):
+                self.records = list(resource.get_records())
+            else:
+                self.records = [r for r in self.records if self._record_key(r) != rid]
+                self._sync_resource_records()
             self.selected = [s for s in (self.selected or []) if s != rid]
             return None
         if action_name == "delete_bulk":
@@ -1723,13 +1736,32 @@ class CreateRecordHost(FormDataMutations, OrbitPageHost):
         if tenancy is not None and tenancy.is_enabled():
             if getattr(resource, "is_tenant_scoped", lambda: True)():
                 payload = tenancy.associate_record(payload)
-        row = {"id": next_id, **payload}
-        records = [*records, row]
-        _save_resource_records(resource, records)
-        self.created_id = str(next_id)
+        hook = getattr(resource, "mutate_form_data_before_create", None)
+        if callable(hook):
+            mutated = hook(payload)
+            if isinstance(mutated, dict):
+                payload = mutated
+        if callable(getattr(resource, "get_records", None)) and callable(hook):
+            row = payload if isinstance(payload, dict) else {"id": next_id}
+        else:
+            row = {
+                "id": (
+                    payload.get("id", next_id)
+                    if isinstance(payload, dict)
+                    else next_id
+                ),
+                **(payload if isinstance(payload, dict) else {}),
+            }
+            if row.get("id") in (None, ""):
+                row["id"] = next_id
+            records = [*records, row]
+            _save_resource_records(resource, records)
+        self.created_id = str(row.get("id") or next_id)
         self.data = dict(row)
         self.dispatch("orbit-record-created", data=dict(row))
-        self.redirect(resource.page_url("view", row))
+        after = getattr(resource, "after_create_url", None)
+        target = after(row) if callable(after) else resource.page_url("view", row)
+        self.redirect(target)
         return None
 
     async def _create_orm(self, model: type[Any], resource: type[Any]) -> None:

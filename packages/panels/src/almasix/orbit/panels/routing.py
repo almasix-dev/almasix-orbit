@@ -381,6 +381,9 @@ def make_panel_page_action(
         mount_params = dict(params or {})
         if tenant:
             mount_params["tenant"] = tenant
+        form_q = _query_param(request, "form") or _query_param(request, "form_id")
+        if form_q:
+            mount_params["form_id"] = form_q
         instance = _instantiate_host(host_cls, mount_params or None)
         slot = await _embed_async(instance)
         body = panel.render_shell(

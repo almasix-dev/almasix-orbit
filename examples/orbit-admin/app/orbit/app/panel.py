@@ -7,6 +7,7 @@ from almasix.orbit.panels.mfa import AppAuthentication, EmailAuthentication
 from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem, NavigationSubgroup
 from almasix.orbit.panels.tenancy import Tenancy, Tenant
 from almasix.orbit.panels.users import PanelNotification, UserMenuItem
+from almasix_orbit_form_builder import FormBuilderPlugin, bootstrap_memory_store
 
 from app.orbit.app.clusters.settings_hub_cluster import SettingsHubCluster
 from app.orbit.app.pages.nav_account_pages import NavAccountPage, NavPreferencesPage
@@ -40,6 +41,9 @@ from app.orbit.app.widgets import (
 )
 
 
+bootstrap_memory_store()
+
+
 def _demo_tenancy() -> Tenancy:
     """Two fake teams + scoping that only filters rows with ``tenant_id``."""
     acme = Tenant(1, "Acme Corp", slug="acme")
@@ -57,7 +61,7 @@ def _demo_tenancy() -> Tenancy:
                 for r in rows
                 if not isinstance(r, dict)
                 or "tenant_id" not in r
-                or r.get("tenant_id") == tenant.id
+                or str(r.get("tenant_id")) == str(tenant.id)
             ]
         )
         .associate_using(
@@ -101,6 +105,7 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
         .tenant_registration(True)
         .tenant_profile(True)
         .plugin(BrandingPlugin())
+        .plugin(FormBuilderPlugin.make().navigation_group("Forms"))
         .boot_using(lambda p: None)
         .render_hook(
             "panels::head.end",
@@ -140,6 +145,11 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
             NavigationGroup.make("Tenancy")
             .icon("heroicon-o-building-office-2")
             .sort(10)
+        )
+        .navigation_group(
+            NavigationGroup.make("Forms")
+            .icon("heroicon-o-clipboard-document-list")
+            .sort(15)
         )
         .navigation_group(
             NavigationGroup.make("Demos")

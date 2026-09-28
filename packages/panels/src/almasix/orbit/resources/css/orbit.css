@@ -5263,6 +5263,17 @@ html.dark .or-login-logo-dark {
   gap: 1rem;
 }
 
+.or-schema-cols-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.or-schema-cols-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.or-schema-cols-5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; }
+.or-schema-cols-6 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1rem; }
+.or-schema-cols-7 { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1rem; }
+.or-schema-cols-8 { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 1rem; }
+.or-schema-cols-9 { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 1rem; }
+.or-schema-cols-10 { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 1rem; }
+.or-schema-cols-11 { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 1rem; }
+.or-schema-cols-12 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem; }
+
 .or-color-primary {
   color: var(--or-primary);
 }
@@ -5924,6 +5935,16 @@ html.dark .or-login-logo-dark {
   .or-grid-cols-2,
   .or-grid-cols-3,
   .or-schema-cols-2,
+  .or-schema-cols-3,
+  .or-schema-cols-4,
+  .or-schema-cols-5,
+  .or-schema-cols-6,
+  .or-schema-cols-7,
+  .or-schema-cols-8,
+  .or-schema-cols-9,
+  .or-schema-cols-10,
+  .or-schema-cols-11,
+  .or-schema-cols-12,
   .or-infolist-cols-2,
   .or-infolist-cols-3,
   .or-infolist-cols-4,
@@ -6672,8 +6693,11 @@ html.dark .datepicker .datepicker-cell.range:not(.range-start):not(.range-end),
   background-color: var(--or-primary-wash-strong) !important;
   color: var(--or-primary-soft) !important;
 }
-.datepicker-dropdown {
-  z-index: 1200;
+.datepicker-dropdown,
+.datepicker-dropdown.z-50 {
+  /* Flowbite's stylesheet loads after orbit.css and sets `.z-50` (50).
+     Panel modals sit at 80–240, so the picker must outrank both. */
+  z-index: 1200 !important;
 }
 .datepicker .datepicker-cell.today:not(.selected) {
   color: var(--or-primary-deep);
