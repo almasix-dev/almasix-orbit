@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any, ClassVar
 
 import pytest
-
 from almasix.orbit.panels.page import Page
 from almasix.orbit.panels.panel import Panel
 from almasix.orbit.panels.routing import mount_panel
@@ -68,7 +67,6 @@ def test_page_default_conduit_host_is_none() -> None:
 def test_mount_panel_registers_live_and_static_pages(monkeypatch: pytest.MonkeyPatch) -> None:
     from almasix.orbit.panels import routing as routing_mod
 
-    registered: list[tuple[str, Any]] = []
 
     class FakeRouter:
         def __init__(self) -> None:
