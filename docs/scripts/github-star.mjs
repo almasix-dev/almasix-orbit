@@ -274,8 +274,11 @@ export async function handleGithubRequest(request, env, deps = {}) {
 		if (!starred.ok) {
 			if (starred.status === 403 || starred.status === 404) return fail('scope');
 			return fail('api');
-		}		const headers = new Headers({
-			Location: `${returnPath}${returnPath.includes('?') ? '&' : '?'}starred=1`,
+		}
+		const sep = returnPath.includes('?') ? '&' : '?';
+		const alreadyQS = starred.already ? '&already=1' : '';
+		const headers = new Headers({
+			Location: `${returnPath}${sep}starred=1${alreadyQS}`,
 			'Cache-Control': 'no-store',
 		});
 		headers.append('Set-Cookie', cookieHeader(TOKEN_COOKIE, token, { maxAge: TOKEN_MAX_AGE }));
