@@ -116,6 +116,12 @@ test('handleGithubRequest oauth and star', async () => {
 	const unconfigured = await handleGithubRequest(request('/api/github/star?repo=acme/kit', { method: 'POST' }), {});
 	assert.equal(unconfigured.status, 501);
 
+	const statusOff = await handleGithubRequest(request('/api/github/status'), {});
+	assert.equal(statusOff.status, 200);
+	assert.equal((await statusOff.json()).configured, false);
+	const statusOn = await handleGithubRequest(request('/api/github/status'), env);
+	assert.equal((await statusOn.json()).configured, true);
+
 	const badRepo = await handleGithubRequest(request('/api/github/oauth/start?repo=nope'), env);
 	assert.equal(badRepo.status, 400);
 

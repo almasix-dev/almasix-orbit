@@ -207,6 +207,11 @@ export async function handleGithubRequest(request, env, deps = {}) {
 	const path = apiPath(url.pathname);
 	const origin = url.origin;
 
+	// Public probe — does not require secrets to be present.
+	if (path === '/api/github/status' && request.method === 'GET') {
+		return json({ configured: oauthConfigured(env) });
+	}
+
 	if (!oauthConfigured(env)) {
 		return json({ error: 'oauth_unconfigured', fallback: true }, 501);
 	}

@@ -74,7 +74,16 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://orbit.almasix.com/og.png
 curl -sS -o /dev/null -w '%{http_code}\n' -X POST 'https://orbit.almasix.com/api/github/star?repo=almasix-dev/almasix-orbit'
 ```
 
-The star route should return `401` (OAuth configured, no cookie) or `501` (secrets not set yet) — never a static 404.
+Probe status and star:
+
+```bash
+curl -sS 'https://orbit.almasix.com/api/github/status'
+# expect: {"configured":true}
+
+curl -sS -o /dev/null -w '%{http_code}\n' -X POST 'https://orbit.almasix.com/api/github/star?repo=almasix-dev/almasix-orbit'
+```
+
+The star route should return `401` (OAuth configured, no cookie) or `501` (secrets not set yet) — never a static 404. If status shows `configured: false`, set the three Worker secrets above in the Cloudflare dashboard (Workers → **almasix-orbit-docs** → Settings → Variables and Secrets) and redeploy.
 
 (Add `docs/public/og.png` / SEO meta when you want social previews.)
 

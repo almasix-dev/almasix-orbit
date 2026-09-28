@@ -1,7 +1,10 @@
 ---
 /**
- * Star the plugin's GitHub repo via OAuth when configured; otherwise opens GitHub.
- * Count always reflects the build-time GitHub API figure — never client-side bumps.
+ * Star the plugin's GitHub repo as the visitor via OAuth when configured.
+ *
+ * Being logged into github.com in the browser is not enough — Orbit needs a
+ * one-time GitHub OAuth grant (cookie). Without Worker OAuth secrets the API
+ * returns 501 and this button falls back to opening the repository.
  */
 import { formatStat } from '../../../scripts/marketplace-lib.mjs';
 
@@ -23,6 +26,7 @@ const repo = githubRepo ?? '';
 	data-star-href={githubUrl}
 	data-star-repo={repo}
 	aria-pressed="false"
+	title="Star this repository on GitHub"
 >
 	<svg class="market-button-icon market-star-icon" viewBox="0 0 20 20" aria-hidden="true">
 		<path
@@ -47,6 +51,20 @@ const repo = githubRepo ?? '';
 		history.replaceState(null, '', next);
 	}
 
+	let oauthReady: boolean | null = null;
+	fetch('/api/github/status', { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+		.then(async (response) => {
+			if (!response.ok) {
+				oauthReady = false;
+				return;
+			}
+			const data = (await response.json()) as { configured?: boolean };
+			oauthReady = Boolean(data.configured);
+		})
+		.catch(() => {
+			oauthReady = false;
+		});
+
 	for (const starBtn of document.querySelectorAll<HTMLButtonElement>('.market-star-btn')) {
 		const slug = starBtn.dataset.starSlug ?? '';
 		const href = starBtn.dataset.starHref ?? '';
@@ -62,10 +80,24 @@ const repo = githubRepo ?? '';
 			starBtn.classList.toggle('is-starred', starred);
 			starBtn.setAttribute('aria-pressed', starred ? 'true' : 'false');
 			if (label) label.textContent = starred ? 'Starred' : 'Star';
+			if (oauthReady === false) {
+				starBtn.title = 'Open GitHub to star (Orbit OAuth is not configured on this site)';
+			} else if (starred) {
+				starBtn.title = 'You starred this repository';
+			} else {
+				starBtn.title = 'Star this repository on GitHub as you';
+			}
 		};
 
 		if (oauthStarred) markLiked();
 		render();
+		const refreshTitle = () => render();
+		const statusTimer = window.setInterval(() => {
+			if (oauthReady !== null) {
+				window.clearInterval(statusTimer);
+				refreshTitle();
+			}
+		}, 100);
 
 		const openGithub = () => {
 			if (href) window.open(href, '_blank', 'noopener');
@@ -82,18 +114,27 @@ const repo = githubRepo ?? '';
 					openGithub();
 					return;
 				}
+				// Known-unconfigured site: skip the failing POST and open GitHub.
+				if (oauthReady === false) {
+					openGithub();
+					return;
+				}
 				const returnPath = `${location.pathname}${location.search}`;
 				const response = await fetch(
 					`/api/github/star?repo=${encodeURIComponent(repo)}&return=${encodeURIComponent(returnPath)}`,
 					{ method: 'POST', headers: { Accept: 'application/json' }, credentials: 'same-origin' },
 				);
 				if (response.status === 501) {
+					oauthReady = false;
+					render();
 					openGithub();
 					return;
 				}
 				if (response.status === 401) {
 					const data = (await response.json()) as { authorize?: string };
 					if (data.authorize) {
+						// Full-page OAuth — GitHub authorize, then return here with ?starred=1.
+						// A github.com login cookie alone cannot star on Orbit's behalf.
 						location.href = data.authorize;
 						return;
 					}
