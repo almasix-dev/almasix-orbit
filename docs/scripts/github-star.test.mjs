@@ -150,7 +150,7 @@ test('GET /api/github/stars public star count', async () => {
 	});
 	assert.equal(ok.status, 200);
 	assert.deepEqual(await ok.json(), { stars: 42 });
-	assert.equal(ok.headers.get('Cache-Control'), 'public, max-age=3600');
+	assert.equal(ok.headers.get('Cache-Control'), 'public, max-age=30');
 
 	const withToken = await handleGithubRequest(
 		request('/api/github/stars?repo=acme/kit'),
