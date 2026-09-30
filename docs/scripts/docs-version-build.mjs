@@ -21,6 +21,7 @@ import {
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { fillGithubStatsHtml } from './github-stats-html.mjs';
 import { LATEST_VERSION, latestV0Tag, prefixHtmlRootUrls } from '../src/versions.mjs';
 
 const docsRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -42,7 +43,8 @@ function git(args, opts = {}) {
 	return result.stdout.trim();
 }
 
-function rewriteHtmlTree(dir, slug) {
+async function rewriteHtmlTree(dir, slug) {
+	const files = [];
 	const visit = (folder) => {
 		for (const name of readdirSync(folder)) {
 			const path = join(folder, name);
@@ -50,12 +52,19 @@ function rewriteHtmlTree(dir, slug) {
 				visit(path);
 				continue;
 			}
-			if (!name.endsWith('.html')) continue;
-			const next = prefixHtmlRootUrls(readFileSync(path, 'utf8'), slug);
-			writeFileSync(path, next);
+			if (name.endsWith('.html')) files.push(path);
 		}
 	};
 	visit(dir);
+	for (const path of files) {
+		let next = prefixHtmlRootUrls(readFileSync(path, 'utf8'), slug);
+		try {
+			next = await fillGithubStatsHtml(next);
+		} catch (error) {
+			console.warn(`GitHub stats fill skipped for ${path}:`, error);
+		}
+		writeFileSync(path, next);
+	}
 }
 
 function ensureVersionBase(astroConfigPath, slug) {
@@ -74,6 +83,8 @@ function overlaySwitcher(extractedDocs) {
 		'src/components/VersionSelect.astro',
 		'src/components/VersionBanner.astro',
 		'src/content/docs/prologue/versions.md',
+		'src/data/marketplace-stats.ts',
+		'scripts/github-public-stats.mjs',
 	];
 	for (const rel of files) {
 		cpSync(join(docsRoot, rel), join(extractedDocs, rel));
@@ -130,7 +141,7 @@ run('npx', ['astro', 'build', '--force', '--outDir', distMain], {
 	cwd: docsRoot,
 	env: { ...process.env, DOCS_VERSION: 'main' },
 });
-rewriteHtmlTree(distMain, 'main');
+await rewriteHtmlTree(distMain, 'main');
 
 let dist0x = null;
 if (!process.env.SKIP_DOCS_0X) {
@@ -161,7 +172,7 @@ if (!process.env.SKIP_DOCS_0X) {
 		env: { ...process.env, DOCS_VERSION: '0.x' },
 	});
 	dist0x = join(extractedDocs, 'dist');
-	rewriteHtmlTree(dist0x, '0.x');
+	await rewriteHtmlTree(dist0x, '0.x');
 	writeFileSync(join(versionBuild, '0.x-tag.txt'), `${tag}\n`);
 }
 
