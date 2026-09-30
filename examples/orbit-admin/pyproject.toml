@@ -13,6 +13,7 @@ dependencies = [
     "almasix-orbit",
     "almasix-conduit>=0.2.0",
     "almasix-orbit-form-builder",
+    "almasix-orbit-workflows>=0.1.0",
 ]
 
 [project.scripts]

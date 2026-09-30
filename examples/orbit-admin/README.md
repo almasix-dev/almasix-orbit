@@ -16,6 +16,8 @@ smith serve
 
 Open [http://127.0.0.1:3000/admin](http://127.0.0.1:3000/admin).
 
+**Workflows** (the `almasix-orbit-workflows` plugin) publishes a contract: Ada drafts, legal and finance approve together, then Ada signs. The panel already has that case in progress for the first seeded user. After `smith migrate --seed`, sign in as `ada@orbit.test` / `secret` and open **Workflows** — Inbox, Cases, and Designer.
+
 **PyCharm:** open `examples/orbit-admin` as the project, interpreter =
 `examples/orbit-admin/.venv`. Bootstrap symlinks `orbit` into your local
 Almasix package (`../almasix/src/almasix/orbit` → combined tree) so
