@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import almasixTheme from '@almasix/starlight-theme';
+import { githubStatsThemeAlias } from './scripts/github-public-stats.mjs';
 
 const docsVersion = process.env.DOCS_VERSION || '';
 const base = docsVersion ? `/${docsVersion}/` : '/';
@@ -40,6 +41,9 @@ const sectionRedirects = Object.fromEntries(
 export default defineConfig({
 	site: 'https://orbit.almasix.com',
 	base,
+	vite: {
+		plugins: [githubStatsThemeAlias(new URL('./scripts/github-public-stats.mjs', import.meta.url))],
+	},
 	devToolbar: { enabled: false },
 	redirects: sectionRedirects,
 	integrations: [

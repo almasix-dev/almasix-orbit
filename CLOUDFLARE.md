@@ -30,10 +30,13 @@ GitHub Actions ([`.github/workflows/docs.yml`](./.github/workflows/docs.yml) and
 
 ### Header GitHub chip
 
-`@almasix/starlight-theme` fetches stars/forks/release at **build time**. Anonymous
-GitHub API calls from Workers Builds are often rate-limited, which used to collapse
-the chip to a plain icon. Theme **0.1.1+** always keeps the pill chrome; to populate
-counts, add a build env var in the Workers Builds project:
+`@almasix/starlight-theme` fetches stars/forks/release at **build time**. Workers
+Builds often cannot read `api.github.com` (shared-IP rate limits, or a `GITHUB_TOKEN`
+that GitHub answers with 401/404 for public repos). The docs build retries without
+that token, then reads the same counts from shields.io, and writes them into the
+header chip after both the `/main/` and `/0.x/` trees are rendered. A build token is
+optional. Theme **0.1.1+** always keeps the pill chrome. To prefer the GitHub API,
+add a build env var in the Workers Builds project:
 
 | Variable | Value |
 |----------|--------|
@@ -42,8 +45,6 @@ counts, add a build env var in the Workers Builds project:
 No secrets are required in GitHub Actions for docs (build-only).
 
 ### Marketplace Star on GitHub (runtime)
-
-Marketplace listing star counts are baked at docs build time (SSR fallback). They can also refresh at runtime via public `GET /api/github/stars?repo=owner/repo` (Worker caches the response ~1 hour with `Cache-Control: public, max-age=3600`). Optional Worker `GITHUB_TOKEN` / `GH_TOKEN` improves GitHub API rate limits for that route; it is not used for starring.
 
 Listing **Star on GitHub** calls `POST /api/github/star`. Configure a GitHub App (preferred: user permission **Starring** only, empty `GITHUB_OAUTH_SCOPE`) or a classic OAuth App (`GITHUB_OAUTH_SCOPE=public_repo`). Callback URL:
 
