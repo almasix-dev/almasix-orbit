@@ -1068,6 +1068,28 @@
 	margin-top: 0;
 }
 
+/* README badge rows sit in one paragraph. Starlight makes every image a block, so they stack. */
+.sl-markdown-content .market-description p:has(> a + a) {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: center;
+	gap: 0.45rem;
+}
+
+.sl-markdown-content .market-description p:has(> a + a) a {
+	display: inline-flex;
+	line-height: 0;
+}
+
+.sl-markdown-content .market-description p:has(> a + a) img {
+	display: inline-block;
+	width: auto;
+	max-width: none;
+	height: 28px;
+	margin: 0;
+}
+
 .market-docs {
 	display: grid;
 	gap: 0.85rem;
