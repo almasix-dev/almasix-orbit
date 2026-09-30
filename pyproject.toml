@@ -38,7 +38,6 @@ almasix-orbit-infolists = { workspace = true }
 almasix-orbit-notifications = { workspace = true }
 almasix-orbit-widgets = { workspace = true }
 almasix-orbit-query-builder = { workspace = true }
-almasix-orbit-workflows = { workspace = true }
 almasix-orbit-calendar = { workspace = true }
 
 [tool.pytest.ini_options]
@@ -56,7 +55,6 @@ pythonpath = [
     "packages/query-builder/src",
     "packages/panels/src",
     "packages/calendar/src",
-    "packages/workflows/src",
 ]
 python_files = ["test_*.py"]
 
