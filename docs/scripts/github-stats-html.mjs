@@ -234,22 +234,31 @@ function applyStats(html, statsByRepo) {
 	return next;
 }
 
+function withLiveStarScript(html, { missing = false } = {}) {
+	// Cards keep the build-time count, including 0. The browser replaces it with the live count.
+	// A header chip that is still a dash needs the same backfill.
+	if (html.includes('data-orbit-github-stats')) return html;
+	if (!missing && !html.includes('data-plugin')) return html;
+	const script = `<script data-orbit-github-stats>${clientSource}</script>`;
+	if (html.includes('</body>')) return html.replace('</body>', `${script}</body>`);
+	return `${html}${script}`;
+}
+
 export async function fillGithubStatsHtml(html, loadStats = fetchPublicRepoStats) {
 	const repos = reposNeedingStats(html);
-	if (!repos.size) return html;
-	const statsByRepo = new Map();
-	await Promise.all(
-		[...repos].map(async (repo) => {
-			try {
-				statsByRepo.set(repo, await loadStats(repo));
-			} catch {
-				statsByRepo.set(repo, { stars: null, forks: null, release: null, source: 'unavailable' });
-			}
-		}),
-	);
-	const filled = applyStats(html, statsByRepo);
-	if (!htmlHasMissingGithubStats(filled) || filled.includes('data-orbit-github-stats')) return filled;
-	const script = `<script data-orbit-github-stats>${clientSource}</script>`;
-	if (filled.includes('</body>')) return filled.replace('</body>', `${script}</body>`);
-	return `${filled}${script}`;
+	let filled = html;
+	if (repos.size) {
+		const statsByRepo = new Map();
+		await Promise.all(
+			[...repos].map(async (repo) => {
+				try {
+					statsByRepo.set(repo, await loadStats(repo));
+				} catch {
+					statsByRepo.set(repo, { stars: null, forks: null, release: null, source: 'unavailable' });
+				}
+			}),
+		);
+		filled = applyStats(html, statsByRepo);
+	}
+	return withLiveStarScript(filled, { missing: htmlHasMissingGithubStats(filled) });
 }

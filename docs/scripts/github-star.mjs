@@ -248,7 +248,7 @@ export async function handleGithubRequest(request, env, deps = {}) {
 		if (!repo) return json({ error: 'invalid_repo' }, 400);
 		const stars = await fetchRepoStarCount(repo, env, doFetch);
 		if (stars == null) return json({ error: 'github' }, 502);
-		return json({ stars }, 200, { 'Cache-Control': 'public, max-age=3600' });
+		return json({ stars }, 200, { 'Cache-Control': 'public, max-age=30' });
 	}
 
 	if (!oauthConfigured(env)) {

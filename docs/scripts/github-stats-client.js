@@ -39,14 +39,15 @@
 	}
 	for (var i = 0; i < cards.length; i++) {
 		var card = cards[i];
-		var strong = card.querySelector('[title="GitHub stars"] strong');
-		var rawStars = card.getAttribute('data-stars');
-		if (rawStars && !dash(strong && strong.textContent)) continue;
 		var search = (card.getAttribute('data-search') || '').match(
 			/https:\/\/github\.com\/[\w.-]+\/[\w.-]+/i,
 		);
 		var link = card.querySelector('a[title="GitHub repository"]');
-		want(repoFromHref(search && search[0]) || repoFromHref(link && link.getAttribute('href')));
+		want(
+			card.getAttribute('data-star-repo') ||
+				repoFromHref(search && search[0]) ||
+				repoFromHref(link && link.getAttribute('href')),
+		);
 	}
 	for (var j = 0; j < buttons.length; j++) {
 		var count = buttons[j].querySelector('[data-star-count]');
@@ -143,9 +144,9 @@
 				var cardRepo =
 					repoFromHref(found && found[0]) || repoFromHref(repoLink && repoLink.getAttribute('href'));
 				if (cardRepo !== repo || stats.stars == null) continue;
-				if (!item.getAttribute('data-stars')) item.setAttribute('data-stars', String(stats.stars));
+				item.setAttribute('data-stars', String(stats.stars));
 				var starStrong = item.querySelector('[title="GitHub stars"] strong');
-				if (starStrong && dash(starStrong.textContent)) starStrong.textContent = format(stats.stars);
+				if (starStrong) starStrong.textContent = format(stats.stars);
 			}
 			for (var b = 0; b < buttons.length; b++) {
 				if (buttons[b].getAttribute('data-star-repo') !== repo || stats.stars == null) continue;

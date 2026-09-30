@@ -103,7 +103,17 @@ test('fill replaces header and marketplace dashes and keeps real install counts'
 	assert.match(filled, /title="PyPI downloads[\s\S]*?<strong>—<\/strong>/);
 	assert.match(filled, /<strong>4<\/strong><span class="market-stats-label">Stars<\/span>/);
 	assert.equal(htmlHasMissingGithubStats(filled), false);
-	assert.equal(filled.includes('data-orbit-github-stats'), false);
+	assert.match(filled, /data-orbit-github-stats/);
+});
+
+test('a card baked at 0 stars still loads a live count', async () => {
+	const html =
+		'<body><li class="market-card" data-plugin data-star-repo="acme/kit" data-stars="0"><li title="GitHub stars"><strong>0</strong></li></li></body>';
+	const filled = await fillGithubStatsHtml(html, async () => {
+		throw new Error('baked numbers are refreshed in the browser');
+	});
+	assert.match(filled, /data-orbit-github-stats/);
+	assert.match(filled, /data-stars="0"/);
 });
 
 test('a failed lookup leaves a browser backfill script and does not clobber known counts', async () => {
