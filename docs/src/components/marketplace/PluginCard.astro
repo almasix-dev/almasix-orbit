@@ -8,6 +8,7 @@ interface Props {
 }
 
 const { plugin } = Astro.props;
+const cover = plugin.thumbnail || plugin.screenshots[0]?.src;
 const initials = plugin.name
 	.split(/\s+/)
 	.slice(0, 2)
@@ -42,8 +43,8 @@ const haystack = [
 >
 	<a class="market-thumb" href={plugin.url} aria-hidden="true" tabindex="-1">
 		{
-			plugin.thumbnail ? (
-				<img src={plugin.thumbnail} alt="" loading="lazy" />
+			cover ? (
+				<img src={cover} alt="" loading="lazy" />
 			) : (
 				<span class="market-thumb-initials">{initials}</span>
 			)
