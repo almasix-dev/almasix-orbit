@@ -12,6 +12,27 @@ header switcher.
 Working from the tip of `main`? Switch the docs to **main** in the header.
 Changes land here before they become a tagged release.
 
+## 0.5.4
+
+Browse cards show a listing screenshot, and the admin sample runs a contract workflow.
+
+```bash title="terminal"
+pip install -U 'almasix-orbit==0.5.4'
+```
+
+### Marketplace
+
+- A plugin card uses its first screenshot when the listing has no thumbnail
+- Shields in an embedded README stay on one line
+
+### Docs build
+
+- Release tags are fetched from the public GitHub repository, so a Cloudflare build does not wait on git credentials
+
+### Samples
+
+- `examples/orbit-admin` mounts `almasix-orbit-workflows`: the contract designer, an inbox, and the case Ada already started
+
 ## 0.5.3
 
 Calendar schedules, relation create/edit, date ranges, and live custom pages.

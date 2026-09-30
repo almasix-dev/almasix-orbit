@@ -12,6 +12,7 @@ from almasix_orbit_form_builder import FormBuilderPlugin, bootstrap_memory_store
 from app.orbit.app.clusters.settings_hub_cluster import SettingsHubCluster
 from app.orbit.app.pages.nav_account_pages import NavAccountPage, NavPreferencesPage
 from app.orbit.app.plugins import BrandingPlugin
+from app.orbit.app.plugins.workflows_plugin import DemoWorkflows, contract_engine
 from app.orbit.app.resources.actions_overview_resource import ActionsOverviewResource
 from app.orbit.app.resources.author_resource import AuthorResource
 from app.orbit.app.resources.columns_overview_resource import ColumnsOverviewResource
@@ -40,7 +41,6 @@ from app.orbit.app.widgets import (
     WelcomeWidget,
 )
 
-
 bootstrap_memory_store()
 
 
@@ -66,9 +66,7 @@ def _demo_tenancy() -> Tenancy:
         )
         .associate_using(
             lambda record, tenant: (
-                {**record, "tenant_id": tenant.id}
-                if isinstance(record, dict)
-                else record
+                {**record, "tenant_id": tenant.id} if isinstance(record, dict) else record
             )
         )
     )
@@ -106,61 +104,27 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
         .tenant_profile(True)
         .plugin(BrandingPlugin())
         .plugin(FormBuilderPlugin.make().navigation_group("Forms"))
+        .plugin(DemoWorkflows.make(contract_engine()))
         .boot_using(lambda p: None)
         .render_hook(
             "panels::head.end",
             lambda **_ctx: '  <meta name="orbit-panel-config" content="app" />\n',
         )
+        .navigation_group(NavigationGroup.make("Content").icon("heroicon-o-document-text").sort(0))
+        .navigation_group(NavigationGroup.make("Columns").icon("heroicon-o-view-columns").sort(5))
+        .navigation_group(NavigationGroup.make("Infolists").icon("heroicon-o-queue-list").sort(6))
+        .navigation_group(NavigationGroup.make("Actions").icon("heroicon-o-check").sort(7))
+        .navigation_group(NavigationGroup.make("Navigation").icon("heroicon-o-bars-3").sort(8))
+        .navigation_group(NavigationGroup.make("Notifications").icon("heroicon-o-bell").sort(9))
         .navigation_group(
-            NavigationGroup.make("Content")
-            .icon("heroicon-o-document-text")
-            .sort(0)
+            NavigationGroup.make("Tenancy").icon("heroicon-o-building-office-2").sort(10)
         )
         .navigation_group(
-            NavigationGroup.make("Columns")
-            .icon("heroicon-o-view-columns")
-            .sort(5)
+            NavigationGroup.make("Forms").icon("heroicon-o-clipboard-document-list").sort(15)
         )
-        .navigation_group(
-            NavigationGroup.make("Infolists")
-            .icon("heroicon-o-queue-list")
-            .sort(6)
-        )
-        .navigation_group(
-            NavigationGroup.make("Actions")
-            .icon("heroicon-o-check")
-            .sort(7)
-        )
-        .navigation_group(
-            NavigationGroup.make("Navigation")
-            .icon("heroicon-o-bars-3")
-            .sort(8)
-        )
-        .navigation_group(
-            NavigationGroup.make("Notifications")
-            .icon("heroicon-o-bell")
-            .sort(9)
-        )
-        .navigation_group(
-            NavigationGroup.make("Tenancy")
-            .icon("heroicon-o-building-office-2")
-            .sort(10)
-        )
-        .navigation_group(
-            NavigationGroup.make("Forms")
-            .icon("heroicon-o-clipboard-document-list")
-            .sort(15)
-        )
-        .navigation_group(
-            NavigationGroup.make("Demos")
-            .icon("heroicon-o-beaker")
-            .sort(20)
-        )
-        .navigation_group(
-            NavigationGroup.make("System")
-            .icon("heroicon-o-cog-6-tooth")
-            .sort(30)
-        )
+        .navigation_group(NavigationGroup.make("Workflows").icon("heroicon-o-queue-list").sort(16))
+        .navigation_group(NavigationGroup.make("Demos").icon("heroicon-o-beaker").sort(20))
+        .navigation_group(NavigationGroup.make("System").icon("heroicon-o-cog-6-tooth").sort(30))
         .navigation_subgroup(
             NavigationSubgroup.make("Samples")
             .parent("Navigation")
