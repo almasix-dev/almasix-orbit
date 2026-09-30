@@ -18,6 +18,7 @@ _PACKAGE_SRC = [
     _ROOT / "packages" / "query-builder" / "src",
     _ROOT / "packages" / "panels" / "src",
     _ROOT / "packages" / "calendar" / "src",
+    _ROOT / "packages" / "workflows" / "src",
 ]
 
 for _src in _PACKAGE_SRC:

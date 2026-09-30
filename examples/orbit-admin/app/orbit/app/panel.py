@@ -7,6 +7,7 @@ from almasix.orbit.panels.mfa import AppAuthentication, EmailAuthentication
 from almasix.orbit.panels.navigation import NavigationGroup, NavigationItem, NavigationSubgroup
 from almasix.orbit.panels.tenancy import Tenancy, Tenant
 from almasix.orbit.panels.users import PanelNotification, UserMenuItem
+from almasix.orbit.workflows import WorkflowPlugin
 from almasix_orbit_form_builder import FormBuilderPlugin, bootstrap_memory_store
 
 from app.orbit.app.clusters.settings_hub_cluster import SettingsHubCluster
@@ -106,6 +107,7 @@ def register_app_panel(registry: PanelRegistry) -> Panel:
         .tenant_profile(True)
         .plugin(BrandingPlugin())
         .plugin(FormBuilderPlugin.make().navigation_group("Forms"))
+        .plugin(WorkflowPlugin.make())
         .boot_using(lambda p: None)
         .render_hook(
             "panels::head.end",
