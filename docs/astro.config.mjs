@@ -428,11 +428,6 @@ export default defineConfig({
 					items: [{ label: 'Overview', slug: 'query-builder/overview' }],
 				},
 				{
-					label: 'Workflows',
-					collapsed: true,
-					items: [{ label: 'Overview', slug: 'workflows/overview' }],
-				},
-				{
 					label: 'Components',
 					collapsed: true,
 					items: [
