@@ -23,7 +23,7 @@ GitHub Actions ([`.github/workflows/docs.yml`](./.github/workflows/docs.yml) and
 |---------|--------|
 | Repository | `almasix-dev/almasix-orbit` |
 | Root directory | `docs` |
-| Build command | `git fetch --tags --force origin && npm ci && npm run build` |
+| Build command | `npm ci && npm run build` |
 | Deploy command | `npx wrangler deploy` |
 | Project name | `almasix-orbit-docs` |
 | Node | `22` (or `24`) |
