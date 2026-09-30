@@ -129,8 +129,29 @@ function extractTagDocs(repoRoot, tag, destParent) {
 	return extractedDocs;
 }
 
+const PUBLIC_REPO = 'https://github.com/almasix-dev/almasix-orbit.git';
+
+function fetchPublic(repoRoot, refspec) {
+	// Workers Builds clones with a remote that prompts for credentials. That fetch
+	// sits on "Cloning" until it fails. The public URL does not.
+	const result = spawnSync(
+		'git',
+		['-c', 'credential.helper=', 'fetch', '--force', PUBLIC_REPO, refspec],
+		{
+			cwd: repoRoot,
+			stdio: 'inherit',
+			env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+			timeout: 120_000,
+		},
+	);
+	if (result.error || result.status !== 0) {
+		const why = result.error ? result.error.message : `exit ${result.status}`;
+		throw new Error(`git fetch ${refspec} failed: ${why}`);
+	}
+}
+
 const repoRoot = git(['rev-parse', '--show-toplevel'], { cwd: docsRoot });
-spawnSync('git', ['fetch', '--tags', '--force', 'origin'], { cwd: repoRoot, stdio: 'inherit' });
+fetchPublic(repoRoot, 'refs/tags/*:refs/tags/*');
 
 rmSync(versionBuild, { recursive: true, force: true });
 mkdirSync(versionBuild, { recursive: true });
@@ -155,10 +176,7 @@ if (!process.env.SKIP_DOCS_0X) {
 			'No stable v0.x.x tag found. Fetch tags (`git fetch --tags`) or set DOCS_0X_TAG.',
 		);
 	}
-	spawnSync('git', ['fetch', '--force', 'origin', `refs/tags/${tag}:refs/tags/${tag}`], {
-		cwd: repoRoot,
-		stdio: 'inherit',
-	});
+	fetchPublic(repoRoot, `refs/tags/${tag}:refs/tags/${tag}`);
 	console.log(`Building 0.x docs tree from ${tag} → /0.x/`);
 	const extractedDocs = extractTagDocs(repoRoot, tag, join(versionBuild, 'src-0.x'));
 	overlaySwitcher(extractedDocs);
